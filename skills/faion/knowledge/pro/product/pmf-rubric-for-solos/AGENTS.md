@@ -3,77 +3,98 @@ slug: pmf-rubric-for-solos
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Pmf Rubric For Solos: codified product practice that turns the recurring 'p1-solo-saas-builder/Product/Market Fit hunt (post-MVP, pre-traction)' decision into a repeatable, auditable artefact.
-content_id: "3f0dc2042bf64913"
-tags: [pmf-rubric-for-solos, product, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Scores a solo-founder product on six PMF dimensions (very-disappointed %, retention curve, organic pull, willingness-to-pay, founder-confidence, runway-fit) and outputs a PMF rubric report with verdict.
+content_id: "6323ceefbc763772"
+complexity: medium
+produces: rubric
+est_tokens: 5400
+tags: [product, pro, rubric, pmf, solo, scoring]
 ---
-# Pmf Rubric For Solos
+# PMF Rubric for Solos
 
 ## Summary
 
-**One-sentence:** Pmf Rubric For Solos: codified product practice that turns the recurring 'p1-solo-saas-builder/Product/Market Fit hunt (post-MVP, pre-traction)' decision into a repeatable, auditable artefact.
+**One-sentence:** Scores a solo-founder product on six PMF dimensions (very-disappointed %, retention curve, organic pull, willingness-to-pay, founder-confidence, runway-fit) and outputs a PMF rubric report with verdict.
 
-**One-paragraph:** Pmf Rubric For Solos addresses the gap identified by the p1-solo-saas-builder/Product/Market Fit hunt (post-MVP, pre-traction) playbook: Pirate metrics and retention curves exist but a synthesizing rubric for a solo (small N, no analytics team) is missing. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Scores a solo-founder product on six PMF dimensions (very-disappointed %, retention curve, organic pull, willingness-to-pay, founder-confidence, runway-fit) and outputs a PMF rubric report with verdict. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Post-MVP solo founder hunting for product/market fit signal.
+- Pre-funding discussion: show pre-PMF status with concrete dimensions, not vibes.
+- Quarterly PMF re-check: scoring drift signals when to double-down vs pivot.
+- Pre-pivot gate (see pivot-vs-quit): rubric score below threshold triggers pivot review.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p1-solo-saas-builder/Product/Market Fit hunt (post-MVP, pre-traction) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Product launched ≥2 months ago and has ≥10 active users.
+- Survey instrument ('how disappointed if this disappeared') can be deployed.
+- Retention curve calculable from existing event log.
+- Founder available for weekly user calls during the scoring window.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pre-launch or < 10 users — scoring is noise.
+- Cannot deploy survey to users — PMF signal incomplete.
+- Founder time-locked in client work — scoring will be skipped half-way.
 
 ## Prerequisites
 
-- recent context for the p1-solo-saas-builder/Product/Market Fit hunt (post-MVP, pre-traction) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Very-disappointed survey results | survey export with ≥30 responses | Typeform / Tally |
+| Retention cohort data | cohort table week-1 through week-12 | warehouse |
+| Organic acquisition share | % of signups from search / referral | analytics |
+| Willingness-to-pay signal | % who paid OR pre-paid | Stripe / billing |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent role skill — provides the operating context for this methodology |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-pmf-rubric-for-solos` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pmf-rubric-for-solos.json` | JSON schema for the Pmf Rubric For Solos output contract |
-| `templates/pmf-rubric-for-solos.md` | Markdown skeleton with the required fields |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pmf-rubric-for-solos.py` | Enforce Pmf Rubric For Solos output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-pmf-rubric-for-solos.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- upstream playbook: `p1-solo-saas-builder/Product/Market Fit hunt (post-MVP, pre-traction)`
+- Parent: `pro/product/AGENTS.md`
+- [[pivot-vs-quit-decision-template]]
+- [[freelancer-to-saas-time-box]]
+- [[north-star-metric-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

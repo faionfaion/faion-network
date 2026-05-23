@@ -1,39 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Pmf Rubric For Solos Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Pmf Rubric For Solos output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/pmf-rubric-for-solos.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/pmf-rubric-for-solos.json</item>
-    </list>
+<text id="02-output-contract" title="PMF Rubric for Solos Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pmf-rubric-for-solos.json",
+  "title": "PMF Rubric for Solos",
+  "type": "object",
+  "required": [
+    "rubric_id",
+    "owner",
+    "last_touched",
+    "dimensions",
+    "scores",
+    "verdict",
+    "thresholds"
+  ],
+  "properties": {
+    "rubric_id": {},
+    "owner": {},
+    "last_touched": {},
+    "dimensions": {},
+    "scores": {},
+    "verdict": {},
+    "thresholds": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "rubric_id": "pmf-jane-2026q2",
+  "owner": "jane@indie.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "dimensions": [
+    "very_disappointed_pct",
+    "w12_retention",
+    "organic_pull",
+    "willingness_to_pay",
+    "founder_confidence",
+    "runway_fit"
+  ],
+  "scores": {
+    "very_disappointed_pct": 38,
+    "w12_retention": 0.22,
+    "organic_pull": 0.18,
+    "willingness_to_pay": 0.11,
+    "founder_confidence": 3,
+    "runway_fit": 4,
+    "evidence": "Tally survey 2026-05-22 + BI cohort 2026-05-22"
+  },
+  "verdict": "near-pmf",
+  "thresholds": {
+    "very_disappointed_pct": 40,
+    "w12_retention": 0.25,
+    "organic_pull": 0.2,
+    "willingness_to_pay": 0.1
+  },
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "rubric_id": "x",
+  "scores": {},
+  "verdict": "good"
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `pmf-rubric-for-solos`. Validator rejects with explicit violation list.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern>verdict not in {pre-pmf, near-pmf, pmf, post-pmf}</pattern>
+    <pattern>very_disappointed_pct outside [0,100]</pattern>
+    <pattern>retention values outside [0,1]</pattern>
+    <pattern>founder_confidence outside [1,5]</pattern>
+    <pattern>scores object missing any required dimension</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+  </section>
+  <reference path="scripts/validate-pmf-rubric-for-solos.py">Validator script</reference>
 </text>

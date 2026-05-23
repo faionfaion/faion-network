@@ -3,77 +3,98 @@ slug: pivot-vs-quit-decision-template
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Pivot Vs Quit Decision Template: codified product practice that turns the recurring 'p1-solo-saas-builder/Pivot from failed v1 to v2' decision into a repeatable, auditable artefact.
-content_id: "9477397d563128be"
-tags: [pivot-vs-quit-decision-template, product, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pins a decision record comparing pivot-to-v2 versus full shutdown using product signals, runway, founder energy, and customer pull; output is a signed decision-record artefact.
+content_id: "0ccd5dfe83c2e9af"
+complexity: medium
+produces: decision-record
+est_tokens: 5400
+tags: [product, pro, decision-record, pivot, shutdown]
 ---
-# Pivot Vs Quit Decision Template
+# Pivot vs Quit Decision Template
 
 ## Summary
 
-**One-sentence:** Pivot Vs Quit Decision Template: codified product practice that turns the recurring 'p1-solo-saas-builder/Pivot from failed v1 to v2' decision into a repeatable, auditable artefact.
+**One-sentence:** Pins a decision record comparing pivot-to-v2 versus full shutdown using product signals, runway, founder energy, and customer pull; output is a signed decision-record artefact.
 
-**One-paragraph:** Pivot Vs Quit Decision Template addresses the gap identified by the p1-solo-saas-builder/Pivot from failed v1 to v2 playbook: Pivots and sunsets are emotionally hard for solos; need a structured worksheet separating sunk cost, optionality, and personal runway. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Pins a decision record comparing pivot-to-v2 versus full shutdown using product signals, runway, founder energy, and customer pull; output is a signed decision-record artefact. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Solo founder facing failed v1 launch with measurable customer signal disagreement.
+- Co-founder pair where one wants pivot and one wants quit — needs single source of truth.
+- Pre-shutdown audit before refunding customers or pivoting positioning.
+- Investor / board comm: explain pivot OR shutdown with explicit evidence trail.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p1-solo-saas-builder/Pivot from failed v1 to v2 OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Product launched ≥3 months ago with measurable usage data.
+- Founder energy + runway constraints have been honestly assessed in writing.
+- ≥3 customer interviews completed in the last 30 days.
+- Pivot hypothesis (v2 candidate) is specific and testable, not vague.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pre-launch — no signal to evaluate, use pmf-rubric-for-solos instead.
+- Founder cannot commit to honest assessment of energy / runway — decision will be theatre.
+- Quit option already politically decided — write a closure plan, not a comparison.
 
 ## Prerequisites
 
-- recent context for the p1-solo-saas-builder/Pivot from failed v1 to v2 task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Usage data snapshot | 3 months of activity events | warehouse |
+| Customer interview notes | ≥3 transcripts last 30 days | user research |
+| Financial runway | months of expenses covered | accounting |
+| Energy + commitment self-rating | scale 1-5 with notes | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent role skill — provides the operating context for this methodology |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-pivot-vs-quit-decision-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pivot-vs-quit-decision-template.json` | JSON schema for the Pivot Vs Quit Decision Template output contract |
-| `templates/pivot-vs-quit-decision-template.md` | Markdown skeleton with the required fields |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pivot-vs-quit-decision-template.py` | Enforce Pivot Vs Quit Decision Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-pivot-vs-quit-decision-template.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- upstream playbook: `p1-solo-saas-builder/Pivot from failed v1 to v2`
+- Parent: `pro/product/AGENTS.md`
+- [[pmf-rubric-for-solos]]
+- [[portfolio-sunset-decision-frame]]
+- [[freelancer-to-saas-time-box]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

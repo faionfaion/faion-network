@@ -3,78 +3,99 @@ slug: freelancer-to-saas-time-box
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "d0c45a5a878e27ef"
-summary: "Freelancer To Saas Time Box — testable methodology for product-discovery, roadmap, lifecycle. Most freelance-to-SaaS attempts die because client work eats the side build. Need an explicit time-box + boundary methodology to protect the SaaS slot."
-tags: [product, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pins an explicit weekly time-box + boundary contract that protects SaaS build slots from client work; produces a 90-day commitment spec with abort criteria.
+content_id: "02e9fb148e182bfe"
+complexity: medium
+produces: spec
+est_tokens: 5200
+tags: [product, pro, spec, solo, saas, time-management]
 ---
-# Freelancer To Saas Time Box
+# Freelancer to SaaS Time-Box
 
 ## Summary
 
-**One-sentence:** Freelancer To Saas Time Box — testable methodology for product-discovery, roadmap, lifecycle. Most freelance-to-SaaS attempts die because client work eats the side build. Need an explicit time-box + boundary methodology to protect the SaaS slot.
+**One-sentence:** Pins an explicit weekly time-box + boundary contract that protects SaaS build slots from client work; produces a 90-day commitment spec with abort criteria.
 
-**One-paragraph:** Freelancer To Saas Time Box closes a known gap in product practice: Most freelance-to-SaaS attempts die because client work eats the side build. Need an explicit time-box + boundary methodology to protect the SaaS slot. The methodology is anchored to the recurring activity 'Freelance-to-SaaS transition (6-month side build) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Pins an explicit weekly time-box + boundary contract that protects SaaS build slots from client work; produces a 90-day commitment spec with abort criteria. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Active freelancer with ≥3 paying clients trying to ship a SaaS on the side.
+- Repeated SaaS attempts already died because client urgent eats build slot.
+- Need explicit weekly hours commitment + boundary rules buyers and family can see.
+- Want a pre-committed 90-day abort gate so the side build doesn't drift forever.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Freelance-to-SaaS transition (6-month side build) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Freelancer earns ≥80% income from billable client work today.
+- SaaS idea has at least one paying-customer signal (LOI, pre-order, beta interest).
+- Founder can commit ≥6 contiguous hours / week to SaaS for 90 days.
+- Calendar control: founder owns own scheduling and can decline client requests.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Founder cannot decline any client request — boundary contract is unenforceable.
+- No paying-customer signal yet — apply pmf-rubric-for-solos first.
+- Income runway < 90 days — survival > time-box; finish client work first.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Weekly hour budget | JSON with day -> hours map | calendar audit (past 4 weeks) |
+| Client backlog | list of contracts with deadline + revenue | CRM / Notion |
+| SaaS hypothesis spec | one-page hypothesis: customer + problem + proof | founder |
+| Runway | months of expenses covered by current cash | accounting |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_to_saas_time_box_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_to_saas_time_box_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_to_saas_time_box_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-freelancer-to-saas-time-box` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-to-saas-time-box.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/` (see neighbouring methodologies)
-- triggering activity: `Freelance-to-SaaS transition (6-month side build) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/product/AGENTS.md`
+- [[pmf-rubric-for-solos]]
+- [[productized-service-design]]
+- [[pivot-vs-quit-decision-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

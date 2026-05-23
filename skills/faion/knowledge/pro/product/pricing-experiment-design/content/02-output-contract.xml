@@ -1,46 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Pricing Experiment Design Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Pricing Experiment Design output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="baseline_pricing" type="object" required="true">{tiers, conversion_rate, ARPU}</field>
-      <field name="grandfather_policy" type="string" required="true">explicit policy text</field>
-      <field name="cohort_segmentation" type="list" required="true">valid segmentation axes</field>
-      <field name="mde" type="object" required="true">{target_effect_pct, n_per_arm, duration_weeks}</field>
-      <field name="van_westendorp_range" type="object" required="true">{too_cheap, too_expensive, optimal}</field>
-      <field name="rollback_trigger" type="object" required="true">{revenue_drop_threshold, monitoring_cadence}</field>
-      <field name="legal_review_date" type="date" required="true">date of legal sign-off</field>
-      <field name="owner" type="string" required="true">named PM + finance partner</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">individual-level price discrimination</pattern>
-      <pattern id="f2">no grandfathering policy</pattern>
-      <pattern id="f3">test launched without MDE math</pattern>
-      <pattern id="f4">rollback trigger absent</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/pricing-experiment-design.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>baseline_pricing populated with a typed value</item>
-      <item>grandfather_policy populated with a typed value</item>
-      <item>cohort_segmentation populated with a typed value</item>
-      <item>mde populated with a typed value</item>
-      <item>van_westendorp_range populated with a typed value</item>
-      <item>rollback_trigger populated with a typed value</item>
-      <item>legal_review_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+<text id="02-output-contract" title="Pricing Experiment Design Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pricing-experiment-design.json",
+  "title": "Pricing Experiment Design",
+  "type": "object",
+  "required": [
+    "experiment_id",
+    "owner",
+    "last_touched",
+    "hypothesis",
+    "cohorts",
+    "variants",
+    "metrics",
+    "grandfathering",
+    "power_analysis",
+    "legal_clearance"
+  ],
+  "properties": {
+    "experiment_id": {},
+    "owner": {},
+    "last_touched": {},
+    "hypothesis": {},
+    "cohorts": {},
+    "variants": {},
+    "metrics": {},
+    "grandfathering": {},
+    "power_analysis": {},
+    "legal_clearance": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "experiment_id": "px-acme-tier-2026q2",
+  "owner": "pricing@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "hypothesis": "Raising Pro from $19 to $29 lifts ARPU by 30% with <10% conversion loss",
+  "cohorts": [
+    {
+      "id": "c-new-signups-eu",
+      "filter": "country in eu and signup > 2026-05-24"
+    }
+  ],
+  "variants": [
+    {
+      "id": "a",
+      "price": 19
+    },
+    {
+      "id": "b",
+      "price": 29
+    }
+  ],
+  "metrics": {
+    "primary": "checkout_conversion",
+    "secondary": [
+      "arpu",
+      "refund_rate"
+    ]
+  },
+  "grandfathering": {
+    "policy": "existing customers locked at $19 for 12 months",
+    "evidence": "policy memo 2026-05-22"
+  },
+  "power_analysis": {
+    "expected_effect": 0.3,
+    "mde": 0.1,
+    "target_n": 8000
+  },
+  "legal_clearance": {
+    "reviewer": "legal@acme.io",
+    "memo": "drive://legal/price-test-eu-2026.pdf"
+  },
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "experiment_id": "x",
+  "variants": [
+    {
+      "id": "a"
+    }
+  ]
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `pricing-experiment-design`. Validator rejects with explicit violation list.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern>variants array with fewer than 2 entries</pattern>
+    <pattern>variant without price</pattern>
+    <pattern>grandfathering missing &apos;policy&apos; field</pattern>
+    <pattern>power_analysis without target_n</pattern>
+    <pattern>legal_clearance missing reviewer email</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+  </section>
+  <reference path="scripts/validate-pricing-experiment-design.py">Validator script</reference>
 </text>

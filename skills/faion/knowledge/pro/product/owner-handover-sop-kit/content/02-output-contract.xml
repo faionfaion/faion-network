@@ -1,39 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Owner Handover Sop Kit Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Owner Handover Sop Kit output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/owner-handover-sop-kit.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/owner-handover-sop-kit.json</item>
-    </list>
+<text id="02-output-contract" title="Owner Handover SOP Kit Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/owner-handover-sop-kit.json",
+  "title": "Owner Handover SOP Kit",
+  "type": "object",
+  "required": [
+    "kit_id",
+    "owner",
+    "last_touched",
+    "credentials",
+    "runbooks",
+    "financials",
+    "contracts",
+    "escalation_paths",
+    "completeness_score"
+  ],
+  "properties": {
+    "kit_id": {},
+    "owner": {},
+    "last_touched": {},
+    "credentials": {},
+    "runbooks": {},
+    "financials": {},
+    "contracts": {},
+    "escalation_paths": {},
+    "completeness_score": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "kit_id": "handover-acme-2026q2",
+  "owner": "alex@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "credentials": [
+    {
+      "system": "Stripe",
+      "transfer_path": "team admin invite + 2FA codes",
+      "evidence": "Stripe Team page 2026-05-22"
+    }
+  ],
+  "runbooks": [
+    {
+      "name": "deploy-prod",
+      "location": "notion://runbooks/deploy-prod",
+      "evidence": "ops Notion 2026-05-22"
+    }
+  ],
+  "financials": {
+    "location": "gdrive://finance/2025-pnl.xlsx",
+    "evidence": "accounting export 2026-05-22"
+  },
+  "contracts": [
+    {
+      "id": "c-bigco",
+      "type": "customer",
+      "location": "gdrive://contracts/bigco.pdf",
+      "evidence": "drive 2026-05-22"
+    }
+  ],
+  "escalation_paths": [
+    {
+      "event": "Stripe outage",
+      "primary": "alex@acme.io",
+      "secondary": "ops@acme.io"
+    }
+  ],
+  "completeness_score": 0.78,
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "kit_id": "x",
+  "credentials": [],
+  "runbooks": []
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `owner-handover-sop-kit`. Validator rejects with explicit violation list.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern>completeness_score outside [0,1]</pattern>
+    <pattern>credentials list empty when accounts exist</pattern>
+    <pattern>runbook entry without &apos;location&apos;</pattern>
+    <pattern>escalation path with secondary == primary</pattern>
+    <pattern>contracts list with no &apos;type&apos; (customer/vendor)</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+  </section>
+  <reference path="scripts/validate-owner-handover-sop-kit.py">Validator script</reference>
 </text>

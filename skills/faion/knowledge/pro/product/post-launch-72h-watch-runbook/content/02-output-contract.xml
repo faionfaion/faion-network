@@ -1,45 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Post Launch 72h Watch Runbook — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A runbook artefact comprising: a step list (preconditions, action, actor, artefact, rollback), a wall-clock budget per phase, and a post-run record committed to the agreed evidence folder.</summary>
-
-  <section title="Required fields">
-    <list>
-      <item>step.precondition (state, alert, ticket, signal)</item>
-      <item>step.actor (role + system)</item>
-      <item>step.action (verb + object + parameters)</item>
-      <item>step.artefact (link / id of produced artefact)</item>
-      <item>step.rollback OR step.stop_branch</item>
-      <item>phase.budget (wall-clock minutes)</item>
-      <item>run-record (start_ts, end_ts, branches, exceptions, links)</item>
-    </list>
+<text id="02-output-contract" title="Post-Launch 72h Watch Runbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/post-launch-72h-watch-runbook.json",
+  "title": "Post-Launch 72h Watch Runbook",
+  "type": "object",
+  "required": [
+    "runbook_id",
+    "owner",
+    "last_touched",
+    "launch",
+    "signals",
+    "thresholds",
+    "on_call_schedule",
+    "rollback_path"
+  ],
+  "properties": {
+    "runbook_id": {},
+    "owner": {},
+    "last_touched": {},
+    "launch": {},
+    "signals": {},
+    "thresholds": {},
+    "on_call_schedule": {},
+    "rollback_path": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
-
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "runbook_id": "watch-acme-2026-launch-q2",
+  "owner": "ops@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "launch": {
+    "name": "pricing-tier-v2",
+    "start": "2026-05-24T08:00:00Z",
+    "end": "2026-05-27T08:00:00Z"
+  },
+  "signals": [
+    {
+      "name": "error_rate",
+      "owner": "ops@acme.io",
+      "source": "Sentry",
+      "evidence": "Sentry project acme-prod"
+    },
+    {
+      "name": "checkout_conversion",
+      "owner": "growth@acme.io",
+      "source": "BI",
+      "evidence": "BI view fct_checkout"
+    }
+  ],
+  "thresholds": {
+    "error_rate": {
+      "warn": 0.005,
+      "page": 0.02
+    },
+    "checkout_conversion": {
+      "warn": -0.1,
+      "page": -0.25
+    }
+  },
+  "on_call_schedule": [
+    {
+      "slot": "2026-05-24T08-16Z",
+      "owner": "alex@acme.io"
+    },
+    {
+      "slot": "2026-05-24T16-24Z",
+      "owner": "ops@acme.io"
+    }
+  ],
+  "rollback_path": {
+    "steps": [
+      "feature-flag pricing_v2 -> off",
+      "run smoke test",
+      "post status"
+    ],
+    "owner": "ops@acme.io",
+    "tested_on": "2026-05-22"
+  },
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "runbook_id": "x",
+  "signals": []
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `post-launch-72h-watch-runbook`. Validator rejects with explicit violation list.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>vague actors (&quot;someone notifies&quot;)</description>
-      <reason>Vague actors fail under stress.</reason>
-    </antipattern>
-    <antipattern>
-      <description>side-effect steps without rollback or STOP branch</description>
-      <reason>Operator gets stuck mid-procedure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no phase budgets</description>
-      <reason>Window-blowing runs go undetected until the second alarm.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing run-record after execution</description>
-      <reason>Without records the runbook cannot improve.</reason>
-    </antipattern>
+    <pattern>signal without owner</pattern>
+    <pattern>threshold value without &apos;warn&apos; or &apos;page&apos; level</pattern>
+    <pattern>on-call schedule with gaps inside the 72h window</pattern>
+    <pattern>rollback_path without tested_on date</pattern>
+    <pattern>launch with end &lt; start</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
   </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has precondition + actor + artefact + rollback.</item>
-      <item>Each phase carries a wall-clock budget.</item>
-      <item>Run record committed after execution.</item>
-      <item>Escalation criteria explicit.</item>
-      <item>Runbook owner named in header.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-post-launch-72h-watch-runbook.py">Validator script</reference>
 </text>

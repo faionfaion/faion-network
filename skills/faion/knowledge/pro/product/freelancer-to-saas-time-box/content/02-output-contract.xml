@@ -1,57 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelancer To Saas Time Box Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Freelancer To Saas Time Box artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Freelancer to SaaS Time-Box Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/freelancer-to-saas-time-box.json",
+  "title": "Freelancer to SaaS Time-Box",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "owner",
+    "last_touched",
+    "weekly_hours",
+    "abort_criteria",
+    "boundary_rules",
+    "milestones",
+    "review_cadence"
+  ],
+  "properties": {
+    "spec_id": {},
+    "owner": {},
+    "last_touched": {},
+    "weekly_hours": {},
+    "abort_criteria": {},
+    "boundary_rules": {},
+    "milestones": {},
+    "review_cadence": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "spec_id": "fstx-jane-2026q2",
+  "owner": "jane@indie.io",
+  "last_touched": "2026-05-23T09:00:00Z",
+  "weekly_hours": {
+    "mon": 0,
+    "tue": 3,
+    "wed": 0,
+    "thu": 3,
+    "fri": 0,
+    "sat": 2,
+    "sun": 0,
+    "evidence": "calendar export 2026-04 to 2026-05"
+  },
+  "abort_criteria": [
+    {
+      "name": "no paying customer by day 60",
+      "metric": "paid_signups",
+      "threshold": 1,
+      "evidence": "milestone roadmap"
+    }
+  ],
+  "boundary_rules": [
+    {
+      "rule": "no client work on Tuesday/Thursday/Saturday SaaS blocks",
+      "consequence": "decline + reschedule"
+    }
+  ],
+  "milestones": [
+    {
+      "day": 30,
+      "deliverable": "landing + payment link live"
+    },
+    {
+      "day": 60,
+      "deliverable": "1 paid signup"
+    },
+    {
+      "day": 90,
+      "deliverable": "5 paid signups OR abort"
+    }
+  ],
+  "review_cadence": "weekly Friday 30-min self-review",
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "spec_id": "x",
+  "weekly_hours": {
+    "mon": 80
+  },
+  "abort_criteria": []
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `freelancer-to-saas-time-box`. Validator rejects with explicit violation list.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+    <pattern>weekly_hours sum &gt; 30 (overcommit kills client revenue)</pattern>
+    <pattern>abort_criteria empty (no exit ramp)</pattern>
+    <pattern>boundary_rules without &apos;consequence&apos; (toothless boundary)</pattern>
+    <pattern>milestone with deliverable &apos;launch&apos; but no metric</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+  <reference path="scripts/validate-freelancer-to-saas-time-box.py">Validator script</reference>
 </text>

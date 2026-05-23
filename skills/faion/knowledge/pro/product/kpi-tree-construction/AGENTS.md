@@ -3,78 +3,99 @@ slug: kpi-tree-construction
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "11159f50ef435873"
-summary: "Kpi Tree Construction — testable methodology for product-discovery, roadmap, lifecycle. No methodology in faion shows how to decompose an NSM into a navigable tree where each leaf has an owner, formula, and weekly cadence. Critical for OKR cascade and for ejecting vanity metrics."
-tags: [product, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decomposes an NSM into a navigable tree where every leaf has owner, formula, cadence and evidence link; output is a validated KPI tree spec.
+content_id: "5d99468c16026bfd"
+complexity: deep
+produces: spec
+est_tokens: 5800
+tags: [product, pro, kpi, okr, metrics, cascade]
 ---
-# Kpi Tree Construction
+# KPI Tree Construction
 
 ## Summary
 
-**One-sentence:** Kpi Tree Construction — testable methodology for product-discovery, roadmap, lifecycle. No methodology in faion shows how to decompose an NSM into a navigable tree where each leaf has an owner, formula, and weekly cadence. Critical for OKR cascade and for ejecting vanity metrics.
+**One-sentence:** Decomposes an NSM into a navigable tree where every leaf has owner, formula, cadence and evidence link; output is a validated KPI tree spec.
 
-**One-paragraph:** Kpi Tree Construction closes a known gap in product practice: No methodology in faion shows how to decompose an NSM into a navigable tree where each leaf has an owner, formula, and weekly cadence. Critical for OKR cascade and for ejecting vanity metrics. The methodology is anchored to the recurring activity 'Build a defensible KPI tree from a fuzzy company OKR (role: role-product-manager)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Decomposes an NSM into a navigable tree where every leaf has owner, formula, cadence and evidence link; output is a validated KPI tree spec. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Cascade an annual OKR into weekly leaf metrics each with named owner.
+- Eject vanity metrics by forcing formula + data-source per leaf node.
+- Audit existing KPI dashboards for orphan metrics with no decision attached.
+- Onboard new hire fast: tree shows what they own and what feeds their leaf.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Build a defensible KPI tree from a fuzzy company OKR (role: role-product-manager)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- North Star Metric (NSM) already defined and agreed.
+- Team has ≥3 functions whose work should ladder into the NSM.
+- Data infra exists to compute candidate leaf metrics weekly.
+- Each candidate leaf has a plausible named owner.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No NSM defined yet — apply north-star-metric-design first.
+- Team size < 3 — overhead exceeds value, use a flat 5-metric list.
+- Data infra cannot compute weekly — metrics will rot.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| NSM definition | one-line statement with formula and cadence | leadership |
+| Function list | list of functions with lead names | org chart |
+| Data warehouse spec | list of computable metrics with source table | data team |
+| Existing dashboards | list of metrics currently tracked | BI tool export |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `kpi_tree_construction_template_fill` | haiku | Template fill, no judgement |
-| `kpi_tree_construction_evidence_check` | sonnet | Bounded comparison + judgement |
-| `kpi_tree_construction_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-kpi-tree-construction` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-kpi-tree-construction.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/` (see neighbouring methodologies)
-- triggering activity: `Build a defensible KPI tree from a fuzzy company OKR (role: role-product-manager)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/product/AGENTS.md`
+- [[north-star-metric-design]]
+- [[north-star-vs-okr-confidence-calibration]]
+- [[pmf-rubric-for-solos]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -3,77 +3,99 @@ slug: north-star-metric-design
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: North Star Metric Design: codified product practice that turns the recurring 'role-product-manager/Build a defensible KPI tree from a fuzzy company OKR' decision into a repeatable, auditable artefact.
-content_id: "e1ba348e4c936902"
-tags: [north-star-metric-design, product, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Designs a single North Star Metric: candidate generation, leading-vs-lagging classification, formula + cadence + owner; output is an NSM spec ready for KPI-tree cascade.
+content_id: "c906b05651b726e9"
+complexity: medium
+produces: spec
+est_tokens: 5400
+tags: [product, pro, north-star, metrics, strategy]
 ---
 # North Star Metric Design
 
 ## Summary
 
-**One-sentence:** North Star Metric Design: codified product practice that turns the recurring 'role-product-manager/Build a defensible KPI tree from a fuzzy company OKR' decision into a repeatable, auditable artefact.
+**One-sentence:** Designs a single North Star Metric: candidate generation, leading-vs-lagging classification, formula + cadence + owner; output is an NSM spec ready for KPI-tree cascade.
 
-**One-paragraph:** North Star Metric Design addresses the gap identified by the role-product-manager/Build a defensible KPI tree from a fuzzy company OKR playbook: Product-analytics covers measurement; nothing covers the act of choosing the north-star itself. PMs need a method for candidate generation, stress-testing, leading-vs-lagging trade-off, and de-coupling from revenue when revenue is too far downstream. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Designs a single North Star Metric: candidate generation, leading-vs-lagging classification, formula + cadence + owner; output is an NSM spec ready for KPI-tree cascade. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Pre-PMF startup needs one growth metric the whole team can rally around.
+- Post-PMF company swapping vanity metrics for one outcome-aligned NSM.
+- Quarterly strategy refresh: re-anchor every team OKR to a single NSM.
+- Investor / board comms: pin one number that explains progress quarter on quarter.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-product-manager/Build a defensible KPI tree from a fuzzy company OKR OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Product has ≥1 month of usage data to back candidate metrics.
+- ≥3 candidate metrics already brainstormed by team.
+- Customer value hypothesis is one sentence ('users get X by doing Y').
+- Leadership has authority to retire competing 'north star' candidates.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pre-product or no usage data — NSM would be aspirational, use a goal instead.
+- Multiple products with disjoint user bases — design NSM per product.
+- Customer value hypothesis is unclear — apply pmf-rubric-for-solos first.
 
 ## Prerequisites
 
-- recent context for the role-product-manager/Build a defensible KPI tree from a fuzzy company OKR task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Candidate metrics list | list of {name, formula, cadence} | team workshop |
+| Usage data sample | 1 month of activity events | warehouse |
+| Customer value hypothesis | one-sentence statement | founder / product |
+| Leadership sign-off authority | named person + email | org chart |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent role skill — provides the operating context for this methodology |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-north-star-metric-design` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/north-star-metric-design.json` | JSON schema for the North Star Metric Design output contract |
-| `templates/north-star-metric-design.md` | Markdown skeleton with the required fields |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-north-star-metric-design.py` | Enforce North Star Metric Design output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-north-star-metric-design.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- upstream playbook: `role-product-manager/Build a defensible KPI tree from a fuzzy company OKR`
+- Parent: `pro/product/AGENTS.md`
+- [[kpi-tree-construction]]
+- [[north-star-vs-okr-confidence-calibration]]
+- [[pmf-rubric-for-solos]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

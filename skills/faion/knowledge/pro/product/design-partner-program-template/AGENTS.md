@@ -3,12 +3,15 @@ slug: design-partner-program-template
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "ad60a2f490f874a4"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Design Partner Program Template delivers a concrete, testable methodology that turns the recurring task of 'Freelance-to-SaaS transition (6-month side build)' into an auditable artefact, addressing the gap: How to convert past freelance clients into paid design partners with disc
+content_id: "6dda6935da138c56"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [product, pro, template, methodology]
 ---
 # Design Partner Program Template
@@ -18,6 +21,12 @@ tags: [product, pro, template, methodology]
 **One-sentence:** Design Partner Program Template delivers a concrete, testable methodology that turns the recurring task of 'Freelance-to-SaaS transition (6-month side build)' into an auditable artefact, addressing the gap: How to convert past freelance clients into paid design partners with discounted founder pricing + co-creation rights — distinct from generic beta programs.
 
 **One-paragraph:** How to convert past freelance clients into paid design partners with discounted founder pricing + co-creation rights — distinct from generic beta programs. Design Partner Program Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Freelance-to-SaaS transition (6-month side build)' (p3-technical-freelancer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+
+**Ефективно для:**
+
+- Перехід з freelance-services до SaaS — convert past clients у design partners.
+- Founder потребує template для discount-pricing, commit duration, IP rights.
+- Програма має 6-month side build вікно з clear exit criteria.
 
 ## Applies If (ALL must hold)
 
@@ -49,9 +58,12 @@ tags: [product, pro, template, methodology]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -65,16 +77,22 @@ tags: [product, pro, template, methodology]
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/design-partner-program-template.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/design-partner-program-template.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-design-partner-program-template.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-design-partner-program-template.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/product/` (see neighbouring methodologies)
 - triggering activity: `p3-technical-freelancer/Freelance-to-SaaS transition (6-month side build)`
 - external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

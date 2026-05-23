@@ -3,12 +3,15 @@ slug: feature-flag-rollout-decision
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "1ab6d798eac9cfd1"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Feature Flag Rollout Decision delivers a concrete, testable methodology that turns the recurring task of 'Validate an AI feature before it consumes a quarter' into an auditable artefact, addressing the gap: Release-planning covers release cadence; nothing covers the decision tree
+content_id: "e18bf5a315b6d4d9"
+complexity: medium
+produces: decision-record
+est_tokens: 4400
 tags: [product, pro, method, methodology]
 ---
 # Feature Flag Rollout Decision
@@ -18,6 +21,12 @@ tags: [product, pro, method, methodology]
 **One-sentence:** Feature Flag Rollout Decision delivers a concrete, testable methodology that turns the recurring task of 'Validate an AI feature before it consumes a quarter' into an auditable artefact, addressing the gap: Release-planning covers release cadence; nothing covers the decision tree for who gets the feature first, ramp percentages, kill criteria, rollback triggers, and the PM-vs-eng-vs-marketing handshake at each ramp step.
 
 **One-paragraph:** Release-planning covers release cadence; nothing covers the decision tree for who gets the feature first, ramp percentages, kill criteria, rollback triggers, and the PM-vs-eng-vs-marketing handshake at each ramp step. Feature Flag Rollout Decision closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Validate an AI feature before it consumes a quarter' (role-product-manager, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+
+**Ефективно для:**
+
+- AI-feature ризик-ratio високий — release без gate може спалити quarter.
+- PM веде decision tree: full-rollout / staged-rollout / dark-launch / kill-on-fail.
+- Release-planning покриває cadence, не decision-tree per feature.
 
 ## Applies If (ALL must hold)
 
@@ -49,9 +58,11 @@ tags: [product, pro, method, methodology]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -65,16 +76,22 @@ tags: [product, pro, method, methodology]
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/feature-flag-rollout-decision.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/feature-flag-rollout-decision.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-feature-flag-rollout-decision.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-feature-flag-rollout-decision.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/product/` (see neighbouring methodologies)
 - triggering activity: `role-product-manager/Validate an AI feature before it consumes a quarter`
 - external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.
