@@ -3,74 +3,97 @@ slug: ba-planning
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A six-step framework that defines how BA work will be performed before requirements gathering begins: selecting plan-driven, change-driven, or hybrid approach based on context; building the stakeholder list; scheduling elicitation activities; specifying deliverables; and establishing governance (approver, change process, escalation path).
-content_id: "4442ac0007c37656"
-tags: [ba-planning, stakeholder-analysis, approach-selection, governance, requirements-elicitation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pre-elicitation 6-step framework: select plan-driven/change-driven/hybrid, name stakeholders, schedule elicitation, define deliverables, set governance approver + change process + escalation path.
+content_id: "7a8c4d2b9f6e1a05"
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [ba, planning, governance, stakeholders, babok]
 ---
-# Business Analysis Planning
+# BA Planning
 
 ## Summary
 
-**One-sentence:** A six-step framework that defines how BA work will be performed before requirements gathering begins: selecting plan-driven, change-driven, or hybrid approach based on context; building the stakeholder list; scheduling elicitation activities; specifying deliverables; and establishing governance (approver, change process, escalation path).
+**One-sentence:** Pre-elicitation 6-step framework: select plan-driven/change-driven/hybrid, name stakeholders, schedule elicitation, define deliverables, set governance approver + change process + escalation path.
 
-**One-paragraph:** A six-step framework that defines how BA work will be performed before requirements gathering begins: selecting plan-driven, change-driven, or hybrid approach based on context; building the stakeholder list; scheduling elicitation activities; specifying deliverables; and establishing governance (approver, change process, escalation path). The BA Approach Document is stored as a versioned Markdown+YAML file in git, refreshed on a 14-day cadence.
+**One-paragraph:** Pre-elicitation 6-step framework: select plan-driven/change-driven/hybrid, name stakeholders, schedule elicitation, define deliverables, set governance approver + change process + escalation path. Captured as a versioned artefact downstream agents and reviewers consume without re-deriving rationale. Mechanism: typed input → bounded transformation → contract-checked output.
+
+**Ефективно для:**
+
+- Pre-elicitation phase коли scope і governance not yet defined.
+- Multi-month engagement initiation.
+- Cross-team / cross-vendor projects з multi-stakeholder governance.
+- Audit-required engagement (regulated, public sector).
 
 ## Applies If (ALL must hold)
 
-- Kicking off a multi-stakeholder initiative (>3 stakeholder groups) where elicitation, deliverables, and approval flow must be agreed before requirements work starts.
-- Regulated programs (medical, fintech, gov, ISO 9001/SOX) where auditors expect a documented BA approach with named approvers.
-- Hybrid plan-driven + change-driven engagements where artifacts must be explicitly declared as baselined vs. living.
-- Spinning up a new BA capability inside a delivery team that had none previously.
-- Seeding inputs for stakeholder-analysis, elicitation-techniques, and requirements-lifecycle.
+- Engagement starts (kickoff already happened).
+- Stakeholders are nameable (≥1 sponsor + ≥1 approver).
+- Approach choice (plan-driven / change-driven / hybrid) is open.
+- Deliverables list expected at end of plan stage.
 
 ## Skip If (ANY kills it)
 
-- Solo founder building an MVP — planning ceremony is overhead; use a one-page lean canvas.
-- Pure XP/Scrum teams running on a refined backlog with a Definition of Ready that already encodes the BA approach.
-- Initiatives shorter than ~2 weeks of effort with one stakeholder — the plan costs more than the work it organizes.
-- When the sponsor refuses to commit a governance model in writing — without an approver the plan is shelfware.
-- Throwaway prototypes, spikes, or research probes.
+- Engagement in flight where plan already exists — extend, do not duplicate.
+- 1-week spike with no governance needs.
+- Solo BA with full scope autonomy — overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent task context (30 days) | Markdown / tracker | BA |
+| Write access to artefact store | repo / wiki | engagement manager |
+| Named downstream owner | stakeholder list | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-onboarding-week-one-template]] | Companion / upstream methodology |
+| [[decision-analysis]] | Sibling artefact in the same lifecycle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_inputs_summary` | haiku | Mechanical template fill. |
+| `synthesize_decision` | sonnet | Per-instance bounded judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis on high-stakes outputs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ba-planning.json` | Skeleton artefact with required fields |
+| `templates/_smoke-test.json` | Minimum viable filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ba-planning.py` | Validate artefact against output-contract | After subagent returns; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[ba-onboarding-week-one-template]]
+- [[decision-analysis]]
+- [[business-process-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.

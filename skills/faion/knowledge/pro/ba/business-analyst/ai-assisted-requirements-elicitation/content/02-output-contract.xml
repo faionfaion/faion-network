@@ -1,74 +1,116 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI-Assisted Requirements Elicitation Output Contract" version="1.0.0" est_tokens="750" depth="essential">
-  <summary>Defines per-requirement schema with BABOK format + transcript citations + compliance cross-check.</summary>
-
-  <output-contract>
-    <required>
-      <field name="requirement_metadata">
-        <subfield name="req_id" type="string" pattern="^REQ-\d{3,}$"/>
-        <subfield name="engagement_id" type="string"/>
-        <subfield name="model" type="string"/>
-        <subfield name="model_run_temperature" type="number" max="0.2"/>
-        <subfield name="drafted_at" type="iso_datetime"/>
-        <subfield name="ba_reviewer" type="string"/>
-        <subfield name="ba_signed_at" type="iso_datetime"/>
-      </field>
-      <field name="story" format="babok_story">
-        <subfield name="persona" type="string"/>
-        <subfield name="capability" type="string"/>
-        <subfield name="outcome" type="string"/>
-      </field>
-      <field name="acceptance_criteria" format="list" min_items="1">
-        <subfield name="acceptance_criteria[].ac_id" type="string"/>
-        <subfield name="acceptance_criteria[].given" type="string"/>
-        <subfield name="acceptance_criteria[].when" type="string"/>
-        <subfield name="acceptance_criteria[].then" type="string"/>
-      </field>
-      <field name="evidence_citations" min_items="1">
-        <subfield name="evidence_citations[].source_doc" type="string"/>
-        <subfield name="evidence_citations[].line_range" type="string"/>
-        <subfield name="evidence_citations[].verbatim_quote" type="string"/>
-      </field>
-      <field name="compliance_cross_check">
-        <subfield name="compliance_cross_check.domain_constraints_checked" min_items="1"/>
-        <subfield name="compliance_cross_check.conflicts_found" type="boolean"/>
-        <subfield name="compliance_cross_check.notes" type="string"/>
-      </field>
-      <field name="ba_review_log">
-        <subfield name="ba_review_log.edits_made" type="string"/>
-        <subfield name="ba_review_log.citation_verified" type="boolean"/>
-        <subfield name="ba_review_log.compliance_verified" type="boolean"/>
-      </field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">requirement without evidence_citations OR citations that don't match source docs at named lines</pattern>
-      <pattern id="f2">story missing persona / capability / outcome fields</pattern>
-      <pattern id="f3">acceptance_criteria using prose format instead of Given/When/Then or scenario table</pattern>
-      <pattern id="f4">compliance_cross_check missing when engagement_id flagged as regulated domain</pattern>
-      <pattern id="f5">ba_signed_at present but ba_review_log.citation_verified == false</pattern>
-      <pattern id="f6">requirement published with model_run_temperature &gt; 0.2 (non-reproducible)</pattern>
-      <pattern id="f7">requirement living outside version-controlled requirements repo (Slack drafts forbidden)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Acceptance criteria may use scenario tables (multiple rows) instead of separate Given/When/Then blocks for parameterized cases.</transformation>
-      <transformation>For non-regulated domains, compliance_cross_check may be marked "N/A — non-regulated" but the field must exist.</transformation>
-      <transformation>BA may co-author the story (LLM drafts capability, BA writes persona + outcome) — model contribution is tracked in metadata.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/story-template.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="AI-Assisted Requirements Elicitation Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the AI-Assisted Requirements Elicitation artefact shape.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-assisted-requirements-elicitation.json",
+  "type": "object",
+  "required": [
+    "elicitation_id",
+    "version_tag",
+    "ba_reviewer",
+    "stories"
+  ],
+  "properties": {
+    "elicitation_id": {
+      "type": "string"
+    },
+    "version_tag": {
+      "type": "string",
+      "pattern": "^v\\d+\\.\\d+\\.\\d+$"
+    },
+    "ba_reviewer": {
+      "type": "string",
+      "minLength": 2
+    },
+    "stories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "story_id",
+          "title",
+          "source_refs",
+          "ac_count"
+        ],
+        "properties": {
+          "story_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "ac_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid artefact">
+      <code lang="json"><![CDATA[
+{
+  "elicitation_id": "kyc-2026",
+  "version_tag": "v1.0.0",
+  "ba_reviewer": "Ana Rodrigues",
+  "stories": [
+    {
+      "story_id": "STORY-101",
+      "title": "ID verification step",
+      "source_refs": [
+        "interview-ana#08:14",
+        "compliance-doc.md#L40"
+      ],
+      "ac_count": 5
+    }
+  ]
+}
+]]></code>
+      <note>All required fields populated; rule constraints satisfied.</note>
+    </example>
+    <example type="bad" title="Invalid artefact">
+      <code lang="json"><![CDATA[
+{
+  "elicitation_id": "x",
+  "version_tag": "latest",
+  "ba_reviewer": "team",
+  "stories": [
+    {
+      "story_id": "x",
+      "title": "x",
+      "source_refs": [],
+      "ac_count": 0
+    }
+  ]
+}
+]]></code>
+      <note>Missing required fields or violating rule constraints.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>every requirement uses persona / capability / outcome triple</item>
-      <item>every AC uses Given/When/Then (or scenario table)</item>
-      <item>every requirement has ≥ 1 transcript citation with verbatim quote</item>
-      <item>citations verified against source docs by BA</item>
-      <item>compliance cross-check completed (or marked N/A) per requirement</item>
-      <item>BA review log signed; edits captured</item>
-      <item>requirement saved in version-controlled requirements repo</item>
+      <item>missing any required field</item>
+      <item>field value outside declared enum</item>
+      <item>anonymous owner / reviewer / approver</item>
+      <item>version_tag missing semver pattern</item>
     </list>
   </section>
+  <reference path="templates/ai-assisted-requirements-elicitation.json"/>
+  <reference path="scripts/validate-ai-assisted-requirements-elicitation.py"/>
 </text>

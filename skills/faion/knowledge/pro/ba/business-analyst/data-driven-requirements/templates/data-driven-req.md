@@ -1,43 +1,25 @@
-# Requirement: [ID] [Name]
+<!-- purpose: BR/SR record with business question + baseline + target + instrumentation + post-launch window. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-## Business Context
+# BR/SR record with business question + baseline + target + instrumentation + post-launch window.
 
-- **Business Question:** [What problem or opportunity are we solving? One sentence.]
-- **Current State Data:** [Baseline metric values — from source systems, not estimates]
-- **Target State:** [Expected measurable improvement]
+> Skeleton for `data-driven-requirements`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-## Evidence
+## Context
 
-### Data Sources
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Source | Metric | Current Value | Confidence |
-|--------|--------|---------------|------------|
-| [System] | [Metric] | [Value] | High / Medium / Low |
+## Content
 
-### Analysis Summary
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-[Key findings from data analysis — 2-4 sentences. What pattern did data reveal?]
+## Sign-off
 
-### Supporting Evidence
-
-- [Link to analytics dashboard]
-- [Link to support ticket export or query]
-- [Link to A/B test results or user research]
-
-## Requirement Specification
-
-[Requirement statement — what the system must do, in testable language]
-
-## Success Metrics
-
-| Metric | Baseline | Target | Measurement Method |
-|--------|----------|--------|-------------------|
-| [Primary metric] | [Value] | [Value] | [Query/tool/frequency] |
-| [Secondary metric] | [Value] | [Value] | [Query/tool/frequency] |
-
-## Validation Plan
-
-- [ ] A/B test design defined (sample size, split ratio, run duration)
-- [ ] Minimum detectable effect documented
-- [ ] Success criteria and rollback trigger documented
-- [ ] Metric definitions locked — same source and query for baseline and measurement
+- reviewer: <name>
+- approved: <yes / no>

@@ -3,73 +3,97 @@ slug: ba-strategic-partnership
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Evolve from requirements documentation to strategic partnership.
-content_id: "3b8b89b4a3c30f9b"
-tags: [strategic-partnership, innovation, ai-leadership, value-creation, responsible-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Evolution checklist that lifts a BA from documentation-only execution to strategic-partner stance — quarterly OKR co-ownership, business-case authorship, named sponsor mapping.
+content_id: "ed5c8a1b9d2e7f04"
+complexity: medium
+produces: checklist
+est_tokens: 3700
+tags: [ba, strategy, partnership, okr, business-case]
 ---
-# BA Strategic Partnership and Innovation Leadership
+# BA Strategic Partnership
 
 ## Summary
 
-**One-sentence:** Evolve from requirements documentation to strategic partnership.
+**One-sentence:** Evolution checklist that lifts a BA from documentation-only execution to strategic-partner stance — quarterly OKR co-ownership, business-case authorship, named sponsor mapping.
 
-**One-paragraph:** Evolve from requirements documentation to strategic partnership. Drive innovation through opportunity identification and value creation. By 2026, human oversight, ethical thinking, and leadership around AI are as important as the technology itself. BAs must develop business acumen, innovation facilitation, change leadership, technology literacy, data storytelling, and enterprise thinking to transition from service provider to strategic partner.
+**One-paragraph:** Evolution checklist that lifts a BA from documentation-only execution to strategic-partner stance — quarterly OKR co-ownership, business-case authorship, named sponsor mapping. Captured as a versioned artefact downstream agents and reviewers consume without re-deriving rationale. Mechanism: typed input → bounded transformation → contract-checked output.
+
+**Ефективно для:**
+
+- Senior BA / lead BA repositioning to strategic partner role.
+- Quarterly OKR alignment sessions з sponsor + delivery.
+- Career-growth artefact для performance review.
+- Outsource P4 engagement positioning против commodity BA work.
 
 ## Applies If (ALL must hold)
 
-- Trigger: a stakeholder hands you a feature list with no outcome metric attached — apply this methodology to insert outcomes upstream.
-- Trigger: an AI/ML initiative is in scoping with no fairness, explainability, or human-oversight criteria documented.
-- Trigger: BA team measured only by deliverable count (story tickets, document pages) rather than business outcomes.
-- Trigger: discovery phase about to start and BA has not been invited to opportunity-framing workshops.
-- Trigger: organization moving toward AI-augmented decision making in finance, marketing, ops, or HR.
-- Trigger: BA capability assessment, role redefinition, or quarterly capability planning.
+- BA has ≥6 months tenure with current sponsor.
+- Sponsor named and reachable for quarterly sync.
+- Existing BA work consistent (no firefighting baseline).
+- Org has OKR / strategic-plan structure to align against.
 
 ## Skip If (ANY kills it)
 
-- Immediate tactical delivery projects with short timelines and fixed requirements — use elicitation and acceptance-criteria methodologies instead.
-- Organizations that do not value BA input in strategic planning — strategic partnership requires sponsor commitment.
-- When BA team lacks basic requirements engineering skills — build foundation first with core BA methodologies.
+- First-month BA on new engagement — execute basics first.
+- Sponsor not engaged or transition imminent.
+- Tactical engagement (≤8 weeks) where strategic stance is overreach.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent task context (30 days) | Markdown / tracker | BA |
+| Write access to artefact store | repo / wiki | engagement manager |
+| Named downstream owner | stakeholder list | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-planning]] | Companion / upstream methodology |
+| [[decision-analysis]] | Sibling artefact in the same lifecycle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_inputs_summary` | haiku | Mechanical template fill. |
+| `synthesize_decision` | sonnet | Per-instance bounded judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis on high-stakes outputs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ba-strategic-partnership.json` | Skeleton artefact with required fields |
+| `templates/_smoke-test.json` | Minimum viable filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ba-strategic-partnership.py` | Validate artefact against output-contract | After subagent returns; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[ba-planning]]
+- [[decision-analysis]]
+- [[benefit-sustainment-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.

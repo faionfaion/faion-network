@@ -3,73 +3,97 @@ slug: agile-ba-frameworks
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A mapping of business analysis competencies onto Scrum ceremonies and scaled agile framework (SAFe) levels.
-content_id: "93920e12432fb573"
-tags: [agile, scrum, safe, business-analysis, frameworks]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Map BA competencies onto Scrum ceremonies + SAFe levels (Team / Program / Solution / Portfolio) — produces a `spec` of which BA activity fires when.
+content_id: "8c2b1f1aae3e4901"
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: [ba, scrum, safe, agile, framework-mapping]
 ---
-# Agile BA Frameworks
+# Agile BA Frameworks Mapping
 
 ## Summary
 
-**One-sentence:** A mapping of business analysis competencies onto Scrum ceremonies and scaled agile framework (SAFe) levels.
+**One-sentence:** Map BA competencies onto Scrum ceremonies + SAFe levels (Team / Program / Solution / Portfolio) — produces a `spec` of which BA activity fires when.
 
-**One-paragraph:** A mapping of business analysis competencies onto Scrum ceremonies and scaled agile framework (SAFe) levels. Defines what a BA does in each Scrum phase (Sprint 0, refinement, planning, execution, review, retrospective) and at each SAFe level (Team, Program, Large Solution, Portfolio). Includes agile-specific techniques (user story mapping, example mapping, story splitting, impact mapping, event storming) and the relevant certifications (AAC, SAFe SA, POPM, CPOA).
+**One-paragraph:** Map BA competencies onto Scrum ceremonies + SAFe levels (Team / Program / Solution / Portfolio) — produces a `spec` of which BA activity fires when. Captured as a versioned artefact downstream agents and reviewers consume without re-deriving rationale. Mechanism: typed input → bounded transformation → contract-checked output.
+
+**Ефективно для:**
+
+- Onboarding BA до Scrum / SAFe org.
+- Audit BA-activity coverage across ceremonies.
+- Multi-team coordination — який BA fires when.
+- Performance-review framework для BA contributions.
 
 ## Applies If (ALL must hold)
 
-- Onboarding a BA into a Scrum team that has never had a dedicated BA function
-- Scaling from one Scrum team to a SAFe program and needing to define BA responsibilities at program and portfolio levels
-- Sprint retrospective revealed that stories arrive at planning without sufficient detail — BA process needs to be inserted upstream
-- Team is adopting BDD (Cucumber, SpecFlow) and needs a BA to drive example mapping and acceptance criteria authoring
-- Organization is evaluating agile BA certifications for team members
+- Org runs Scrum or SAFe (Team/Program/Solution/Portfolio).
+- ≥1 BA active across teams.
+- Cadence is consistent (sprint length, PI length).
+- Activity inventory can be enumerated.
 
 ## Skip If (ANY kills it)
 
-- Kanban or continuous-flow teams without sprint boundaries — the sprint-phase mapping does not apply
-- Teams where the Product Owner already performs all BA activities and the overhead of a BA role is not justified
-- Pure technical/infrastructure work where there are no business stakeholder requirements to elicit
-- SAFe adoption is not yet decided — apply plain Scrum BA practices first, scale only when teams exist at multiple levels
+- Non-agile delivery model (waterfall, ad-hoc).
+- Solo BA scope (no cross-team mapping needed).
+- Pre-agile transition discovery; use change-management instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent task context (30 days) | Markdown / tracker | BA |
+| Write access to artefact store | repo / wiki | engagement manager |
+| Named downstream owner | stakeholder list | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-planning]] | Companion / upstream methodology |
+| [[acceptance-criteria]] | Sibling artefact in the same lifecycle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_inputs_summary` | haiku | Mechanical template fill. |
+| `synthesize_decision` | sonnet | Per-instance bounded judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis on high-stakes outputs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agile-ba-frameworks.json` | Skeleton artefact with required fields |
+| `templates/_smoke-test.json` | Minimum viable filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agile-ba-frameworks.py` | Validate artefact against output-contract | After subagent returns; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[ba-planning]]
+- [[acceptance-criteria]]
+- [[ba-standup-script-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.

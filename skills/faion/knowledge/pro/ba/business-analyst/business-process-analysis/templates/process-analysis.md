@@ -1,52 +1,25 @@
-# Process Analysis: [Process Name]
+<!-- purpose: Per-process analysis narrative with VA/BN/NVA classification + baseline metrics. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
+# Per-process analysis narrative with VA/BN/NVA classification + baseline metrics.
 
-## Current State Summary
+> Skeleton for `business-process-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-[Brief description of current process — observed reality, not policy intent]
+## Context
 
-## Value Analysis
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Step | Activity | Value Type | Touch Time | Wait Time | Notes |
-|------|----------|------------|------------|-----------|-------|
-| 1 | [Activity] | VA/BN/NVA | [Time] | [Time] | [Notes] |
+## Content
 
-**Value Summary:**
-- Value-Adding (VA): [X%] of total cycle time
-- Business Necessary (BN): [X%]
-- Non-Value-Adding (NVA): [X%]
-- NVA minutes per year: [volume × cycle_time × nva_pct]
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-## Pain Points
+## Sign-off
 
-| Issue | Impact | Frequency | Root Cause | Source (quote) |
-|-------|--------|-----------|------------|----------------|
-| [Issue] | H/M/L | [Frequency] | [Cause] | "[verbatim quote]" |
-
-## Bottlenecks
-
-| Location | Avg Wait Time | Cause | Impact |
-|----------|---------------|-------|--------|
-| Step [X] | [Time] | [Cause] | [Impact] |
-
-## Improvement Opportunities
-
-| Opportunity | Type | Benefit | Effort | Priority |
-|-------------|------|---------|--------|----------|
-| [Opportunity] | Eliminate/Automate/Simplify/Integrate/Parallelize/Standardize | [Benefit] | H/M/L | H/M/L |
-
-## Future State Diff
-
-| Step | Current Actor | Future Actor | Current System | Future System | Change Type | Risk | Dependency |
-|------|--------------|-------------|----------------|---------------|-------------|------|------------|
-| [Step] | [Who] | [Who] | [Sys] | [Sys] | [Type] | [Risk] | [Dep] |
-
-## Expected Benefits
-
-| Metric | Current | Future | Improvement |
-|--------|---------|--------|-------------|
-| Cycle time | [Value] | [Value] | [%] |
-| Error rate | [Value] | [Value] | [%] |
-| Cost per transaction | [Value] | [Value] | [%] |
+- reviewer: <name>
+- approved: <yes / no>

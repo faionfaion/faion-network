@@ -1,57 +1,25 @@
-# Data Quality Assessment: [Data Domain]
+<!-- purpose: Six-dimension scoreboard with thresholds. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Assessor:** [Name]
-**Data Source:** [Source system and table/view]
-**Sample Size:** [N records — state if this is full population or sample]
-**Snapshot at:** [ISO timestamp]
+# Six-dimension scoreboard with thresholds.
 
-## Quality Dimensions
+> Skeleton for `data-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-### Accuracy
-- **Metric:** Error rate (incorrect values / total values)
-- **Finding:** [X%] of records have errors
-- **Examples:** [Specific error types observed]
-- **Root cause:** [Why errors exist]
+## Context
 
-### Completeness
-- **Metric:** Missing value percentage per required field
-- **Finding:** [Field X] has [Y%] null or empty values
-- **Impact:** [What breaks when data is missing]
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-### Consistency
-- **Metric:** Match rate across systems
-- **Finding:** [X%] of records match between [System A] and [System B]
-- **Discrepancies:** [Types of inconsistencies observed]
+## Content
 
-### Timeliness
-- **Metric:** Age of data vs. business SLA
-- **Finding:** Average data age is [X hours/days]
-- **Impact:** [What decisions are affected by stale data]
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-### Validity
-- **Metric:** Rule violation rate
-- **Finding:** [X%] of records violate business rules
-- **Violations:** [Specific rule violations observed]
+## Sign-off
 
-### Uniqueness
-- **Metric:** Duplicate rate
-- **Finding:** [X%] duplicate records
-- **Impact:** [What double-counting or conflicts result]
-
-## Summary Scorecard
-
-| Dimension | Score (1-5) | Status | Priority |
-|-----------|-------------|--------|----------|
-| Accuracy | [X] | Green/Yellow/Red | H/M/L |
-| Completeness | [X] | Green/Yellow/Red | H/M/L |
-| Consistency | [X] | Green/Yellow/Red | H/M/L |
-| Timeliness | [X] | Green/Yellow/Red | H/M/L |
-| Validity | [X] | Green/Yellow/Red | H/M/L |
-| Uniqueness | [X] | Green/Yellow/Red | H/M/L |
-
-## Recommendations
-
-| Issue | Recommendation | Priority | Effort |
-|-------|----------------|----------|--------|
-| [Issue] | [Specific action] | H/M/L | H/M/L |
+- reviewer: <name>
+- approved: <yes / no>

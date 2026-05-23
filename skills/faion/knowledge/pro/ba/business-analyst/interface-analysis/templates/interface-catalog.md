@@ -1,37 +1,25 @@
-# Interface Catalog: [System Name]
+<!-- purpose: Catalog index: id, name, type, owner, status. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Author:** [Name]
+# Catalog index: id, name, type, owner, status.
 
-## Interface Summary
+> Skeleton for `interface-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| IF-ID | Name | Type | Direction | External System | Criticality | Sensitivity | Status |
-|-------|------|------|-----------|-----------------|-------------|-------------|--------|
-| IF-001 | [Name] | System/API | Out | [System] | 1-4 | internal/confidential/restricted | active |
-| IF-002 | [Name] | System/File | In | [System] | 1-4 | internal | design |
-| IF-003 | [Name] | User | Bi | User | — | — | active |
+## Context
 
-Criticality tiers: 1 = business-critical (24/7 monitoring, contract tests, breaking-change review) → 4 = informational (register row only).
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-## Context Diagram
+## Content
 
-```
-[External System A] --IF-001--> [Our System] --IF-003--> [User]
-                                    |
-                               <--IF-002--
-                               [External System B]
-```
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-## Active Traffic Reality Check
+## Sign-off
 
-Last verified: [Date]
-- Interfaces with no gateway traffic in 90 days (retirement candidates): [IF-IDs or "none"]
-- Gateway traffic without register entry (governance violations): [IF-IDs or "none"]
-
-## Detailed Specifications
-
-| IF-ID | Specification | Owner | Last Reviewed |
-|-------|---------------|-------|---------------|
-| IF-001 | [link to spec] | [Team] | [Date] |
-| IF-002 | [link to spec] | [Team] | [Date] |
+- reviewer: <name>
+- approved: <yes / no>

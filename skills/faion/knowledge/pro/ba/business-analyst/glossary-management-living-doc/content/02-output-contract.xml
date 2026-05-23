@@ -1,52 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Glossary Management — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a glossary entry, intake record, and conflict-resolution record. Agent or BA maintaining the glossary must satisfy these contracts.</summary>
+<text id="02-output-contract" title="Glossary Management (Living Doc) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact produced by this methodology, paired with a valid + invalid example.</summary>
 
-  <output-contract>
-    <required>
-      <field name="term" format="canonical_string_lowercase_or_titlecase_consistent_across_glossary"/>
-      <field name="scope" format="enum: project-wide | bounded_context_name"/>
-      <field name="status" format="enum: proposed | canonical | deprecated"/>
-      <field name="definition" format="one_to_three_sentences_no_circular_reference"/>
-      <field name="aliases" type="array"/>
-      <field name="examples" min="1" source="real_usage_in_project_artifact"/>
-      <field name="conflicts_with" type="array" optional="true_unless_resolution_record_required"/>
-      <field name="replaced_by" condition="required_if_status_is_deprecated" format="link_to_canonical_term"/>
-      <field name="propagation_hooks" min="1" required_keys="hook_type,location,owner"/>
-      <field name="owner" format="single_named_individual"/>
-      <field name="last_reviewed" format="ISO-8601_date"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">term that is its own definition ("Active Customer: a customer who is active")</pattern>
-      <pattern id="f2">circular alias chain (A aliases B, B aliases A; or longer cycle)</pattern>
-      <pattern id="f3">canonical entry with zero propagation_hooks (orphan term)</pattern>
-      <pattern id="f4">two canonical entries with identical term + identical scope (duplicate)</pattern>
-      <pattern id="f5">deprecated entry without replaced_by link</pattern>
-      <pattern id="f6">scope value not from the project's documented bounded-context list</pattern>
-      <pattern id="f7">conflict_with field populated without a corresponding conflict-resolution-record</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Merge two near-duplicate entries (e.g., "user" and "end-user") with the same scope — the surviving entry takes both as aliases.</transformation>
-      <transformation>Split a single entry into two scoped entries when conflict resolution outcome is "split".</transformation>
-      <transformation>Promote a proposed entry to canonical AFTER first use in a PRD or spec with the maintainer's review.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/glossary-entry.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist (run on every entry edit)">
-    <list>
-      <item>Term is unique within scope (r1)</item>
-      <item>Scope is set and matches a documented bounded context (r2)</item>
-      <item>Definition does not reference itself (no circularity)</item>
-      <item>If conflicts_with is set, conflict-resolution-record exists with date + decision (r3)</item>
-      <item>If status=deprecated, replaced_by points to a canonical entry (r4)</item>
-      <item>At least one propagation_hook is set (r5)</item>
-      <item>Owner is a single named individual</item>
-      <item>last_reviewed is current OR explicitly stale-flagged for review</item>
-      <item>Output validates against templates/glossary-entry.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/glossary-management-living-doc.json",
+  "title": "glossary-entry",
+  "type": "object",
+  "required": [
+    "term",
+    "scope",
+    "status",
+    "definition",
+    "owner",
+    "last_reviewed",
+    "propagation_hooks"
+  ],
+  "properties": {
+    "term": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string",
+      "description": "project-wide or bounded context"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "canonical",
+        "deprecated"
+      ]
+    },
+    "definition": {
+      "type": "string",
+      "minLength": 20
+    },
+    "aliases": {
+      "type": "array"
+    },
+    "examples": {
+      "type": "array",
+      "minItems": 1
+    },
+    "conflicts_with": {
+      "type": "array"
+    },
+    "replaced_by": {
+      "type": "string"
+    },
+    "propagation_hooks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "hook_type",
+          "location",
+          "owner"
+        ]
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "term": "active customer",
+  "scope": "billing",
+  "status": "canonical",
+  "definition": "A customer with at least one paid invoice in the trailing 30 days.",
+  "aliases": [
+    "paying customer"
+  ],
+  "examples": [
+    "Used in billing/active-customers.sql"
+  ],
+  "propagation_hooks": [
+    {
+      "hook_type": "code_constant",
+      "location": "billing/constants.py",
+      "owner": "billing-team"
+    }
+  ],
+  "owner": "Finance Ops",
+  "last_reviewed": "2026-05-20"
+}
+    ]]></code>
+    <note>Conforms to the schema; required fields present, enums respected.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "term": "active customer",
+  "definition": "Active customer is a customer who is active."
+}
+    ]]></code>
+    <note>Missing required fields and / or violates pattern constraints.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Top-level object missing any of the required fields.</pattern>
+    <pattern id="f2">Free-form additional properties not listed in the schema.</pattern>
+    <pattern id="f3">Enum field value outside the declared set.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-glossary-management-living-doc.py">Validates an artefact against this schema.</reference>
 </text>

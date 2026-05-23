@@ -1,76 +1,25 @@
-# Interface Specification: [Interface Name]
+<!-- purpose: Per-interface spec: data elements, protocol, frequency, volume, security, errors. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Author:** [Name]
+# Per-interface spec: data elements, protocol, frequency, volume, security, errors.
 
-## Overview
+> Skeleton for `interface-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| Attribute | Value |
-|-----------|-------|
-| **Interface ID** | IF-[NNN] |
-| **Interface Name** | [Name] |
-| **Type** | User / System / Hardware / Communication |
-| **Direction** | Inbound / Outbound / Bidirectional |
-| **Description** | [What this interface does] |
+## Context
 
-## Connected Systems
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| System | Role | Team Owner | Contact |
-|--------|------|------------|---------|
-| [This solution] | Provider / Consumer | [Team] | [Name] |
-| [External system] | Provider / Consumer | [Team] | [Name] |
+## Content
 
-## Data Specification
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-### [Message/Payload Name]
+## Sign-off
 
-**Direction:** [Inbound/Outbound]
-**Format:** [JSON/XML/CSV/Binary/Fixed-width]
-**Encoding:** [UTF-8/ASCII]
-
-| Field | Type | Required | Validation | Description |
-|-------|------|----------|------------|-------------|
-| [field_name] | [type] | Y/N | [rules] | [description] |
-
-## Technical Specification
-
-| Attribute | Value |
-|-----------|-------|
-| **Protocol** | [REST/SOAP/SFTP/MQ/EDI/HL7/SWIFT] |
-| **Endpoint/Path** | [URL or file path pattern] |
-| **Method** | [GET/POST/PUT/PATCH/DELETE — if REST] |
-| **Authentication** | [OAuth2/API Key/mTLS/SFTP key] |
-| **Rate Limit** | [X requests per Y — if applicable] |
-| **Timeout** | [X seconds] |
-| **Versioning Strategy** | [URI versioning/Header versioning/None] |
-
-## Operational Specification
-
-| Attribute | Value |
-|-----------|-------|
-| **Frequency** | [Real-time/Batch/On-demand] |
-| **Schedule** | [If batch — cron expression or description] |
-| **Volume (avg)** | [Expected messages/records per period] |
-| **Volume (peak)** | [Peak expected] |
-| **SLA** | [Availability %, response time P95] |
-| **Criticality Tier** | [1-4 — requires human approval for tier-1] |
-
-## Error Handling
-
-| Error Condition | HTTP/Error Code | Response | Retry? | Retry Strategy | Notification |
-|-----------------|----------------|----------|--------|---------------|--------------|
-| [Condition 1] | [Code] | [Action] | Y/N | [Exponential backoff / N attempts] | [Who/How] |
-
-## Security Requirements
-
-- Authentication: [Mechanism]
-- Authorization: [Roles/scopes required]
-- Encryption in transit: [TLS version]
-- Encryption at rest: [If applicable]
-- Data sensitivity: [public/internal/confidential/restricted]
-- PII fields: [List fields containing PII]
-
-## Dependencies
-
-- [Dependency 1 — what must exist/be operational for this interface to function]
+- reviewer: <name>
+- approved: <yes / no>

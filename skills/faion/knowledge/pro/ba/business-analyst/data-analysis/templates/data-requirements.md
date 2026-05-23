@@ -1,58 +1,25 @@
-# Data Requirements: [Feature or Project Name]
+<!-- purpose: BR-linked data requirements: source, transformation, target. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Analyst:** [Name]
-**Snapshot:** [ISO date]
+# BR-linked data requirements: source, transformation, target.
 
-## Data Overview
+> Skeleton for `data-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-**Purpose:** [What data supports and why — business context]
+## Context
 
-### Data Entities
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Entity | Description | Source | New/Existing |
-|--------|-------------|--------|--------------|
-| [Entity] | [Business description] | [Source system] | New/Existing |
+## Content
 
-## Detailed Requirements
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-### [Entity 1]: [Name]
+## Sign-off
 
-**Description:** [Business description]
-
-**Attributes:**
-
-| Attribute | Type | Size | Required | Description | Validation |
-|-----------|------|------|----------|-------------|------------|
-| [Name] | [Type] | [Size] | Y/N | [Business meaning] | [Rules] |
-
-**Derived Data:**
-
-| Attribute | Formula | Source Attributes |
-|-----------|---------|-------------------|
-| [Name] | [Formula] | [Attr1, Attr2] |
-
-## Data Quality Requirements
-
-| Entity | Quality Dimension | Rule | Threshold |
-|--------|-------------------|------|-----------|
-| [Entity] | [Accuracy/Completeness/etc] | [Rule] | [e.g. error rate < 2%] |
-
-## Data Volumes
-
-| Entity | Current | Expected (1yr) | Expected (3yr) |
-|--------|---------|----------------|----------------|
-| [Entity] | [Count] | [Count] | [Count] |
-
-## Data Integration
-
-| Source System | Target System | Data | Frequency | Method |
-|---------------|---------------|------|-----------|--------|
-| [System] | [System] | [Data] | [Frequency] | [API/ETL/file] |
-
-## Data Security
-
-| Entity | Classification | Access Rules |
-|--------|----------------|--------------|
-| [Entity] | [Public/Internal/Confidential/Restricted] | [Rules] |
+- reviewer: <name>
+- approved: <yes / no>

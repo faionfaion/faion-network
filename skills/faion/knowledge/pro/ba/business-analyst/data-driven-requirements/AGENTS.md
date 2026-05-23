@@ -3,73 +3,105 @@ slug: data-driven-requirements
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An evidence-based approach to requirements definition that replaces opinion-driven prioritization with data analytics.
-content_id: "b45eb25f7aa0f50e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Evidence-based requirements pipeline: every requirement anchored to a business question, quantified baseline metric, measurable success target, and instrumentation plan that closes the loop after launch.
+content_id: "7836018d677994a4"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [requirements, data-driven, prioritization, analytics, success-metrics]
 ---
 # Data-Driven Requirements Engineering
 
 ## Summary
 
-**One-sentence:** An evidence-based approach to requirements definition that replaces opinion-driven prioritization with data analytics.
+**One-sentence:** Evidence-based requirements pipeline: every requirement anchored to a business question, quantified baseline metric, measurable success target, and instrumentation plan that closes the loop after launch.
 
-**One-paragraph:** An evidence-based approach to requirements definition that replaces opinion-driven prioritization with data analytics. Each requirement is anchored to a business question, quantified baseline metrics, and a measurable success target. Prioritization uses usage data, performance data, business metrics, and customer feedback rather than stakeholder seniority or gut feel.
+**One-paragraph:** Replaces opinion-driven prioritization with usage/performance/business/customer metrics. Each requirement carries a business question, baseline metric, success target, instrumentation plan, and a post-launch measurement window. Prioritization uses RICE/ICE/WSJF anchored to these numbers, not stakeholder seniority. Output is a requirement record with a built-in measurement contract.
+
+**Ефективно для:**
+
+- Backlog prioritization з реальними usage / conversion / error rate baselines.
+- Feature validation перед інвестицією — гіпотеза + success target до коду.
+- Post-MVP ітерації, де треба перевірити, які flows users насправді ходять.
+- AI/ML scoping з measurable business impact до тренування моделі.
 
 ## Applies If (ALL must hold)
 
 - Prioritizing a backlog where features compete for limited capacity and ROI data is available.
-- Feature validation before investment when analytics (usage, conversion, error rate) can answer the business question.
-- Post-MVP iteration where product analytics reveal which flows users actually take.
-- A/B test design where the requirement specifies what hypothesis is being tested and what outcome declares success.
-- AI/ML feature scoping where business impact measurement (cycle time, CSAT, error rate) must be defined before model training.
+- Feature validation before investment when analytics can answer the business question.
+- Post-MVP iteration where product analytics reveal real flows.
+- A/B test design where the requirement specifies hypothesis + outcome that declares success.
+- AI/ML feature scoping where business impact (cycle time, CSAT, error rate) must be defined before model training.
 
 ## Skip If (ANY kills it)
 
-- Greenfield products with no users and no baseline — hypothesis-driven development (Lean Startup) applies before data exists.
-- Requirements driven by compliance or legal obligation where the mandate, not ROI, is the reason to build.
-- One-off internal tooling with a known, small user group where analytics instrumentation cost exceeds value.
-- When the organization has no analytics tooling and instrumenting is out of scope — gather qualitative evidence instead.
+- Greenfield products with no users and no baseline — use hypothesis-driven (Lean Startup) instead.
+- Compliance/legal mandates — the mandate, not ROI, is the reason to build.
+- One-off internal tooling where instrumentation cost > value.
+- No analytics tooling and instrumentation out of scope — gather qualitative evidence instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Analytics tooling | GA4 / Amplitude / Mixpanel / Posthog | product analytics |
+| Business question | Markdown | stakeholder |
+| Baseline metric | JSON snapshot | analytics warehouse |
+| Hypothesis statement | Markdown | PM / BA |
+| Instrumentation budget | scope estimate | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `pro/ba/business-analyst/data-analysis` | Source the baseline metric quality. |
+| `pro/ba/business-analyst/requirements-prioritization` | Consumes the quantified target → RICE/WSJF input. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `baseline-extraction` | haiku | Mechanical SQL pull from analytics warehouse. |
+| `success-target-drafting` | sonnet | Light judgement on measurable target band. |
+| `instrumentation-plan` | sonnet | Plan events + properties + dashboards. |
+| `prioritization-scoring` | sonnet | Score against RICE/WSJF using baseline + target. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/data-driven-req.md` | BR/SR record with business question + baseline + target + instrumentation + post-launch window. |
+| `templates/instrumentation-plan.md` | Event + property + dashboard plan tied to the success target. |
+| `templates/_smoke-test.md` | Minimum viable filled-in record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-data-driven-requirements.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[data-analysis]]
+- [[requirements-prioritization]]
+- [[requirements-documentation]]
+- [[modern-ba-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.

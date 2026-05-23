@@ -3,74 +3,97 @@ slug: ba-trends-summary
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Read-only routing index of the six dominant BA industry trends for 2025-2026 (AI-enabled decision making, outcome-driven strategy, responsible innovation, operational resilience, digital trust, sustainability integration).
-content_id: "7186f0b087a5aaaf"
-tags: [trends, industry-analysis, skill-evolution, ba-2026, routing-index]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Read-only routing index of 2025-2026 BA trends (AI-enabled decisions, outcome-driven strategy, responsible innovation, operational resilience, digital trust, sustainability) mapped to internal methodology.
+content_id: "f0e2d1c4b6a7c809"
+complexity: light
+produces: report
+est_tokens: 3500
+tags: [ba, trends, routing, index, industry]
 ---
-# BA Industry Trends 2025-2026
+# BA Trends Routing Index
 
 ## Summary
 
-**One-sentence:** Read-only routing index of the six dominant BA industry trends for 2025-2026 (AI-enabled decision making, outcome-driven strategy, responsible innovation, operational resilience, digital trust, sustainability integration).
+**One-sentence:** Read-only routing index of 2025-2026 BA trends (AI-enabled decisions, outcome-driven strategy, responsible innovation, operational resilience, digital trust, sustainability) mapped to internal methodology.
 
-**One-paragraph:** Read-only routing index of the six dominant BA industry trends for 2025-2026 (AI-enabled decision making, outcome-driven strategy, responsible innovation, operational resilience, digital trust, sustainability integration). Includes a critical-success-factor table, BA skill-evolution priority matrix, routing checklist, paste-ready briefing prompt, and verification steps. Contains no actionable workflow — each trend maps to a sibling methodology that owns the procedure.
+**One-paragraph:** Read-only routing index of 2025-2026 BA trends (AI-enabled decisions, outcome-driven strategy, responsible innovation, operational resilience, digital trust, sustainability) mapped to internal methodology. Captured as a versioned artefact downstream agents and reviewers consume without re-deriving rationale. Mechanism: typed input → bounded transformation → contract-checked output.
+
+**Ефективно для:**
+
+- Orientation для new senior BA: which trend → which methodology.
+- Quarterly trend review session.
+- Pre-engagement scoping — який trend dominates context.
+- Sales / pre-sales positioning conversation.
 
 ## Applies If (ALL must hold)
 
-- User asks "which BA trends are relevant for 2025-2026?" or "what is hot in business analysis?"
-- Deciding which BA methodology to study or apply next, based on industry direction.
-- Orienting a new team or client on the current BA landscape before diving into specifics.
-- Establishing quarterly learning priorities for BA team skill development.
-- Building a slide, briefing note, or onboarding doc that needs a snapshot of BA market direction.
-- Choosing which sibling methodology to load next — this index resolves the routing decision.
+- BA org wants alignment between external trends and internal methodology library.
+- Trends inventory exists (≤8 trends for review period).
+- Each trend can be mapped to internal methodology or 'no current coverage'.
+- Report consumed by BA lead + sponsor.
 
 ## Skip If (ANY kills it)
 
-- Any actionable workflow (requirements elicitation, process analysis, stakeholder mapping) — load the linked sibling methodology directly.
-- Generating prompts, checklists, or scripts for a concrete deliverable — those belong to the downstream methodologies.
-- Empirical research or current-state assessment — this is a static snapshot, not live market data.
-- Justifying a budget or business case — pair with primary sources (Gartner, Forrester, IIBA reports) before citing.
+- Tactical engagement with no strategic review.
+- Trend list outdated by &gt;12 months — refresh first.
+- Org without methodology library to route to.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent task context (30 days) | Markdown / tracker | BA |
+| Write access to artefact store | repo / wiki | engagement manager |
+| Named downstream owner | stakeholder list | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-strategic-partnership]] | Companion / upstream methodology |
+| [[ba-planning]] | Sibling artefact in the same lifecycle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_inputs_summary` | haiku | Mechanical template fill. |
+| `synthesize_decision` | sonnet | Per-instance bounded judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis on high-stakes outputs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ba-trends-summary.json` | Skeleton artefact with required fields |
+| `templates/_smoke-test.json` | Minimum viable filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ba-trends-summary.py` | Validate artefact against output-contract | After subagent returns; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[ba-strategic-partnership]]
+- [[ba-planning]]
+- [[decision-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.

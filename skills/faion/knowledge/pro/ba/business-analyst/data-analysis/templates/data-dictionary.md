@@ -1,36 +1,25 @@
-# Data Dictionary: [System or Domain Name]
+<!-- purpose: One row per data element: name, type, source, owner, quality, scope. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Author:** [Name]
-**Snapshot:** [ISO date — when this dictionary reflects the actual system state]
+# One row per data element: name, type, source, owner, quality, scope.
 
-## Entity: [Entity Name]
+> Skeleton for `data-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-**Description:** [What this entity represents in business terms]
-**Owner:** [Team responsible for data quality]
-**Source:** [Where data originates]
+## Context
 
-### Attributes
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Name | Definition | Type | Format | Required | Valid Values | Rules |
-|------|------------|------|--------|----------|--------------|-------|
-| [Name] | [Business meaning] | [Type] | [Format] | Y/N | [Values or range] | [Rule IDs] |
+## Content
 
-### Example Records
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| [Attr 1] | [Attr 2] | [Attr 3] |
-|----------|----------|----------|
-| [Value] | [Value] | [Value] |
+## Sign-off
 
-### Relationships
-
-| Related Entity | Relationship | Cardinality |
-|----------------|--------------|-------------|
-| [Entity] | [has many | belongs to | references] | [1:1 | 1:N | N:N] |
-
-### Business Rules
-
-| Rule ID | Rule Description |
-|---------|------------------|
-| DR-01 | [Rule in plain language] |
+- reviewer: <name>
+- approved: <yes / no>

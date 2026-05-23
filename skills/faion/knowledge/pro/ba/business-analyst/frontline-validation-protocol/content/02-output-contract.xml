@@ -1,52 +1,179 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Frontline Validation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a frontline-validated as-is artifact. Subagent must satisfy this before model sign-off.</summary>
+<text id="02-output-contract" title="Frontline Validation Protocol Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact produced by this methodology, paired with a valid + invalid example.</summary>
 
-  <output-contract>
-    <required>
-      <field name="validation_matrix" type="array_object"
-             required_keys="variant_id,operator_ids,methods_used,completed_date,coverage_status"
-             constraint="operator_ids.length &gt;= 2 per variant"/>
-      <field name="observation_log" type="array_object"
-             required_keys="observation_id,operator_id,process_step,taxonomy_tag,note,timestamp"/>
-      <field name="taxonomy_tag" type="closed_enum"
-             value="workaround,deviation,blocker,tribal_knowledge,on_process"/>
-      <field name="reconciled_as_is" type="object"
-             required_keys="documented_version_ref,observed_divergences,evidence_links"/>
-      <field name="observed_divergences" type="array_object"
-             required_keys="documented_step,observed_step,operator_evidence_ids,divergence_type"/>
-      <field name="listening_session_log" type="array_object"
-             required_keys="operator_id,session_date,sequenced_after_observation"
-             constraint="sequenced_after_observation == true"/>
-      <field name="signed_access_agreement" type="boolean" constraint="value == true"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">validation_matrix entry with operator_ids.length &lt; 2 (violates r1)</pattern>
-      <pattern id="f2">listening_session_log entry with sequenced_after_observation == false (violates r2)</pattern>
-      <pattern id="f3">taxonomy_tag values outside the closed enum or multi-tagged observations (violates r3)</pattern>
-      <pattern id="f4">Documented vs observed divergences silently overwritten in reconciled_as_is (violates r5)</pattern>
-      <pattern id="f5">Listening session questions containing leading patterns: "don't you think", "wouldn't it be better if", "the new policy will" (violates r4)</pattern>
-      <pattern id="f6">observation_log entries summarized into sponsor language ("operator is happy with process")</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Cluster overlapping observations across operators into a single divergence entry, preserving all operator_evidence_ids.</transformation>
-      <transformation>Mark a variant validation as partial (coverage_status: partial) when operator availability blocks 2-operator coverage; downstream model cannot ship until partial → full.</transformation>
-      <transformation>Promote a tribal_knowledge tag to deviation if observed in ≥ 2 operators independently.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/validation-matrix.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every variant has ≥ 2 operators observed</item>
-      <item>Every operator was observed BEFORE the listening session</item>
-      <item>Every observation has exactly one taxonomy tag</item>
-      <item>Reconciled as-is explicitly lists divergences with evidence</item>
-      <item>Listening questions are open or behavioral (no leading)</item>
-      <item>Access agreement signed before observation began</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/frontline-validation-protocol.json",
+  "title": "frontline-validation-report",
+  "type": "object",
+  "required": [
+    "validation_matrix",
+    "observation_log",
+    "listening_session_log",
+    "reconciled_as_is",
+    "signed_access_agreement"
+  ],
+  "properties": {
+    "validation_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "variant_id",
+          "operator_ids",
+          "methods_used",
+          "completed_date",
+          "coverage_status"
+        ],
+        "properties": {
+          "operator_ids": {
+            "type": "array",
+            "minItems": 2
+          }
+        }
+      }
+    },
+    "observation_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "observation_id",
+          "operator_id",
+          "process_step",
+          "taxonomy_tag",
+          "note",
+          "timestamp"
+        ],
+        "properties": {
+          "taxonomy_tag": {
+            "enum": [
+              "workaround",
+              "deviation",
+              "blocker",
+              "tribal_knowledge",
+              "on_process"
+            ]
+          }
+        }
+      }
+    },
+    "listening_session_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "operator_id",
+          "session_date",
+          "sequenced_after_observation"
+        ],
+        "properties": {
+          "sequenced_after_observation": {
+            "const": true
+          }
+        }
+      }
+    },
+    "reconciled_as_is": {
+      "type": "object",
+      "required": [
+        "documented_version_ref",
+        "observed_divergences",
+        "evidence_links"
+      ]
+    },
+    "signed_access_agreement": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "validation_matrix": [
+    {
+      "variant_id": "V1",
+      "operator_ids": [
+        "op-1",
+        "op-2"
+      ],
+      "methods_used": [
+        "shadowing",
+        "listening_session"
+      ],
+      "completed_date": "2026-05-12",
+      "coverage_status": "complete"
+    }
+  ],
+  "observation_log": [
+    {
+      "observation_id": "O-1",
+      "operator_id": "op-1",
+      "process_step": "approve-credit",
+      "taxonomy_tag": "workaround",
+      "note": "Operator bypasses system 2 via spreadsheet to meet SLA.",
+      "timestamp": "2026-05-10T10:23:00Z"
+    }
+  ],
+  "listening_session_log": [
+    {
+      "operator_id": "op-1",
+      "session_date": "2026-05-11",
+      "sequenced_after_observation": true
+    }
+  ],
+  "reconciled_as_is": {
+    "documented_version_ref": "as-is-v1.bpmn",
+    "observed_divergences": [
+      {
+        "documented_step": "system-2 approval",
+        "observed_step": "spreadsheet override",
+        "operator_evidence_ids": [
+          "O-1"
+        ],
+        "divergence_type": "workaround"
+      }
+    ],
+    "evidence_links": [
+      "O-1"
+    ]
+  },
+  "signed_access_agreement": true
+}
+    ]]></code>
+    <note>Conforms to the schema; required fields present, enums respected.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "validation_matrix": [
+    {
+      "variant_id": "V1",
+      "operator_ids": [
+        "op-1"
+      ]
+    }
+  ],
+  "signed_access_agreement": false
+}
+    ]]></code>
+    <note>Missing required fields and / or violates pattern constraints.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Top-level object missing any of the required fields.</pattern>
+    <pattern id="f2">Free-form additional properties not listed in the schema.</pattern>
+    <pattern id="f3">Enum field value outside the declared set.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-frontline-validation-protocol.py">Validates an artefact against this schema.</reference>
 </text>

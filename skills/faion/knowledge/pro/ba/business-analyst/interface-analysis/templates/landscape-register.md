@@ -1,32 +1,25 @@
-# Integration Landscape Register — [Programme / Domain]
+<!-- purpose: Top-level integration landscape register skeleton. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (spec) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Last Updated:** [Date]
-**Owner:** [Name]
-**Next Review:** [Date]
+# Top-level integration landscape register skeleton.
 
-## Register
+> Skeleton for `interface-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| IF-ID | Source SYS | Target SYS | Channel | Data | Direction | Frequency | Criticality (1-4) | Sensitivity | Source Owner | Target Owner | SLA | Standard? | Notes |
-|-------|------------|------------|---------|------|-----------|-----------|-------------------|-------------|--------------|-------------|-----|-----------|-------|
-| IF-001 | CRM | Billing | REST | Customer master | Out | Real-time | 1 | Confidential | Team A | Team B | 99.9% | OpenAPI in repo X | replaces legacy SFTP IF-014 |
-| IF-002 | HRIS | IDP | SCIM | User accounts | Out | Hourly | 1 | Restricted | Team C | Team D | 99.5% | yes | scoped to active employees |
+## Context
 
-Channels: REST / SOAP / GraphQL / gRPC / SFTP / S3 / MQ / Kafka / EDI-X12 / HL7 / SWIFT / EDIFACT / JDBC / fixed-width
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-Criticality: 1 = business-critical, 2 = important, 3 = supporting, 4 = informational
+## Content
 
-Sensitivity: public / internal / confidential / restricted / unknown (unknown requires human classification)
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-## Shadow IT Candidates
+## Sign-off
 
-Interfaces observed in logs/Slack/email not present in register above:
-
-| Signal | Source/Target (suspected) | Evidence | Action |
-|--------|--------------------------|----------|--------|
-| [Signal] | [Suspected parties] | [Log line / Slack mention] | [Investigate / Register / Retire] |
-
-## Governance Notes
-
-- Standard API contract: [link to standards/api-contract-standard.md]
-- Non-compliant interfaces (from governance diff): [IF-IDs or "none"]
-- Interfaces with valid_until expired: [IF-IDs or "none"]
+- reviewer: <name>
+- approved: <yes / no>

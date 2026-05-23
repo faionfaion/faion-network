@@ -3,78 +3,97 @@ slug: bpmn-via-ai-then-human-review
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Bpmn Via Ai Then Human Review: codified business-analysis practice that turns the recurring 'role-business-analyst/FinTech KYC engagement: regulatory-anchored requirements with compliance traceability' decision into a repeatable, auditable artefact.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Two-pass BPMN authoring: LLM drafts BPMN 2.0 XML from process transcript, named SME reviews + signs + commits — never AI-only commit.
 content_id: "c6e20a5eaef14701"
-tags: [bpmn-via-ai-then-human-review, ba, pro]
+complexity: deep
+produces: spec
+est_tokens: 4400
+tags: [ba, bpmn, ai-assisted, human-review, compliance]
 ---
-# Bpmn Via Ai Then Human Review
+# BPMN via AI then Human Review
 
 ## Summary
 
-**One-sentence:** Bpmn Via Ai Then Human Review: codified business-analysis practice that turns the recurring 'role-business-analyst/FinTech KYC engagement: regulatory-anchored requirements with compliance traceability' decision into a repeatable, auditable artefact.
+**One-sentence:** Two-pass BPMN authoring: LLM drafts BPMN 2.0 XML from process transcript, named SME reviews + signs + commits — never AI-only commit.
 
-**One-paragraph:** Bpmn Via Ai Then Human Review addresses the gap identified by the role-business-analyst/FinTech KYC engagement: regulatory-anchored requirements with compliance traceability playbook: pro/ba-modeling/business-process-analysis covers BPMN modeling assuming a human modeler. The gap is the AI-first workflow: transcript / SOP doc → AI-generated draft BPMN → BA review for swimlane correctness, gateway logic, message events. This is the dominant modern workflow and there is no methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Two-pass BPMN authoring: LLM drafts BPMN 2.0 XML from process transcript, named SME reviews + signs + commits — never AI-only commit. The artefact is captured as a versioned record (JSON or Markdown) downstream agents and reviewers consume without re-deriving rationale. Mechanism: typed input → bounded transformation → contract-checked output.
+
+**Ефективно для:**
+
+- Regulated-domain process modelling (FinTech KYC, AML, healthcare).
+- Acceleration BA process drafting з мандатним human-gate.
+- Audit-grade BPMN з sign-off trail.
+- Migration / replatform — bulk current-state drafting.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-business-analyst/FinTech KYC engagement: regulatory-anchored requirements with compliance traceability OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Process modelling required in regulated context.
+- SME reachable for review within 5 working days of draft.
+- BPMN XML must validate against schema.
+- Audit trail (sign-off + diff) is required.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Greenfield product with no current process.
+- Non-regulated workflow where review overhead exceeds value.
+- SME unavailable / disengaged.
 
 ## Prerequisites
 
-- recent context for the role-business-analyst/FinTech KYC engagement: regulatory-anchored requirements with compliance traceability task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent task context (30 days) | Markdown / tracker | BA |
+| Write access to artefact store | repo / wiki | engagement manager |
+| Named downstream owner | stakeholder list | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[business-process-analysis]] | Companion / upstream methodology |
+| [[interface-analysis]] | Sibling artefact in the same lifecycle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding, r5-acceptance-criteria | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 4-5 testable rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Mechanical template fill. |
+| `synthesize_decision` | sonnet | Per-instance bounded judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis on high-stakes outputs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/bpmn-via-ai-then-human-review.json` | JSON schema for the Bpmn Via Ai Then Human Review output contract |
-| `templates/bpmn-via-ai-then-human-review.md` | Markdown skeleton with the required fields |
+| `templates/bpmn-via-ai-then-human-review.json` | Skeleton artefact with required fields |
+| `templates/_smoke-test.json` | Minimum viable filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-bpmn-via-ai-then-human-review.py` | Enforce Bpmn Via Ai Then Human Review output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-bpmn-via-ai-then-human-review.py` | Validate artefact against output-contract | After subagent returns; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- upstream playbook: `role-business-analyst/FinTech KYC engagement: regulatory-anchored requirements with compliance traceability`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[business-process-analysis]]
+- [[interface-analysis]]
+- [[data-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on artefact-state signals to the active rule. Use when in doubt whether the artefact is ready for downstream consumption.

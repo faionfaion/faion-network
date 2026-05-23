@@ -1,41 +1,25 @@
-# Decision Matrix: [Topic]
+<!-- purpose: Weighted-score matrix skeleton (criteria × options). -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Decision ID:** DEC-[NNN]
-**Decision:** [What is being decided — outcome-shaped, 25 words max]
-**Date:** [Date]
-**Decision Maker:** [Name]
+# Weighted-score matrix skeleton (criteria × options).
 
-## Options
+> Skeleton for `decision-analysis`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-1. [Option 1]
-2. [Option 2]
-3. [Option 3]
-4. Do Nothing / Status Quo
+## Context
 
-## Criteria and Weights
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Criterion | Weight | Traces To | Why Important |
-|-----------|--------|-----------|---------------|
-| [Criterion 1] | [%] | REQ-XXX | [Reason] |
-| [Criterion 2] | [%] | REQ-YYY | [Reason] |
-| **Total** | **100%** | | |
+## Content
 
-**Weights locked at:** [timestamp]
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-## Evaluation (1-5 scale, higher = better unless noted)
+## Sign-off
 
-| Criterion | Wt | Opt 1 | Opt 2 | Opt 3 | Do Nothing |
-|-----------|----|-------|-------|-------|-----------|
-| [Criterion 1] | [%] | | | | |
-| [Criterion 2] | [%] | | | | |
-| **Weighted Total** | | **X.XX** | **X.XX** | **X.XX** | **X.XX** |
-
-## Sensitivity Check
-
-If any criterion weight shifts ±20%, does the recommendation change? [ ] Yes [ ] No
-
-## Decision
-
-**Selected:** [Option]
-**Rationale:** [One paragraph citing score differential and key differentiators]
-**Decision Maker Sign-off:** _____________ Date: _______
+- reviewer: <name>
+- approved: <yes / no>
