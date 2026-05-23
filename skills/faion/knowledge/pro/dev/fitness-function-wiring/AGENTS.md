@@ -3,41 +3,99 @@ slug: fitness-function-wiring
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
+summary: Wire each (H,H) QAA scenario to a named CI fitness job
 content_id: "de67e8d6e9da4b97"
-summary: "Map each high-priority QAA scenario to a concrete, scheduled CI job (k6, Gatling, Chaos Monkey, OWASP ZAP) with explicit breach actions, bridging architecture decisions and continuous verification instead of leaving fitness functions as a checkbox."
+complexity: medium
+produces: config
+est_tokens: 4500
 tags: [dev, pro, architecture, fitness-functions, qaa, ci, k6, chaos]
 ---
 # Fitness Function Wiring
 
 ## Summary
 
-Quality-Attribute-driven Architecture (QAA) literature mentions fitness functions but treats them as an unsourced checkbox, leaving architects with prose obligations and no enforcement. This methodology bridges architecture-as-code and CI: every (High-impact, High-likelihood) scenario in the QAA register is wired to a concrete tool — k6 / Gatling for performance, Chaos Monkey / Litmus for resilience, OWASP ZAP / Trivy for security — with a tool-specific config artefact, a breach threshold, a scheduled cadence, and a named breach-action. Architecture decisions become executable contracts that fail loudly when reality drifts from the design freeze.
+**One-sentence:** Wire each (H,H) QAA scenario to a named CI fitness job
 
-## Applies If
+**One-paragraph:** Fitness Function Wiring codifies a recurring "architecture-as-code continuous maintenance" decision into a configuration artefact with a typed input contract, a JSON-schema-checked output, and a decision tree that routes between the operational variants. It exists because adjacent methodologies cover the surrounding topic without pinning the precise output shape this task produces. The artefact carries owner, version, last-reviewed date, and citations to every input used, so downstream agents and human reviewers can consume it without re-deriving the rationale.
 
-- A QAA register exists with scenarios scored by impact and likelihood (at minimum a High/Medium/Low matrix).
-- The team owns a CI/CD platform where new jobs can be added and scheduled (GitHub Actions, GitLab CI, Jenkins, etc.).
-- A cost + latency budget has been agreed before design freeze and is documented as numeric thresholds.
-- Architecture artefacts (ADRs, c4 models, repo layout) are version-controlled.
+**Ефективно для:**
 
-## Skip If
+- A team that already runs the parent activity but has no canonical configuration shape.
+- Multi-agent workflows that need a contract-checked artefact instead of free-form prose.
+- Pre-merge / pre-release gates where a missing field must block the pipeline.
+- Audit scenarios — every decision must trace to a named input + a named owner.
 
-- No QAA scenarios are scored — wire scoring first.
-- The team has no CI capacity to run additional jobs even at a weekly cadence.
-- The system is throwaway prototype work where breach actions would have no consumer.
+## Applies If (ALL must hold)
 
-## Content
+- Task is an instance of "architecture-as-code continuous maintenance" or a closely-adjacent variant.
+- All Prerequisites artefacts exist or can be produced before the run starts.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- Tier `pro` or higher is unlocked for the operator (gating enforced by tier-manifest).
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Five testable rules linking (H,H) scenarios to CI jobs, breach thresholds, and on-breach actions |
+## Skip If (ANY kills it)
+
+- A working team-owned artefact already covers this gap — replace, do not duplicate.
+- The decision being made is a greenfield prototype with no production users.
+- Regulatory or legal context overrides any in-methodology guidance — defer to counsel.
+- Single-use throwaway task — overhead of the contract is not justified.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the parent activity | Markdown / JSON | last 30 days of activity |
+| Write access to artefact store | repo / wiki / decision log | platform owner |
+| Named accountable owner | string (handle / email / role) | RACI / org chart |
+| Baseline conventions | `CLAUDE.md` / `AGENTS.md` / `CONVENTIONS.md` | repo root |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `pro/dev/software-developer` | parent role skill — provides operating context |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/fitness-function-wiring.json` | JSON Schema for the configuration output contract |
+| `templates/fitness-function-wiring.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-fitness-function-wiring.py` | Enforce Fitness Function Wiring output contract against the JSON Schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- triggering activity: `Architecture-as-code repository — continuous maintenance with monthly review`, `Cost + latency budget BEFORE design freeze`
-- neighbouring: `pro/dev/perf-budget-as-code`, `pro/dev/load-profile-cookbook`, `pro/dev/threat-model-as-code`
+- parent skill: `pro/dev/software-developer/`
+- upstream activity: `architecture-as-code continuous maintenance`
+- methodology family: `pro/dev/` (gap-p2 batch, F-059..F-066)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, stake level, downstream-consumer presence, regime overlay) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, defer to a peer, or skip outright.

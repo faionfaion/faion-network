@@ -3,81 +3,99 @@ slug: dependency-adoption-checklist
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9e9418e3c4f4ec64"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Concrete adoption checklist for a new dependency or service edge — pin, named owner, SBOM entry, escape hatch — distinct from the trade-off decision phase.
+content_id: "9e9418e3c4f4ec64"
+complexity: medium
+produces: checklist
+est_tokens: 4400
 tags: [supply-chain, dependency-adoption, sbom, software-architect, dependency-policy]
 ---
 # Dependency Adoption Checklist
 
 ## Summary
 
-**One-sentence:** A checklist applied AFTER the decision to adopt a new dependency or service edge — pinning version, naming an owner, recording in the SBOM, defining the escape hatch — distinct from the trade-off analysis that produced the decision.
+**One-sentence:** Concrete adoption checklist for a new dependency or service edge — pin, named owner, SBOM entry, escape hatch — distinct from the trade-off decision phase.
 
-**One-paragraph:** Dependency-decision methodologies (trade-off analysis, security review) ask "should we use this?" This methodology answers "now that we said yes, what must be true before merge?" — five concrete checks: exact version pin, named maintainer/owner in the team, SBOM entry, escape-hatch (an exit plan if the dependency gets abandoned/compromised/relicensed), and a renewal review date. Currently these items are scattered across security, supply-chain, and ops methodologies, leaving the adopting developer to assemble them from memory. The output is a one-page dependency-adoption.md file checked into the repo alongside the PR introducing the dependency.
+**One-paragraph:** Dependency Adoption Checklist codifies a recurring "new dependency or service edge adoption" decision into a checklist artefact with a typed input contract, a JSON-schema-checked output, and a decision tree that routes between the operational variants. It exists because adjacent methodologies cover the surrounding topic without pinning the precise output shape this task produces. The artefact carries owner, version, last-reviewed date, and citations to every input used, so downstream agents and human reviewers can consume it without re-deriving the rationale.
+
+**Ефективно для:**
+
+- A team that already runs the parent activity but has no canonical checklist shape.
+- Multi-agent workflows that need a contract-checked artefact instead of free-form prose.
+- Pre-merge / pre-release gates where a missing field must block the pipeline.
+- Audit scenarios — every decision must trace to a named input + a named owner.
 
 ## Applies If (ALL must hold)
 
-- A new dependency (library, framework, service-edge API) is being adopted.
-- The dependency is direct (declared by your team), not transitive.
-- Adoption has been agreed via the trade-off methodology (security review, vendor evaluation, etc.).
-- Repo has dependency-management infrastructure (lockfile, SBOM, CI pipeline).
+- Task is an instance of "new dependency or service edge adoption" or a closely-adjacent variant.
+- All Prerequisites artefacts exist or can be produced before the run starts.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- Tier `pro` or higher is unlocked for the operator (gating enforced by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- Transitive dep introduced by an existing direct dep — handle via parent.
-- Dev-only tool not shipping to production (linter, local CLI) — apply only pin + owner.
-- Prototype/spike not destined for production — skip; revisit on promotion.
-- Vendor service with a fully managed SLA and contract — the checklist applies at the contract level, different methodology.
+- A working team-owned artefact already covers this gap — replace, do not duplicate.
+- The decision being made is a greenfield prototype with no production users.
+- Regulatory or legal context overrides any in-methodology guidance — defer to counsel.
+- Single-use throwaway task — overhead of the contract is not justified.
 
 ## Prerequisites
 
-- Decision-to-adopt completed via the trade-off/security review.
-- Repo has a lockfile (package-lock.json, poetry.lock, Pipfile.lock, Cargo.lock, go.sum, etc.).
-- SBOM tooling configured (Syft, cyclonedx, or vendor-provided).
-- Team roster known.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the parent activity | Markdown / JSON | last 30 days of activity |
+| Write access to artefact store | repo / wiki / decision log | platform owner |
+| Named accountable owner | string (handle / email / role) | RACI / org chart |
+| Baseline conventions | `CLAUDE.md` / `AGENTS.md` / `CONVENTIONS.md` | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/dependency-tradeoff-analysis` | Produces the decision; this methodology runs after. |
-| `geek/sdlc-ai/sec-trivy-pinned-supply-chain-scan` | Supply-chain scan results inform pinning + owner. |
+| `pro/dev/software-developer` | parent role skill — provides operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: pin exact, named owner, SBOM entry, escape hatch, renewal date | ~900 |
-| `content/02-output-contract.xml` | essential | dependency-adoption.md shape; required per-dependency fields | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: caret-pin, ownerless deps, no escape hatch | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract-pin-from-lockfile` | haiku | Mechanical: read lockfile, grab exact version |
-| `find-maintainer-signal` | sonnet | Survey upstream activity, BUS-factor, last release date |
-| `draft-escape-hatch` | opus | Synthesis: list replacement candidates + migration shape |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/dependency-adoption.md` | One file per adopted dep with all required fields |
-| `templates/escape-hatch-skeleton.md` | Replacement candidates + migration outline |
+| `templates/dependency-adoption-checklist.json` | JSON Schema for the checklist output contract |
+| `templates/dependency-adoption-checklist.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/adoption-coverage-check.py` | Lockfile direct deps vs dependency-adoption files: flag uncovered | Quarterly |
+| `scripts/validate-dependency-adoption-checklist.py` | Enforce Dependency Adoption Checklist output contract against the JSON Schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodology: `dependency-tradeoff-analysis`, `sec-trivy-pinned-supply-chain-scan` (geek), `vendor-evaluation`
-- external: [NIST SSDF dependency management](https://csrc.nist.gov/Projects/ssdf) · [SLSA framework](https://slsa.dev/) · [Snyk Open Source Advisor](https://snyk.io/advisor/)
+- parent skill: `pro/dev/software-developer/`
+- upstream activity: `new dependency or service edge adoption`
+- methodology family: `pro/dev/` (gap-p2 batch, F-059..F-066)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, stake level, downstream-consumer presence, regime overlay) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, defer to a peer, or skip outright.

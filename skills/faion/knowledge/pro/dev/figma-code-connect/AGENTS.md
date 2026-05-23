@@ -3,78 +3,99 @@ slug: figma-code-connect
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Code Connect mapping config tokens-Storybook-Figma-PR
 content_id: "cb1a5e3f6c036971"
-summary: Figma Code Connect delivers a concrete, testable methodology that turns the recurring task of 'Design-system-as-code lifecycle: tokens → Storybook → Figma library → PR → governance' into an auditable artefact, addressing the gap: MCP Figma server exists with code-connect tooling,
+complexity: medium
+produces: config
+est_tokens: 4500
 tags: [dev, pro, method, methodology]
 ---
 # Figma Code Connect
 
 ## Summary
 
-**One-sentence:** Figma Code Connect delivers a concrete, testable methodology that turns the recurring task of 'Design-system-as-code lifecycle: tokens → Storybook → Figma library → PR → governance' into an auditable artefact, addressing the gap: MCP Figma server exists with code-connect tooling, but no methodology teaches designers to map Figma components to code components — the canonical handoff anchor.
+**One-sentence:** Code Connect mapping config tokens-Storybook-Figma-PR
 
-**One-paragraph:** MCP Figma server exists with code-connect tooling, but no methodology teaches designers to map Figma components to code components — the canonical handoff anchor. Figma Code Connect closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Design-system-as-code lifecycle: tokens → Storybook → Figma library → PR → governance' (role-ux-ui-designer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Figma Code Connect codifies a recurring "design-system-as-code lifecycle" decision into a configuration artefact with a typed input contract, a JSON-schema-checked output, and a decision tree that routes between the operational variants. It exists because adjacent methodologies cover the surrounding topic without pinning the precise output shape this task produces. The artefact carries owner, version, last-reviewed date, and citations to every input used, so downstream agents and human reviewers can consume it without re-deriving the rationale.
+
+**Ефективно для:**
+
+- A team that already runs the parent activity but has no canonical configuration shape.
+- Multi-agent workflows that need a contract-checked artefact instead of free-form prose.
+- Pre-merge / pre-release gates where a missing field must block the pipeline.
+- Audit scenarios — every decision must trace to a named input + a named owner.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Design-system-as-code lifecycle: tokens → Storybook → Figma library → PR → governance' (role: role-ux-ui-designer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Task is an instance of "design-system-as-code lifecycle" or a closely-adjacent variant.
+- All Prerequisites artefacts exist or can be produced before the run starts.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- Tier `pro` or higher is unlocked for the operator (gating enforced by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- A working team-owned artefact already covers this gap — replace, do not duplicate.
+- The decision being made is a greenfield prototype with no production users.
+- Regulatory or legal context overrides any in-methodology guidance — defer to counsel.
+- Single-use throwaway task — overhead of the contract is not justified.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the parent activity | Markdown / JSON | last 30 days of activity |
+| Write access to artefact store | repo / wiki / decision log | platform owner |
+| Named accountable owner | string (handle / email / role) | RACI / org chart |
+| Baseline conventions | `CLAUDE.md` / `AGENTS.md` / `CONVENTIONS.md` | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/dev/software-developer` | parent role skill — provides operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `figma_code_connect_template_fill` | haiku | Template fill, no judgment |
-| `figma_code_connect_evidence_check` | sonnet | Bounded comparison + judgment |
-| `figma_code_connect_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/figma-code-connect.json` | JSON Schema for the configuration output contract |
+| `templates/figma-code-connect.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-figma-code-connect.py` | Enforce Figma Code Connect output contract against the JSON Schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/` (see neighbouring methodologies)
-- triggering activity: `role-ux-ui-designer/Design-system-as-code lifecycle: tokens → Storybook → Figma library → PR → governance`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `pro/dev/software-developer/`
+- upstream activity: `design-system-as-code lifecycle`
+- methodology family: `pro/dev/` (gap-p2 batch, F-059..F-066)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, stake level, downstream-consumer presence, regime overlay) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, defer to a peer, or skip outright.

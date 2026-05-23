@@ -3,82 +3,99 @@ slug: crash-pipeline-as-code
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f6f80615d9d65213"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Crash-tracking pipeline (Sentry / Crashlytics / Bugsnag) defined as code — symbol upload, sourcemap upload, alert rules, dashboards, retention — checked in and gated like any other infrastructure.
+content_id: "f6f80615d9d65213"
+complexity: medium
+produces: config
+est_tokens: 4400
 tags: [crash-reporting, sentry, crashlytics, observability, infra-as-code, mobile-ship]
 ---
-# Crash Pipeline as Code
+# Crash Pipeline As Code
 
 ## Summary
 
-**One-sentence:** Defines the crash-tracking and observability pipeline (symbol/source-map upload, alert rules, dashboards, retention) as code under version control — so a new release does not lose deobfuscation, an alert rule does not vanish in a console click, and Production Readiness is checkable in a PR.
+**One-sentence:** Crash-tracking pipeline (Sentry / Crashlytics / Bugsnag) defined as code — symbol upload, sourcemap upload, alert rules, dashboards, retention — checked in and gated like any other infrastructure.
 
-**One-paragraph:** Crash reporting (Sentry, Crashlytics, Bugsnag, Datadog APM) is set up manually in most teams: a developer uploads dSYMs from their laptop, clicks alert rules into the web console, draws a dashboard. Six months later: symbols missing for one release, alert rule deleted by accident, dashboard owned by a person who left. The methodology pins the move: every artifact of the crash pipeline lives in code (CI step for symbol upload, IaC for alert rules where the vendor supports it, dashboard-as-code, retention as a setting in a config file). Output: a `crash-pipeline/` folder reviewed and deployed alongside the app, with PR-gated production-readiness on every release.
+**One-paragraph:** Crash Pipeline As Code codifies a recurring "mobile crash + observability pipeline" decision into a configuration artefact with a typed input contract, a JSON-schema-checked output, and a decision tree that routes between the operational variants. It exists because adjacent methodologies cover the surrounding topic without pinning the precise output shape this task produces. The artefact carries owner, version, last-reviewed date, and citations to every input used, so downstream agents and human reviewers can consume it without re-deriving the rationale.
+
+**Ефективно для:**
+
+- A team that already runs the parent activity but has no canonical configuration shape.
+- Multi-agent workflows that need a contract-checked artefact instead of free-form prose.
+- Pre-merge / pre-release gates where a missing field must block the pipeline.
+- Audit scenarios — every decision must trace to a named input + a named owner.
 
 ## Applies If (ALL must hold)
 
-- Project ships mobile builds OR web/native apps with non-trivial native code.
-- A crash-reporting vendor is in use (Sentry, Crashlytics, Bugsnag, Datadog).
-- The team has felt the pain of un-symbolicated crashes OR missing alerts at least once.
-- Vendor supports configuration via API / Terraform / config-as-code.
+- Task is an instance of "mobile crash + observability pipeline" or a closely-adjacent variant.
+- All Prerequisites artefacts exist or can be produced before the run starts.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- Tier `pro` or higher is unlocked for the operator (gating enforced by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- Pure server-side stack with no native or web client — error tracking is different.
-- Vendor exclusively web-console (no API for rules/dashboards) — methodology degrades; document the manual steps in a runbook instead.
-- Single-developer app pre-launch — set up the basics, this methodology applies after first release.
-- Project uses self-hosted error tracker with no IaC integration — apply only the symbol-upload + retention parts.
+- A working team-owned artefact already covers this gap — replace, do not duplicate.
+- The decision being made is a greenfield prototype with no production users.
+- Regulatory or legal context overrides any in-methodology guidance — defer to counsel.
+- Single-use throwaway task — overhead of the contract is not justified.
 
 ## Prerequisites
 
-- Crash-tracking vendor selected and project set up.
-- CI pipeline exists.
-- Service-account credentials for vendor's API (stored in secret manager).
-- A release-versioning scheme (build numbers, semantic versions, or commit SHA).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the parent activity | Markdown / JSON | last 30 days of activity |
+| Write access to artefact store | repo / wiki / decision log | platform owner |
+| Named accountable owner | string (handle / email / role) | RACI / org chart |
+| Baseline conventions | `CLAUDE.md` / `AGENTS.md` / `CONVENTIONS.md` | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/cicd-engineer/ci-fundamentals` | CI pipeline assumed; this adds crash-pipeline jobs. |
-| `pro/dev/software-developer/observability-essentials` | Observability vocabulary (alert, SLO, runbook) assumed. |
+| `pro/dev/software-developer` | parent role skill — provides operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: symbols-in-CI, dSYM verification, alert-rules-in-code, dashboard-as-code, retention | ~1000 |
-| `content/02-output-contract.xml` | essential | crash-pipeline/ folder shape; per-release symbol manifest; alert-rule schema | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: silent upload failure, drifted rules, expired token, etc. | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `write-symbol-upload-step` | sonnet | Coding task: per-platform commands |
-| `convert-console-rules-to-code` | sonnet | Mechanical: export rules and rewrite as IaC |
-| `dashboard-design-review` | opus | Judgment: choose right charts + alert thresholds |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/crash-pipeline/` | Folder skeleton: ci-jobs/, alert-rules/, dashboards/, retention.yaml |
-| `templates/sentry-terraform-stub/` | Sentry-specific Terraform example |
-| `templates/symbol-upload-actions/` | GitHub Actions snippets per platform |
+| `templates/crash-pipeline-as-code.json` | JSON Schema for the configuration output contract |
+| `templates/crash-pipeline-as-code.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/verify-symbol-upload.sh` | Post-release: confirm vendor returned 200 for symbol upload AND symbols are deobfuscating | Post-release |
+| `scripts/validate-crash-pipeline-as-code.py` | Enforce Crash Pipeline As Code output contract against the JSON Schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
 - parent skill: `pro/dev/software-developer/`
-- peer methodology: `observability-essentials`, `pre-release-checklist`, `mobile-ship-process`
-- external: [Sentry docs](https://docs.sentry.io/) · [Firebase Crashlytics](https://firebase.google.com/docs/crashlytics) · [Bugsnag](https://www.bugsnag.com/)
+- upstream activity: `mobile crash + observability pipeline`
+- methodology family: `pro/dev/` (gap-p2 batch, F-059..F-066)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, stake level, downstream-consumer presence, regime overlay) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, defer to a peer, or skip outright.

@@ -3,78 +3,100 @@ slug: feature-flag-weekly-review-template
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Weekly flag review template with kill/keep/ramp recommendations
 content_id: "6a2c79186e15c03c"
-summary: Feature Flag Weekly Review Template delivers a concrete, testable methodology that turns the recurring task of 'Feature flag rollout decision (weekly)' into an auditable artefact, addressing the gap: feature-flags-* pages cover impl + targeting, but the operational weekly review 
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [dev, pro, template, methodology]
 ---
 # Feature Flag Weekly Review Template
 
 ## Summary
 
-**One-sentence:** Feature Flag Weekly Review Template delivers a concrete, testable methodology that turns the recurring task of 'Feature flag rollout decision (weekly)' into an auditable artefact, addressing the gap: feature-flags-* pages cover impl + targeting, but the operational weekly review ritual is missing. Without it teams accumulate dead flags.
+**One-sentence:** Weekly flag review template with kill/keep/ramp recommendations
 
-**One-paragraph:** feature-flags-* pages cover impl + targeting, but the operational weekly review ritual is missing. Without it teams accumulate dead flags. Feature Flag Weekly Review Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Feature flag rollout decision (weekly)' (p6-product-dev-team, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Feature Flag Weekly Review Template codifies a recurring "feature flag rollout decision (weekly)" decision into a report artefact with a typed input contract, a JSON-schema-checked output, and a decision tree that routes between the operational variants. It exists because adjacent methodologies cover the surrounding topic without pinning the precise output shape this task produces. The artefact carries owner, version, last-reviewed date, and citations to every input used, so downstream agents and human reviewers can consume it without re-deriving the rationale.
+
+**Ефективно для:**
+
+- A team that already runs the parent activity but has no canonical report shape.
+- Multi-agent workflows that need a contract-checked artefact instead of free-form prose.
+- Pre-merge / pre-release gates where a missing field must block the pipeline.
+- Audit scenarios — every decision must trace to a named input + a named owner.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Feature flag rollout decision (weekly)' (role: p6-product-dev-team) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Task is an instance of "feature flag rollout decision (weekly)" or a closely-adjacent variant.
+- All Prerequisites artefacts exist or can be produced before the run starts.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- Tier `pro` or higher is unlocked for the operator (gating enforced by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- A working team-owned artefact already covers this gap — replace, do not duplicate.
+- The decision being made is a greenfield prototype with no production users.
+- Regulatory or legal context overrides any in-methodology guidance — defer to counsel.
+- Single-use throwaway task — overhead of the contract is not justified.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the parent activity | Markdown / JSON | last 30 days of activity |
+| Write access to artefact store | repo / wiki / decision log | platform owner |
+| Named accountable owner | string (handle / email / role) | RACI / org chart |
+| Baseline conventions | `CLAUDE.md` / `AGENTS.md` / `CONVENTIONS.md` | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/dev/software-developer` | parent role skill — provides operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/05-examples.xml` | essential | 1 worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `feature_flag_weekly_review_template_template_fill` | haiku | Template fill, no judgment |
-| `feature_flag_weekly_review_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `feature_flag_weekly_review_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/feature-flag-weekly-review-template.json` | JSON Schema for the report output contract |
+| `templates/feature-flag-weekly-review-template.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-feature-flag-weekly-review-template.py` | Enforce Feature Flag Weekly Review Template output contract against the JSON Schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/` (see neighbouring methodologies)
-- triggering activity: `p6-product-dev-team/Feature flag rollout decision (weekly)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `pro/dev/software-developer/`
+- upstream activity: `feature flag rollout decision (weekly)`
+- methodology family: `pro/dev/` (gap-p2 batch, F-059..F-066)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, stake level, downstream-consumer presence, regime overlay) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, defer to a peer, or skip outright.
