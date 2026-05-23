@@ -1,22 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="spatial-accessibility Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Spatial Accessibility Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the spatial-accessibility audit report. Lists every interaction with its modalities, seated compatibility, comfort options, and assistive-user testing log.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/spatial-accessibility.json",
+  "type": "object",
+  "required": ["__faion_header__", "platform", "interactions", "comfort_options", "captions_policy", "tester_mix"],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": ["methodology", "version", "produces"],
+      "properties": {
+        "methodology": {"const": "spatial-accessibility"},
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "produces": {"const": "report"}
+      }
+    },
+    "platform": {"enum": ["visionos", "quest", "psvr2", "hololens", "webxr"]},
+    "interactions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "primary_modality", "alternative_modalities", "seated_compatible", "non_spatial_fallback"],
+        "properties": {
+          "name": {"type": "string"},
+          "primary_modality": {"enum": ["gaze+dwell", "voice", "single-hand", "two-hand", "controller", "switch"]},
+          "alternative_modalities": {"type": "array", "items": {"enum": ["gaze+dwell", "voice", "single-hand", "two-hand", "controller", "switch"]}, "minItems": 1},
+          "seated_compatible": {"type": "boolean"},
+          "non_spatial_fallback": {"type": "string"},
+          "requires_motion": {"type": "boolean"}
+        }
+      }
+    },
+    "comfort_options": {
+      "type": "object",
+      "required": ["locomotion", "turning"],
+      "properties": {
+        "locomotion": {"type": "array", "items": {"enum": ["vignette", "teleport", "smooth"]}, "minItems": 2},
+        "turning": {"type": "array", "items": {"enum": ["snap", "smooth"]}, "minItems": 2},
+        "fov_reduce": {"type": "boolean"}
+      }
+    },
+    "captions_policy": {
+      "type": "object",
+      "required": ["default_anchor", "world_locked_available", "audio_descriptions"],
+      "properties": {
+        "default_anchor": {"enum": ["head-locked"]},
+        "world_locked_available": {"type": "boolean", "const": true},
+        "audio_descriptions": {"type": "boolean", "const": true}
+      }
+    },
+    "tester_mix": {
+      "type": "object",
+      "required": ["low_vision", "motor_impaired", "motion_sensitive"],
+      "properties": {
+        "low_vision": {"type": "integer", "minimum": 1},
+        "motor_impaired": {"type": "integer", "minimum": 1},
+        "motion_sensitive": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {"methodology": "spatial-accessibility", "version": "1.1.0", "produces": "report"},
+  "platform": "visionos",
+  "interactions": [
+    {"name": "Select object", "primary_modality": "gaze+dwell", "alternative_modalities": ["voice", "single-hand"], "seated_compatible": true, "non_spatial_fallback": "flat-window list"},
+    {"name": "Grab tool", "primary_modality": "single-hand", "alternative_modalities": ["controller", "voice"], "seated_compatible": true, "non_spatial_fallback": "voice command 'grab <tool>'"}
+  ],
+  "comfort_options": {"locomotion": ["vignette", "teleport"], "turning": ["snap", "smooth"], "fov_reduce": true},
+  "captions_policy": {"default_anchor": "head-locked", "world_locked_available": true, "audio_descriptions": true},
+  "tester_mix": {"low_vision": 1, "motor_impaired": 1, "motion_sensitive": 2}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "platform": "quest",
+  "interactions": [{"name": "Grab", "primary_modality": "single-hand", "alternative_modalities": [], "seated_compatible": false, "non_spatial_fallback": ""}],
+  "comfort_options": {"locomotion": ["smooth"]}
+}
+]]></code>
+    <note>Missing __faion_header__; interaction has 0 alternatives; not seated-compatible; empty fallback; smooth-only locomotion forbidden; missing captions_policy and tester_mix.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Locomotion array containing only `smooth`.</item>
+      <item>Interaction with empty `alternative_modalities`.</item>
+      <item>Captions default anchor anything other than `head-locked`.</item>
+      <item>Tester mix below 1 in any required category.</item>
     </list>
   </section>
+
+  <reference path="templates/alt-input-matrix.ts">Alternative-input modality auditor</reference>
+  <reference path="templates/spatial-a11y-report.md">Report skeleton</reference>
+  <reference path="scripts/validate-spatial-accessibility.py">Validator script</reference>
 </text>

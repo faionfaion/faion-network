@@ -1,22 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="semantic-tokens-and-modes Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Semantic Tokens and Modes Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the token-config artefact: declares layers, modes, semantic tokens, and the platform output pipeline. Validator enforces required keys and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/semantic-tokens-and-modes.json",
+  "type": "object",
+  "required": ["__faion_header__", "format", "layers", "modes", "tokens", "pipeline"],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": ["methodology", "version", "produces"],
+      "properties": {
+        "methodology": {"const": "semantic-tokens-and-modes"},
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "produces": {"const": "config"}
+      }
+    },
+    "format": {"const": "dtcg"},
+    "layers": {
+      "type": "object",
+      "required": ["reference", "system", "component"],
+      "properties": {
+        "reference": {"type": "boolean", "const": true},
+        "system":    {"type": "boolean", "const": true},
+        "component": {"type": "boolean", "const": true}
+      }
+    },
+    "modes": {
+      "type": "array",
+      "items": {"enum": ["light", "dark", "high-contrast", "compact", "comfortable", "brand-a", "brand-b", "white-label"]},
+      "minItems": 1
+    },
+    "tokens": {
+      "type": "object",
+      "required": ["system"],
+      "properties": {
+        "system": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["$type", "values_by_mode"],
+            "properties": {
+              "$type": {"enum": ["color", "dimension", "fontFamily", "fontWeight", "duration", "cubicBezier", "shadow"]},
+              "intent": {"type": "string"},
+              "values_by_mode": {"type": "object", "additionalProperties": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "required": ["builder", "platforms"],
+      "properties": {
+        "builder": {"enum": ["style-dictionary", "tokens-studio", "specify"]},
+        "platforms": {"type": "array", "items": {"enum": ["css", "swift", "compose", "android-xml"]}, "minItems": 1}
+      }
+    },
+    "lint": {
+      "type": "object",
+      "properties": {
+        "reject_raw_hex_in_components": {"type": "boolean", "const": true},
+        "reject_direct_reference_in_components": {"type": "boolean", "const": true}
+      }
+    },
+    "visual_regression": {
+      "type": "object",
+      "required": ["tool", "snapshot_every_mode"],
+      "properties": {
+        "tool": {"enum": ["chromatic", "percy", "loki"]},
+        "snapshot_every_mode": {"type": "boolean", "const": true}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {"methodology": "semantic-tokens-and-modes", "version": "1.1.0", "produces": "config"},
+  "format": "dtcg",
+  "layers": {"reference": true, "system": true, "component": true},
+  "modes": ["light", "dark", "high-contrast"],
+  "tokens": {
+    "system": {
+      "color.action.primary": {
+        "$type": "color",
+        "intent": "primary interactive surface",
+        "values_by_mode": {"light": "{color.blue.600}", "dark": "{color.blue.400}", "high-contrast": "{color.blue.900}"}
+      }
+    }
+  },
+  "pipeline": {"builder": "style-dictionary", "platforms": ["css", "swift", "compose"]},
+  "lint": {"reject_raw_hex_in_components": true, "reject_direct_reference_in_components": true},
+  "visual_regression": {"tool": "chromatic", "snapshot_every_mode": true}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "format": "internal-json",
+  "modes": ["light"],
+  "tokens": {"system": {"color.primary": {"$type": "color", "values_by_mode": {"light": "#0066cc"}}}}
+}
+]]></code>
+    <note>Missing __faion_header__; format must be dtcg; missing layers / pipeline / visual_regression; raw hex in source; intent missing; mode coverage incomplete.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Component-layer tokens referencing reference layer directly (skipping system layer).</item>
+      <item>Mode list with only `light` when product ships dark mode.</item>
+      <item>Raw hex values in `tokens.system` $value (must use reference-token alias `{color.blue.600}`).</item>
     </list>
   </section>
+
+  <reference path="templates/tokens-semantic.json">Semantic-layer skeleton</reference>
+  <reference path="templates/style-dictionary.config.cjs">Pipeline builder config</reference>
+  <reference path="templates/check-modes.mjs">Mode-coverage CI gate</reference>
+  <reference path="scripts/validate-semantic-tokens-and-modes.py">Validator script</reference>
 </text>

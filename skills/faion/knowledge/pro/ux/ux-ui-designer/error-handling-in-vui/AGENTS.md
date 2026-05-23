@@ -2,72 +2,97 @@
 slug: error-handling-in-vui
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A three-rung re-prompt ladder for voice interface error recovery: rung 1 — brief re-ask; rung 2 — constructive re-ask with two example phrases; rung 3 — escalation to visual fallback, DTMF, or human agent.
-content_id: "09b767fa3be9320a"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a VUI error-recovery spec implementing a three-rung re-prompt ladder (brief re-ask → constructive re-ask with examples → escalation to visual/DTMF/human).
+content_id: "b24d7674838d82e4"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [voice-ui, error-handling, asr, conversational-design, vui]
 ---
 # Error Handling in VUI
 
 ## Summary
 
-**One-sentence:** A three-rung re-prompt ladder for voice interface error recovery: rung 1 — brief re-ask; rung 2 — constructive re-ask with two example phrases; rung 3 — escalation to visual fallback, DTMF, or human agent.
+**One-sentence:** Produces a VUI error-recovery spec implementing a three-rung re-prompt ladder (brief re-ask → constructive re-ask with examples → escalation to visual/DTMF/human).
 
-**One-paragraph:** A three-rung re-prompt ladder for voice interface error recovery: rung 1 — brief re-ask; rung 2 — constructive re-ask with two example phrases; rung 3 — escalation to visual fallback, DTMF, or human agent. Cap at three rungs; escalate on rung 4 input instead of looping. Never use blame language ("you said wrong", "invalid"). Every example phrase on rung 2 must exist in the NLU training data.
+**One-paragraph:** Voice interface errors recover via a three-rung ladder. Rung 1: brief re-ask ('I didn't catch that — can you repeat?'). Rung 2: constructive re-ask with two examples ('You can say `play jazz` or `play classical`'). Rung 3: escalation — visual fallback on multimodal devices, DTMF tones on IVR, or live agent on supported channels. Verbatim repeat is forbidden; each rung varies prompt + adds scaffolding.
+
+**Ефективно для:**
+
+- Voice agents (Alexa/Google/LLM-native) — recovery без infinite loop.
+- IVR з DTMF fallback на rung 3 для phone callers.
+- Multimodal devices з screen — visual fallback на 3-й rung.
+- Telephony контакт-центр — escalation до live agent на rung 3.
 
 ## Applies If (ALL must hold)
 
-- Designing fallback dialogs for ASR no-input, no-match, and ambiguous-intent failures.
-- Drafting re-prompt copy with example phrases for second/third failure passes.
-- Auditing existing Alexa/Google Action/Dialogflow intents for unhandled utterances.
-- Building help or transfer-to-agent escalation paths for IVR or LLM-backed voice bots.
+- Voice agent or IVR has at least 2 retry slots before fallback.
+- Recovery latency budget allows 2-3 short re-asks.
+- Multi-rung escalation infrastructure exists (visual / DTMF / human).
 
 ## Skip If (ANY kills it)
 
-- Pure speech-to-text quality issues—model retraining or acoustic tuning, not dialog design.
-- Silent or visual-only UIs where confirmation can be shown on screen.
-- One-shot transactional commands with no multi-turn state (no recovery path needed).
+- Single-attempt command (e.g. 'pause') — no re-prompt needed.
+- Push-to-talk with no automatic recovery — user retries on demand.
+- Pure text chatbot — different error patterns apply.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Intent catalogue | list | voice agent spec |
+| Example utterances per intent | ≥2 per intent | NLU corpus |
+| Escalation channels | list (visual / DTMF / human) | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[core-vui-design-principles]] | Single-idea + barge-in baseline |
+| [[vui-testing-best-practices]] | Recovery is regression-tested in tier-1 deterministic |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/reprompt-lint.py` | Python lint: verify ladder prompts are distinct + rung 2 has examples + rung 3 escalates |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-error-handling-in-vui.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[core-vui-design-principles]]
+- [[vui-conversation-design]]
+- [[vui-testing-best-practices]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

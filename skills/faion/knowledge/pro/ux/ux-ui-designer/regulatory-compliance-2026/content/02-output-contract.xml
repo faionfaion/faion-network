@@ -1,22 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="regulatory-compliance-2026 Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Regulatory Compliance 2026 Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the compliance-report artefact produced by this methodology. Defines required surfaces, regulation mapping, conformance level, and remediation backlog.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/regulatory-compliance-2026.json",
+  "type": "object",
+  "required": ["__faion_header__", "report_date", "owner", "surfaces", "regulations", "statement_published"],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": ["methodology", "version", "produces"],
+      "properties": {
+        "methodology": {"const": "regulatory-compliance-2026"},
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "produces": {"const": "report"}
+      }
+    },
+    "report_date": {"type": "string", "format": "date"},
+    "owner": {"type": "string", "minLength": 2},
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "url_or_bundle", "jurisdictions"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"enum": ["web", "ios", "android", "kiosk", "ebook", "embedded"]},
+          "url_or_bundle": {"type": "string"},
+          "jurisdictions": {"type": "array", "items": {"enum": ["US", "EU", "ON", "US-FED", "UK", "AU", "JP"]}, "minItems": 1}
+        }
+      }
+    },
+    "regulations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["regulation", "wcag_version", "wcag_level", "deadline", "surfaces"],
+        "properties": {
+          "regulation": {"enum": ["ADA-Title-II", "EAA", "AODA", "Section-508", "UK-EQA", "AU-DDA"]},
+          "wcag_version": {"enum": ["2.0", "2.1", "2.2"]},
+          "wcag_level": {"enum": ["A", "AA", "AAA"]},
+          "deadline": {"type": "string", "format": "date"},
+          "surfaces": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+        }
+      }
+    },
+    "statement_published": {
+      "type": "object",
+      "required": ["url", "last_updated", "wcag_version", "wcag_level", "feedback_channels", "methodology"],
+      "properties": {
+        "url": {"type": "string", "format": "uri"},
+        "last_updated": {"type": "string", "format": "date"},
+        "wcag_version": {"enum": ["2.0", "2.1", "2.2"]},
+        "wcag_level": {"enum": ["AA", "AAA"]},
+        "feedback_channels": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "methodology": {"type": "object", "required": ["automated", "manual", "at_user"], "properties": {"automated": {"type": "boolean"}, "manual": {"type": "boolean"}, "at_user": {"type": "boolean"}}}
+      }
+    },
+    "remediation_backlog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "wcag_sc", "surface", "severity", "owner"],
+        "properties": {
+          "id": {"type": "string"},
+          "wcag_sc": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+          "surface": {"type": "string"},
+          "severity": {"enum": ["blocker", "high", "medium", "low"]},
+          "owner": {"type": "string"}
+        }
+      }
+    },
+    "overlay_widgets_disabled": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {"methodology": "regulatory-compliance-2026", "version": "1.1.0", "produces": "report"},
+  "report_date": "2026-05-23",
+  "owner": "a11y-lead@example.com",
+  "surfaces": [
+    {"id": "web-app", "type": "web", "url_or_bundle": "https://app.example.com", "jurisdictions": ["US", "EU"]},
+    {"id": "ios-app", "type": "ios", "url_or_bundle": "com.example.ios", "jurisdictions": ["US"]}
+  ],
+  "regulations": [
+    {"regulation": "ADA-Title-II", "wcag_version": "2.1", "wcag_level": "AA", "deadline": "2026-04-24", "surfaces": ["web-app", "ios-app"]},
+    {"regulation": "EAA", "wcag_version": "2.1", "wcag_level": "AA", "deadline": "2025-06-28", "surfaces": ["web-app"]}
+  ],
+  "statement_published": {
+    "url": "https://example.com/accessibility",
+    "last_updated": "2026-05-15",
+    "wcag_version": "2.2",
+    "wcag_level": "AA",
+    "feedback_channels": ["a11y@example.com", "+1-555-0100"],
+    "methodology": {"automated": true, "manual": true, "at_user": true}
+  },
+  "remediation_backlog": [
+    {"id": "R-001", "wcag_sc": "1.4.3", "surface": "web-app", "severity": "high", "owner": "fe-team"}
+  ],
+  "overlay_widgets_disabled": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_date": "2026-05-23",
+  "surfaces": [{"id": "web-app", "type": "web", "url_or_bundle": "https://app.example.com"}],
+  "regulations": [{"regulation": "ADA-Title-II"}]
+}
+]]></code>
+    <note>Missing __faion_header__; surface missing jurisdictions; regulation missing wcag_version + wcag_level + deadline + surfaces; missing statement_published; missing owner.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Claim "WCAG AA conformant" without specifying version (2.0 / 2.1 / 2.2).</item>
+      <item>Set `statement_published.methodology.at_user` to false while claiming conformance.</item>
+      <item>Include an overlay widget vendor in `tools_used` while claiming conformance.</item>
+      <item>Leave `remediation_backlog` empty when there are known WCAG violations.</item>
     </list>
   </section>
+
+  <reference path="templates/compliance-report.md">Compliance-report skeleton</reference>
+  <reference path="templates/accessibility-statement.md">Public accessibility-statement template</reference>
+  <reference path="scripts/validate-regulatory-compliance-2026.py">Validator script</reference>
 </text>

@@ -2,74 +2,97 @@
 slug: design-system-success-factors
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design systems fail most often not from technical debt but from governance and adoption gaps: no single owner, documentation that drifts from source, components teams work around.
-content_id: "86cfcc26d098d266"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a governance + adoption health report for a design system covering ownership, documentation freshness, contribution model, adoption metrics, and component coverage.
+content_id: "da0563d1346d0276"
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [design-systems, ownership, adoption, metrics, governance]
 ---
 # Design System Success Factors
 
 ## Summary
 
-**One-sentence:** Design systems fail most often not from technical debt but from governance and adoption gaps: no single owner, documentation that drifts from source, components teams work around.
+**One-sentence:** Produces a governance + adoption health report for a design system covering ownership, documentation freshness, contribution model, adoption metrics, and component coverage.
 
-**One-paragraph:** Design systems fail most often not from technical debt but from governance and adoption gaps: no single owner, documentation that drifts from source, components teams work around. A four-pillar model makes failure modes explicit and measurable, enabling quarterly health checks and OKR-setting for platform teams. The pillars are: clear ownership (dedicated responsible person/team), usable components (adoptable API and quality), strong documentation (findable and current), and real adoption (measured component coverage across products).
+**One-paragraph:** Design systems fail more often from governance and adoption gaps than from technical debt: no single owner, documentation that drifts from source, components teams work around, and metrics absent. This methodology produces a quarterly health report tracking ownership, docs freshness, contribution model, per-team adoption %, and component coverage relative to the product surface.
+
+**Ефективно для:**
+
+- Quarterly health report для design system щоб уникнути silent rot.
+- Adoption tracking — які team's working around the system.
+- Ownership clarity: single accountable owner vs split-and-hope.
+- Docs/code drift detection — лютий ворог design systems.
 
 ## Applies If (ALL must hold)
 
-- Standing up a new design system or evaluating build vs. adopt vs. wrap.
-- Quarterly health check on an existing system: ownership, adoption, contribution, debt.
-- Diagnosing why a system is being ignored (low component coverage, parallel snowflake CSS).
-- Pre-merger or rebrand audit when two systems must be unified.
-- Setting OKRs/KPIs for a platform team.
+- An organisation operates a design system across >=2 teams.
+- Components, tokens, and docs exist as identifiable artefacts.
+- Adoption can be measured (component imports, design library usage).
 
 ## Skip If (ANY kills it)
 
-- One-off marketing landing pages — a tokens file + Tailwind config is sufficient.
-- Pre-product-market-fit prototyping — the pillars optimize for adoption, which assumes stable surface area.
-- Teams with fewer than 3 designers and 1 frontend engineer — ownership pillar collapses, overhead exceeds value.
-- Pure motion or brand-illustration systems — adoption metrics are not meaningful.
+- No formal design system yet — author one before measuring its health.
+- Single-team / single-product context where governance overhead exceeds value.
+- Greenfield day-1 system with no adoption history.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Component inventory | Storybook/library export | design system |
+| Per-team usage data | import analytics | monorepo / package registry |
+| Docs source | MDX/Storybook stories | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[design-tokens-fundamentals]] | Token health is part of the system health |
+| [[a11y-annotation-pattern-library]] | A11y is a design-system pillar |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ds-coverage.mjs` | Node script computing per-team adoption + system coverage from import graph |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-design-system-success-factors.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[design-tokens-fundamentals]]
+- [[a11y-annotation-pattern-library]]
+- [[cross-platform-token-distribution]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

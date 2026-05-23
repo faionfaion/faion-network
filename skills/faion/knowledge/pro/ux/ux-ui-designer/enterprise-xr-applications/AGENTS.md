@@ -2,74 +2,98 @@
 slug: enterprise-xr-applications
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Enterprise needs differ from consumer XR experiences.
-content_id: "e6085381b21f5667"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an enterprise-XR application spec covering training simulations, remote assistance, digital twins, 3D analytics, distributed collaboration — with comfort, IT integration, security, and ROI gates.
+content_id: "82059c06750fca51"
+complexity: deep
+produces: spec
+est_tokens: 4500
 tags: [xr, enterprise, immersive-design, training, remote-assistance]
 ---
 # Enterprise XR Applications
 
 ## Summary
 
-**One-sentence:** Enterprise needs differ from consumer XR experiences.
+**One-sentence:** Produces an enterprise-XR application spec covering training simulations, remote assistance, digital twins, 3D analytics, distributed collaboration — with comfort, IT integration, security, and ROI gates.
 
-**One-paragraph:** Enterprise needs differ from consumer XR experiences. Design XR for training simulations, remote-assistance overlays, digital twins, 3D analytics, and distributed collaboration—balancing long-session comfort, IT integration, security, deployment management, accessibility compliance, and measurable ROI.
+**One-paragraph:** Enterprise XR differs from consumer: long sessions (30-120 min), IT-managed deployment, security/compliance scrutiny, and ROI accountability. Five primary use cases — training simulations (high-risk procedures), remote-assistance overlays (expert + field tech), digital twins (plants/facilities), 3D analytics (portfolios exceeding 2D), distributed design-review. Each carries headset coverage, comfort budget, IT integration, security review, and measurable ROI gates.
+
+**Ефективно для:**
+
+- Training simulations: high-risk procedures (manufacturing/healthcare/energy).
+- Remote-assistance: expert провідник для field technician у real time.
+- Digital twins: large facility/equipment fleet — reduce downtime через 3D visual.
+- Distributed design review / virtual walkthrough — distributed teams.
 
 ## Applies If (ALL must hold)
 
-- Designing training simulations for high-risk procedures in manufacturing, healthcare, or energy.
-- Building remote-assistance overlays where an expert guides a field technician in real time.
-- Visualizing digital twins for plants, facilities, or large equipment fleets to reduce downtime.
-- Adding 3D analytics dashboards for portfolios exceeding 2D screen real estate.
-- Running design-review or virtual-walkthrough sessions for distributed teams.
+- Enterprise workflow with >=50% headset coverage in the target population.
+- Use case fits one of: training, remote-assistance, digital twin, 3D analytics, distributed collab.
+- Security + IT integration review is feasible.
 
 ## Skip If (ANY kills it)
 
-- Consumer-facing one-off experiences—different design constraints, weaker ROI case.
-- Tasks that 2D dashboards already solve well; XR adds friction without payoff.
-- Audiences with mixed accessibility needs that XR currently underserves (vestibular issues, low vision).
-- Pre-validation of headset penetration in the target audience—don't ship XR-only flows to a workforce with <50% headset coverage.
+- Consumer-facing one-off experience — different constraints + ROI case.
+- 2D dashboard already solves it well — XR adds friction without payoff.
+- Audience with mixed a11y needs underserved by current XR (vestibular, low vision).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Headset coverage data | % of population | IT inventory |
+| Use case selection | 1 of 5 | product brief |
+| Security review template | checklist | this methodology |
+| ROI baseline | current cost + target reduction | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[immersive-design-principles]] | Comfort + presence baseline |
+| [[spatial-accessibility]] | A11y in spatial computing |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/enterprise-xr-spec.md` | Enterprise XR application spec covering all 6 gates |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-enterprise-xr-applications.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[immersive-design-principles]]
+- [[ar-design-patterns]]
+- [[vr-design-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

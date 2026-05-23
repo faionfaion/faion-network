@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="VUI Market Context Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to produce a publishable vui_market_brief.json + brief.md.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="collect-target-context">
+      <input>Product brief naming target geos + primary device type</input>
+      <action>Normalise target geos to ISO-3166 codes; select primary metric list (default 4 metrics from this methodology).</action>
+      <output>{geos: [..], metrics: [..]}</output>
+    </step>
+
+    <step n="2" name="refresh-metrics">
+      <input>Trusted-source allowlist, metric list, ANTHROPIC_API_KEY</input>
+      <action>Run `templates/refresh-script.py`. It calls Anthropic with web_search restricted to allowlist hosts and asks for value + year + source_url + geo per metric.</action>
+      <output>raw_metrics.json</output>
+      <decision-gate>If any returned row lacks geo or source_url, retry with stricter prompt; if 2 retries fail, drop that metric and log it.</decision-gate>
+    </step>
+
+    <step n="3" name="normalize-and-tag">
+      <input>raw_metrics.json</input>
+      <action>For each row, attach a `denominator` enum value by inspecting `metric` text; reject rows that cannot be classified.</action>
+      <output>data[] conforming to schema</output>
+    </step>
+
+    <step n="4" name="assemble-brief">
+      <input>data[], platforms table (this methodology), target geos</input>
+      <action>Render `templates/brief.md` with per-geo platform comparison + sourced stats. Include explicit LLM-VUI row.</action>
+      <output>brief.md + vui_market_brief.json</output>
+    </step>
+
+    <step n="5" name="validate-and-publish">
+      <input>vui_market_brief.json</input>
+      <action>Run `scripts/validate-vui-market-context.py --file vui_market_brief.json`. Exit 0 = publish; exit 1 = surface violations, fix, retry.</action>
+      <output>publishable brief; failure list otherwise</output>
+      <decision-gate>If validator emits any VIOLATION line, STOP — do not publish.</decision-gate>
+    </step>
+
+  </section>
+</text>

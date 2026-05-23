@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
-# stress-corpus.sh — mix clean utterance fixtures with ambient noise stems at 3 SNR levels.
-#
-# Usage: bash stress-corpus.sh
-# Requires: ffmpeg (apt install ffmpeg / brew install ffmpeg)
-#
-# Inputs:
-#   fixtures/clean/   — WAV utterances (16kHz mono)
-#   fixtures/noise/   — ambient noise stems: cafe.wav, traffic.wav, tv.wav
-# Outputs:
-#   fixtures/mixed/   — name: <utterance>_<noise>_<SNR>dB.wav
-
+# purpose: Generate stress fixtures via SNR mixing
+# consumes: clean utterances + noise stems
+# produces: mixed WAV at 20/10/5dB
+# depends-on: ffmpeg
+# token-budget-impact: ~150
 set -euo pipefail
-
-CLEAN_DIR=fixtures/clean
-NOISE_DIR=fixtures/noise
-OUT=fixtures/mixed
+CLEAN_DIR=${1:-fixtures/clean}
+NOISE_DIR=${2:-fixtures/noise}
+OUT=${3:-fixtures/mixed}
 mkdir -p "$OUT"
-
 for u in "$CLEAN_DIR"/*.wav; do
   for n in "$NOISE_DIR"/*.wav; do
     for snr in 20 10 5; do
@@ -27,6 +19,3 @@ for u in "$CLEAN_DIR"/*.wav; do
     done
   done
 done
-
-echo "Mixed fixtures written to $OUT"
-find "$OUT" -name "*.wav" | wc -l | xargs echo "Total files:"

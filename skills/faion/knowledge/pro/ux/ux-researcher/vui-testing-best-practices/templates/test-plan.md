@@ -1,45 +1,26 @@
-# VUI Test Plan
+<!-- purpose: VUI test plan skeleton -->
+<!-- consumes: product brief + corpus -->
+<!-- produces: test-plan.md -->
+<!-- depends-on: vui-conversation-design + core-vui-principles -->
+<!-- token-budget-impact: ~700 -->
 
-**Project:** [Name]
-**Platform:** [Alexa / Google / Custom LLM-VUI / IVR]
-**Locales:** [e.g., en-US, en-GB]
-**ASR Model Version:** [Pin version here]
+# VUI Test Plan — <product>
 
 ## Objectives
-- Validate intent recognition accuracy before launch
-- Stress-test dialog flow completion across noise conditions
-- Regression-test after NLU model or prompt changes
+- ASR WER target: <X>%
+- NLU intent F1 target: >=<X>
+- NLU slot F1 target: >=<X>
+- Dialog completion target: >=<X>%
 
-## Test Suite Structure
+## Fixtures
+- Utterance corpus: real anonymised logs, n=<N>
+- Ambient noise stems: cafe, traffic, tv
+- Locales: <list>
 
-| Tier | Trigger | Utterance Count | LLM Judge? |
-|------|---------|-----------------|------------|
-| Smoke | Every commit | 10 | No |
-| Full | Nightly | All fixtures | Yes |
-| Field-replay | Pre-release | Real session sample | Yes |
+## Tiers
+- Smoke (every commit, 10 utterances)
+- Full (nightly, full corpus)
+- Field-replay (release, real-device farm)
 
-## Fixture Inventory
-
-| File | Intent | Variant Count | Noise Conditions |
-|------|--------|---------------|------------------|
-| [fixtures/set-timer.wav] | set-timer | 30 | clean, cafe-20dB, traffic-10dB |
-
-## Metric Targets
-
-| Metric | Target | Blocking? |
-|--------|--------|-----------|
-| ASR WER | &lt;5% | Yes |
-| NLU Intent F1 | &gt;0.90 | Yes |
-| Task completion | &gt;85% | Yes |
-| LLM-judge naturalness | &gt;3.5/5 avg | No (advisory) |
-
-## LLM-Judge Configuration
-- Model: [pin version]
-- Temperature: 0
-- Blind scoring: YES (judge does not see expected answer before scoring naturalness)
-- Comparison method: pairwise for naturalness, absolute for correctness
-
-## Privacy
-- All fixtures: anonymized before storage
-- Cloud LLM judge receives: text transcripts only, no raw audio
-- PII redaction tool: [e.g., presidio]
+## ASR version pin
+<provider/model/version>

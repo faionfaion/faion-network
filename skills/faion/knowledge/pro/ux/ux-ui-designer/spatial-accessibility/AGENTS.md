@@ -2,72 +2,101 @@
 slug: spatial-accessibility
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for designing AR/VR/MR interfaces that work across motor, visual, cognitive, and motion-sensitivity differences.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a spatial-accessibility report mapping every AR/VR/MR interaction to ≥2 input modalities, seated-mode parity, comfort options, and a non-spatial fallback.
 content_id: "cce0eeb046ffb47f"
+complexity: medium
+produces: report
+est_tokens: 4200
 tags: [spatial-computing, accessibility, xr, aria, input-modalities]
 ---
 # Spatial Accessibility
 
 ## Summary
 
-**One-sentence:** A methodology for designing AR/VR/MR interfaces that work across motor, visual, cognitive, and motion-sensitivity differences.
+**One-sentence:** Produces a spatial-accessibility audit report ensuring every AR/VR/MR interaction has ≥2 independent input modalities, seated-mode parity, configurable comfort options, and a non-spatial fallback.
 
-**One-paragraph:** A methodology for designing AR/VR/MR interfaces that work across motor, visual, cognitive, and motion-sensitivity differences. Every spatial interaction must support at least two input modalities and have a non-spatial fallback. Seated-mode parity is mandatory — if an interaction requires standing or arm-raising, a seated alternative must be documented.
+**One-paragraph:** Spatial UI introduces accessibility barriers WCAG 2.2 does not address: 6-DoF movement, implicit hand-tracking assumptions, FoV constraints, motion sickness. This methodology enforces two-modality coverage per interaction (gaze+pinch, voice, controller, switch), seated-mode parity for every standing-mode interaction, both vignette + teleport locomotion options, head-locked subtitle defaults, and hardware testing with at least one low-vision + one motor-impaired + one motion-sensitive user before declaring compliance. Output is a JSON report consumed by platform-review submission.
+
+**Ефективно для:**
+
+- Designing AR/VR/MR experiences на Vision Pro, Quest, PS VR2, HoloLens, або WebXR.
+- Adapting flat UI to spatial platform — seated mode, gaze fallback, motion-comfort settings.
+- App Store / Meta Horizon Store submission — accessibility checks blocking approval.
+- Enterprise XR (industrial training, medical) — injury risk requires accommodation parity.
 
 ## Applies If (ALL must hold)
 
-- Designing AR/VR/MR experiences on Vision Pro, Quest, PS VR2, HoloLens, or WebXR.
-- Adapting an existing flat UI for a spatial platform — need seated mode, gaze fallback, motion-comfort settings.
-- Submitting an app to App Store or Meta Horizon Store.
-- Designing enterprise XR (industrial training, medical) where injury risk is non-zero.
+- Product surface is AR / VR / MR on supported HMD or WebXR.
+- Interaction model uses at least one spatial input (hand tracking, controllers, gaze).
+- Hardware testing with at least 3 assistive users is feasible before launch.
 
 ## Skip If (ANY kills it)
 
-- 2D mobile/desktop apps — use standard WCAG 2.2 / mobile a11y; spatial tradeoffs do not apply.
-- Pure passthrough video apps with no UI overlay — accessibility reduces to standard video a11y (captions, contrast).
-- Throwaway VR demos for a single internal user — full spatial-a11y program is overkill before validation.
+- 2D mobile / desktop app — use WCAG 2.2 + mobile a11y instead.
+- Passthrough video with no UI overlay — reduces to video a11y (captions, contrast).
+- Internal one-off demo for a single user — full a11y program premature.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Interaction inventory | JSON / Markdown | spatial-design team |
+| Platform target | enum: visionos / quest / psvr2 / hololens / webxr | PM |
+| Comfort options enumerated | list | XR engineering |
+| Assistive tester roster | list of users + assistive tech | a11y research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[spatial-interaction-patterns]] | Defines the interaction-state-machine vocabulary the report references |
+| [[testing-with-assistive-technology]] | Defines AT-user session requirements |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: two-modalities-required, non-spatial-fallback, seated-mode-parity, comfort-options-both, captions-policy, hardware-tester-mix | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for interaction audit + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: controller-only, head-locked-HUD, synthetic-only-testing, head-locked-captions-default-off | 700 |
+| `content/04-procedure.xml` | essential | 5-step audit procedure | 900 |
+| `content/05-examples.xml` | essential | Worked example: Vision Pro productivity app interaction audit | 600 |
+| `content/06-decision-tree.xml` | essential | Tree: platform → input-model → comfort-policy → caption-policy | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `enumerate-interactions` | haiku | Mechanical listing from XR design doc. |
+| `map-modalities` | sonnet | Judgment on independent-modality definition. |
+| `comfort-audit` | sonnet | Reasoning over user-sensitivity profiles. |
+| `assistive-user-session` | opus | Human-led; agent assists with transcript synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/alt-input-matrix.ts` | TypeScript auditor: each interaction must have ≥2 modalities and seated-mode flag |
+| `templates/spatial-a11y-report.md` | Markdown report skeleton with interaction matrix + comfort options + tester log |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-accessibility.py` | Validate the audit JSON against the schema | Pre-release gate; pre-submission to App Store / Horizon |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[spatial-interaction-patterns]]
+- [[vr-design-patterns]]
+- [[immersive-design-principles]]
+- [[testing-with-assistive-technology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on platform (visionOS / Quest / WebXR), input model (hand-track-primary / controller-primary), and required comfort policy. Each leaf references a rule in `01-core-rules.xml` and dictates whether seated-mode toggling, captioning defaults, or assistive-tester recruitment must escalate.

@@ -1,22 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="spatial-computing-overview Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Spatial Computing Overview Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the platform-selection decision record produced by this methodology. Captures use-case, audience, content-type, per-platform scores, and primary + fallback recommendation.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/spatial-computing-overview.json",
+  "type": "object",
+  "required": ["__faion_header__", "decision_date", "use_case", "audience", "content_types", "scoring", "recommendation"],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": ["methodology", "version", "produces"],
+      "properties": {
+        "methodology": {"const": "spatial-computing-overview"},
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "produces": {"const": "decision-record"}
+      }
+    },
+    "decision_date": {"type": "string", "format": "date"},
+    "use_case": {"enum": ["productivity", "entertainment", "training", "industrial", "social"]},
+    "audience": {"enum": ["consumer", "prosumer", "enterprise"]},
+    "content_types": {
+      "type": "array",
+      "items": {"enum": ["floating-windows", "cinematic-video", "dialogue-agent", "interactive-simulation", "3d-model-inspection", "active-gaming", "spatial-overlay"]},
+      "minItems": 1
+    },
+    "scoring": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["platform", "install_base", "sdk_maturity", "audience_fit", "content_type_fit", "store_constraints", "evidence_sources"],
+        "properties": {
+          "platform": {"enum": ["visionos", "quest", "psvr2", "hololens", "android-xr", "webxr"]},
+          "install_base": {"type": "integer", "minimum": 0, "maximum": 5},
+          "sdk_maturity": {"type": "integer", "minimum": 0, "maximum": 5},
+          "audience_fit": {"type": "integer", "minimum": 0, "maximum": 5},
+          "content_type_fit": {"type": "integer", "minimum": 0, "maximum": 5},
+          "store_constraints": {"type": "integer", "minimum": 0, "maximum": 5},
+          "evidence_sources": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "required": ["primary", "fallback", "rationale", "risk_notes"],
+      "properties": {
+        "primary": {"enum": ["visionos", "quest", "psvr2", "hololens", "android-xr", "webxr"]},
+        "fallback": {"type": "array", "items": {"enum": ["visionos", "quest", "psvr2", "hololens", "android-xr", "webxr"]}, "minItems": 1},
+        "rationale": {"type": "string", "minLength": 40},
+        "risk_notes": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {"methodology": "spatial-computing-overview", "version": "1.1.0", "produces": "decision-record"},
+  "decision_date": "2026-05-23",
+  "use_case": "productivity",
+  "audience": "prosumer",
+  "content_types": ["floating-windows", "3d-model-inspection"],
+  "scoring": [
+    {"platform": "visionos", "install_base": 3, "sdk_maturity": 4, "audience_fit": 5, "content_type_fit": 5, "store_constraints": 3, "evidence_sources": ["IDC 2025 Q4 AR/VR tracker", "Apple HIG visionOS"]},
+    {"platform": "quest",   "install_base": 5, "sdk_maturity": 5, "audience_fit": 3, "content_type_fit": 3, "store_constraints": 4, "evidence_sources": ["Meta Q4 2025 earnings", "Horizon Store policy"]},
+    {"platform": "webxr",   "install_base": 4, "sdk_maturity": 3, "audience_fit": 3, "content_type_fit": 3, "store_constraints": 5, "evidence_sources": ["caniuse webxr 2026-Q1"]}
+  ],
+  "recommendation": {
+    "primary": "visionos",
+    "fallback": ["webxr"],
+    "rationale": "Productivity prosumer fit + floating-windows content best matches visionOS; WebXR fallback de-risks single-platform exposure.",
+    "risk_notes": ["Vision Pro install base is small in 2026; require WebXR fallback to broaden reach."]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "use_case": "productivity",
+  "scoring": [{"platform": "visionos", "install_base": 5}],
+  "recommendation": {"primary": "visionos"}
+}
+]]></code>
+    <note>Missing __faion_header__; only one platform scored; missing audience / content_types; recommendation lacks fallback + rationale + risk_notes.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Single platform in `scoring` array — must score at least 2 for comparison.</item>
+      <item>`evidence_sources` containing only pre-2024 references.</item>
+      <item>`recommendation.fallback` empty.</item>
+      <item>`risk_notes` empty when primary is small-install-base.</item>
     </list>
   </section>
+
+  <reference path="templates/decision-record.md">Decision-record skeleton</reference>
+  <reference path="templates/platform-comparison-matrix.csv">2026 platform snapshot</reference>
+  <reference path="scripts/validate-spatial-computing-overview.py">Validator script</reference>
 </text>

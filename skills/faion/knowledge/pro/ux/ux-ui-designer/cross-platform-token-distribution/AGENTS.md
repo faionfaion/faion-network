@@ -2,74 +2,98 @@
 slug: cross-platform-token-distribution
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design tokens define a system's colors, spacing, typography, and other design properties.
-content_id: "56e9659da11bd971"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Style-Dictionary-driven token distribution pipeline emitting CSS, iOS Swift, Android XML, and Tailwind config from a single W3C DTCG source.
+content_id: "dc38b103b3233fdb"
+complexity: medium
+produces: config
+est_tokens: 4400
 tags: [design-tokens, design-systems, cross-platform, token-distribution, style-dictionary]
 ---
 # Cross-Platform Token Distribution
 
 ## Summary
 
-**One-sentence:** Design tokens define a system's colors, spacing, typography, and other design properties.
+**One-sentence:** Produces a Style-Dictionary-driven token distribution pipeline emitting CSS, iOS Swift, Android XML, and Tailwind config from a single W3C DTCG source.
 
-**One-paragraph:** Design tokens define a system's colors, spacing, typography, and other design properties. Distributing tokens across platforms requires a transformation pipeline that converts a single source (usually Figma or JSON) into platform-specific outputs: CSS variables for web, Swift structs for iOS, XML resources for Android, and JavaScript objects for React Native. This methodology establishes tooling and process to keep tokens synchronized across all platforms.
+**One-paragraph:** Design tokens are the single source of truth for color/spacing/typography across platforms. The pipeline reads W3C DTCG JSON, transforms platform-specific (web CSS variables / iOS Swift / Android XML / Tailwind utility config), and emits per-platform bundles with semantic naming preserved. Versioned per-token; CI lints for divergence; designers and devs edit only the canonical source.
+
+**Ефективно для:**
+
+- Multi-platform продукт (web + iOS + Android) — single source of truth.
+- Tailwind+CSS variables: один pipeline emit обидва.
+- Avoid drift коли designer змінює primary color у Figma а dev забуває.
+- Theming (light/dark/brand variants) з одного канонічного джерела.
 
 ## Applies If (ALL must hold)
 
-- Single source of truth for design tokens that ship to Web (CSS/SCSS), iOS (Swift/UIKit/SwiftUI), Android (XML/Compose), React Native.
-- Replacing hand-maintained brand colors/spacing/type scales scattered across repos.
-- Wiring Figma tokens into the repo via Tokens Studio, Specify, or Supernova plugins for designer-driven updates.
-- Adding theming (light/dark/high-contrast) and brand variants without per-platform forks or duplication.
-- Teams with a versioning and CI culture that can enforce token consistency across release cycles.
+- Product ships to >=2 platforms requiring token sync.
+- W3C DTCG JSON is the source of truth.
+- Style Dictionary (or equivalent transform) is acceptable in the build pipeline.
 
 ## Skip If (ANY kills it)
 
-- One platform only and one product — Style Dictionary overhead is not worth the complexity for a single target.
-- Tokens that are not values (animation easing curves, motion specs, temporal properties) — use platform-native specs instead.
-- Highly dynamic runtime theming driven by API responses — use a runtime tokens service instead of static files.
-- A team without a versioning and CI culture — token drift is worse than no system when the system is not enforced.
+- Single-platform web-only product — direct CSS variables suffice.
+- No design system formalised — apply design-tokens-fundamentals first.
+- Codeless prototype — pipeline overkill.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Canonical tokens JSON | W3C DTCG | design system |
+| Target platforms list | list (web/iOS/Android/Tailwind) | product brief |
+| Style Dictionary config | JSON | this methodology template |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[design-tokens-fundamentals]] | Three-tier (primitive/semantic/component) architecture this distributes |
+| [[w3c-design-tokens-standard]] | DTCG spec underpins the source |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tokens.json` | Canonical W3C DTCG tokens skeleton (primitive + semantic + component layers) |
+| `templates/sd-config.json` | Style Dictionary config defining per-platform transforms + output paths |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cross-platform-token-distribution.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[design-tokens-fundamentals]]
+- [[w3c-design-tokens-standard]]
+- [[design-system-success-factors]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

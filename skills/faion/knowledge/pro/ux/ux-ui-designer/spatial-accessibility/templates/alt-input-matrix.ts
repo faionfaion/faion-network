@@ -1,6 +1,8 @@
-// alt-input-matrix.ts — spatial accessibility: alternative input modality auditor
-// Input: list of spatial interactions with their supported modalities
-// Output: pass count + gaps (interactions missing required alternative count)
+// purpose: alternative-input-modality auditor for spatial interactions
+// consumes: list of {name, primary, supports, seatedCompatible} interactions
+// produces: AuditResult with pass count + gaps (missing modalities / seated issue)
+// depends-on: content/01-core-rules.xml two-modalities-required + seated-mode-parity rules
+// token-budget-impact: ~300 tokens when loaded as context
 
 type Modality = "gaze" | "voice" | "hand" | "controller" | "switch";
 

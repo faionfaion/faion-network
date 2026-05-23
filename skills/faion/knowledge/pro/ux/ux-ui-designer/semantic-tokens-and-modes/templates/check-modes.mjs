@@ -1,6 +1,8 @@
-// check-modes.mjs — CI gate for semantic token mode coverage
-// Fails the build if any semantic token is missing a value in any required mode
-// Input: tokens/semantic.json (W3C DTCG format with $value per mode as object)
+// purpose: CI gate that fails build if any semantic token is missing a mode value
+// consumes: tokens/semantic.json in DTCG format with per-mode $value object
+// produces: exit-1 on any missing mode value, exit-0 otherwise
+// depends-on: content/01-core-rules.xml mode-coverage-required rule
+// token-budget-impact: ~300 tokens when loaded as context
 // Usage: node check-modes.mjs [tokens/semantic.json] [light,dark,hc]
 import { readFileSync } from 'node:fs';
 

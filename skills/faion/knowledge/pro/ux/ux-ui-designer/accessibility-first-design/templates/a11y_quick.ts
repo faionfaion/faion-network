@@ -1,41 +1,20 @@
-// a11y_quick.ts — WCAG contrast ratio calculator + touch-target validator
-// No runtime dependencies. Import and call directly.
+// purpose: TypeScript contrast calc + token-pair checker
+// consumes: color pair (fg, bg)
+// produces: {ratio, pass}
+// depends-on: stdlib only
+// token-budget-impact: ~150 imported
 
-type RGB = [number, number, number];
-
-/** Relative luminance per WCAG 2.x (IEC 61966-2-1 sRGB). */
-function luminance([r, g, b]: RGB): number {
-  const linearize = (v: number) => {
-    v /= 255;
-    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
+export function relativeLuminance(hex: string): number {
+  const c = hex.replace('#', '');
+  const rgb = [parseInt(c.slice(0,2),16), parseInt(c.slice(2,4),16), parseInt(c.slice(4,6),16)].map(v => v/255);
+  const lin = rgb.map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+  return 0.2126*lin[0] + 0.7152*lin[1] + 0.0722*lin[2];
 }
-
-/** WCAG contrast ratio between two RGB colors. Range: 1–21. */
-export function contrast(a: RGB, b: RGB): number {
-  const [L1, L2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (L1 + 0.05) / (L2 + 0.05);
+export function contrast(fg: string, bg: string): number {
+  const [l1, l2] = [relativeLuminance(fg), relativeLuminance(bg)].sort((a,b)=>b-a);
+  return (l1+0.05)/(l2+0.05);
 }
-
-type Level = "AA" | "AAA";
-type Size = "body" | "large";
-
-/** Check if a contrast ratio meets the WCAG threshold for level + text size. */
-export function meetsWcag(ratio: number, level: Level, size: Size): boolean {
-  const thresholds: Record<Level, Record<Size, number>> = {
-    AA:  { body: 4.5, large: 3.0 },
-    AAA: { body: 7.0, large: 4.5 },
-  };
-  return ratio >= thresholds[level][size];
+export function pass(fg: string, bg: string, kind: 'body'|'large'|'non-text'): boolean {
+  const r = contrast(fg, bg);
+  return kind === 'body' ? r >= 4.5 : r >= 3;
 }
-
-/** Check WCAG 2.2 SC 2.5.8 touch target (44x44 CSS px minimum). */
-export function targetOk(widthPx: number, heightPx: number): boolean {
-  return widthPx >= 44 && heightPx >= 44;
-}
-
-// Example:
-// const ratio = contrast([255, 255, 255], [117, 117, 117]); // → ~4.48
-// meetsWcag(ratio, "AA", "body"); // → false (4.48 < 4.5 fails by 0.02)
-// targetOk(44, 44); // → true

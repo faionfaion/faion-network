@@ -2,76 +2,101 @@
 slug: spatial-computing-overview
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Spatial computing blends digital content with physical space through AR, VR, and MR.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a platform-selection recommendation comparing 2026 XR/AR/VR/MR platforms (visionOS, Quest, PSVR2, HoloLens, Android XR, WebXR) against use-case, install base, and SDK constraints.
 content_id: "010b8c61801ce015"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
 tags: [spatial-computing, ar, vr, mr, xr, visionos, android-xr, quest, platform-selection]
 ---
 # Spatial Computing Overview: Platform Landscape and Selection Workflow (2026)
 
 ## Summary
 
-**One-sentence:** Spatial computing blends digital content with physical space through AR, VR, and MR.
+**One-sentence:** Produces a defensible platform-selection decision record for a spatial product, comparing visionOS / Quest / PSVR2 / HoloLens / Android XR / WebXR on install base, SDK constraints, content type fit, and 2026 platform deltas.
 
-**One-paragraph:** Spatial computing blends digital content with physical space through AR, VR, and MR. This methodology gives an autonomous agent a concrete, paste-ready workflow to evaluate the 2026 platform landscape and produce a defensible platform-selection recommendation in a single pass.
+**One-paragraph:** Spatial computing blends digital content with physical space through AR, VR, and MR. Choosing the wrong platform early forces an expensive port or a stalled launch. This methodology drives an agent through a paste-ready decision workflow: classify the use case (productivity / entertainment / training / industrial), score each candidate platform on install base + SDK maturity + audience fit + content-type fit, and emit a versioned `decision-record` JSON listing primary + fallback platforms with cited evidence. 2026 deltas (Vision Pro v2 mass shift, Android XR debut, Quest 3S install-base growth, Pico exits) drive selection.
+
+**Ефективно для:**
+
+- Pre-funding decisions on XR product: which platform first, which second.
+- Translating a 2D mobile / web product to a spatial modality where install-base + ecosystem must justify ROI.
+- Multi-platform XR strategy with WebXR + native combinations.
+- Producing a decision record auditable by an investor or steering committee.
 
 ## Applies If (ALL must hold)
 
-- User asks: "Which XR/AR/VR/spatial platform should we build on?"
-- User asks for a "spatial app", "Vision Pro app", "Quest app", "AR app", "MR app", or "headset app" without naming the platform.
-- Task involves designing or scoping a new application targeting head-mounted displays (HMDs) in 2025/2026.
-- Evaluating market opportunity, install base, or ecosystem before committing to an SDK.
-- Planning a multiplatform XR strategy (e.g. WebXR + native + Unity).
-- Translating a 2D mobile/web product to a spatial modality.
+- Target use case involves head-mounted displays (HMDs) in 2025/2026.
+- No SDK has been committed yet; the decision is still open.
+- A stakeholder will read and sign the decision-record artefact.
 
 ## Skip If (ANY kills it)
 
-- Optimizing existing 2D mobile/desktop applications — use standard mobile or desktop UX methodologies.
-- Projects with no XR/AR/VR component or vision — this overview is not applicable.
-- Pre-2024 legacy VR knowledge tasks — platforms and guidelines (visionOS, Horizon OS, Android XR) have changed; consult vendor docs directly.
-- Internal hack-week prototypes with no commercial intent — the platform-selection overhead exceeds the value.
-- Hardware engineering questions (optics, SLAM, compute) — out of scope; consult hardware specs.
+- Existing platform commit already made — use platform-specific patterns instead.
+- Internal hack-week prototype with no commercial intent — overhead exceeds value.
+- Pre-2024 VR knowledge tasks — platform landscape has changed; consult vendor docs.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Use-case description | Markdown brief | PM / founder |
+| Target audience profile | persona doc | research |
+| Content type list | list (3D models / video / dialogue / interactive scene) | design |
+| Budget + team skills | spreadsheet | engineering manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[spatial-ux-fundamentals]] | Provides the field-zone vocabulary referenced by content-type fit |
+| [[spatial-design-tools]] | Tool-chain implications of the platform choice |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: cite-2026-data, score-on-evidence, primary-plus-fallback, content-type-fit, audience-fit | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for decision-record + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: stale-data, founder-fanboy, single-platform-lock, ignoring-content-fit | 700 |
+| `content/04-procedure.xml` | essential | 5-step decision procedure | 900 |
+| `content/05-examples.xml` | essential | Worked example: productivity tool selecting visionOS primary + WebXR fallback | 600 |
+| `content/06-decision-tree.xml` | essential | Tree: use-case → audience → content-type → platform shortlist | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-use-case` | haiku | Bucket from a small enum. |
+| `score-platforms` | sonnet | Multi-criteria reasoning with cited evidence. |
+| `draft-decision-record` | sonnet | Structured output with justification. |
+| `red-team-decision` | opus | Adversarial review by a second agent. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | Decision-record skeleton with platform-scoring table + rationale + risks |
+| `templates/platform-comparison-matrix.csv` | 2026 platform snapshot CSV for scoring |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-computing-overview.py` | Validate decision-record JSON against the schema | Before committing the decision record |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[spatial-design-tools]]
+- [[spatial-ux-fundamentals]]
+- [[enterprise-xr-applications]]
+- [[immersive-design-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on use-case category (productivity / entertainment / training / industrial) → audience scale (consumer / prosumer / enterprise) → content type (3D models / cinematic / dialogue / interactive) and emits a primary + fallback platform pair with required SDK and tooling. Each leaf references a rule from `01-core-rules.xml` so the decision-record carries cited justifications.

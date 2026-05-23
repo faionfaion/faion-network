@@ -2,73 +2,97 @@
 slug: ar-design-patterns
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: AR must blend seamlessly with the real world.
-content_id: "f87d0aa0ebdaf898"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an AR interaction spec covering placement, occlusion-aware UI, gesture grammar, lighting estimation, and reset-on-track-loss for handheld + headset AR apps.
+content_id: "bf7adc464ed95c66"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [ar, design, spatial-computing, placement, accessibility]
 ---
 # AR Design Patterns
 
 ## Summary
 
-**One-sentence:** AR must blend seamlessly with the real world.
+**One-sentence:** Produces an AR interaction spec covering placement, occlusion-aware UI, gesture grammar, lighting estimation, and reset-on-track-loss for handheld + headset AR apps.
 
-**One-paragraph:** AR must blend seamlessly with the real world. Design context-aware AR experiences with surface detection, object recognition, and placement strategies that respect physical boundaries.
+**One-paragraph:** AR design patterns blend digital content with the real world: stable placement via plane detection or anchors, occlusion-aware UI that respects real-world depth, gesture grammar consistent across iOS ARKit / Android ARCore / WebXR, lighting estimation for material realism, and a reset-on-track-loss path so users never see jittering or floating UI. Output is a per-screen interaction spec.
+
+**Ефективно для:**
+
+- Handheld AR (iOS/Android) — placement + gesture spec до імплементації.
+- AR overlays для field-service / remote-assistance: occlusion-aware UI.
+- Cross-platform AR app: уніфікувати gesture grammar між ARKit/ARCore/WebXR.
+- Lighting estimation для realism — matte vs glossy materials.
 
 ## Applies If (ALL must hold)
 
-- Designing handheld AR (ARKit/ARCore) or headset AR (Vision Pro, Quest passthrough, HoloLens) experiences.
-- Use cases: navigation overlays, product visualization (e-commerce), training/maintenance, shared annotations, contextual data labels.
-- Defining placement strategies (surface detection, object recognition, world anchoring) and content scale rules.
-- Authoring guardrails for "respect reality": occlusion, lighting integration, safe boundaries.
+- Building an AR experience on ARKit, ARCore, WebXR, or a unified runtime (Unity AR Foundation).
+- Users interact with virtual content placed in physical space.
+- Cross-platform consistency or specific platform's interaction grammar matters.
 
 ## Skip If (ANY kills it)
 
-- 2D mobile features that only need a camera (QR scanning, barcode lookup)—AR overhead is unjustified.
-- Marketing one-shots without a follow-up plan—AR demos rot when SDK versions change.
-- Fully immersive VR—different ergonomic rules; use vr-design-patterns or spatial-design-tools.
-- Public unsupervised contexts where safety / occlusion of real hazards (stairs, traffic) is unmanageable.
+- Pure VR — different design constraints (use vr-design-patterns).
+- Single-shot AR filter (face effect) — overkill spec for a 5-second moment.
+- Marker-only AR with no plane/anchor tracking — placement spec is moot.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target runtime | ARKit | ARCore | WebXR | Unity | product brief |
+| Screen inventory | list | product brief |
+| Gesture grammar baseline | table | platform HIG |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[immersive-design-principles]] | Comfort/presence baseline this builds on |
+| [[spatial-ux-fundamentals]] | Reference frames + spatial affordances |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ar-screen-spec.md` | Per-screen AR interaction spec with anchoring/occlusion/lighting/grammar |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ar-design-patterns.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[immersive-design-principles]]
+- [[vr-design-patterns]]
+- [[spatial-ui-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

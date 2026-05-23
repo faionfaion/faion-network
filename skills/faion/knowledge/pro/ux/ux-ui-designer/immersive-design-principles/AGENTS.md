@@ -2,72 +2,97 @@
 slug: immersive-design-principles
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Immersive experiences (AR/VR/MR/XR) balance presence with comfort.
-content_id: "dd6f3c78683d296b"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an immersive (AR/VR/MR/XR) experience spec balancing presence + comfort with concrete budgets for FOV usage, locomotion, session length, vestibular safety, and accessibility.
+content_id: "135b80b9e0974669"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [immersive-design, vr, ar, mr, xr, comfort]
 ---
 # Immersive Design Principles
 
 ## Summary
 
-**One-sentence:** Immersive experiences (AR/VR/MR/XR) balance presence with comfort.
+**One-sentence:** Produces an immersive (AR/VR/MR/XR) experience spec balancing presence + comfort with concrete budgets for FOV usage, locomotion, session length, vestibular safety, and accessibility.
 
-**One-paragraph:** Immersive experiences (AR/VR/MR/XR) balance presence with comfort. Four immersion levels exist: passthrough (real + overlays), blended (mixed real/virtual), immersive (full virtual), and portal (windows into virtual). Design with depth, realistic motion physics, environmental awareness, and smooth transitions. Address motion sickness, disorientation, eye strain, and arm fatigue via fixed reference points, grounding, proper depth of field, and rest positions. Test with real headsets and diverse user populations (glasses-wearers, 50+, first-time HMD users) because team tolerance is unrepresentative.
+**One-paragraph:** Immersive experiences balance presence (feeling there) with comfort (no nausea, no fatigue). Concrete budgets: FOV target 90-110°, locomotion vestibular-safe (teleport, smooth with vignette), session length capped by use case (consumer 15-30 min, enterprise 25 min + break), spatial audio for presence, accessibility paths (seated, single-handed, mono-vision, low-vision). The spec lists every budget + accessibility path + comfort gate.
+
+**Ефективно для:**
+
+- AR/VR/MR/XR продукт з longer-than-30s session — budgets обов'язкові.
+- Locomotion design: teleport vs smooth з vignette — vestibular safety.
+- Spatial audio для presence — і a11y fallback на subtitles.
+- Seated / single-handed / low-vision paths — а11y від day 1.
 
 ## Applies If (ALL must hold)
 
-- Designing for AR/VR/MR headsets (Vision Pro, Quest 3, Pico 4, HoloLens 2) where immersion level must be deliberate.
-- Mixed-reality enterprise tools (training, remote assistance, surgery planning) where over-immersion is a safety risk.
-- Spatial gaming and entertainment where immersion-comfort tradeoff drives session length.
-- Designing transitions between passthrough and fully-immersive states (the moment most discomfort happens).
+- Designing an immersive experience longer than 30 seconds.
+- Locomotion or sustained interaction is in scope.
+- User population includes a non-trivial accessibility tail.
 
 ## Skip If (ANY kills it)
 
-- 2D mobile / web flows without spatial component.
-- Simple AR effects (face filters, product try-on snippets) — overkill for one-shot interactions.
-- Marketing-only "VR demo" projects with no real user-research budget; principles are wasted without testing.
+- Short AR filter or quick scene with no locomotion — overkill spec.
+- Pure passive 360 video — use video UX, not immersive principles.
+- Existing system with established comfort patterns — apply as audit, not rewrite.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Use case + audience | consumer / enterprise / education | product brief |
+| Target hardware | headset list | platform |
+| Accessibility audit | spatial-accessibility methodology output | research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[spatial-accessibility]] | Accessibility paths sourced here |
+| [[ar-design-patterns]] | AR-specific patterns when AR is in scope |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/immersive-spec.md` | Immersive experience spec covering locomotion + comfort + a11y + FOV |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-immersive-design-principles.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[enterprise-xr-applications]]
+- [[ar-design-patterns]]
+- [[vr-design-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

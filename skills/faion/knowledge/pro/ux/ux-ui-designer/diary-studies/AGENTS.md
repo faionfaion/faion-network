@@ -2,74 +2,101 @@
 slug: diary-studies
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A longitudinal UX research method where participants self-record experiences in the moment over days or weeks.
-content_id: "70bb49e46c25979e"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a diary-study report from longitudinal self-recorded entries over days/weeks with daily-and-event-triggered prompts + reminder cadence + analysis.
+content_id: "7631cfd85efa44f0"
+complexity: medium
+produces: report
+est_tokens: 4500
 tags: [user-research, longitudinal, diary-studies, behavior-change, qualitative]
 ---
 # Diary Studies
 
 ## Summary
 
-**One-sentence:** A longitudinal UX research method where participants self-record experiences in the moment over days or weeks.
+**One-sentence:** Produces a diary-study report from longitudinal self-recorded entries over days/weeks with daily-and-event-triggered prompts + reminder cadence + analysis.
 
-**One-paragraph:** A longitudinal UX research method where participants self-record experiences in the moment over days or weeks. Three types: interval-contingent (fixed schedule), event-contingent (on trigger), signal-contingent (random prompt). Cap entry time at 5 minutes; entries exceeding that spike attrition. Recruit 30% over target to absorb 20–40% dropout. Run a 3-day pilot with 2 participants before launch. Lab studies capture a moment; diary studies capture behavior change over time — habit formation, onboarding progression, context switching, churn precursors. These patterns are invisible to any single-session method.
+**One-paragraph:** Longitudinal UX research where participants self-record experiences in the moment across days or weeks. Two entry modes: daily-reflection (fixed time) and event-triggered (after specific actions). Reminder cadence is critical — without scheduled nudges, participation drops 40-60% by day 3. Analysis groups entries by participant + theme; output is a longitudinal report tracking behaviour change + breakdown patterns over time.
+
+**Ефективно для:**
+
+- Behaviour change over time (3-30 днів) — lab session не покаже.
+- Real-world context для habit/sleep/exercise/medication products.
+- Capture episodic 'aha moments' що зникають з memory before next interview.
+- Mobile-first продукти де момент-of-use є critical.
 
 ## Applies If (ALL must hold)
 
-- Studying longitudinal behavior: onboarding, habit formation, churn precursors.
-- Multi-device or context-switching usage scattered across days.
-- Pre-redesign discovery for products with dispersed usage (fitness, journaling, sleep, medication).
-- Validating retention drivers — what triggers re-engagement vs. abandonment.
-- B2B day-in-the-life research where workflows span weeks.
+- Study period 3-30 days where behaviour changes or accumulates context.
+- Participants can self-record in their daily flow (mobile app / SMS / web form).
+- Reminder infrastructure available (push notifications, SMS).
 
 ## Skip If (ANY kills it)
 
-- Quick directional input on a feature — use intercept survey or unmoderated test instead.
-- One-time or rare events unlikely to surface within study duration.
-- Fully synchronous tasks where in-context observation is more valuable (use contextual inquiry).
-- Highly regulated domains where ongoing self-reporting risks PII/PHI leak.
+- Single-session insight — use interviews instead.
+- Behaviour-sensitive contexts (mental health journaling, safety) — diary changes the behaviour.
+- Need quantitative significance — diaries are qualitative; use surveys.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recruitment plan | criteria + n>=8 per segment | research |
+| Entry templates | daily + event-triggered | this methodology template |
+| Reminder schedule | cron-like cadence | this methodology |
+| Consent + data-retention agreement | PDF | legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[contextual-inquiry]] | Alternative when on-site observation is feasible |
+| [[personas]] | Diary themes refine personas |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example with note | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `primary-analysis` | sonnet | Domain-specific judgement. |
+| `structured-output-assembly` | sonnet | Schema-conforming JSON build. |
+| `validate` | haiku | Deterministic schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/study-plan.md` | Diary study plan template covering recruitment, prompts, cadence, analysis |
+| `templates/entry-daily.md` | Daily reflection entry template |
+| `templates/entry-event.md` | Event-triggered entry template |
+| `templates/diary-reminders.py` | Python reminder scheduler emitting push + SMS based on participant timezone |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-diary-studies.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[contextual-inquiry]]
+- [[focus-groups]]
+- [[personas]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

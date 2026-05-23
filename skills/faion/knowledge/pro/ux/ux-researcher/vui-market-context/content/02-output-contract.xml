@@ -1,22 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="vui-market-context Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="VUI Market Context Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for vui_market_brief.json — the structured report this methodology produces.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/vui-market-context.json",
+  "type": "object",
+  "required": ["refreshed_at", "model", "data", "platforms"],
+  "properties": {
+    "refreshed_at": {"type": "string", "format": "date"},
+    "model": {"type": "string"},
+    "data": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["metric", "value", "year", "source_url", "geo", "denominator"],
+        "properties": {
+          "metric": {"type": "string", "minLength": 5},
+          "value": {"type": "string"},
+          "year": {"type": "integer", "minimum": 2023},
+          "source_url": {"type": "string", "format": "uri"},
+          "geo": {"type": "string", "minLength": 2},
+          "denominator": {"enum": ["smart-speaker-households", "voice-assistant-users", "voice-search-query-share"]},
+          "confidence": {"enum": ["high", "medium", "low"]}
+        }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "reach_by_geo", "sdk_health"],
+        "properties": {
+          "name": {"enum": ["Alexa", "Google Assistant", "Siri", "Bixby", "Custom LLM-VUI"]},
+          "reach_by_geo": {"type": "object"},
+          "sdk_health": {"enum": ["active", "maintained", "deprecated"]}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "refreshed_at": "2026-05-23",
+  "model": "claude-opus-4-7",
+  "data": [
+    {"metric": "smart-speaker household penetration", "value": "55%", "year": 2025, "source_url": "https://www.edisonresearch.com/infinite-dial-2025/", "geo": "US", "denominator": "smart-speaker-households", "confidence": "high"},
+    {"metric": "voice-search share of internet queries", "value": "20%", "year": 2025, "source_url": "https://www.statista.com/topics/4642/voice-assistants/", "geo": "global", "denominator": "voice-search-query-share", "confidence": "medium"},
+    {"metric": "US adults using voice assistant", "value": "62%", "year": 2025, "source_url": "https://www.pewresearch.org/internet/fact-sheet/mobile/", "geo": "US", "denominator": "voice-assistant-users", "confidence": "high"},
+    {"metric": "voice assistants in use globally", "value": "8.4B", "year": 2025, "source_url": "https://www.voicebot.ai/voice-assistant-statistics/", "geo": "global", "denominator": "voice-assistant-users", "confidence": "medium"}
+  ],
+  "platforms": [
+    {"name": "Alexa", "reach_by_geo": {"US": 0.7}, "sdk_health": "maintained"},
+    {"name": "Google Assistant", "reach_by_geo": {"global": 0.6}, "sdk_health": "maintained"},
+    {"name": "Siri", "reach_by_geo": {"iOS-users": 0.95}, "sdk_health": "maintained"},
+    {"name": "Bixby", "reach_by_geo": {"KR": 0.4}, "sdk_health": "maintained"},
+    {"name": "Custom LLM-VUI", "reach_by_geo": {"any": 1.0}, "sdk_health": "active"}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "data": [
+    {"metric": "voice usage", "value": "62%", "year": 2025}
+  ]
+}
+]]></code>
+    <note>Missing refreshed_at, model, platforms; data item missing source_url, geo, denominator; only 1 metric (min 4).</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>A `data[].value` without a `geo` field — scope-less stats are non-citable.</item>
+      <item>A `data[]` item where `source_url` host is not in the trusted-source allowlist.</item>
+      <item>Brief where `today - refreshed_at` &gt; 90 days at publish time.</item>
+      <item>`platforms` array missing the "Custom LLM-VUI" entry.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-vui-market-context.py">Validator script</reference>
 </text>

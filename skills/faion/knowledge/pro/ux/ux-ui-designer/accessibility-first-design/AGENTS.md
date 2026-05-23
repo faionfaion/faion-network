@@ -2,72 +2,98 @@
 slug: accessibility-first-design
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A design-phase methodology that prevents 70-80% of WCAG 2.
-content_id: "041bb0f6779595cb"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Design-phase methodology preventing 70-80% of WCAG 2.2 AA violations via token-grounded color/contrast, semantic-first components, and a11y handoff annotations baked into the design system.
+content_id: "46b1c92f70bb59fd"
+complexity: deep
+produces: spec
+est_tokens: 4400
 tags: [wcag, accessibility, design-system, tokens, inclusive-design]
 ---
 # Accessibility-First Design
 
 ## Summary
 
-**One-sentence:** A design-phase methodology that prevents 70-80% of WCAG 2.
+**One-sentence:** Design-phase methodology preventing 70-80% of WCAG 2.2 AA violations via token-grounded color/contrast, semantic-first components, and a11y handoff annotations baked into the design system.
 
-**One-paragraph:** A design-phase methodology that prevents 70-80% of WCAG 2.2 issues before engineering begins. Enforce contrast ratios (4.5:1 body, 3:1 large/UI), touch targets (44x44px), visible focus states, semantic HTML structure, and motion controls at the design token and component-spec level. Issues caught at design time cost 5-10x less than post-launch remediation.
+**One-paragraph:** Audit-and-fix is reactive. Accessibility-first design encodes constraints into design tokens (4.5:1 body / 3:1 large / 3:1 non-text), uses semantic component archetypes (button vs link vs combobox) at the design stage, annotates role/name/state/keyboard/focus per layer, and pairs with a11y-annotation-pattern-library + design-tokens-fundamentals. Outcome: most WCAG defects never enter the codebase. Output is a design-system spec listing every token, archetype, and constraint with the SCs it prevents.
+
+**Ефективно для:**
+
+- Greenfield design system: запекти contrast/spacing/motion constraints у tokens.
+- Solo designer без a11y-аудитора — prevention > expensive remediation.
+- Bake WCAG SCs у component archetypes на етапі design, не в код.
+- Reduced motion / dark mode / locale — variants з контрактом WCAG-сумісності.
 
 ## Applies If (ALL must hold)
 
-- Starting a new product, design system, or major redesign.
-- Establishing design-token contrast rules and focus-state baselines for a component library.
-- Onboarding new designers — the checklist is the working agreement.
-- Pre-handoff QA: validating Figma frames before engineering begins.
+- New design system or major component-library rework is in progress.
+- Tokens, archetypes, and patterns are authored before component code.
+- Product targets WCAG 2.1 AA or 2.2 AA.
 
 ## Skip If (ANY kills it)
 
-- Pure code-fix sprints where designs are frozen — code-level a11y patterns (semantic HTML, ARIA, focus management) are the right tool.
-- Marketing landing pages with one-off visual gimmicks — apply principles but don't gate launch on WCAG 2.2 AAA.
-- When the design hasn't started — load design first; applying checklists too early constrains ideation.
+- Legacy product mid-lifecycle — use accessibility-evaluation for remediation.
+- Marketing-page one-off — heavy token system is overkill.
+- Native iOS/Android with platform-provided components — use platform a11y guidance.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brand palette | hex list | brand guidelines |
+| Typography scale | type ramp | design tokens |
+| Component archetype inventory | list | design system |
+| WCAG version target | 2.1 or 2.2 | product brief |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[design-tokens-fundamentals]] | Token architecture this methodology constrains |
+| [[a11y-annotation-pattern-library]] | Annotation patterns baked into the system |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: token-encoded-contrast, semantic-first-components, focus-visible-always, reduced-motion-baked, locale-aware-direction | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for design-system a11y spec | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: brand-overrides-contrast, outline-none-globally, motion-without-reduced-motion-variant | 700 |
+| `content/04-procedure.xml` | essential | 5 steps: tokens → archetypes → patterns → annotations → spec | 800 |
+| `content/05-examples.xml` | essential | Worked example: button + form-field tokens + archetype spec | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: design phase → prevention vs remediation | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `token-contrast-calc` | haiku | Deterministic WCAG contrast math. |
+| `archetype-mapping` | sonnet | Behaviour → archetype judgement. |
+| `system-spec-draft` | sonnet | Markdown spec assembly. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/a11y_quick.ts` | TypeScript contrast calculator + token-pair checker |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-accessibility-first-design.py` | Validate a11y-first design-system spec JSON | Pre-commit on tokens/components changes |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[design-tokens-fundamentals]]
+- [[a11y-annotation-pattern-library]]
+- [[accessibility-evaluation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

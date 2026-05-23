@@ -2,72 +2,102 @@
 slug: regulatory-compliance-2026
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Accessibility regulation landscape shifted April 2026 (ADA Title II Final Rule → WCAG 2.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an accessibility compliance report mapping product surfaces to ADA Title II + EAA + AODA + Section 508 obligations, with WCAG 2.1/2.2 AA conformance evidence and remediation backlog.
 content_id: "becb9815e2337741"
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [accessibility, compliance, wcag, ada, eaa, regulatory]
 ---
 # Regulatory Compliance 2026
 
 ## Summary
 
-**One-sentence:** Accessibility regulation landscape shifted April 2026 (ADA Title II Final Rule → WCAG 2.
+**One-sentence:** Produces an accessibility compliance report mapping product surfaces to ADA Title II + EAA + AODA + Section 508 obligations, with WCAG 2.1/2.2 AA conformance evidence and a dated remediation backlog.
 
-**One-paragraph:** Accessibility regulation landscape shifted April 2026 (ADA Title II Final Rule → WCAG 2.1 AA), June 2025 (EU Accessibility Act effective date), and ongoing (AODA, Section 508). Map your product surfaces (website, native app, kiosk, e-book) to applicable regulations. Document conformance against WCAG 2.1 AA minimum. Publish an accessibility statement with dated testing methodology, feedback channel, and remediation commitment. Schedule audits at least annually; flag every major release for incremental audit. Treat WCAG 2.2 AA as the design baseline even where 2.1 is the legal minimum — gap-closing later is more expensive. Avoid overlay widgets that claim to "auto-fix" a11y; they have lost cases in US courts. Train content authors — most violations enter via CMS, not engineering.
+**One-paragraph:** Accessibility regulation landscape shifted April 2026 (ADA Title II Final Rule → WCAG 2.1 AA), June 2025 (EU Accessibility Act effective date), and ongoing (AODA, Section 508). Map every product surface (web, native app, kiosk, e-book) to applicable regulations; document conformance against WCAG 2.1 AA as legal minimum but design to WCAG 2.2 AA. Publish a dated accessibility statement with concrete testing methodology (manual + automated + AT-user), a feedback channel, and remediation commitments. Audit annually + per major release. Treat overlay widgets as a litigation amplifier, not a fix. Most violations enter via CMS — train content authors.
+
+**Ефективно для:**
+
+- Pre-launch a11y audit для US/EU public site або mobile-app після April 2026 (ADA Title II) / June 2025 (EAA).
+- Drafting accessibility statement з testing-methodology + feedback channel + remediation timeline.
+- Mapping multi-surface product (web + iOS/Android + kiosk + e-book) до конкретних regulations.
+- Quarterly / annual a11y audit cycle + remediation backlog prioritization (deadline + risk).
 
 ## Applies If (ALL must hold)
 
-- Pre-launch a11y audit for a US/EU public-facing site or app (post-ADA April 2026 / EAA June 2025).
-- Drafting an accessibility statement and conformance documentation per WCAG 2.1/2.2 AA.
-- Mapping product surface area (web, native, kiosk, e-book) to specific regulations (ADA Title II, EAA, AODA, Section 508).
-- Quarterly/annual a11y audit cycle planning + remediation backlog.
+- Product surface includes a US- or EU-facing website, mobile app, kiosk, or e-book.
+- A regulatory deadline (ADA April 2026, EAA June 2025, AODA, Section 508) is active or imminent.
+- Legal/compliance owner exists who will sign off on the published accessibility statement.
 
 ## Skip If (ANY kills it)
 
-- Implementation-level a11y fixes — see `accessibility-evaluation`, `wcag-22-compliance`, `testing-with-assistive-technology`.
-- Privacy/data regulation (GDPR, CCPA, HIPAA) — different methodology.
-- Pure design tokens / visual contrast — covered in `accessibility-first-design`.
+- Implementation-level a11y fixes — use `accessibility-evaluation`, `wcag-22-compliance`, `testing-with-assistive-technology` instead.
+- Privacy/data regulation (GDPR, CCPA, HIPAA) — different methodology family.
+- Internal-only tooling not subject to public-accommodation rules — track risk, do not run a full audit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product surface inventory | Markdown table | PM / engineering |
+| Jurisdiction list | list of countries / states | legal / GTM |
+| Latest a11y audit (if any) | PDF / VPAT 2.x | prior vendor or in-house |
+| Test methodology declaration | Markdown | a11y lead |
+| Legal review owner | named individual | counsel |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[wcag-22-compliance]] | Source of the conformance criteria the report cites |
+| [[testing-with-assistive-technology]] | Defines the manual + AT-user testing required for credible conformance claims |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: jurisdiction-mapping, WCAG-baseline, statement-publication, methodology-evidence, overlay-prohibition, CMS-author-training | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for compliance-report artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: jurisdiction-blind-spot, checkbox-conformance, overlay-as-fix, statement-without-evidence | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: inventory → map → test → draft statement → legal review → publish | 1000 |
+| `content/05-examples.xml` | essential | Worked example: SaaS dashboard mapped to ADA + EAA with remediation backlog | 600 |
+| `content/06-decision-tree.xml` | essential | Tree: surface-type → jurisdiction → applicable regs → required conformance level | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `inventory-surfaces` | haiku | Mechanical listing from PM artefacts. |
+| `map-to-regulations` | sonnet | Jurisdictional reasoning + edge cases. |
+| `draft-statement` | sonnet | Public-facing language with legal sensitivity. |
+| `legal-review` | opus | Cross-jurisdiction risk synthesis; human sign-off mandatory. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/compliance-report.md` | Compliance-report skeleton with surface table + reg matrix + remediation backlog |
+| `templates/accessibility-statement.md` | Public accessibility statement with WCAG version, testing methodology, feedback channel, commitments |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-regulatory-compliance-2026.py` | Validate compliance-report JSON against the schema (required fields, jurisdictions, conformance level) | CI on every report change; pre-publication gate |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[wcag-22-compliance]]
+- [[testing-with-assistive-technology]]
+- [[ada-title-ii-compliance-2026]]
+- [[accessibility-first-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on product-surface type (web / native / kiosk / e-book) and user jurisdiction (US / EU / Ontario / federal-procurement), maps each combination to applicable regulations, and emits the required conformance level (2.1 AA legal minimum vs 2.2 AA design baseline). Every leaf references a rule from `01-core-rules.xml` so the agent knows which compliance behaviour is enforced.
