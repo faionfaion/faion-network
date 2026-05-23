@@ -3,78 +3,102 @@ slug: dormant-lead-reactivation
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Reactivation sequence for service-business dormant pipeline — past clients, lost proposals, nurture leads — 3-touch sequence per segment with explicit kill-rule and consent re-confirmation.
 content_id: "5e4a389171a579f4"
-summary: Dormant Lead Reactivation delivers a concrete, testable methodology that turns the recurring task of 'Quarterly portfolio rebalance (cash, clients, capacity)' into an auditable artefact, addressing the gap: Reactivation sequence specifically for service-business dormant pipelines
-tags: [marketing, pro, method, methodology]
+complexity: medium
+produces: spec
+est_tokens: 3600
+tags: [reactivation, dormant-leads, service-business, freelance, agency, lifecycle]
 ---
 # Dormant Lead Reactivation
 
 ## Summary
 
-**One-sentence:** Dormant Lead Reactivation delivers a concrete, testable methodology that turns the recurring task of 'Quarterly portfolio rebalance (cash, clients, capacity)' into an auditable artefact, addressing the gap: Reactivation sequence specifically for service-business dormant pipelines (past clients + lost proposals + nurture leads) — different beat from B2C reactivation.
+**One-sentence:** Reactivation sequence for service-business dormant pipeline — past clients, lost proposals, nurture leads — 3-touch sequence per segment with explicit kill-rule and consent re-confirmation.
 
-**One-paragraph:** Reactivation sequence specifically for service-business dormant pipelines (past clients + lost proposals + nurture leads) — different beat from B2C reactivation. Dormant Lead Reactivation closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Quarterly portfolio rebalance (cash, clients, capacity)' (p3-technical-freelancer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** B2C reactivation playbooks assume large lists + automated discounts. Service businesses (freelance + agency) have small pipelines where each name matters: past clients (high signal), lost proposals (medium), nurture leads (low). This methodology pins a 3-touch sequence per segment, each touch designed for the segment's prior context. Core rules: segments must not be conflated (past client ≠ lost proposal); each sequence has ≤3 touches before kill; first touch in non-EU jurisdictions re-confirms consent; every touch personalizes by referencing the prior interaction; outcomes are recorded (engaged / killed / pending) to feed the next quarter's plan.
+
+**Ефективно для:**
+
+- Freelancer / consultant — quarterly pipeline rebalance, 30-100 dormant contacts.
+- Agency — re-engage past clients after 6-12 month gap.
+- Service business with proposal pipeline — recover lost proposals after a quarter.
+- Pipeline audit — segment + score dormants before mass reactivation.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Quarterly portfolio rebalance (cash, clients, capacity)' (role: p3-technical-freelancer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Service business with a tracked CRM / spreadsheet pipeline (≥30 dormant contacts).
+- Quarterly portfolio rebalance (cash / clients / capacity) is a recurring ritual.
+- Owner has consent + recent contact data per contact.
+- Authority to send 1-to-few personalized emails (not bulk blasts).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- B2C business with large lists — use marketing automation, not this methodology.
+- No CRM / pipeline tracking — fix pipeline tracking first.
+- Contacts without consent for outbound (EU / UK / California etc.) — defer to legal.
+- Past clients with explicit "do not contact" status — never reactivate.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Dormant contact list | CSV / CRM export | CRM / spreadsheet |
+| Prior interaction per contact | timeline / notes | CRM |
+| Consent status (jurisdiction + opt-in date) | field | CRM |
+| Outcome log (engaged / killed / pending) | table | CRM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[freelance-pilot-pricing]] | Reactivation offer often anchors on pilot pricing. |
+| [[founder-led-qualification-rubric]] | Re-qualify dormants before deep effort. |
+| [[late-invoice-dunning-sequence]] | Adjacent tone pattern; different goal. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: segment-distinct, max-3-touches, consent-reconfirm-first-touch, prior-context-reference, outcome-recorded | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the reactivation sequence spec + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: segment → score → draft sequence → send touch 1 → record outcomes | 700 |
+| `content/05-examples.xml` | essential | Worked example: 47 dormant contacts segmented + 3 sequences drafted | 500 |
+| `content/06-decision-tree.xml` | essential | Tree: segment + consent + score → sequence variant | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `dormant_lead_reactivation_template_fill` | haiku | Template fill, no judgment |
-| `dormant_lead_reactivation_evidence_check` | sonnet | Bounded comparison + judgment |
-| `dormant_lead_reactivation_synthesis` | opus | Cross-input synthesis + final write-up |
+| `segment-and-score` | sonnet | Per-contact judgment with bounded inputs. |
+| `draft-touch-1-copy` | sonnet | Personalized copy, bounded by rules. |
+| `lint-consent-and-personalization` | haiku | Schema + token check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/reactivation-spec.json` | JSON example of one reactivation sequence spec matching the output contract |
+| `templates/sequence-touches.md` | Markdown skeleton for the 3-touch sequence per segment |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-dormant-lead-reactivation.py` | Validate the sequence spec JSON against the schema | After draft; before send |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `p3-technical-freelancer/Quarterly portfolio rebalance (cash, clients, capacity)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelance-pilot-pricing]]
+- [[founder-led-qualification-rubric]]
+- [[late-invoice-dunning-sequence]]
+- [[experiment-verdict-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by segment + consent + score to one of three sequence variants and pins the rule from `01-core-rules.xml`. Use it before drafting copy — wrong segment-to-sequence mapping is the most common failure.

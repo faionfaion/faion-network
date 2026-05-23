@@ -3,78 +3,98 @@ slug: founder-led-qualification-rubric
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "a70d99a327f1358d"
-summary: "Founder Led Qualification Rubric — testable methodology for growth, acquisition, content, GTM. Founders without sales background overqualify; a simple yes/no rubric prevents wasted proposal cycles."
-tags: [marketing, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Yes/no qualification rubric for founder-led sales — 5 binary checks (budget, authority, need, timeline, fit) gate every proposal cycle and prevent overqualification.
+content_id: "founder-qual-1"
+complexity: medium
+produces: rubric
+est_tokens: 3000
+tags: [sales, qualification, bant, founder-led, rubric]
 ---
 # Founder Led Qualification Rubric
 
 ## Summary
 
-**One-sentence:** Founder Led Qualification Rubric — testable methodology for growth, acquisition, content, GTM. Founders without sales background overqualify; a simple yes/no rubric prevents wasted proposal cycles.
+**One-sentence:** Yes/no qualification rubric for founder-led sales — 5 binary checks (budget, authority, need, timeline, fit) gate every proposal cycle and prevent overqualification.
 
-**One-paragraph:** Founder Led Qualification Rubric closes a known gap in marketing practice: Founders without sales background overqualify; a simple yes/no rubric prevents wasted proposal cycles. The methodology is anchored to the recurring activity 'Discovery call run (45 min) (role: p5-micro-agency-founder)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Founders without sales background overqualify, spending weeks on prospects who never close. This rubric forces 5 binary yes/no checks before proposal effort begins: budget confirmed (numeric), authority (decision-maker contacted), need (specific pain articulated), timeline (start date ≤ 90d), fit (ICP match). Core rules: every check is binary with evidence cited; 3+ no's auto-disqualifies; ambiguous checks default to no; results feed pipeline + kill-rule; weekly review batch-applies the rubric.
+
+**Ефективно для:**
+
+- Founder-led sales — overqualification protection.
+- Pipeline reviewer — uniform qualification across deals.
+- Inbound triage — 60-second decision before deeper effort.
+- Agency lead — same rubric applied across multiple prospects.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Discovery call run (45 min) (role: p5-micro-agency-founder)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Founder or team-of-one runs sales without a dedicated SDR/AE.
+- ≥3 new prospects/week reach the proposal-readiness stage.
+- Authority to disqualify deals exists at the rubric runner's level.
+- An ICP doc exists or can be drafted (1-page).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Mature sales team with their own qualification framework (MEDDIC, BANT formal).
+- Tiny inbound volume (&lt;1/week) — manual qualification fine.
+- Sales cycle &gt;12 months where 90-day timeline check is too tight.
+- No ICP defined — fix ICP first.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ICP doc (1 page) | doc | growth team |
+| Inbound queue with discovery notes | CRM / table | CRM |
+| Budget threshold + ACV target | spec | founder |
+| Disqualification log (prior quarter) | report | own ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[founder-deal-kill-rule]] | Downstream — disqualifies feed kill batch. |
+| [[freelance-pilot-pricing]] | Pilot pricing covers the 'no budget yet' bucket. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: five-binary-checks, evidence-per-check, three-no-auto-disqualify, ambiguous-defaults-no, weekly-batch-application | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for rubric + valid/invalid | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `founder_led_qualification_rubric_template_fill` | haiku | Template fill, no judgement |
-| `founder_led_qualification_rubric_evidence_check` | sonnet | Bounded comparison + judgement |
-| `founder_led_qualification_rubric_synthesis` | opus | Cross-input synthesis + final write-up |
+| `apply-checks` | sonnet | Per-check evidence judgment. |
+| `log-batch` | haiku | Template fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/qualification-rubric.json` | JSON example of one qualification run |
+| `templates/rubric-card.md` | Markdown skeleton for one qualification card |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-founder-led-qualification-rubric.py` | Validate one rubric JSON against the schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `Discovery call run (45 min) (role: p5-micro-agency-founder)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[founder-deal-kill-rule]]
+- [[freelance-pilot-pricing]]
+- [[proposal-from-discovery-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.

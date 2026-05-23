@@ -3,41 +3,99 @@ slug: freelance-rate-jump-tactics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-content_id: "69fe4d3f66454b63"
-summary: "Defensibly raise rates 30-50% inside a niche pivot via four staged moves: credential proof-building, anchor recalibration against the new niche, case-study sequencing that justifies the jump, and a graduated rollout that splits existing clients from new leads."
-tags: [marketing, pro, p3-freelancer, pricing, niche-pivot, rate-jump, positioning]
+summary: Defensibly raise rates 30-50% inside a niche pivot — credential proof-building, anchor recalibration, case-study sequencing, graduated rollout split between existing clients + new leads.
+content_id: "freelance-rate-jump-1"
+complexity: medium
+produces: spec
+est_tokens: 3400
+tags: [freelance, rates, pricing, rate-increase, niche-pivot]
 ---
 # Freelance Rate Jump Tactics
 
 ## Summary
 
-Faion's existing pricing-strategy content is generic and does not solve the freelancer's hardest pricing move: how to raise rate 30-50% inside an 8-12 week generalist-to-specialist pivot without losing every existing client or stalling lead flow. This methodology stages four moves: build credentialing artefacts (specialty case studies, certifications, niche-visible work) before any pricing change; recalibrate the personal anchor against the new niche's price band (not the old generalist band); sequence case studies in outbound so the higher number lands on already-warmed buyers; and roll out the new rate in two tiers — full rate for new leads from week 1, graduated migration for existing clients over 60-90 days. Each move has a measurable gate that stops the operator from announcing the new price before it can be defended.
+**One-sentence:** Defensibly raise rates 30-50% inside a niche pivot — credential proof-building, anchor recalibration, case-study sequencing, graduated rollout split between existing clients + new leads.
 
-## Applies If
+**One-paragraph:** After a niche pivot, freelancers often leave rate increases on the table because the existing client list anchors them to old rates. This methodology defines the 4-tactic rate-jump: credential proof-building (3+ named outputs in the new niche); anchor recalibration (research the new niche's median + p75); case-study sequencing (3 case studies showing measurable outcome); graduated rollout (existing clients on 90-day notice; new leads at new rate immediately). Core rules: every rate target cites the new niche's market band; existing clients get written notice ≥60 days; case studies underlying the jump are published; no retroactive billing changes.
 
-- The freelancer is mid-pivot or has completed a niche pivot in the last 8-12 weeks and now needs to monetise it.
-- The current rate is benchmarked to a generalist freelancer band, not the specialist band of the new niche.
-- A minimum of two relevant niche case studies or a credible substitute (recognised certification, named client, conference talk, OSS body of work) exists or can be created.
-- Existing clients exist and need to be migrated, not just new prospects.
+**Ефективно для:**
 
-## Skip If
+- Niche pivot complete — 3+ case studies in new niche.
+- Solo consultant — annual rate review with directional jump.
+- Agency owner — repositioning into higher-leverage offering.
+- Freelancer with 5+ existing clients on legacy rates.
 
-- The operator has zero niche credentials and no nearterm path to acquire any — fix that first; raising rates without credentialing fails.
-- Current pipeline depends on a single client &gt; 50% of revenue — the rate jump risks a fatal concentration shock; diversify first.
-- The freelancer's market is purely platform-mediated (Upwork, Fiverr) where rates are set by buyer search and reviews, not by direct negotiation.
+## Applies If (ALL must hold)
 
-## Content
+- Niche pivot delivered for ≥3 customers in the new niche.
+- Existing client base on legacy rate &gt; 6 months.
+- Authority to set rates unilaterally with new leads.
+- Capacity to absorb potential client churn from the jump.
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Five testable rules covering credential gating, anchor recalibration, case-study sequencing, the two-tier rollout, and a rollback-on-evidence rule |
+## Skip If (ANY kills it)
+
+- &lt;3 case studies in new niche — credential proof-building incomplete.
+- Single anchor client = 80%+ of revenue (cashflow risk).
+- Niche pivot still in motion — wait until proof points exist.
+- Existing contracts with locked rates for &gt;12 months.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| New niche market-rate research | report | Upwork / LinkedIn / network |
+| Case studies in new niche (≥3) | docs | own portfolio |
+| Existing client list with current rates | CSV | CRM |
+| Cashflow runway projection | spreadsheet | own ops |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| [[freelancer-niche-positioning]] | Upstream — niche must be positioned first. |
+| [[freelance-pilot-pricing]] | Pilots in the new niche produced the proof. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 5 testable rules: market-band-citation, 60-day-notice-existing-clients, three-case-studies-required, graduated-rollout, no-retroactive-billing | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for spec + valid/invalid | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 600 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `research-market-band` | sonnet | Synthesis across sources. |
+| `draft-notice` | sonnet | Light judgment on tone. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rate-jump-spec.json` | JSON example of rate-jump spec |
+| `templates/client-notice.md` | Markdown template for existing-client rate-change notice |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-freelance-rate-jump-tactics.py` | Validate one spec JSON against the schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `pro/marketing/`
-- triggering activity: `Quarterly portfolio rebalance (cash, clients, capacity)`, `Specialty niche pivot (8-12 weeks generalist to specialist)`
-- neighbouring: `pro/marketing/niche-positioning-for-solo-dev`, `pro/marketing/rate-raise-conversation-script`, `pro/marketing/rate-increase-notice-template`
+- [[freelancer-niche-positioning]]
+- [[freelance-pilot-pricing]]
+- [[fixed-vs-hourly-decision-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.

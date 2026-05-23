@@ -3,80 +3,102 @@ slug: deliverability-incident-runbook
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Deliverability Incident Runbook: codified marketing practice that turns the recurring 'role-growth-marketing/Lifecycle email send + post-send analytics (per send)' decision into a repeatable, auditable artefact.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Email deliverability incident runbook — SPF/DKIM/DMARC check, ESP reputation lookup, segment isolation, throttle, postmortem — with thresholds + owner-named actions per step.
 content_id: "10e1cd1c6b6bbebf"
-tags: [deliverability-incident-runbook, marketing, pro]
+complexity: deep
+produces: report
+est_tokens: 4000
+tags: [email, deliverability, incident, runbook, spam, dkim]
 ---
 # Deliverability Incident Runbook
 
 ## Summary
 
-**One-sentence:** Deliverability Incident Runbook: codified marketing practice that turns the recurring 'role-growth-marketing/Lifecycle email send + post-send analytics (per send)' decision into a repeatable, auditable artefact.
+**One-sentence:** Email deliverability incident runbook — SPF/DKIM/DMARC check, ESP reputation lookup, segment isolation, throttle, postmortem — with thresholds + owner-named actions per step.
 
-**One-paragraph:** Deliverability Incident Runbook addresses the gap surfaced by 'role-growth-marketing/Lifecycle email send + post-send analytics (per send)'. When unsub / spam spikes, marketers panic-Google. Need a runbook: SPF/DKIM check, ESP reputation, segment isolate, throttle send. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** When unsub rate or spam-complaint rate spikes after a lifecycle email send, marketers Google panic-fixes. This runbook codifies a deterministic incident response: detect (threshold-based) → isolate (which segment, which template) → diagnose (SPF/DKIM/DMARC + ESP reputation) → contain (throttle, pause, suppress) → postmortem (versioned incident report). Core rules: every incident produces a versioned report; thresholds are numeric not qualitative; throttle is reversible by default; sender warm-up is mandatory after recovery; postmortem cites at least one diagnostic source.
+
+**Ефективно для:**
+
+- Lifecycle email program — після post-send analytics виявили spike.
+- ESP migration — first 2 weeks of new sender's warm-up.
+- High-volume nurture sequence — risk of bulk classification.
+- Audit / compliance — proof of incident response discipline.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-growth-marketing/Lifecycle email send + post-send analytics (per send)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Email lifecycle program with ≥1,000 sends per send.
+- Post-send analytics available within 4 hours (bounce + spam complaint + unsub rates).
+- DNS + ESP access (SPF/DKIM/DMARC records + reputation dashboard).
+- Authority to throttle / pause sends on the affected segment.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Transactional-only sending (1-to-1) — different signal set, different containment.
+- No post-send analytics — fix instrumentation first.
+- One-off broadcast where the cost of incident-response exceeds the impact.
+- ESP / DNS access locked behind weekly tickets — runbook needs same-day reach.
 
 ## Prerequisites
 
-- recent context for the 'role-growth-marketing/Lifecycle email send + post-send analytics (per send)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Send analytics (bounce / complaint / unsub per segment + template) | dashboard | ESP |
+| DNS records for sending domain | live lookup | DNS provider |
+| ESP reputation score | dashboard | ESP (e.g. SendGrid, Postmark) |
+| Suppression list write access | API / dashboard | ESP |
+| Postmortem template + log store | repo / wiki | growth team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| [[daily-ads-anomaly-checklist]] | Same threshold-based triage pattern. |
+| [[experiment-verdict-template]] | Postmortem format aligned with verdict-template. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: numeric-thresholds, owner-named-actions, reversible-throttle, mandatory-warmup-post-recovery, postmortem-with-sources | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the incident report + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: detect → isolate → diagnose → contain → postmortem | 700 |
+| `content/05-examples.xml` | essential | Worked example: spam complaint spike on welcome sequence segment B | 500 |
+| `content/06-decision-tree.xml` | essential | Tree: complaint-rate vs DKIM-status vs segment → action | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `pull-send-analytics` | haiku | Mechanical API call. |
+| `check-dns-and-reputation` | haiku | Lookup + compare. |
+| `decide-containment` | sonnet | Bounded judgment on throttle/pause/segment-suppress. |
+| `write-postmortem` | sonnet | Synthesis with cited sources. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/deliverability-incident-runbook.json` | JSON schema for the Deliverability Incident Runbook output contract |
-| `templates/deliverability-incident-runbook.md` | Markdown skeleton with the required fields |
+| `templates/incident-report.md` | Markdown skeleton for the postmortem |
+| `templates/incident-report.json` | JSON example matching the output contract |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-deliverability-incident-runbook.py` | Enforce Deliverability Incident Runbook output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-deliverability-incident-runbook.py` | Validate the incident report JSON against the schema | After report draft, pre-publish |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- upstream playbook: `role-growth-marketing/Lifecycle email send + post-send analytics (per send)`
-- methodology family: `pro/marketing/` (gap-p2 batch, F-059-063)
+- [[daily-ads-anomaly-checklist]]
+- [[experiment-verdict-template]]
+- [[dormant-lead-reactivation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps the observed signals (complaint rate, bounce rate, DKIM/DMARC status, segment isolation result) to the containment action and pins the rule from `01-core-rules.xml`. Use it before throttling — over-throttle damages re-engagement, under-throttle damages sender reputation.

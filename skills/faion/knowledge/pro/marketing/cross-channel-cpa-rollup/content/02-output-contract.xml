@@ -1,58 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="CPA Rollup Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>The rollup is a single weekly artifact (sheet + dashboard) with consistent columns across the team. Reports built outside the rollup are not used in budget decisions.</summary>
+<text id="02-output-contract" title="Cross-Channel CPA Rollup Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for one rollup row. Validator enforces gross-spend presence, dedup-ID coverage, and view-through separation.</summary>
 
-  <section title="Required rollup columns">
-    <list>
-      <item><code>week</code> — ISO week (yyyy-Www).</item>
-      <item><code>channel</code> — single canonical name (Meta-paid, Google-search, Google-pmax, LinkedIn-paid, X-paid, Organic, Referral, Direct, etc.).</item>
-      <item><code>gross_spend_usd</code> — incl. fees per r2.</item>
-      <item><code>self_reported_conversions</code> — vendor's number, recorded for reference.</item>
-      <item><code>attributed_conversions</code> — per the single attribution model (r1, r3).</item>
-      <item><code>view_through_count</code> — separate, not in CPA denominator.</item>
-      <item><code>cpa_gross</code> — gross_spend / attributed_conversions.</item>
-      <item><code>incremental_over_organic</code> — attributed_conversions − channel-share-of-organic-baseline.</item>
-      <item><code>cpa_incremental</code> — gross_spend / incremental_over_organic.</item>
-      <item><code>cohort_d30_retention</code>, <code>cohort_d60</code>, <code>cohort_d90</code>.</item>
-      <item><code>notes</code> — anomalies, suspensions, promotions.</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/cross-channel-cpa-rollup.json",
+  "type": "object",
+  "required": [
+    "week", "channel", "gross_spend_usd", "attributed_conversions",
+    "self_reported_conversions", "view_through_count", "cpa_gross",
+    "incremental_over_organic", "cpa_incremental",
+    "cohort_d30_retention", "attribution_policy_version"
+  ],
+  "properties": {
+    "week": {"type": "string", "pattern": "^\\d{4}-W\\d{2}$"},
+    "channel": {"type": "string", "minLength": 3},
+    "gross_spend_usd": {"type": "number", "minimum": 0},
+    "attributed_conversions": {"type": "integer", "minimum": 0},
+    "self_reported_conversions": {"type": "integer", "minimum": 0},
+    "view_through_count": {"type": "integer", "minimum": 0},
+    "cpa_gross": {"type": "number", "minimum": 0},
+    "incremental_over_organic": {"type": "integer"},
+    "cpa_incremental": {"type": "number", "minimum": 0},
+    "cohort_d30_retention": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "cohort_d60_retention": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "cohort_d90_retention": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "attribution_policy_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "notes": {"type": "string"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "week": "2026-W20",
+  "channel": "Meta-paid",
+  "gross_spend_usd": 4800.0,
+  "attributed_conversions": 32,
+  "self_reported_conversions": 51,
+  "view_through_count": 18,
+  "cpa_gross": 150.0,
+  "incremental_over_organic": 22,
+  "cpa_incremental": 218.18,
+  "cohort_d30_retention": 0.71,
+  "cohort_d60_retention": null,
+  "cohort_d90_retention": null,
+  "attribution_policy_version": "1.2.0",
+  "notes": "Includes $600 agency fee."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "week": "W20",
+  "channel": "Meta",
+  "gross_spend_usd": 4800,
+  "attributed_conversions": 51,
+  "view_through_count": 18,
+  "cpa_gross": 94
+}
+]]></code>
+    <note>week pattern wrong; missing self_reported / incremental_over_organic / cpa_incremental / cohort_d30 / attribution_policy_version; attributed includes view-through (CPA suspiciously low).</note>
+  </example>
 
   <section title="Required cadence">
     <list>
       <item>Weekly rebuild + publish (script + dashboard refresh).</item>
       <item>Attribution-policy file reviewed quarterly; changes are versioned.</item>
-      <item>Cohort retention requires &gt;= 30 days of post-acquisition data — recent weeks show partial cohort with explicit "in progress" flag.</item>
+      <item>Cohort retention requires ≥ 30 days of post-acquisition data — recent weeks show partial cohort with explicit "in progress" flag (null).</item>
     </list>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>CPA computed against self-reported conversions instead of attributed conversions.</description>
-      <reason>Violates r1. Over-credits channels.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Spend excludes agency fees.</description>
-      <reason>Violates r2. CPA is rosier than reality.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Organic baseline absent — paid channels evaluated against zero counterfactual.</description>
-      <reason>Violates r4. Cannibalization of organic by branded paid is invisible.</reason>
-    </antipattern>
-    <antipattern>
-      <description>View-through conversions added to attributed total without an incrementality study.</description>
-      <reason>View-through inflates the count without evidence. Keep as separate column.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden">
     <list>
-      <item>One attribution model documented and used across the rollup.</item>
-      <item>Gross spend includes all channel-related fees.</item>
-      <item>Conversions deduplicated by customer ID.</item>
-      <item>Organic baseline row populated; CPA-incremental computed.</item>
-      <item>Cohort retention columns populated for cohorts old enough.</item>
-      <item>View-through stored separately from attributed conversions.</item>
+      <item>CPA computed against self_reported_conversions instead of attributed_conversions (violates rule single-attribution-model).</item>
+      <item>gross_spend_usd excludes agency / production fees (violates rule gross-spend).</item>
+      <item>view_through added to attributed_conversions without an incrementality study (violates rule single-attribution-model).</item>
+      <item>Organic baseline absent → incremental_over_organic == attributed (violates rule organic-baseline).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-cross-channel-cpa-rollup.py">Validator script</reference>
+  <reference path="templates/rollup-sheet.csv">Sheet header template</reference>
 </text>

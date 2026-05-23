@@ -1,57 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelance Referral Program Design Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Freelance Referral Program Design artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
+<text id="02-output-contract" title="Freelance Referral Program Design Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the spec this methodology produces. Validator enforces the rule-set constraints.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["program_id", "incentive", "attribution_window_days", "referrers", "partners", "testimonial_framing", "owner"],
+  "properties": {
+    "program_id": {"type": "string"},
+    "incentive": {"type": "object", "required": ["type", "amount_usd"], "properties": {"type": {"enum": ["flat_cash", "credit"]}, "amount_usd": {"type": "number", "minimum": 0}}},
+    "attribution_window_days": {"type": "integer", "minimum": 1, "maximum": 90},
+    "referrers": {"type": "array", "items": {"type": "object", "required": ["handle", "written_terms_date"], "properties": {"handle": {"type": "string"}, "written_terms_date": {"type": "string", "format": "date"}}}},
+    "partners": {"type": "array", "items": {"type": "object", "required": ["handle", "swap_opt_in_date"], "properties": {"handle": {"type": "string"}, "swap_opt_in_date": {"type": "string", "format": "date"}}}},
+    "testimonial_framing": {"type": "object", "required": ["template", "approved_by_customers"], "properties": {"template": {"type": "string"}, "approved_by_customers": {"type": "array", "items": {"type": "string"}}}},
+    "owner": {"type": "string"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "program_id": "frp-2026q2",
+  "incentive": {"type": "flat_cash", "amount_usd": 500},
+  "attribution_window_days": 90,
+  "referrers": [{"handle": "@past-client-acme", "written_terms_date": "2026-05-10"}],
+  "partners": [{"handle": "@peer-marina", "swap_opt_in_date": "2026-05-12"}],
+  "testimonial_framing": {"template": "Acme used <NICHE> to ship in 2 weeks vs 3 months estimated.", "approved_by_customers": ["Acme"]},
+  "owner": "@ruslan"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{"program_id": "x", "incentive": {"type": "percent", "amount_usd": 10}, "attribution_window_days": 365, "referrers": [{"handle": "@x"}], "owner": "team", "partners": [{"handle": "@y"}], "testimonial_framing": {}}
+]]></code>
+    <note>Violates one or more of the forbidden patterns listed below.</note>
+  </example>
+
+  <section title="Forbidden">
     <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
+      <item>incentive.type != 'flat_cash' / 'credit' (rule flat-incentive-not-percent).</item>
+      <item>Any referrer without written_terms_date (rule written-incentive-per-referrer).</item>
+      <item>attribution_window_days &gt; 90 (rule attribution-window-90-days).</item>
+      <item>Any partner without swap_opt_in_date (rule partner-swap-opted-in).</item>
+      <item>testimonial_framing missing template / approved_by_customers (rule nda-safe-testimonial-framing).</item>
     </list>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <reference path="scripts/validate-freelance-referral-program-design.py">Validator script</reference>
 </text>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Cross-Channel CPA Rollup Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>6-step weekly procedure to produce the validated rollup report.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pull-spend-per-channel">
+      <input>Ad-platform APIs + agency invoices + production cost amortization schedule</input>
+      <action>Pull gross spend per channel including all fees. Reject the run if any channel's invoice is missing.</action>
+      <output>per-channel gross_spend</output>
+      <decision-gate>If agency invoice not received, STOP and tag the week as incomplete.</decision-gate>
+    </step>
+
+    <step n="2" name="pull-conversions">
+      <input>CRM / warehouse customer events; reporting window = last completed ISO week</input>
+      <action>Pull all conversions in window. Capture each touchpoint timestamp + channel + customer_id.</action>
+      <output>raw conversion stream</output>
+    </step>
+
+    <step n="3" name="dedup-by-customer-id">
+      <input>raw conversion stream</input>
+      <action>Group by customer_id. Drop rows where customer_id is null. Flag drops to data-quality channel.</action>
+      <output>deduped conversion stream</output>
+      <decision-gate>If null-ID rate &gt; 5%, fix identity-resolution before continuing.</decision-gate>
+    </step>
+
+    <step n="4" name="attribute">
+      <input>deduped stream + attribution policy</input>
+      <action>Apply the documented model (default last non-direct click within 30 days). Assign one channel per conversion. Track view-through separately.</action>
+      <output>attributed_conversions per channel + view_through_count per channel</output>
+    </step>
+
+    <step n="5" name="compute-incrementality-and-cohort">
+      <input>attributed conversions + organic baseline + cohort activity</input>
+      <action>Compute incremental_over_organic and CPA_incremental per channel. Compute cohort_d30/60/90 retention for cohorts old enough.</action>
+      <output>full rollup rows</output>
+    </step>
+
+    <step n="6" name="validate-and-publish">
+      <input>rollup rows + validator</input>
+      <action>Run `scripts/validate-cross-channel-cpa-rollup.py` per row. Publish to dashboard. Surface anomalies in notes column.</action>
+      <output>Published rollup; team review.</output>
+      <decision-gate>If validator non-zero, fix root cause + re-run; never publish partial.</decision-gate>
+    </step>
+
+  </section>
+</text>

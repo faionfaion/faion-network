@@ -1,42 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Experiment Hypothesis Scoring Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Experiment Hypothesis Scoring deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Experiment Hypothesis Scoring Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for one scored hypothesis. Validator enforces 2-rater coverage + evidence per score + threshold gate.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/experiment-hypothesis-scoring.json",
+  "type": "object",
+  "required": ["hypothesis_id", "hypothesis", "rubric_version", "scores", "queued", "raters", "cycle_id"],
+  "properties": {
+    "hypothesis_id": {"type": "string", "pattern": "^hyp-[a-z0-9-]+$"},
+    "hypothesis": {"type": "string", "minLength": 20},
+    "rubric_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "cycle_id": {"type": "string"},
+    "scores": {
+      "type": "object",
+      "required": ["impact", "confidence", "ease", "projected_lift_pct"],
+      "properties": {
+        "impact": {"type": "object", "required": ["band", "evidence"], "properties": {"band": {"type": "integer", "minimum": 1, "maximum": 5}, "evidence": {"type": "string", "minLength": 10}}},
+        "confidence": {"type": "object", "required": ["band", "evidence"], "properties": {"band": {"type": "integer", "minimum": 1, "maximum": 5}, "evidence": {"type": "string", "minLength": 10}}},
+        "ease": {"type": "object", "required": ["band", "evidence"], "properties": {"band": {"type": "integer", "minimum": 1, "maximum": 5}, "evidence": {"type": "string", "minLength": 10}}},
+        "projected_lift_pct": {"type": "number", "minimum": 0}
+      }
+    },
+    "raters": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+    "discrepancy_resolved": {"type": "boolean"},
+    "queued": {"type": "boolean"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "hypothesis_id": "hyp-pricing-social-proof-above-fold",
+  "hypothesis": "Moving social proof above the fold on /pricing increases pricing-to-signup conversion.",
+  "rubric_version": "1.0.0",
+  "cycle_id": "2026-Q2",
+  "scores": {
+    "impact": {"band": 4, "evidence": "Pricing is #1 conversion source; heatmap PostHog/pa-12"},
+    "confidence": {"band": 4, "evidence": "Comparable site A/B #421 lifted 8%; user-test #12 quote"},
+    "ease": {"band": 3, "evidence": "Ticket FE-201: 1d FE + 2h QA"},
+    "projected_lift_pct": 8.0
+  },
+  "raters": ["@alex", "@beth"],
+  "discrepancy_resolved": true,
+  "queued": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{"hypothesis_id": "hyp-x", "scores": {"impact": {"band": 5}, "confidence": {"band": 5}, "ease": {"band": 5}}, "raters": ["@alex"], "queued": true}
+]]></code>
+    <note>No evidence; single rater; missing rubric_version + cycle_id; projected_lift_pct missing.</note>
+  </example>
+
+  <section title="Forbidden">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>Any score band without `evidence` of ≥ 10 chars (rule evidence-required).</item>
+      <item>raters length &lt; 2 (rule two-rater-calibration).</item>
+      <item>queued=true with projected_lift_pct &lt; 5 or confidence.band &lt; 3 (rule min-entry-threshold).</item>
+      <item>rubric_version mid-cycle bump (rule frozen-rubric — enforced at cycle close).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-experiment-hypothesis-scoring.py">Validator script</reference>
 </text>

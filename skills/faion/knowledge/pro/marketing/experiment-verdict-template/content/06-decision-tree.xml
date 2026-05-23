@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Experiment Verdict Template Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Tree mapping primary + secondary signals to one of the 5 verdicts; each leaf cites a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-closed">Pre-reg close_date + 5 business days passed without verdict?</root-question>
+
+    <branch when="closed == true">
+      <conclusion ref="close-within-5-days" verdict="auto-stop platform assignment; force verdict before resumption"/>
+    </branch>
+
+    <branch when="closed == false">
+      <question id="q-primary">Primary metric: significant win / loss / inconclusive?</question>
+
+      <branch when="primary == harmful">
+        <conclusion ref="five-verdict-vocabulary" verdict="verdict=harmful-rollback; route to on-call"/>
+      </branch>
+
+      <branch when="primary == inconclusive">
+        <question id="q-power">Power adequate for the registered effect size?</question>
+        <branch when="power_ok == false">
+          <conclusion ref="captured-learning" verdict="verdict=inconclusive-iterate; new pre-reg with more sample"/>
+        </branch>
+        <branch when="power_ok == true">
+          <conclusion ref="captured-learning" verdict="verdict=inconclusive-stop; remove related backlog"/>
+        </branch>
+      </branch>
+
+      <branch when="primary == win">
+        <question id="q-secondary">Any pre-registered secondary shows regression?</question>
+        <branch when="secondary_regression == true">
+          <question id="q-sign-off">Exec sign-off captured for override?</question>
+          <branch when="sign_off == true">
+            <conclusion ref="secondary-metric-gate" verdict="verdict=ship-treatment with monitoring; record exec_sign_off"/>
+          </branch>
+          <branch when="sign_off == false">
+            <conclusion ref="secondary-metric-gate" verdict="verdict=inconclusive-iterate OR harmful-rollback per severity"/>
+          </branch>
+        </branch>
+        <branch when="secondary_regression == false">
+          <conclusion ref="routed-action" verdict="verdict=ship-treatment; route to release owner"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="primary win, secondary NS">
+    closed=false → primary=win → secondary_regression=false → routed-action → ship-treatment + route.
+  </example>
+</text>

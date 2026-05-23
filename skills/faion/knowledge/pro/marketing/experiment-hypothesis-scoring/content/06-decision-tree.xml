@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Experiment Hypothesis Scoring Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Tree mapping rater + threshold + evidence signals to next action; each leaf cites a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-rubric">Is the rubric frozen for this cycle?</root-question>
+
+    <branch when="frozen == false">
+      <conclusion ref="frozen-rubric" verdict="STOP — freeze rubric; defer edits to next cycle"/>
+    </branch>
+
+    <branch when="frozen == true">
+      <question id="q-evidence">Does every score have evidence ≥ 10 chars?</question>
+      <branch when="evidence == false">
+        <conclusion ref="evidence-required" verdict="default missing-evidence scores to lowest band; re-score with anchors"/>
+      </branch>
+      <branch when="evidence == true">
+        <question id="q-raters">≥2 raters with discrepancy ≤ 1 band?</question>
+        <branch when="raters &lt; 2">
+          <conclusion ref="two-rater-calibration" verdict="add second rater (human or sonnet) before queuing"/>
+        </branch>
+        <branch when="discrepancy &gt; 1">
+          <conclusion ref="two-rater-calibration" verdict="run third pass with discussion; do not queue yet"/>
+        </branch>
+        <branch when="raters &gt;= 2 AND discrepancy &lt;= 1">
+          <question id="q-threshold">projected_lift_pct ≥ 5 AND confidence.band ≥ 3?</question>
+          <branch when="threshold == true">
+            <conclusion ref="min-entry-threshold" verdict="queued=true; add to experiment ledger"/>
+          </branch>
+          <branch when="threshold == false">
+            <conclusion ref="min-entry-threshold" verdict="queued=false; record in holding-pen for next cycle re-evaluation"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="below threshold">
+    frozen=true → evidence=true → raters=2 → discrepancy=0 → threshold=false → min-entry-threshold → queued=false.
+  </example>
+</text>

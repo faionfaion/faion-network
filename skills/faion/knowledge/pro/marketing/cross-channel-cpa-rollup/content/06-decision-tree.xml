@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Cross-Channel CPA Rollup Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Tree mapping observable anomalies in the rollup to the rule from 01-core-rules.xml that gates the fix.</summary>
+
+  <decision-tree>
+    <root-question id="q-precond">Do all preconditions hold (≥2 paid channels, stable customer ID, baseline historical organic)?</root-question>
+
+    <branch when="preconditions == false">
+      <conclusion ref="dedup-id" verdict="skip-this-methodology — set up customer ID + baseline first"/>
+    </branch>
+
+    <branch when="preconditions == true">
+      <question id="q-anomaly">Which signal is suspicious in the rollup?</question>
+
+      <branch when="sum_attributed &gt; unique_conversions">
+        <conclusion ref="dedup-id" verdict="fix identity resolution; do not publish"/>
+      </branch>
+
+      <branch when="gross_spend == platform_billing_only">
+        <conclusion ref="gross-spend" verdict="add agency + production fees before computing CPA"/>
+      </branch>
+
+      <branch when="view_through_in_attributed == true">
+        <conclusion ref="single-attribution-model" verdict="move view-through to its own column; recompute CPA"/>
+      </branch>
+
+      <branch when="branded_share_of_paid &gt;= 0.3">
+        <conclusion ref="organic-baseline" verdict="split branded vs non-branded rows; apply incrementality"/>
+      </branch>
+
+      <branch when="cohort_d30 == null AND cohort_age &gt;= 30d">
+        <conclusion ref="cohort-lens" verdict="wire cohort retention; CPA alone over-rewards mercenary channels"/>
+      </branch>
+
+      <branch when="all_signals_clean == true">
+        <conclusion ref="single-attribution-model" verdict="publish rollup; weekly review with growth + finance"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="Meta CPA suspiciously low">
+    preconditions=true → view_through_in_attributed=true → single-attribution-model → move view-through to its own column; recompute CPA.
+  </example>
+</text>

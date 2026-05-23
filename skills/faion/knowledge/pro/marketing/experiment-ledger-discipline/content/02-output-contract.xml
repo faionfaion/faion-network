@@ -1,42 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Experiment Ledger Discipline Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Experiment Ledger Discipline deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Experiment Ledger Discipline Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for one ledger entry. Validator enforces append-only fields + producer/consumer/decision + learning at close.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/experiment-ledger-entry.json",
+  "type": "object",
+  "required": ["entry_id", "status", "producer", "consumer", "decision_fed", "hypothesis", "tags", "cycle_id", "created_at"],
+  "properties": {
+    "entry_id": {"type": "string", "pattern": "^ent-[a-z0-9-]+$"},
+    "prev_entry_id": {"type": ["string", "null"], "pattern": "^ent-[a-z0-9-]+$"},
+    "delta_reason": {"type": "string"},
+    "status": {"enum": ["proposed", "shipped", "closed", "superseded"]},
+    "producer": {"type": "string", "minLength": 3},
+    "consumer": {"type": "string", "minLength": 3, "not": {"pattern": "(?i)^(team|we|us)$"}},
+    "decision_fed": {"type": "string", "minLength": 10},
+    "hypothesis": {"type": "string", "minLength": 20},
+    "variants": {"type": "array", "items": {"type": "string"}},
+    "result": {"type": ["string", "null"]},
+    "learning_summary": {"type": ["string", "null"]},
+    "tags": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "cycle_id": {"type": "string"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "closed_at": {"type": ["string", "null"], "format": "date-time"},
+    "superseded_by": {"type": ["string", "null"], "pattern": "^ent-[a-z0-9-]+$"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "entry_id": "ent-2026q2-pricing-social-proof",
+  "status": "closed",
+  "producer": "@alex",
+  "consumer": "@beth",
+  "decision_fed": "Reposition pricing social proof for Q3 cycle",
+  "hypothesis": "Moving social proof above the fold on /pricing increases pricing-to-signup conversion.",
+  "variants": ["control", "above-fold"],
+  "result": "+5.2% conversion lift, p=0.03, n=12400 sessions",
+  "learning_summary": "Above-fold social proof lifts /pricing conversion 5.2% (n=12.4k, p=0.03). Effect concentrated in returning visitors (+8.1%); new visitors flat. Ship to all users; revisit new-visitor variant in Q3.",
+  "tags": ["pricing", "social-proof", "above-fold"],
+  "cycle_id": "2026-Q2",
+  "created_at": "2026-04-15T09:00:00Z",
+  "closed_at": "2026-05-20T17:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{"entry_id": "ent-x", "status": "closed", "producer": "team", "hypothesis": "x"}
+]]></code>
+    <note>producer = "team"; consumer + decision_fed missing; hypothesis &lt; 20 chars; no tags; no learning_summary at close.</note>
+  </example>
+
+  <section title="Forbidden">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>consumer == "team"/"we"/"us" (rule producer-consumer-decision).</item>
+      <item>status="closed" without learning_summary ≥ 80 chars (rule learning-summary-required).</item>
+      <item>In-place modification of an existing entry without prev_entry_id + delta_reason (rule append-only).</item>
+      <item>status="superseded" without superseded_by pointer (rule superseded-by-chain).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-experiment-ledger-discipline.py">Validator script</reference>
 </text>

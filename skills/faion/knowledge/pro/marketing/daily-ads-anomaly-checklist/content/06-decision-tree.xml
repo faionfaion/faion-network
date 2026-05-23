@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Daily Ads Anomaly Checklist Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Tree mapping tripped check + persistence to an action; each leaf cites a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-tripped">Any check tripped on this run?</root-question>
+
+    <branch when="any_tripped == false">
+      <conclusion ref="log-with-context" verdict="action=no-op for all; write log with actual values"/>
+    </branch>
+
+    <branch when="any_tripped == true">
+      <question id="q-persistence">Did the same check trip on the same ad-set yesterday?</question>
+
+      <branch when="persistent == true">
+        <conclusion ref="escalation-gate-on-repeat" verdict="action=escalate; open escalation thread"/>
+      </branch>
+
+      <branch when="persistent == false">
+        <question id="q-check-type">Which check tripped?</question>
+        <branch when="check == spend_spike">
+          <conclusion ref="reversible-pause-default" verdict="action=reduce-budget with auto_resume_at = next morning"/>
+        </branch>
+        <branch when="check == cpa_spike">
+          <conclusion ref="reversible-pause-default" verdict="action=pause with auto_resume_at = next morning"/>
+        </branch>
+        <branch when="check == account_health">
+          <conclusion ref="escalation-gate-on-repeat" verdict="action=escalate immediately; account warnings need human"/>
+        </branch>
+        <branch when="check == conversion_drop">
+          <conclusion ref="escalation-gate-on-repeat" verdict="action=escalate; conversion tracking suspected broken"/>
+        </branch>
+        <branch when="check == frequency_spike OR check == ctr_drop">
+          <conclusion ref="named-owner-action" verdict="action=reduce-budget; tag for creative refresh"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="CPA spike, first day">
+    any_tripped=true → persistent=false → check=cpa_spike → reversible-pause-default → action=pause with auto_resume_at.
+  </example>
+</text>

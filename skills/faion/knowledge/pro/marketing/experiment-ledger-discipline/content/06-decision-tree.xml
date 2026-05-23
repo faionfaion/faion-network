@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Experiment Ledger Discipline Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Tree routes on entry state + intent to the next mutation. Each leaf cites a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-intent">Intent: open new / update existing / close / supersede?</root-question>
+
+    <branch when="intent == open">
+      <question id="q-fields">producer + consumer + decision_fed all set?</question>
+      <branch when="fields_set == false">
+        <conclusion ref="producer-consumer-decision" verdict="STOP — do not create; populate fields first"/>
+      </branch>
+      <branch when="fields_set == true">
+        <conclusion ref="append-only" verdict="create entry with status=proposed; tag from frozen taxonomy"/>
+      </branch>
+    </branch>
+
+    <branch when="intent == update">
+      <conclusion ref="append-only" verdict="STOP — create new entry with prev_entry_id + delta_reason; never mutate in place"/>
+    </branch>
+
+    <branch when="intent == close">
+      <question id="q-learning">learning_summary ≥ 80 chars AND tag ⊂ taxonomy?</question>
+      <branch when="ready == false">
+        <conclusion ref="learning-summary-required" verdict="STOP — author learning_summary + verify tags"/>
+      </branch>
+      <branch when="ready == true">
+        <conclusion ref="learning-summary-required" verdict="status=closed; closed_at = now"/>
+      </branch>
+    </branch>
+
+    <branch when="intent == supersede">
+      <conclusion ref="superseded-by-chain" verdict="create new entry; set old.superseded_by = new.entry_id"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="result invalidates a prior closed entry">
+    intent=supersede → superseded-by-chain → create new entry; set old.superseded_by.
+  </example>
+</text>

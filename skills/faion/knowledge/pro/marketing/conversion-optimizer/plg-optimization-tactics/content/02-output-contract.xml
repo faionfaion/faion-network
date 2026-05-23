@@ -1,22 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="plg-optimization-tactics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="PLG Optimization Tactics Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the ranked PLG tactic backlog this methodology produces. Validator enforces baseline + ICE structure + banned CTA strings.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/plg-optimization-tactics.json",
+  "type": "object",
+  "required": ["funnel_stage", "baseline", "tactics", "generated_at"],
+  "properties": {
+    "funnel_stage": {"enum": ["activation", "free-to-paid", "expansion"]},
+    "baseline": {
+      "type": "object",
+      "required": ["metric", "value", "as_of"],
+      "properties": {
+        "metric": {"type": "string", "minLength": 3},
+        "value": {"type": "number"},
+        "as_of": {"type": "string", "format": "date"}
+      }
+    },
+    "tactics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["name", "hypothesis", "source_section", "ice", "instrumentation"],
+        "properties": {
+          "name": {"type": "string"},
+          "hypothesis": {"type": "string", "minLength": 20},
+          "source_section": {"type": "string"},
+          "ice": {
+            "type": "object",
+            "required": ["impact", "confidence", "ease"],
+            "properties": {
+              "impact": {"type": "integer", "minimum": 1, "maximum": 10},
+              "confidence": {"type": "integer", "minimum": 1, "maximum": 10},
+              "ease": {"type": "integer", "minimum": 1, "maximum": 10}
+            }
+          },
+          "instrumentation": {"type": "string", "minLength": 10},
+          "cta_text": {
+            "type": "string",
+            "not": {"pattern": "(?i)(upgrade now|premium plan|get more features|unlock premium)"}
+          }
+        }
+      }
+    },
+    "generated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "funnel_stage": "free-to-paid",
+  "baseline": {"metric": "free_to_paid_30d_pct", "value": 4.2, "as_of": "2026-05-20"},
+  "tactics": [
+    {
+      "name": "Prompt at 80% storage limit (was 100%)",
+      "hypothesis": "Moving the prompt earlier converts users before frustration.",
+      "source_section": "upgrade-prompt-rules",
+      "ice": {"impact": 7, "confidence": 6, "ease": 9},
+      "instrumentation": "PostHog event 'upgrade_prompt_shown' filtered by limit_pct >= 0.8",
+      "cta_text": "Teams like Acme save 10 hours/week on Team plan"
+    }
+  ],
+  "generated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "funnel_stage": "free-to-paid",
+  "tactics": [{"name": "Show prompt", "cta_text": "Upgrade Now"}]
+}
+]]></code>
+    <note>Missing baseline; tactic missing hypothesis/source_section/ice/instrumentation; cta_text matches banned phrase.</note>
+  </example>
+
+  <section title="Forbidden">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Tactics without `baseline` (rule baseline-required).</item>
+      <item>`cta_text` matching banned phrase set (rule banned-cta-text).</item>
+      <item>ICE missing any of impact/confidence/ease.</item>
+      <item>Empty `tactics` array.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-plg-optimization-tactics.py">Validator script</reference>
 </text>

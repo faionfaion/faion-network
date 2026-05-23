@@ -3,78 +3,100 @@ slug: fixed-vs-hourly-decision-framework
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decision framework for fixed-price vs hourly engagement — 4 signals (scope clarity, change-rate, client maturity, domain familiarity) score to one shape; recorded with kill-criteria + named decider.
 content_id: "61d27190d17bd050"
-summary: Fixed Vs Hourly Decision Framework delivers a concrete, testable methodology that turns the recurring task of 'Inbound-to-signed-retainer in one client cycle' into an auditable artefact, addressing the gap: SOW playbook assumes fixed-price. Freelancers daily face 'do I quote this
-tags: [marketing, pro, decision, methodology]
+complexity: medium
+produces: decision-record
+est_tokens: 3500
+tags: [freelance, pricing, sow, fixed-price, hourly, retainer]
 ---
 # Fixed Vs Hourly Decision Framework
 
 ## Summary
 
-**One-sentence:** Fixed Vs Hourly Decision Framework delivers a concrete, testable methodology that turns the recurring task of 'Inbound-to-signed-retainer in one client cycle' into an auditable artefact, addressing the gap: SOW playbook assumes fixed-price. Freelancers daily face 'do I quote this fixed or hourly?' with no decision aid. Needs explicit signals (scope clarity, change-rate, client maturity, your domain familiarity) that point to one shape.
+**One-sentence:** Decision framework for fixed-price vs hourly engagement — 4 signals (scope clarity, change-rate, client maturity, domain familiarity) score to one shape; recorded with kill-criteria + named decider.
 
-**One-paragraph:** SOW playbook assumes fixed-price. Freelancers daily face 'do I quote this fixed or hourly?' with no decision aid. Needs explicit signals (scope clarity, change-rate, client maturity, your domain familiarity) that point to one shape. Fixed Vs Hourly Decision Framework closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Inbound-to-signed-retainer in one client cycle' (p3-technical-freelancer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelancers daily face "do I quote this fixed or hourly?" with no decision aid. SOW playbooks assume fixed-price. This framework scores 4 signals and routes to fixed / hourly / hybrid (fixed scope + time-and-materials change-budget). Core rules: every signal carries a numeric or 3-band score; the decision logs option chosen + options rejected + evidence + reversal trigger; kill-criteria are numeric per option; the decision is signed by a single named decider; reassessment at 25% of project elapsed. Output: a decision-record artefact filed in the SOW workflow.
+
+**Ефективно для:**
+
+- Inbound proposal — quick fixed-vs-hourly call before SOW draft.
+- Existing retainer re-shape — quarterly review.
+- Multi-engagement portfolio — same client, multiple shapes.
+- Agency / freelance handoff — successor sees the rationale, not just the price.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Inbound-to-signed-retainer in one client cycle' (role: p3-technical-freelancer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Service engagement &gt; 20 hours (below that, hourly default is fine).
+- Authority to set engagement shape with the client.
+- ≥3 of the 4 signals are observable (scope, change-rate, maturity, familiarity).
+- Named decider available (you, the freelancer, or designated agency lead).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Engagement &lt; 20 hours — overhead exceeds value.
+- Client has rigid procurement that forbids the chosen shape.
+- Tiny experimental project where pricing matters less than learning.
+- No SOW infrastructure — fix invoicing + change-order workflow first.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope document or rough brief | doc | client |
+| Prior projects with this client (if any) | report / notes | own CRM |
+| Domain-familiarity self-assessment | score | own portfolio |
+| SOW + change-order templates | files | own ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[freelance-pilot-pricing]] | Pilot-pricing fits the hybrid bucket here. |
+| [[freelance-rate-jump-tactics]] | Hourly rate target feeds the score. |
+| [[proposal-from-discovery-template]] | Downstream proposal artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: signal-scored, kill-criteria-numeric, decision-logged-with-reversal, single-named-decider, mid-project-reassessment | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the decision record + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: gather scope → score 4 signals → pick shape → record decision → reassess at 25% | 600 |
+| `content/06-decision-tree.xml` | essential | Tree mapping signal scores to fixed / hourly / hybrid | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `fixed_vs_hourly_decision_framework_template_fill` | haiku | Template fill, no judgment |
-| `fixed_vs_hourly_decision_framework_evidence_check` | sonnet | Bounded comparison + judgment |
-| `fixed_vs_hourly_decision_framework_synthesis` | opus | Cross-input synthesis + final write-up |
+| `score-signals` | sonnet | Per-signal judgment. |
+| `record-decision` | haiku | Template fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/decision-record.json` | JSON example of the decision record |
+| `templates/decision-record.md` | Markdown skeleton for the SOW appendix |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-fixed-vs-hourly-decision-framework.py` | Validate the decision-record JSON | After scoring, before SOW finalization |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `p3-technical-freelancer/Inbound-to-signed-retainer in one client cycle`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelance-pilot-pricing]]
+- [[freelance-rate-jump-tactics]]
+- [[proposal-from-discovery-template]]
+- [[retainer-pricing-methodology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes signal scores to one of three engagement shapes (fixed / hourly / hybrid) and pins the rule from `01-core-rules.xml`. Use it before drafting the SOW — picking the wrong shape costs 10-30% of margin.

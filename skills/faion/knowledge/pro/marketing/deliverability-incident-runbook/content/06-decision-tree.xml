@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Deliverability Incident Runbook Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Tree mapping observable signals to containment action; leaves cite a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-threshold">Any threshold (complaint &gt; 0.1, bounce &gt; 5, unsub &gt; 2× baseline) tripped?</root-question>
+
+    <branch when="tripped == false">
+      <conclusion ref="numeric-thresholds" verdict="action=no-op; no incident"/>
+    </branch>
+
+    <branch when="tripped == true">
+      <question id="q-segment">Can the incident be isolated to a single segment / template?</question>
+
+      <branch when="isolated == false">
+        <conclusion ref="owner-named-actions" verdict="action=escalate; segment isolation needs human investigator"/>
+      </branch>
+
+      <branch when="isolated == true">
+        <question id="q-dkim">Does DKIM/SPF/DMARC pass for the sending domain?</question>
+        <branch when="auth == fail">
+          <conclusion ref="postmortem-with-sources" verdict="action=throttle entire domain + escalate; auth fix is precondition"/>
+        </branch>
+        <branch when="auth == pass">
+          <question id="q-severity">Complaint rate vs hard cap (0.3% = Gmail reputation-killer)?</question>
+          <branch when="complaint_rate &gt;= 0.3">
+            <conclusion ref="reversible-throttle" verdict="action=pause-segment with auto_resume_at; warmup_curve mandatory"/>
+          </branch>
+          <branch when="complaint_rate &lt; 0.3">
+            <conclusion ref="mandatory-warmup-post-recovery" verdict="action=throttle to 30%; warmup_curve over next 3 sends"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="welcome_seq_segment_b complaint 0.18">
+    tripped=true → isolated=true → auth=pass → complaint_rate=0.18 &lt; 0.3 → mandatory-warmup-post-recovery → throttle to 30% with warmup_curve.
+  </example>
+</text>

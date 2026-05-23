@@ -3,78 +3,99 @@ slug: freelance-referral-program-design
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c55f896ba584c80e"
-summary: "Freelance Referral Program Design — testable methodology for growth, acquisition, content, GTM. growth-referral-programs targets B2C product loops. Service-business referral mechanics (incentives, NDA-safe testimonials, partner-swap) need their own playbook."
-tags: [marketing, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Service-business referral mechanics — bounded incentive ($ or credit), NDA-safe testimonial framing, partner-swap pair design, ≤90-day attribution window, owner-named on every referral.
+content_id: "freelance-referral-1"
+complexity: medium
+produces: spec
+est_tokens: 3200
+tags: [freelance, referrals, partner-network, incentive, service-business]
 ---
 # Freelance Referral Program Design
 
 ## Summary
 
-**One-sentence:** Freelance Referral Program Design — testable methodology for growth, acquisition, content, GTM. growth-referral-programs targets B2C product loops. Service-business referral mechanics (incentives, NDA-safe testimonials, partner-swap) need their own playbook.
+**One-sentence:** Service-business referral mechanics — bounded incentive ($ or credit), NDA-safe testimonial framing, partner-swap pair design, ≤90-day attribution window, owner-named on every referral.
 
-**One-paragraph:** Freelance Referral Program Design closes a known gap in marketing practice: growth-referral-programs targets B2C product loops. Service-business referral mechanics (incentives, NDA-safe testimonials, partner-swap) need their own playbook. The methodology is anchored to the recurring activity 'Reputation + referral pipeline ramp (90-day flywheel) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** growth-referral-programs targets B2C product loops; service businesses need their own mechanics. This methodology pins 4 elements: bounded incentive (flat $ amount or credit; never %); NDA-safe testimonial framing (logo + outcome without client-confidential numbers); partner-swap pair design (you refer them, they refer you, both consenting); attribution window ≤90 days (after that, the lead is organic). Core rules: incentive is documented in writing per referrer; testimonial framing pre-approved; partner pairs explicitly opted-in; attribution window enforced; conflict-of-interest disclosed.
+
+**Ефективно для:**
+
+- Solo consultant — formalize the warm-lead pipeline.
+- Agency — partner network with non-competing peers.
+- Productized service — referral incentive structure.
+- Post-pivot pipeline — new niche referrers need a program.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Reputation + referral pipeline ramp (90-day flywheel) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- ≥3 closed customers willing to refer.
+- Service offering with measurable customer outcome.
+- Authority to pay flat incentives (legal + tax-compliant).
+- Network of ≥3 non-competing peers for swap pairs.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Pre-PMF — no referrers exist yet.
+- Single anchor client = 80%+ revenue.
+- Local-regulated business where referral fees are restricted.
+- Enterprise sale where procurement forbids referrer comp.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Customer list with consent to refer | CRM | own ops |
+| Peer / partner network list | spreadsheet | own ops |
+| Standard offering price | spec | own ops |
+| Tax handling for referral fees | guidance | accountant |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[freelance-pilot-pricing]] | Pilot completions are common referral sources. |
+| [[freelancer-niche-positioning]] | Referrer pitch uses the niche positioning. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: flat-incentive-not-percent, written-incentive-per-referrer, nda-safe-testimonial-framing, attribution-window-90-days, partner-swap-opted-in | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for spec + valid/invalid | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 600 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelance_referral_program_design_template_fill` | haiku | Template fill, no judgement |
-| `freelance_referral_program_design_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelance_referral_program_design_synthesis` | opus | Cross-input synthesis + final write-up |
+| `design-incentive` | sonnet | Light judgment with accountant input. |
+| `draft-terms` | sonnet | Bounded template fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/program-spec.json` | JSON example of referral program spec |
+| `templates/referrer-terms.md` | Written terms template per referrer |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelance-referral-program-design.py` | Validate one spec JSON against the schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `Reputation + referral pipeline ramp (90-day flywheel) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelance-pilot-pricing]]
+- [[freelancer-niche-positioning]]
+- [[partnership-co-marketing-playbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.

@@ -1,42 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Experiment Ledger Discipline Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Experiment Ledger Discipline must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Dashboard / ledger entries are immutable. Edits create a new versioned row with a delta reason.</statement>
-      <rationale source="Append-only data store discipline (Pat Helland, 'Immutability Changes Everything">Append-only data store discipline (Pat Helland, 'Immutability Changes Everything', 2015).</rationale>
+<text id="01-core-rules" title="Experiment Ledger Discipline Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules anchoring the experiment ledger. Each pairs a binary check + sourced rationale.</summary>
+
+  <section title="Rule set">
+
+    <rule id="append-only" testable="true" depth="essential">
+      <statement>Ledger entries MUST be immutable. Any edit creates a new versioned row with `delta_reason` and `prev_entry_id`.</statement>
+      <rationale source="Append-only data store discipline (Pat Helland, 'Immutability Changes Everything', 2015)">In-place edits destroy historical context that the ledger exists to preserve.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every entry has a producer, a consumer, and a decision the entry feeds. Entries without consumers are deleted as vanity metrics.</statement>
-      <rationale source="Anti-vanity-metric practice (Eric Ries, The Lean Startup, 2011)">Anti-vanity-metric practice (Eric Ries, The Lean Startup, 2011).</rationale>
+
+    <rule id="producer-consumer-decision" testable="true" depth="essential">
+      <statement>Every entry MUST name a producer (handle), a consumer (handle or named agent), and `decision_fed` (which downstream decision the entry feeds). Entries without these fields are rejected as vanity logs.</statement>
+      <rationale source="Anti-vanity-metric practice (Eric Ries, The Lean Startup, 2011)">Without a consumer + decision, entries pile up unread.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Query latency on the ledger is bounded. If the consumer cannot read the entry within X seconds it is a broken instrumentation contract.</statement>
-      <rationale source="Observability practice from SRE">useless data is worse than no data.</rationale>
+
+    <rule id="query-latency-bound" testable="true" depth="essential">
+      <statement>The canonical ledger search (filter by tag + status + cycle) MUST return within 5 seconds on the storage layer chosen. If query latency drifts above 5s, fix indexing before adding more entries.</statement>
+      <rationale source="SRE observability practice">Useless slow data is worse than no data; if humans can't query it within a meeting, they revert to memory.</rationale>
     </rule>
+
+    <rule id="learning-summary-required" testable="true" depth="essential">
+      <statement>Closing an entry (status=closed) MUST include a `learning_summary` ≥ 80 chars + at least one `tag` from the frozen taxonomy. Closing without learning is rejected.</statement>
+      <rationale source="Knowledge-base discipline; faion learnings-database-schema">Without a learning summary, the entry has data but no insight; future-self cannot extract value.</rationale>
+    </rule>
+
+    <rule id="superseded-by-chain" testable="true" depth="essential">
+      <statement>When new results invalidate a prior entry, the prior entry's `superseded_by` field MUST point to the new entry's id. Direct mutation of the prior entry is forbidden.</statement>
+      <rationale source="Anti-rewriting-history; cf. wiki + git practice">Invalidating without superseded_by chains loses the path from old learning to new.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Synthesis: Weekly CRO experiment cadence on a primary landing page
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: ≥1 named source per rule (URL, ticket, transcript_id)
-Decision: downstream consumer can act without re-deriving reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger → artefact → decision — with auditability at each step.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: 'we should do this thing'
-Artefact: prose paragraph, no schema
-Evidence: 'industry best practice'
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is a failure mode catalogued in content/03-failure-modes.xml. The methodology exists to prevent exactly this shape.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

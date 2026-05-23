@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Daily Ads Anomaly Checklist Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>15-minute daily procedure running 6 anomaly checks against thresholds + producing a structured log.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pull-yesterday-metrics">
+      <input>Ad-platform API or dashboard; reporting window = previous calendar day</input>
+      <action>Pull per-ad-set: spend, CPA, frequency, CTR, conversions, account-health status. Snapshot the 7-day rolling average.</action>
+      <output>metrics dataset</output>
+    </step>
+
+    <step n="2" name="apply-thresholds">
+      <input>metrics + pre-declared thresholds (spend 1.5×7d avg, CPA 1.5×7d avg, frequency &gt;4.0, CTR -30%, conversions -40%, account_health no_warnings)</input>
+      <action>For each check, compute actual vs threshold; mark tripped boolean.</action>
+      <output>checks array (6 entries) with tripped flags</output>
+    </step>
+
+    <step n="3" name="check-prior-day-persistence">
+      <input>checks array + yesterday's log</input>
+      <action>For each tripped check, look up same ad-set in yesterday's log. If same check tripped, escalate.</action>
+      <output>checks array enriched with persistence flag</output>
+    </step>
+
+    <step n="4" name="decide-action">
+      <input>enriched checks + decision tree (06-decision-tree.xml)</input>
+      <action>Map each tripped check to one of {pause, reduce-budget, raise-budget, escalate, no-op}. Pauses default to auto-resume after 24h.</action>
+      <output>checks with action</output>
+      <decision-gate>If action=escalate, require escalation_thread; pause action requires auto_resume_at.</decision-gate>
+    </step>
+
+    <step n="5" name="apply-actions">
+      <input>checks with action</input>
+      <action>Execute reversible actions (budget changes, pause). Open escalation thread for escalations. Do NOT disable accounts.</action>
+      <output>action receipts</output>
+    </step>
+
+    <step n="6" name="write-and-validate-log">
+      <input>checks + actions + receipts</input>
+      <action>Serialize to JSON per output contract. Run validator. Publish to log store.</action>
+      <output>validated daily-run log</output>
+      <decision-gate>If validator non-zero, fix + re-run; never publish partial.</decision-gate>
+    </step>
+
+  </section>
+</text>

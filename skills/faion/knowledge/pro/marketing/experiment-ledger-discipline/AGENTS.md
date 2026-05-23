@@ -3,78 +3,101 @@ slug: experiment-ledger-discipline
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Append-only experiment ledger — every hypothesis, variant, result, learning recorded with producer + consumer + decision-fed; immutable rows + versioned deltas; queryable by future-self.
 content_id: "35b55d0f99bb08dc"
-summary: Experiment Ledger Discipline delivers a concrete, testable methodology that turns the recurring task of 'Synthesis: Weekly CRO experiment cadence on a primary landing page' into an auditable artefact, addressing the gap: No methodology covers the compounding-knowledge layer of CR
-tags: [marketing, pro, instrumentation, methodology]
+complexity: medium
+produces: config
+est_tokens: 3500
+tags: [cro, experiment-ledger, knowledge-base, append-only, ab-testing]
 ---
 # Experiment Ledger Discipline
 
 ## Summary
 
-**One-sentence:** Experiment Ledger Discipline delivers a concrete, testable methodology that turns the recurring task of 'Synthesis: Weekly CRO experiment cadence on a primary landing page' into an auditable artefact, addressing the gap: No methodology covers the compounding-knowledge layer of CRO: a ledger of every experiment, hypothesis, variant, result, and learning, queryable by future-self. Without this, every CRO program forgets its own history in 6 months and re-runs lost experiments.
+**One-sentence:** Append-only experiment ledger — every hypothesis, variant, result, learning recorded with producer + consumer + decision-fed; immutable rows + versioned deltas; queryable by future-self.
 
-**One-paragraph:** No methodology covers the compounding-knowledge layer of CRO: a ledger of every experiment, hypothesis, variant, result, and learning, queryable by future-self. Without this, every CRO program forgets its own history in 6 months and re-runs lost experiments. Experiment Ledger Discipline closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Synthesis: Weekly CRO experiment cadence on a primary landing page' (role-growth-marketing, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Most CRO programs forget their own history in 6 months and re-run lost experiments. This methodology pins the ledger as an append-only, immutable knowledge layer with explicit consumer + decision-fed per entry. Core rules: append-only (edits create new versioned rows with delta_reason); every entry has producer + consumer + decision-fed; query latency bounded (≤ 5s for the canonical search); learning_summary required at close; superseded-by chain when prior results are invalidated. Output: a versioned ledger config + entry shape that an LLM agent can query and a human can audit.
+
+**Ефективно для:**
+
+- CRO program lasting &gt;6 months — institutional memory at risk.
+- Multi-rater scoring team — same hypothesis tested differently across cycles.
+- Agency / freelance handoff — incoming consultant queries past learnings.
+- Quarterly retro — pull every shipped + killed test from the ledger by tag.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Synthesis: Weekly CRO experiment cadence on a primary landing page' (role: role-growth-marketing) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- ≥1 experiment shipped per month for ≥3 months (history worth preserving).
+- A storage layer that supports append + version (git, Notion, dedicated DB).
+- ≥1 named consumer who actually queries the ledger.
+- Authority to enforce that no test ships without a ledger entry.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Cadence too low (&lt;1 test/quarter) — overhead exceeds value.
+- No queryable storage (only PDFs / Slack history) — fix storage first.
+- No named consumer — ledger becomes orphaned write-only log.
+- Single-person solo work for &lt;3 months — memory still fresh.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Ledger storage | git repo / Notion DB / SQL table | growth team |
+| Shipped experiment list (≥1 month) | report / CSV | ledger or prior tool |
+| Verdict template integration | spec | experiment-verdict-template |
+| Tag taxonomy | list | growth lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[experiment-hypothesis-scoring]] | Upstream producer of queued hypotheses. |
+| [[experiment-verdict-template]] | Downstream producer of verdicts that close ledger entries. |
+| [[ab-testing-basics]] | Background on the entries the ledger holds. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: append-only, producer-consumer-decision, query-latency-bound, learning-summary-required, superseded-by-chain | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for one ledger entry + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: open entry → ship test → record result → close with learning → archive | 600 |
+| `content/06-decision-tree.xml` | essential | Tree: entry state → next action | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `experiment_ledger_discipline_template_fill` | haiku | Template fill, no judgment |
-| `experiment_ledger_discipline_evidence_check` | sonnet | Bounded comparison + judgment |
-| `experiment_ledger_discipline_synthesis` | opus | Cross-input synthesis + final write-up |
+| `write-entry` | haiku | Template fill. |
+| `close-with-learning` | sonnet | Synthesis of result + cohort context. |
+| `audit-ledger-health` | sonnet | Cross-entry diff. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ledger-entry.json` | JSON example of one ledger entry |
+| `templates/ledger-config.yaml` | Storage + tag taxonomy + retention config |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-experiment-ledger-discipline.py` | Validate one ledger entry JSON against the schema | On entry create + close |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `role-growth-marketing/Synthesis: Weekly CRO experiment cadence on a primary landing page`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[experiment-hypothesis-scoring]]
+- [[experiment-verdict-template]]
+- [[ab-testing-basics]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes on entry state (proposed / shipped / closed / superseded) to the next action and pins the rule from `01-core-rules.xml`. Use it before mutating an entry — direct edits violate append-only.

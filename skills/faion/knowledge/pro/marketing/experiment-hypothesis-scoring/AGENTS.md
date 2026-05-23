@@ -3,78 +3,101 @@ slug: experiment-hypothesis-scoring
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: ICE/PIE/RICE rubric for CRO experiment intake — explicit thresholds (min projected lift × confidence), behavioural anchors, ≥2 raters, frozen-during-cycle, evidence-required.
 content_id: "3cbbcca146ee8abf"
-summary: Experiment Hypothesis Scoring delivers a concrete, testable methodology that turns the recurring task of 'Synthesis: Weekly CRO experiment cadence on a primary landing page' into an auditable artefact, addressing the gap: `growth-conversion-optimization` exists at solo+pro but tr
-tags: [marketing, pro, rubric, methodology]
+complexity: medium
+produces: rubric
+est_tokens: 3500
+tags: [cro, hypothesis-scoring, ice, pie, rice, ab-testing, prioritization]
 ---
 # Experiment Hypothesis Scoring
 
 ## Summary
 
-**One-sentence:** Experiment Hypothesis Scoring delivers a concrete, testable methodology that turns the recurring task of 'Synthesis: Weekly CRO experiment cadence on a primary landing page' into an auditable artefact, addressing the gap: `growth-conversion-optimization` exists at solo+pro but treats CRO as a 'do testing' verb without the upstream scoring framework. Needs ICE/PIE/RICE adapted to CRO, with explicit thresholds (e.g., minimum projected lift × confidence to enter the queue).
+**One-sentence:** ICE/PIE/RICE rubric for CRO experiment intake — explicit thresholds (min projected lift × confidence), behavioural anchors, ≥2 raters, frozen-during-cycle, evidence-required.
 
-**One-paragraph:** `growth-conversion-optimization` exists at solo+pro but treats CRO as a 'do testing' verb without the upstream scoring framework. Needs ICE/PIE/RICE adapted to CRO, with explicit thresholds (e.g., minimum projected lift × confidence to enter the queue). Experiment Hypothesis Scoring closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Synthesis: Weekly CRO experiment cadence on a primary landing page' (role-growth-marketing, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** `growth-conversion-optimization` treats CRO as a "do testing" verb without an upstream scoring framework. This rubric adapts ICE/PIE/RICE to CRO with explicit thresholds (minimum projected_lift × confidence to enter the queue) + behavioural anchors per band + ≥2-rater calibration + frozen-during-cycle discipline. Core rules: behavioural anchors per band (no "high impact" without observable signal); evidence-required (every score cites a quote / ticket / dashboard row); ≥2 raters with discrepancy escalation; frozen rubric during the review window; minimum entry threshold (queue cannot accept low-lift × low-confidence ideas). Output: a versioned, sortable hypothesis backlog.
+
+**Ефективно для:**
+
+- Weekly CRO cadence — landing-page-team-of-one needs intake discipline.
+- A/B test ICE/PIE/RICE rubric — choose one + freeze.
+- Quarterly experiment portfolio audit — re-score backlog against fresh data.
+- Agency / freelance CRO retainer — shared scoring with client.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Synthesis: Weekly CRO experiment cadence on a primary landing page' (role: role-growth-marketing) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Weekly or biweekly experiment cadence with a queue of ≥3 hypotheses.
+- Access to landing-page analytics (sessions, conversions, segment data).
+- ≥2 raters available for calibration (founder + designer, or 2 freelancers).
+- Authority to push a hypothesis to test (no further sign-off needed for top of queue).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No traffic / no data — score-based prioritization is meaningless without funnel signal.
+- Pre-PMF where the metric to optimize is unclear — fix PMF discovery first.
+- Single-shot test (one campaign launch) — overhead exceeds value.
+- Single-rater org with no second voice — rule r3 cannot be met.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Hypothesis backlog | spreadsheet / Notion table | growth team |
+| Page analytics (sessions, conv rate per segment) | dashboard | analytics tool |
+| Frozen rubric file (this cycle) | YAML / JSON | growth lead |
+| Prior cycle's verdicts (for carry-forward) | report | experiment-verdict-template |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[ab-testing-basics]] | Statistical foundations of the lift × confidence threshold. |
+| [[experiment-ledger-discipline]] | The ledger that consumes scored hypotheses. |
+| [[experiment-verdict-template]] | Closes the loop after a hypothesis ships. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: behavioural-anchor-per-band, evidence-required, two-rater-calibration, frozen-rubric, min-entry-threshold | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for one scored hypothesis + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: pick rubric → score with 2 raters → calibrate → publish → freeze | 600 |
+| `content/06-decision-tree.xml` | essential | Tree mapping discrepancy + threshold signals to action | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `experiment_hypothesis_scoring_template_fill` | haiku | Template fill, no judgment |
-| `experiment_hypothesis_scoring_evidence_check` | sonnet | Bounded comparison + judgment |
-| `experiment_hypothesis_scoring_synthesis` | opus | Cross-input synthesis + final write-up |
+| `score-hypothesis` | sonnet | Bounded judgment per axis. |
+| `calibrate-raters` | sonnet | Discrepancy resolution. |
+| `lint-evidence` | haiku | Token-level evidence presence check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/scored-hypothesis.json` | JSON example of one scored hypothesis |
+| `templates/rubric.yaml` | Frozen rubric with behavioural anchors per band |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-experiment-hypothesis-scoring.py` | Validate the scored-hypothesis JSON against the schema | After scoring, before adding to ledger |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `role-growth-marketing/Synthesis: Weekly CRO experiment cadence on a primary landing page`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ab-testing-basics]]
+- [[experiment-ledger-discipline]]
+- [[experiment-verdict-template]]
+- [[icp-message-mining-from-ai-conversations]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes from discrepancy-between-raters + threshold signals to the next action (re-score / kill / promote / freeze) and pins the rule from `01-core-rules.xml`. Use it during the calibration step — bypassing it produces drift between cycles.
