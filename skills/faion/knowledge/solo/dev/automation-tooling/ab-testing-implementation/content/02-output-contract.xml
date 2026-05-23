@@ -1,22 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ab-testing-implementation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="A/B Testing Implementation Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator in scripts/validate-ab-testing-implementation.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ab-testing-implementation.json",
+  "type": "object",
+  "title": "Experiment analyzer output",
+  "required": [
+    "experiment_id",
+    "variants",
+    "primary_metric_result"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "experiment_id": {
+      "type": "string"
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "exposures",
+          "conversions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "exposures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "conversions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rate": {
+            "type": "number"
+          },
+          "ci_lower": {
+            "type": "number"
+          },
+          "ci_upper": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "primary_metric_result": {
+      "type": "object",
+      "required": [
+        "lift_abs",
+        "lift_rel",
+        "p_value"
+      ],
+      "properties": {
+        "lift_abs": {
+          "type": "number"
+        },
+        "lift_rel": {
+          "type": "number"
+        },
+        "p_value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "guardrails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "regressed"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "regressed": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "checkout-button-color-2026q2",
+  "variants": [
+    {
+      "id": "control",
+      "exposures": 10000,
+      "conversions": 820,
+      "rate": 0.082,
+      "ci_lower": 0.077,
+      "ci_upper": 0.088
+    },
+    {
+      "id": "treatment",
+      "exposures": 10000,
+      "conversions": 880,
+      "rate": 0.088,
+      "ci_lower": 0.083,
+      "ci_upper": 0.094
+    }
+  ],
+  "primary_metric_result": {
+    "lift_abs": 0.006,
+    "lift_rel": 0.073,
+    "p_value": 0.03
+  },
+  "guardrails": [
+    {
+      "name": "latency_p95_ms",
+      "regressed": false
+    }
+  ]
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "x",
+  "variants": [
+    {
+      "id": "control"
+    }
+  ]
+}
+]]></code>
+    <note>Forbidden traits: variants[0] missing exposures+conversions; missing primary_metric_result.</note>
+  </example>
+  <reference path="scripts/validate-ab-testing-implementation.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

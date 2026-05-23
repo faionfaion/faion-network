@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="api-versioning Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for api-versioning as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent deduplicates v1/v2 handler code to be "DRY".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Shared code silently introduces v1 breaking changes when v2 evolves. v1 routes must be frozen in a separate, read-only module.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Date-based versioning (Stripe-style) on a 2-person team.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Requires a per-customer version pin + request/response transformation pipeline. Overhead is not paid back at small scale. URL path versioning is the right default.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="API Versioning Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="dry-v1-v2-handlers" severity="high">
+      <symptom>Single handler dispatches between v1 and v2 response shapes via if/else inside business logic.</symptom>
+      <root-cause source="Internal — api-versioning audit">Author treated v1/v2 as 'duplication to remove'.</root-cause>
+      <fix>Move v1 to a frozen read-only module; v2 is a separate module/router. Forbid shared handlers in code review.</fix>
+    </antipattern>
+    <antipattern id="date-based-at-small-scale" severity="medium">
+      <symptom>2-person team adopts Stripe-style date-based versioning with per-customer pinning.</symptom>
+      <root-cause source="Stripe API versioning model context">Agents read the Stripe blog and copy the pattern without weighing operational cost.</root-cause>
+      <fix>Use URL path versioning at small scale; date-based requires a transformation pipeline that small teams cannot maintain.</fix>
+    </antipattern>
+    <antipattern id="agent-deletes-v1" severity="high">
+      <symptom>Agent decides 'v1 is deprecated' and deletes the handler in the same PR as the 410 Gone flip.</symptom>
+      <root-cause source="Internal — sunset playbook">Sunset workflow not encoded as two PRs.</root-cause>
+      <fix>Block any PR that deletes a v1 handler unless preceded by 30 days of zero traffic AND a prior 410 Gone PR.</fix>
+    </antipattern>
+    <antipattern id="missing-deprecation-headers" severity="high">
+      <symptom>Deprecation is announced in a blog post but the route still returns 200 with no Sunset/Deprecation headers.</symptom>
+      <root-cause source="RFC 8594 + 9745">Author forgot machine-readable signalling.</root-cause>
+      <fix>Add a global middleware that injects Deprecation/Sunset/Link headers for any route marked deprecated in ops/sunset.yaml.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,22 +1,144 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-graphql Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API GraphQL Design Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid API GraphQL Design artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-graphql.json",
+  "title": "API GraphQL Design",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "api_id",
+    "schema_path",
+    "dataloader_required",
+    "pagination_style",
+    "depth_limit",
+    "complexity_limit",
+    "persisted_queries",
+    "introspection_in_prod",
+    "evidence",
+    "status",
+    "owner",
+    "last_touched",
+    "template_version"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date or UUID",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    },
+    "status": {
+      "type": "string",
+      "description": "draft|ready_for_review|approved|archived",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "description": "{source, citation} pairs anchoring non-trivial fields",
+      "minItems": 1
+    },
+    "api_id": {
+      "type": "string",
+      "description": "service id or repo slug",
+      "minLength": 1
+    },
+    "schema_path": {
+      "type": "string",
+      "description": "path to the SDL document (.graphql) \u2014 schema-first",
+      "minLength": 1
+    },
+    "dataloader_required": {
+      "type": "boolean",
+      "description": "must be true; every relation field uses a loader"
+    },
+    "pagination_style": {
+      "type": "string",
+      "description": "relay-cursor|offset|none (must be cursor for >100 items)",
+      "minLength": 1
+    },
+    "depth_limit": {
+      "type": "integer",
+      "description": "max query depth on public endpoint, conventionally 10"
+    },
+    "complexity_limit": {
+      "type": "integer",
+      "description": "max query complexity (cost-weighted)"
+    },
+    "persisted_queries": {
+      "type": "boolean",
+      "description": "true for production clients; ad-hoc allowed only in dev"
+    },
+    "introspection_in_prod": {
+      "type": "boolean",
+      "description": "false on public endpoints"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "api-graphql-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "evidence": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "api_id": "draft",
+  "schema_path": "draft",
+  "dataloader_required": true,
+  "pagination_style": "draft",
+  "depth_limit": 1,
+  "complexity_limit": 1,
+  "persisted_queries": true,
+  "introspection_in_prod": true
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched. Used as the `--self-test` fixture by `scripts/validate-api-graphql.py`.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence array — rejected by `validate-api-graphql.py` with exit 1.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+    <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "everyone", "design", "engineering").</pattern>
+    <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter at write time.</pattern>
+    <pattern id="f4">`evidence` array empty for any non-trivial field declared in the schema.</pattern>
+    <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a named human reviewer distinct from the producing agent.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-api-graphql.py">Schema validator (stdlib only). Exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

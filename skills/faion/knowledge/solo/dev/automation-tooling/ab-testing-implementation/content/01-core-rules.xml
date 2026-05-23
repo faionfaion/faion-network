@@ -1,51 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ab-testing-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ab-testing-implementation. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="A/B Testing Implementation Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the ab-testing-implementation methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Model every experiment event as a typed dataclass with experiment_id, variant, user_id, event_type (exposure | conversion | metric), metric_name, metric_value, timestamp, and properties.</statement>
-      <rationale source="v1-source">An untyped dict passed to the analytics client drifts over time; a dataclass is a code-reviewable schema that fails fast when fields are missing.</rationale>
+    <rule id="typed-event-schema" testable="true" depth="essential">
+      <statement>Every experiment event is a typed dataclass / Pydantic model with experiment_id, user_id, variant_id, kind in {exposure, conversion}, ts, properties.</statement>
+      <rationale source="Internal — analytics audit">Untyped events drift; downstream warehouse loaders silently break on new keys.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Deduplicate exposures by (experiment_id, user_id) within a request/session; never fire multiple exposure events for the same user in the same experiment during one page load.</statement>
-      <rationale source="v1-source">Duplicate exposures inflate the exposure count, causing sample-ratio mismatch and underestimating conversion rate.</rationale>
+    <rule id="exposure-dedup-per-request" testable="true" depth="essential">
+      <statement>ExperimentTracker deduplicates exposures within a request: the same (experiment_id, user_id) emits at most one exposure per request.</statement>
+      <rationale source="Optimizely + GrowthBook docs">Without dedup, a single request can fire 10 exposures and inflate denominators by 10×, fabricating significance.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>In-process deduplication (_exposures set) is for development only; in production, persist the deduplication state to a durable store (Redis or a warehouse exposure table).</statement>
-      <rationale source="v1-source">In-process sets are lost on pod restart; in a multi-replica deployment each pod builds its own set, allowing duplicates across replicas.</rationale>
+    <rule id="wilson-not-normal-ci" testable="true" depth="essential">
+      <statement>Use Wilson score intervals for proportion CIs, not the naive normal approximation.</statement>
+      <rationale source="Wilson 1927 + Brown/Cai/DasGupta 2001">Normal CIs are wrong near 0 and 1 (extend below 0 or above 1); Wilson handles edges correctly even at small n.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Track exposure when the variant is rendered, not when assignment happens; track conversion on the specific downstream event — never at the same call site as exposure.</statement>
-      <rationale source="v1-source">Logging exposure and conversion at the same site conflates assignment with outcome. Analysis must join exposure → subsequent conversion; co-located calls destroy the temporal relationship.</rationale>
+    <rule id="report-effect-not-just-p" testable="true" depth="essential">
+      <statement>Reports show absolute and relative lift with 95% CI, not just the p-value.</statement>
+      <rationale source="ASA 2016 statement on p-values">p-values without effect size invite p &lt; 0.05 results that have no business impact.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Refuse to run analysis unless: minimum runtime has elapsed, pre-registered sample size has been reached, and SRM check passes (chi-square p &gt; 0.001).</statement>
-      <rationale source="v1-source">Running analysis before sample size is reached inflates false positives. SRM (sample-ratio mismatch) indicates a bucketing or logging bug; analysis on SRM data produces biased lift estimates.</rationale>
+    <rule id="guardrail-metrics" testable="true" depth="essential">
+      <statement>Analyzer surfaces guardrail metrics (latency p95, error rate) alongside the primary metric; auto-flag &gt;= 10% regression.</statement>
+      <rationale source="Booking.com + Microsoft Experimentation">Wins on primary metric that ship a 30% latency regression are not wins.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use a two-sided z-test for binary conversion metrics; compute pooled standard error from combined conversion rate; report Wilson confidence intervals (not Wald intervals) for robustness at small n.</statement>
-      <rationale source="v1-source">Wald intervals can include values outside [0,1] for very high or very low rates; Wilson intervals are bounded and more accurate for proportions near 0 or 1.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Maintain a typed metric registry: binary (z-test for proportions), continuous (Welch's t-test), ratio (delta method) — never apply the binary z-test to continuous or ratio metrics.</statement>
-      <rationale source="v1-source">Applying a binomial z-test to continuous metrics (e.g., revenue per user) produces wrong variance estimates and unreliable p-values.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Analysis output must be structured JSON: control stats, treatment stats, lift, p_value, confidence_interval, power, srm_p, duration_days, decision_ready boolean — never a narrative sentence like "the variant is winning".</statement>
-      <rationale source="v1-source">A narrative sentence encodes a decision; the structured output presents evidence. Humans decide ship/no-ship; the analyzer presents the evidence without editorializing.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Expose experiment summaries as a JSON endpoint with per-variant exposure counts, conversion rates, analysis results, and a generated_at timestamp; never cache summary data beyond 5 minutes to reflect new conversions.</statement>
-      <rationale source="v1-source">A stale cached summary misleads operators checking experiment health; the 5-minute window balances freshness against repeated heavy analysis queries.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Provide daily metric data for at least the last 14 days; include both cumulative and per-day rates to detect novelty effects (initial spike that fades) or ramp effects (gradual improvement).</statement>
-      <rationale source="v1-source">Cumulative-only reporting hides temporal patterns. A novelty effect produces an early significant result that regresses to null later; per-day data reveals this before shipping.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Monitor at least two guardrail metrics alongside the primary metric: latency p95 and error rate; flag any guardrail degradation even if the primary metric is positive.</statement>
-      <rationale source="v1-source">A checkout conversion win that comes with +200ms latency and +0.5pp error rate may not be a net positive for the business; guardrails catch these regressions before shipping.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If you are on a managed platform (Optimizely, GrowthBook, Statsig) with a built-in analyzer, skip this methodology and use the platform.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Reimplementing platform analytics introduces statistical bugs without business benefit.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

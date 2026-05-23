@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="WebSocket Design Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+  <decision-tree>
+    <root-question id="q-root">Does the workload require sub-second server push AND client→server traffic?</root-question>
+    <branch when="client_to_server == false">
+      <conclusion ref="skip-this-methodology" verdict="use Server-Sent Events; simpler, HTTP/2 multiplex, resume built in"/>
+    </branch>
+    <branch when="polling_frequency_s &gt; 5">
+      <conclusion ref="skip-this-methodology" verdict="use REST polling"/>
+    </branch>
+    <branch when="serverless_only == true AND adapter_available == false">
+      <conclusion ref="skip-this-methodology" verdict="use HTTP long-poll or move to a stateful tier"/>
+    </branch>
+    <branch when="client_to_server == true AND latency_budget_ms &lt; 1000">
+      <conclusion ref="versioned-envelope" verdict="use WebSocket with envelope, heartbeat, reconnect-jitter, pubsub fan-out"/>
+    </branch>
+  </decision-tree>
+  <example trace="websocket-design-typical">
+    Multi-client live cursor product → versioned envelope v=1 → heartbeat 25s — disconnect after 2 misses → reconnect full-jitter capped 30s → Redis Pub/Sub for fan-out → bounded queue 100 msgs.
+  </example>
+</text>

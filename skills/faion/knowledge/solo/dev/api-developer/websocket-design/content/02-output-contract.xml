@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="websocket-design Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="WebSocket Design Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-websocket-design.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/websocket-design.json",
+  "type": "object",
+  "title": "WebSocket design decision record",
+  "required": [
+    "envelope_version",
+    "heartbeat_seconds",
+    "reconnect",
+    "fanout"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "envelope_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "heartbeat_seconds": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 60
+    },
+    "reconnect": {
+      "type": "object",
+      "required": [
+        "strategy",
+        "cap_ms",
+        "max_attempts"
+      ],
+      "properties": {
+        "strategy": {
+          "const": "full_jitter_exponential"
+        },
+        "cap_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 20
+        }
+      }
+    },
+    "fanout": {
+      "enum": [
+        "redis_pubsub",
+        "nats",
+        "kafka"
+      ]
+    },
+    "auth_method": {
+      "enum": [
+        "ticket",
+        "signed_cookie"
+      ]
+    },
+    "send_queue_cap": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "envelope_version": 1,
+  "heartbeat_seconds": 25,
+  "reconnect": {
+    "strategy": "full_jitter_exponential",
+    "cap_ms": 30000,
+    "max_attempts": 8
+  },
+  "fanout": "redis_pubsub",
+  "auth_method": "ticket",
+  "send_queue_cap": 100
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "heartbeat_seconds": 300,
+  "reconnect": {
+    "strategy": "linear"
+  }
+}
+]]></code>
+    <note>Forbidden traits: Missing fanout; heartbeat_seconds out of range; reconnect.strategy not const full_jitter_exponential.</note>
+  </example>
+  <reference path="scripts/validate-websocket-design.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

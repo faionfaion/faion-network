@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template helper for API OpenAPI Spec Authoring (openapi-bundle-check.sh).
+# consumes: see content/02-output-contract.xml inputs for api-openapi-spec
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 # openapi-bundle-check.sh — bundled output must match sources; then lint.
 # Usage: ./openapi-bundle-check.sh [src-root] [output-file]
 # Example: ./openapi-bundle-check.sh openapi/_root.yaml openapi.yaml

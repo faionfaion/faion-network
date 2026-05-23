@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-versioning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-versioning. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="API Versioning Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the api-versioning methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="additive-first" testable="true" depth="essential">
+      <statement>Additive changes (new field, new optional input, new endpoint) NEVER trigger a new major version. Bump only on breaking semantic changes.</statement>
+      <rationale source="Stripe + GitHub API versioning postmortems">About 90% of API changes are additive; version ceremony for them wastes cycles and confuses consumers.</rationale>
+    </rule>
+    <rule id="url-path-default" testable="true" depth="essential">
+      <statement>Default to URL path versioning (/api/vN/). Never use query-param versioning for cacheable endpoints.</statement>
+      <rationale source="Microsoft API Guidelines §12">URL path is cache-friendly (CDN), debuggable (browser address bar), and is what Stripe/Twilio/GitHub all use.</rationale>
+    </rule>
+    <rule id="deprecation-headers" testable="true" depth="essential">
+      <statement>From the day a route is deprecated, emit Deprecation, Sunset, and Link: rel=successor-version headers on every response.</statement>
+      <rationale source="RFC 8594 + RFC 9745">Headers are machine-readable; SDK maintainers and observability platforms detect them automatically.</rationale>
+    </rule>
+    <rule id="measure-before-sunset" testable="true" depth="essential">
+      <statement>Track per-version traffic via a Prometheus label (http_requests_total{version="vN"}). Do not sunset until the version's traffic is zero or negligible for 30 consecutive days.</statement>
+      <rationale source="Internal — sunset incident postmortems">You cannot sunset what you cannot measure; removing a version with live clients causes immediate incidents regardless of announced dates.</rationale>
+    </rule>
+    <rule id="two-pr-sunset" testable="true" depth="essential">
+      <statement>Sunset in two PRs: (1) the route returns 410 Gone with a body pointing at the successor; (2) only after 30 days of zero traffic, delete the handler code.</statement>
+      <rationale source="Internal — sunset playbook">Two-PR sunset prevents accidental restoration and gives clients a final machine-readable signal before code disappears.</rationale>
+    </rule>
+    <rule id="frozen-v1-module" testable="true" depth="essential">
+      <statement>v1 routes live in a read-only module after publication. v2 is a separate module; DRY-ing v1 and v2 handlers is forbidden.</statement>
+      <rationale source="Internal — api-versioning audit Q1 2026">Shared code silently introduces v1 breaking changes when v2 evolves, defeating the entire versioning contract.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the pending change is additive OR the API is internal-only with a single redeployable consumer OR the stack is GraphQL/protobuf, skip this methodology entirely.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Forcing version ceremony where it does not pay back creates noise and wastes review time.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

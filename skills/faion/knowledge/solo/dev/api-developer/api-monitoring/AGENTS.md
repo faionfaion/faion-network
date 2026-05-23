@@ -3,72 +3,103 @@ slug: api-monitoring
 tier: solo
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Instrument every production API endpoint with Prometheus metrics (RED method: Rate, Errors, Duration), structured JSON logging with a `request_id` correlator, and separate liveness/readiness health probes.
-content_id: "dbf52e174cb37873"
-tags: [monitoring, prometheus, slo, structured-logging, health-probes]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Production monitoring config: Prometheus RED-method metrics, structured JSON logs with request_id, split liveness/readiness probes, and SLO definitions that drive alerts.
+content_id: "c90f0f4cf7b6152d"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [api-developer, monitoring, prometheus, slo, structured-logging, health-probes]
 ---
 # API Monitoring
 
 ## Summary
 
-**One-sentence:** Instrument every production API endpoint with Prometheus metrics (RED method: Rate, Errors, Duration), structured JSON logging with a `request_id` correlator, and separate liveness/readiness health probes.
+**One-sentence:** Production monitoring config: Prometheus RED-method metrics, structured JSON logs with request_id, split liveness/readiness probes, and SLO definitions that drive alerts.
 
-**One-paragraph:** Instrument every production API endpoint with Prometheus metrics (RED method: Rate, Errors, Duration), structured JSON logging with a `request_id` correlator, and separate liveness/readiness health probes. Define SLOs before adding metrics — the metrics exist to measure SLO compliance, not the other way around.
+**One-paragraph:** SLOs come first; metrics serve them. The methodology pins RED-method metrics (Rate, Errors, Duration) per endpoint, structured JSON logs correlated by request_id, separated liveness vs readiness probes (kill vs route-out), and a named SLO per critical user-journey with an error budget. Output is the monitoring config artefact + the alert ruleset. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- API Monitoring — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- Any HTTP/gRPC/GraphQL service running in production with paying users or SLOs.
-- You need quantitative answers to "is the API healthy", "is it getting slower", "who broke it".
-- Adding a new endpoint or service — instrument before launch, not after the first incident.
-- Setting up readiness probes for k8s / systemd / load balancer drain.
-- Diagnosing a regression (p95 spiked, error rate climbing) — metrics + logs + traces correlated by request_id.
+- The triggering activity for `api-monitoring` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- API runs in production OR pre-production with traffic.
+- Operator can host or pay for a metrics backend (Prometheus, Grafana Cloud, Datadog).
+- ≥1 critical user-journey deserves an SLO + error budget.
 
 ## Skip If (ANY kills it)
 
-- Throwaway prototype on localhost — Prometheus scrape config is not a learning goal.
-- Internal cron job with one user — exit code + email is enough.
-- When you do not yet know what "good" looks like (no SLO defined). Pick SLOs first, then instrument.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Local dev-only service with no production exposure — `print()` debugging is enough.
+- Static asset CDN already covered by upstream monitoring — extra metrics are noise.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[server-craft]] | Infra baseline — where the metrics land |
+| [[api-rest-design]] | Endpoint definitions the metrics attach to |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-api-monitoring-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-api-monitoring.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-monitoring.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/api-developer/`
+- [[server-craft]]
+- [[api-rest-design]]
+- [[api-error-handling]]
+- [[alert-to-fix-incident-loop]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (backend choice, SLO maturity, alert pager budget) to full RED+SLO / minimal-RED-only / cloud-managed-only. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

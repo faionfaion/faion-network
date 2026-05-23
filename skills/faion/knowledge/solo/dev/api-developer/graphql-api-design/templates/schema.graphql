@@ -1,28 +1,17 @@
-# GraphQL SDL skeleton — schema-first template.
-# Copy and adapt; replace example types with your domain.
-
+<!-- __faion_header_v1__ -->
+<!-- purpose: SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, payload with error union -->
+<!-- consumes: see content/02-output-contract.xml -->
+<!-- produces: spec; depends-on: content/01-core-rules.xml#schema-first -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, payload with error union","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#schema-first","token_budget_impact":"~150 tokens when loaded"}} -->
 scalar DateTime
 scalar UUID
 scalar Email
 
-# Interfaces
-interface Node {
-  id: ID!
-}
+interface Node { id: ID! }
+interface Timestamped { createdAt: DateTime!; updatedAt: DateTime! }
 
-interface Timestamped {
-  createdAt: DateTime!
-  updatedAt: DateTime!
-}
+enum UserRole { ADMIN MODERATOR MEMBER }
 
-# Enums — SCREAMING_SNAKE
-enum UserRole {
-  ADMIN
-  MODERATOR
-  MEMBER
-}
-
-# Types — PascalCase, fields camelCase
 type User implements Node & Timestamped {
   id: ID!
   email: Email!
@@ -31,58 +20,27 @@ type User implements Node & Timestamped {
   isActive: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
-  orders(first: Int = 20, after: String): OrderConnection!
+  orders(first: Int, after: String): OrderConnection!
 }
 
-# Relay-style Connection/Edge/PageInfo
-type UserConnection {
-  edges: [UserEdge!]!
+type OrderConnection {
+  edges: [OrderEdge!]!
   pageInfo: PageInfo!
-  totalCount: Int!
 }
+type OrderEdge { cursor: String!; node: Order! }
+type PageInfo { endCursor: String; hasNextPage: Boolean! }
 
-type UserEdge {
-  cursor: String!
-  node: User!
-}
+type Order implements Node { id: ID!; total: Float! }
 
-type PageInfo {
-  hasNextPage: Boolean!
-  hasPreviousPage: Boolean!
-  startCursor: String
-  endCursor: String
-}
+type UserError { field: String; message: String!; code: String! }
 
-# Input types for mutations
-input CreateUserInput {
-  email: Email!
-  name: String!
-  role: UserRole = MEMBER
-}
-
-# Payload with typed errors — not naked nulls
-type CreateUserPayload {
-  user: User
-  errors: [UserError!]
-}
-
-type UserError {
-  field: String
-  message: String!
-  code: String!  # stable enum: VALIDATION_ERROR, EMAIL_TAKEN, NOT_AUTHORIZED
-}
-
-# Root types
-type Query {
-  user(id: ID!): User
-  users(first: Int = 20, after: String): UserConnection!
-  me: User
-}
+input CreateUserInput { email: Email!; name: String!; role: UserRole }
+type CreateUserPayload { user: User; errors: [UserError!] }
 
 type Mutation {
   createUser(input: CreateUserInput!): CreateUserPayload!
 }
 
-type Subscription {
-  orderStatusChanged(orderId: ID!): Order!
+type Query {
+  user(id: ID!): User
 }

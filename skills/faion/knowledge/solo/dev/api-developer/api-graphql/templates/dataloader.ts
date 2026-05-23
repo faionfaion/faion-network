@@ -1,3 +1,8 @@
+// purpose: Template helper for API GraphQL Design (dataloader.ts).
+// consumes: see content/02-output-contract.xml inputs for api-graphql
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-1000 tokens when loaded as context
 /**
  * DataLoader pattern for GraphQL resolvers.
  * Always instantiate per-request in GraphQL context factory — never module-global.

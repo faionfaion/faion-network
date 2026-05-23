@@ -1,59 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="best-practices-2026 Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for best-practices-2026. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Software Development Best Practices 2026 Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the best-practices-2026 methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Enable strict, noUncheckedIndexedAccess, noImplicitOverride, exactOptionalPropertyTypes, and verbatimModuleSyntax in new projects; migrate legacy code under per-file // @ts-strict-check before flipping the global flag.</statement>
-      <rationale source="v1-source">Flipping global strict in an existing codebase without budget creates hundreds of errors at once. Per-file gradual adoption lets the team absorb changes incrementally.</rationale>
+    <rule id="ts-strict-mandatory" testable="true" depth="essential">
+      <statement>tsconfig.json has strict: true AND noUncheckedIndexedAccess: true AND exactOptionalPropertyTypes: true.</statement>
+      <rationale source="TypeScript 5 release notes">Strict mode catches the bug classes that consume the most LLM review time.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use moduleResolution: "bundler" for projects targeting Vite, Next.js, or tsup; use "node16" or "nodenext" for pure Node projects without a bundler.</statement>
-      <rationale source="v1-source">"bundler" allows extensionless imports that bundlers resolve; "node16" requires .js extensions in import paths for native ESM compliance.</rationale>
+    <rule id="py-313-strict-typing" testable="true" depth="essential">
+      <statement>Python projects use ruff (lint + format) and mypy --strict (or pyright strict) in CI.</statement>
+      <rationale source="Astral ruff + Python typing PEPs">Loose typing in 2026 is technical debt; CI without --strict ships untyped code that drifts.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>With verbatimModuleSyntax enabled, always use import type for type-only imports; the compiler will error on value imports that are erased at runtime.</statement>
-      <rationale source="v1-source">Prevents accidental inclusion of types-only modules in runtime bundles and makes the module graph explicit.</rationale>
+    <rule id="uv-pip-management" testable="true" depth="essential">
+      <statement>Python deps managed via uv (or poetry). Raw pip install in CI is forbidden.</statement>
+      <rationale source="Astral uv docs">uv pins reproducibly; raw pip lacks lockfile semantics by default.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Adopt server-components-by-default per route; add 'use client' only where interactivity is required — never sprinkle it at the module level without a documented per-route policy.</statement>
-      <rationale source="v1-source">Client boundaries prevent tree-shaking of server-only code; undisciplined use bloats the client bundle with dependencies that should never reach the browser.</rationale>
+    <rule id="pre-commit-required" testable="true" depth="essential">
+      <statement>Repository has .pre-commit-config.yaml with format + lint + typecheck hooks. Every commit runs them.</statement>
+      <rationale source="pre-commit.com + faion-network linting rules">Without pre-commit, CI catches issues late and roundtrips waste review time.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use Server Actions ('use server' in an async function) for form submissions and mutations; they run on the server, validate data there, and can access the database directly without an API route.</statement>
-      <rationale source="v1-source">Eliminates a client-to-API round-trip for simple mutations, removes the need to expose internal data shapes via an API, and colocates mutation logic with the form.</rationale>
+    <rule id="next-app-router" testable="true" depth="essential">
+      <statement>New Next.js projects start on the App Router (Next 13+) with React Server Components, not the Pages Router.</statement>
+      <rationale source="Next.js docs">App Router is the supported path forward; Pages Router is in maintenance mode.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>In Next.js 15, fetch() is no longer cached by default; explicitly opt in with cache: 'force-cache' or revalidate for data that should be cached.</statement>
-      <rationale source="v1-source">Next.js 15 reversed the default from cache-everything to no-cache. Code written for Next.js 14 that relies on implicit caching will fetch on every request in 15.</rationale>
+    <rule id="sdd-quality-gates" testable="true" depth="essential">
+      <statement>Repo has an .aidocs/ structure with constitution.md + spec/design/test-plan per feature.</statement>
+      <rationale source="faion-network SDD methodology">Without an SDD scaffold, AI-assisted work drifts from explicit requirements.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Pin Python at &gt;=3.13,&lt;3.14 in pyproject.toml until the next minor LTS stabilises; configure ruff with target-version = "py313" and select E, F, I, B, UP, SIM, T20, ASYNC.</statement>
-      <rationale source="v1-source">&gt;=3.13 without an upper bound accepts future majors and breaks compatibility. ruff replaces black + isort + flake8 in a single binary; T20 catches print() statements left in production code.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use built-in generic types (list[str], dict[str, int], tuple[int, ...]) instead of typing.List, typing.Dict; use X | None instead of Optional[X].</statement>
-      <rationale source="v1-source">PEP 585 and PEP 604 make the old typing module aliases deprecated. Mixing old and new in the same file causes inconsistent style that UP ruff rules will flag.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Choose the AI coding tool based on primary workflow: Claude Code for terminal-first, multi-file refactors and agent tasks; Cursor for IDE-native pair programming with codebase context; GitHub Copilot for line-completion embedded in any editor.</statement>
-      <rationale source="v1-source">Tool capabilities overlap but their UX models differ; mixing all three without a clear primary creates context fragmentation and inconsistent code style.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Require diff review on every AI-generated change; reject any AI-produced diff over 200 lines unreviewed as a single unit.</statement>
-      <rationale source="v1-source">AI models have consistent blind spots in the same training domains. Large unreviewed diffs obscure subtle logic errors under volume. 200 lines is approximately one focused review session.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Run the original test suite to establish a baseline before generating tests with AI; reject AI-generated tests that do not fail when reverting the change they test.</statement>
-      <rationale source="v1-source">AI-generated tests for AI-generated code share the same blind spots. A test that does not fail on revert provides no actual protection and creates false confidence in coverage.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Use a different model or prompt context to review AI-generated tests than was used to generate the code under test.</statement>
-      <rationale source="v1-source">The same model asked to generate code and tests will produce tests that mirror the implementation's assumptions, not independently verify correctness.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Run automated codemods (React 19 migration, TS 5 upgrades) per-package with a verification step after each package, never repo-wide in one shot.</statement>
-      <rationale source="v1-source">Codemods accumulate silent failures across packages; a per-package run catches and fixes each failure before it compounds into a large-scale rollback.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the stack is not TS or Python, or the repo has &lt; 100 LOC, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Rubric is stack-specific; tiny prototypes do not benefit from baseline enforcement.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

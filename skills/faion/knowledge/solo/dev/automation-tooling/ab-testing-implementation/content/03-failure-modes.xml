@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ab-testing-implementation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ab-testing-implementation as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent reuses the binary conversion analyzer for revenue per user or latency p95.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Revenue per user is a ratio metric (sum of revenue / count of users); latency p95 is a quantile metric. Both require different test statistics than the two-proportion z-test.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Reporting only the primary metric result and ignoring secondary and guardrail metrics.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Optimization on a single metric often degrades others. Ship decisions require the full picture of what improved and what regressed.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="A/B Testing Implementation Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="duplicate-exposures" severity="high">
+      <symptom>Same user fires 12 exposures per session; conversion rate looks 12× lower than reality.</symptom>
+      <root-cause source="GrowthBook docs">ExperimentTracker has no in-request dedup.</root-cause>
+      <fix>Add a per-request seen-set keyed by experiment_id; emit exposure on first observation only.</fix>
+    </antipattern>
+    <antipattern id="normal-approximation-ci" severity="medium">
+      <symptom>CI lower bound is -0.02 (negative probability).</symptom>
+      <root-cause source="Brown/Cai/DasGupta 2001">Author used naive normal CI for proportion.</root-cause>
+      <fix>Switch to Wilson score interval.</fix>
+    </antipattern>
+    <antipattern id="post-hoc-segmentation" severity="high">
+      <symptom>Primary metric flat; team slices by browser and announces 'Safari users converted'.</symptom>
+      <root-cause source="ASA + Optimizely Stats Engine">Multiple-comparisons via segment slicing without correction.</root-cause>
+      <fix>Forbid post-hoc segmentation as a winner-declaration mechanism; report segments but require pre-registration for them to count.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,22 +1,139 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ab-testing-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="A/B Testing Basics Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-ab-testing-basics.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ab-testing-basics.json",
+  "type": "object",
+  "title": "Pre-registered experiment definition",
+  "required": [
+    "experiment_id",
+    "hypothesis",
+    "variants",
+    "primary_metric",
+    "target_sample_size"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "hypothesis": {
+      "type": "string",
+      "minLength": 10
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "weight"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 0.99
+          }
+        }
+      }
+    },
+    "primary_metric": {
+      "type": "object",
+      "required": [
+        "name",
+        "numerator",
+        "denominator"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "numerator": {
+          "type": "string"
+        },
+        "denominator": {
+          "type": "string"
+        }
+      }
+    },
+    "baseline_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "minimum_detectable_effect": {
+      "type": "number",
+      "minimum": 0.0001,
+      "maximum": 0.5
+    },
+    "power": {
+      "type": "number",
+      "minimum": 0.7,
+      "maximum": 0.95
+    },
+    "alpha": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 0.1
+    },
+    "target_sample_size": {
+      "type": "integer",
+      "minimum": 100
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "checkout-button-color-2026q2",
+  "hypothesis": "Green CTA increases checkout conversion vs blue.",
+  "variants": [
+    {
+      "id": "control",
+      "weight": 0.5
+    },
+    {
+      "id": "treatment",
+      "weight": 0.5
+    }
+  ],
+  "primary_metric": {
+    "name": "checkout_conversion",
+    "numerator": "checkouts_completed",
+    "denominator": "checkouts_started"
+  },
+  "baseline_rate": 0.082,
+  "minimum_detectable_effect": 0.005,
+  "power": 0.8,
+  "alpha": 0.05,
+  "target_sample_size": 21000
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "Test 1",
+  "variants": [
+    {
+      "id": "a"
+    }
+  ]
+}
+]]></code>
+    <note>Forbidden traits: experiment_id pattern violation; variants minItems=2; missing primary_metric and target_sample_size.</note>
+  </example>
+  <reference path="scripts/validate-ab-testing-basics.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

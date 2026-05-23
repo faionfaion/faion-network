@@ -3,74 +3,104 @@ slug: api-graphql
 tier: solo
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GraphQL lets clients fetch nested, multi-resource data in a single request against a typed schema.
-content_id: "703437193c68f507"
-tags: [graphql, dataloader, schema-first, federation, relay-pagination]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: GraphQL schema-design spec pinning schema-first authoring, DataLoader on every relation, Relay-style cursor pagination, depth + complexity limits on public endpoints, and persisted queries for prod...
+content_id: "9bae98bcbe71424a"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [api-developer, graphql, dataloader, schema-first, federation, relay-pagination]
 ---
-# GraphQL Patterns
+# API GraphQL Design
 
 ## Summary
 
-**One-sentence:** GraphQL lets clients fetch nested, multi-resource data in a single request against a typed schema.
+**One-sentence:** GraphQL schema-design spec pinning schema-first authoring, DataLoader on every relation, Relay-style cursor pagination, depth + complexity limits on public endpoints, and persisted queries for production clients.
 
-**One-paragraph:** GraphQL lets clients fetch nested, multi-resource data in a single request against a typed schema. The schema (SDL) is the contract; code is derived from it. Every relation field must use DataLoader to prevent N+1 queries. Public endpoints must enforce depth and complexity limits.
+**One-paragraph:** GraphQL solves multi-resource fetching but adds N+1 risk, query-depth attacks, and schema-evolution traps. The methodology fixes schema-first authoring (SDL is source of truth), DataLoader on every relation field, cursor-based pagination per Relay, query depth + complexity caps, and persisted queries for trusted clients. Output is the GraphQL spec artefact + the rollout checklist. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- API GraphQL Design — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- Client needs to fetch nested data (user → orders → items) in a single round-trip with field selection.
-- Multiple consumers (web, mobile, partner) want different shapes off the same backend without bespoke REST endpoints.
-- You want a typed schema as the contract between BE and FE generators (codegen, Apollo, urql, Relay).
-- Real-time fan-out via subscriptions belongs alongside the same query/mutation graph.
-- Federating multiple services into one supergraph (Apollo Federation, Hot Chocolate, Mercurius).
+- The triggering activity for `api-graphql` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Client genuinely benefits from multi-resource fetching (mobile, complex dashboards).
+- Server can implement DataLoader-equivalent batching and complexity analysis.
+- Operator has resources to maintain SDL + resolvers + persisted queries.
 
 ## Skip If (ANY kills it)
 
-- Simple CRUD on a single resource — REST is shorter, cacheable, and well-tooled.
-- File upload heavy / streaming binary — multipart REST or gRPC stream is better.
-- Public, cache-on-CDN read APIs — GET + URL semantics outperform POST /graphql.
-- Hard p99 latency budgets where resolver fan-out is unpredictable.
-- Tiny team without bandwidth to operate persisted queries, depth limits, complexity scoring.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- API serves a single-screen mobile client with one entity — REST is simpler.
+- Team lacks GraphQL ops experience (no persisted queries, no complexity caps) — exposure beats benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-rest-design]] | Baseline HTTP semantics; GraphQL still rides HTTP |
+| [[api-contract-first]] | Schema-first discipline analogous to OpenAPI-first |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-api-graphql-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-api-graphql.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-graphql.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/api-developer/`
+- [[api-rest-design]]
+- [[api-contract-first]]
+- [[api-rate-limiting]]
+- [[api-monitoring]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (consumer needs, server capacity, ops maturity) to full-graphql / hybrid-with-rest-mutations / skip-stay-rest. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="graphql-api-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for graphql-api-design as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent adds a new Query/Mutation field without permission_classes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Silently exposes data or performs mutations without auth. SDD quality gate must enforce this with a CI check.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Offset pagination on list fields.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Under concurrent writes, offset pagination produces duplicates (inserted rows) and gaps (deleted rows). Cursor pagination is stable.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="GraphQL API Design Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="missing-permission-classes" severity="high">
+      <symptom>New Query/Mutation field ships without permission_classes; data silently exposed.</symptom>
+      <root-cause source="Internal — permission audit">Author forgot to declare permission; no enforced gate.</root-cause>
+      <fix>Add a CI check that requires permission_classes on every Mutation/Query field touching auth-scoped data.</fix>
+    </antipattern>
+    <antipattern id="offset-pagination" severity="high">
+      <symptom>users(offset:0, limit:20) — duplicates and gaps under concurrent writes.</symptom>
+      <root-cause source="Relay Connection Spec">Author copied REST pagination 1:1 into GraphQL.</root-cause>
+      <fix>Convert to Relay cursor pagination (first/after with Connection/Edge/PageInfo).</fix>
+    </antipattern>
+    <antipattern id="module-global-dataloader" severity="high">
+      <symptom>DataLoader instantiated at module scope; cross-request cache leaks user data.</symptom>
+      <root-cause source="DataLoader README">Misreading DataLoader README — it is a per-request batching cache, not a global one.</root-cause>
+      <fix>Move loader instantiation into get_context(); pin a unit test asserting loaders are created per request.</fix>
+    </antipattern>
+    <antipattern id="n-plus-one-without-dataloader" severity="high">
+      <symptom>Nested list resolver triggers one DB query per parent; passes unit tests but quadratic in prod.</symptom>
+      <root-cause source="Apollo docs">Resolver author did not add DataLoader.</root-cause>
+      <fix>Wrap the relation in a DataLoader; assert query count &lt; N+constant in an integration test.</fix>
+    </antipattern>
   </section>
 </text>

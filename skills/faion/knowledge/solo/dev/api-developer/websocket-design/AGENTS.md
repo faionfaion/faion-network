@@ -4,73 +4,96 @@ tier: solo
 group: dev
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: WebSockets provide full-duplex persistent connections for real-time features.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Designs a WebSocket service with versioned envelope, heartbeat/ping-pong, exponential reconnect with full jitter, Redis Pub/Sub fan-out, and bounded backpressure queues.
 content_id: "ee5b9ef5dab52421"
-tags: [websocket, realtime, heartbeat, redis-pubsub, reconnect]
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [websocket, realtime, heartbeat, redis-pubsub, reconnect-jitter]
 ---
 # WebSocket Design
 
 ## Summary
 
-**One-sentence:** WebSockets provide full-duplex persistent connections for real-time features.
+**One-sentence:** Designs a WebSocket service with versioned envelope, heartbeat/ping-pong, exponential reconnect with full jitter, Redis Pub/Sub fan-out, and bounded backpressure queues.
 
-**One-paragraph:** WebSockets provide full-duplex persistent connections for real-time features. Define a versioned message envelope (`{v, type, channel, seq, ts, payload}`), implement heartbeat/ping-pong with server-side disconnect on missed beats, reconnect with exponential backoff and full jitter, and scale fan-out horizontally via Redis Pub/Sub or NATS.
+**One-paragraph:** Designs a WebSocket service with versioned envelope, heartbeat/ping-pong, exponential reconnect with full jitter, Redis Pub/Sub fan-out, and bounded backpressure queues. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Server-pushed events at sub-second latency (chat, presence, live cursors, multiplayer state).
+- Bidirectional stream where the client also sends frequently (collaborative editing, voice control loops).
+- Horizontal scaling requirement: multiple worker processes serving a single channel.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Server-pushed events at sub-second latency: chat, presence, live cursors, order book updates, multiplayer state.
-- Bidirectional streams where the client also sends frequently (collab editing, voice control loops).
-- High-frequency updates where polling would burn 10x bandwidth.
-- LLM streaming when SSE is not enough (binary frames, two-way tool calls). Otherwise prefer SSE — simpler, proxy-friendly.
-- Agent pipelines that need a long-lived control channel (workers reporting progress to a dashboard).
+- Server-pushed events at sub-second latency (chat, presence, live cursors, multiplayer state).
+- Bidirectional stream where the client also sends frequently (collaborative editing, voice control loops).
+- Horizontal scaling requirement: multiple worker processes serving a single channel.
 
 ## Skip If (ANY kills it)
 
-- One-shot CRUD or rare polls (every >5s) — REST is cheaper.
-- Server-only push, no client→server traffic — SSE wins on simplicity, HTTP/2 multiplexing, and resume.
-- Behind misconfigured proxies / corporate firewalls that strip Upgrade headers — fall back to SSE or long-poll.
-- Mobile networks with aggressive NAT timeouts unless you commit to heartbeats and resumption.
-- When you cannot run a stateful tier — pure serverless (Lambda) supports WS only via API Gateway, with state in DynamoDB.
+- One-shot CRUD or rare polls every >5 seconds — REST is cheaper.
+- Server-only push with no client→server traffic — SSE wins on simplicity + HTTP/2 multiplexing + resume.
+- Pure serverless (Lambda) tier without API Gateway WebSocket adapter.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Message catalog | shared schema (Zod/Pydantic/protobuf) | team |
+| Auth ticket source | POST /ws-ticket endpoint | auth team |
+| PubSub bus | Redis or NATS | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-rest-design]] | ticket endpoint and lifecycle webhooks ride on top of REST conventions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `envelope-design` | sonnet | Schema design with versioning + dedup is medium-judgement work. |
+| `reconnect-implementation` | sonnet | Mechanical exponential backoff + jitter. |
+| `backpressure-audit` | haiku | Grep for unbounded queues + missing rate limits. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/connection_manager.py` | FastAPI ConnectionManager with channel subscriptions and graceful disconnect |
+| `templates/ws_client.ts` | TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat |
+| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-websocket-design.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/api-developer/`
+- [[api-rest-design]]
+- [[api-authentication]]
+- [[api-rate-limiting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Does the workload require sub-second server push AND client→server traffic?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

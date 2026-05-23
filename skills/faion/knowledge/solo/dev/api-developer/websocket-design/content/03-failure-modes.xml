@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="websocket-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for websocket-design as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Storing session tokens or JWTs in query string parameters of the WebSocket URL.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Query strings appear in server access logs and proxy logs; credentials leak immediately.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>No rate limit per connection — one bad client consumes an entire CPU core.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>WebSocket message handlers run in the same event loop; a client flooding messages starves all other connections.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="WebSocket Design Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="jwt-in-query-string" severity="high">
+      <symptom>WebSocket URL contains ?token=eyJ... appearing in access logs.</symptom>
+      <root-cause source="OWASP">Browsers cannot send custom headers on WebSocket upgrade; author chose the easy path.</root-cause>
+      <fix>Use a one-shot ticket from POST /ws-ticket exchanged for a session cookie or short-lived URL param that is logged-scrubbed.</fix>
+    </antipattern>
+    <antipattern id="no-rate-limit-per-connection" severity="high">
+      <symptom>One misbehaving client floods the event loop and starves all other clients on the process.</symptom>
+      <root-cause source="Internal — DoS postmortem">Author treated WebSocket like UDP — no per-connection ceiling.</root-cause>
+      <fix>Apply per-connection token bucket (e.g. 30 msgs/sec) and per-user connection cap (3–5).</fix>
+    </antipattern>
+    <antipattern id="reconnect-without-jitter" severity="high">
+      <symptom>Deploy completes; every client reconnects at the same second and the auth endpoint falls over.</symptom>
+      <root-cause source="AWS Builders' Library">Linear or fixed-delay reconnect with no randomisation.</root-cause>
+      <fix>Replace with full-jitter exponential backoff capped at 30s.</fix>
+    </antipattern>
+    <antipattern id="module-global-connections" severity="medium">
+      <symptom>ConnectionManager state stored at module scope; horizontal scaling silently breaks fan-out.</symptom>
+      <root-cause source="Centrifugo architecture">Refactor introduced shared in-memory state.</root-cause>
+      <fix>Keep ConnectionManager per-process; push fan-out to Redis Pub/Sub.</fix>
+    </antipattern>
   </section>
 </text>

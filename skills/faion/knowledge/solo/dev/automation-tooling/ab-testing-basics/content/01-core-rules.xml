@@ -1,31 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ab-testing-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ab-testing-basics. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="A/B Testing Basics Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the ab-testing-basics methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Define every experiment as a structured object with id, hypothesis, variants, metrics, target_sample_size, and owner before writing any assignment code.</statement>
-      <rationale source="v1-source">Locking the spec before code prevents post-hoc changes to allocation or primary metric, which invalidate statistical guarantees.</rationale>
+    <rule id="preregister-before-data" testable="true" depth="essential">
+      <statement>Hypothesis, variants, primary metric, MDE, and target sample size are written down BEFORE the experiment launches. No mid-flight changes to the primary metric.</statement>
+      <rationale source="Kohavi et al — Trustworthy Online Controlled Experiments">Mid-flight metric changes are p-hacking; pre-registration is the only defence against motivated reasoning.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Validate before launch: variant allocations must sum to 1.0, at least 2 variants required, exactly 1 primary metric.</statement>
-      <rationale source="v1-source">Multiple primary metrics enable HARKing (Hypothesizing After Results are Known); no primary metric means there is no pre-registered success criterion.</rationale>
+    <rule id="deterministic-hash-bucketing" testable="true" depth="essential">
+      <statement>Bucket users by hash(experiment_id + user_id) % 10000 (or similar). Never use timestamps, random per-request, or order of arrival.</statement>
+      <rationale source="Kohavi et al">Random per-request assignment causes the same user to see different variants across sessions, contaminating conversion measurement.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Compute required sample size from baseline rate, MDE (in absolute pp), alpha, and power before setting target_sample_size — never use a round number as the stopping rule.</statement>
-      <rationale source="v1-source">Stopping early on "enough data" without power calculation inflates false positives; round-number stopping rules are not tied to detectability.</rationale>
+    <rule id="one-primary-metric" testable="true" depth="essential">
+      <statement>Each experiment has exactly one primary metric. Secondary metrics are tracked but never used to declare a winner.</statement>
+      <rationale source="Statistical multiple-comparisons literature">Multiple primary metrics inflate false-positive rate; the analyst will always find one that 'won'.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Bucket users using hashlib.md5(f"{experiment_id}:{user_id}".encode()).hexdigest() and bucket = (hash_value % 10000) / 10000.0 — never use random.random() or Python's built-in hash().</statement>
-      <rationale source="v1-source">Python's hash() is process-salted (changes per restart). random.random() produces different variants for the same user across requests. Both break session continuity and make analysis impossible.</rationale>
+    <rule id="sample-size-from-mde" testable="true" depth="essential">
+      <statement>Compute the target sample size from baseline rate + MDE + power (0.8) + alpha (0.05) BEFORE launch.</statement>
+      <rationale source="Power analysis fundamentals">Launching without a sample-size target leads to peeking; the test runs until it 'wins'.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Gate the variant override path behind is_staff or an env check — never expose it as an unauthenticated query parameter in production.</statement>
-      <rationale source="v1-source">An unauthenticated override lets any user force themselves into a variant, biasing the sample and creating a security bypass.</rationale>
+    <rule id="no-peeking" testable="true" depth="essential">
+      <statement>Do not call winners before the target sample size is reached unless using a sequential testing framework that controls Type-I error.</statement>
+      <rationale source="Optimizely + Microsoft Experimentation guides">Peeking inflates false-positive rates 3–5×; sequential testing is allowed but requires explicit alpha-spending.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Emit an exposure event on the first variant evaluation in a session; record separately from conversion — analyses run on exposures, not raw assignments.</statement>
-      <rationale source="v1-source">Assignment is "what would they get"; exposure is "did they actually see it". Diluting analysis with unexposed users underestimates lift.</rationale>
+    <rule id="ramp-traffic-safely" testable="true" depth="essential">
+      <statement>Ramp traffic 1% → 5% → 25% → 50%; abort on guardrail metric regression (latency, error rate) ≥10%.</statement>
+      <rationale source="Booking.com experimentation platform">Ramping bounds the blast radius if treatment is broken; guardrails catch silent regressions outside the primary metric.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If there is no clear primary metric, no instrumentation, or sample size is insufficient for 80% power, skip this methodology and instrument first.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Running an underpowered experiment wastes traffic and produces noise that looks like signal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

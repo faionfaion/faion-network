@@ -1,22 +1,156 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-monitoring Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Monitoring Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid API Monitoring artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-monitoring.json",
+  "title": "API Monitoring",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "api_id",
+    "metrics_backend",
+    "red_metrics",
+    "structured_log_fields",
+    "liveness_probe",
+    "readiness_probe",
+    "slos",
+    "alert_rules",
+    "evidence",
+    "status",
+    "owner",
+    "last_touched",
+    "template_version"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date or UUID",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    },
+    "status": {
+      "type": "string",
+      "description": "draft|ready_for_review|approved|archived",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "description": "{source, citation} pairs anchoring non-trivial fields",
+      "minItems": 1
+    },
+    "api_id": {
+      "type": "string",
+      "description": "service id or repo slug",
+      "minLength": 1
+    },
+    "metrics_backend": {
+      "type": "string",
+      "description": "prometheus|datadog|grafana-cloud|cloud-native",
+      "minLength": 1
+    },
+    "red_metrics": {
+      "type": "object",
+      "description": "{rate_metric, errors_metric, duration_metric} naming conventions"
+    },
+    "structured_log_fields": {
+      "type": "array",
+      "description": "minimum required fields [ts, level, request_id, route, status, latency_ms]",
+      "minItems": 1
+    },
+    "liveness_probe": {
+      "type": "string",
+      "description": "path responding 200 only when the process is alive",
+      "minLength": 1
+    },
+    "readiness_probe": {
+      "type": "string",
+      "description": "path responding 200 only when ready to serve traffic",
+      "minLength": 1
+    },
+    "slos": {
+      "type": "array",
+      "description": "list of {journey, sli_definition, target, window, error_budget}",
+      "minItems": 1
+    },
+    "alert_rules": {
+      "type": "array",
+      "description": "list of {name, expr, for_minutes, severity, runbook_url}",
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "api-monitoring-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "evidence": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "api_id": "draft",
+  "metrics_backend": "draft",
+  "red_metrics": {
+    "key": "value"
+  },
+  "structured_log_fields": [
+    "draft-item"
+  ],
+  "liveness_probe": "draft",
+  "readiness_probe": "draft",
+  "slos": [
+    "draft-item"
+  ],
+  "alert_rules": [
+    "draft-item"
+  ]
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched. Used as the `--self-test` fixture by `scripts/validate-api-monitoring.py`.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence array — rejected by `validate-api-monitoring.py` with exit 1.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+    <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "everyone", "design", "engineering").</pattern>
+    <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter at write time.</pattern>
+    <pattern id="f4">`evidence` array empty for any non-trivial field declared in the schema.</pattern>
+    <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a named human reviewer distinct from the producing agent.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-api-monitoring.py">Schema validator (stdlib only). Exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

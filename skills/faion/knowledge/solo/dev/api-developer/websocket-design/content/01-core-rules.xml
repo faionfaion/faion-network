@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="websocket-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for websocket-design. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="WebSocket Design Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the websocket-design methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="versioned-envelope" testable="true" depth="essential">
+      <statement>Every WebSocket message uses a versioned envelope {v, type, channel, seq, ts, payload}. Bump v for breaking protocol changes; clients dedupe by seq across reconnects.</statement>
+      <rationale source="Internal — WS protocol audits">Without a versioned envelope you cannot roll out protocol changes gradually; without seq, clients cannot detect duplicates after reconnect.</rationale>
+    </rule>
+    <rule id="heartbeat-required" testable="true" depth="essential">
+      <statement>Server disconnects after 2 missed pong replies; client sends ping every 25–30 seconds.</statement>
+      <rationale source="MDN WebSocket docs + production NAT incidents">Without heartbeats, stale connections accumulate silently; NAT gateways and load balancers close idle TCP connections without RST, leaving the server with zombie sockets.</rationale>
+    </rule>
+    <rule id="reconnect-with-jitter" testable="true" depth="essential">
+      <statement>Reconnect with exponential backoff and full jitter: delay = random(0, min(cap, base * 2^n)); cap the maximum attempt count.</statement>
+      <rationale source="AWS — Exponential Backoff and Jitter (Marc Brooker)">Reconnect without jitter causes thundering herds: all clients reconnect simultaneously after a deploy, DoSing the auth endpoint.</rationale>
+    </rule>
+    <rule id="auth-on-upgrade" testable="true" depth="essential">
+      <statement>Authenticate at HTTP upgrade via a short-lived ticket or signed cookie. Never put JWTs in query strings.</statement>
+      <rationale source="OWASP — Credentials in URL">Query strings appear in server and proxy access logs; JWTs in logs are an immediate credential leak.</rationale>
+    </rule>
+    <rule id="redis-pubsub-fanout" testable="true" depth="essential">
+      <statement>Horizontal scaling requires a Redis Pub/Sub (or NATS) fan-out bus. Each server node subscribes and delivers to its locally connected clients.</statement>
+      <rationale source="Redis Pub/Sub docs + Centrifugo architecture">Sockets are pinned to one process; without a shared pubsub bus, a message published on node A never reaches clients connected to node B.</rationale>
+    </rule>
+    <rule id="bounded-send-queue" testable="true" depth="essential">
+      <statement>Buffer outbound messages in a bounded per-connection queue (≤100 messages); drop oldest on overflow.</statement>
+      <rationale source="Internal — backpressure incidents">Unbounded queues accumulate during outages; on reconnect the client floods the server with stale messages and the event loop blocks.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the workload is one-shot CRUD or server-only push or runs in pure serverless without a stateful tier, skip this methodology and use REST or SSE.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">WebSocket operational cost (heartbeat, reconnect, fan-out) is wasted when REST or SSE meets the latency budget.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="WebSocket Design Procedure" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure applying the websocket-design methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+  <section title="Procedure">
+    <step n="1" name="define-envelope">
+      <input>Message catalog</input>
+      <action>Write the shared {v, type, channel, seq, ts, payload} schema in Zod/Pydantic/protobuf. Bump v for breaking changes.</action>
+      <output>ws/protocol.ts + ws/protocol.py</output>
+    </step>
+    <step n="2" name="wire-heartbeat">
+      <input>Server framework + client SDK</input>
+      <action>Add server-side ping/pong: disconnect after 2 missed pongs. Client pings every 25s.</action>
+      <output>Heartbeat integration test</output>
+    </step>
+    <step n="3" name="implement-reconnect">
+      <input>WSClient skeleton</input>
+      <action>Add full-jitter exponential backoff capped at 30s + maxAttempts. Reject PRs without random() in the diff.</action>
+      <output>ws_client.ts with reconnect logic</output>
+    </step>
+    <step n="4" name="horizontal-scale">
+      <input>Redis cluster or NATS</input>
+      <action>Replace in-process fan-out with Redis Pub/Sub channel subscriptions (one channel per logical topic).</action>
+      <output>DistributedConnectionManager</output>
+    </step>
+    <step n="5" name="smoke-load-test">
+      <input>k6 ws-smoke.js + 200 VUs</input>
+      <action>Run k6 for 60s; assert status 101 + heartbeat success + reconnect after node restart.</action>
+      <output>k6 report green</output>
+      <decision-gate>Reject if reconnect storm peaks &gt; 2x steady auth RPS.</decision-gate>
+    </step>
+  </section>
+</text>

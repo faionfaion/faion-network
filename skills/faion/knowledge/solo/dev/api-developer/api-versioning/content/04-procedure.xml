@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="API Versioning Procedure" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure applying the api-versioning methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+  <section title="Procedure">
+    <step n="1" name="detect-breaking-change">
+      <input>openapi.yaml@HEAD + openapi.yaml@main</input>
+      <action>Run oasdiff breaking with --fail-on ERR. Classify each diff as additive vs breaking.</action>
+      <output>diff.json with breaking changes (may be empty)</output>
+      <decision-gate>If no breaking changes, STOP — no version bump needed.</decision-gate>
+    </step>
+    <step n="2" name="decide-version-strategy">
+      <input>diff.json + scope (public/internal) + stack (REST/GraphQL)</input>
+      <action>Apply rule additive-first + url-path-default. Decide: revert change, add nullable field, or create vN+1.</action>
+      <output>Decision record (revert | additive | vN+1)</output>
+      <decision-gate>If decision != vN+1, apply the additive alternative and STOP.</decision-gate>
+    </step>
+    <step n="3" name="scaffold-vN+1">
+      <input>Frozen vN module + breaking diff</input>
+      <action>Copy the affected handlers into v(N+1) module. Edit response shape. Mount the new router in the application factory.</action>
+      <output>v(N+1) router file + updated router registration</output>
+    </step>
+    <step n="4" name="wire-deprecation-middleware">
+      <input>ops/sunset.yaml entry for vN route + middleware</input>
+      <action>Mark the vN route as deprecated in ops/sunset.yaml; ensure middleware injects Deprecation/Sunset/Link headers.</action>
+      <output>Updated sunset.yaml + middleware test</output>
+    </step>
+    <step n="5" name="ship-and-measure">
+      <input>Prometheus version label + dashboards</input>
+      <action>Deploy; verify per-version traffic split visible. Announce deprecation 6 months in advance.</action>
+      <output>Dashboard URL + announcement record</output>
+      <decision-gate>Sunset only after 30 days of zero traffic on vN.</decision-gate>
+    </step>
+  </section>
+</text>

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template helper for API Gateway Patterns (kong-policy-guard.sh).
+# consumes: see content/02-output-contract.xml inputs for api-gateway-patterns
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 # kong-policy-guard.sh — fail CI if any public route is missing required plugins.
 # Usage: ./kong-policy-guard.sh [path/to/kong.yml]
 set -euo pipefail

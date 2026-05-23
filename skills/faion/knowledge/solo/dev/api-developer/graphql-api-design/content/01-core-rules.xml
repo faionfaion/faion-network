@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="graphql-api-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for graphql-api-design. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="GraphQL API Design Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the graphql-api-design methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="schema-first" testable="true" depth="essential">
+      <statement>Edit the SDL before resolver code; the SDL diff is what humans review.</statement>
+      <rationale source="GraphQL.org best practices">Schema-first aligns frontend/backend on a stable contract; resolvers are derived from the schema, not the other way around.</rationale>
+    </rule>
+    <rule id="dataloader-mandatory" testable="true" depth="essential">
+      <statement>Every resolver that accesses a related entity uses a DataLoader, instantiated per-request in GraphQL context.</statement>
+      <rationale source="Apollo Federation docs + DataLoader README">Module-global DataLoaders cache across requests and leak user data; without DataLoader, N+1 queries pass unit tests but destroy prod performance.</rationale>
+    </rule>
+    <rule id="relay-cursor-pagination" testable="true" depth="essential">
+      <statement>Every list field uses Relay-style cursor pagination (first/after, edges, pageInfo). Offset pagination is forbidden.</statement>
+      <rationale source="Relay Connection Spec">Offset pagination produces duplicates (inserts) and gaps (deletes) under concurrent writes; cursors are stable.</rationale>
+    </rule>
+    <rule id="depth-complexity-limits" testable="true" depth="essential">
+      <statement>Apply QueryDepthLimiter (max 8-10) and QueryComplexityExtension (max 100-500) on every public schema.</statement>
+      <rationale source="graphql-cop security audit + internal incidents">Without limits, a single deeply nested query can drain the DB connection pool and act as a DoS vector.</rationale>
+    </rule>
+    <rule id="permission-classes-per-resolver" testable="true" depth="essential">
+      <statement>Every Query and Mutation field touching auth-scoped data declares permission_classes or an equivalent directive. Auth checks in business logic are forbidden.</statement>
+      <rationale source="Strawberry docs + escape.tech checklist">Auth checks scattered in business logic are forgotten on new fields; a per-resolver gate catches missing auth before merge.</rationale>
+    </rule>
+    <rule id="mutation-error-union" testable="true" depth="essential">
+      <statement>Mutations return a typed payload with a union of success type and typed error types; errors[] is reserved for unexpected failures.</statement>
+      <rationale source="GraphQL best practices + Shopify schema design">Union types make expected failures explicit and force clients to handle them; untyped errors[] signals a bug, not a business rule.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the API is a cacheable public read API OR single-client CRUD OR file-upload-heavy, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">GraphQL overhead (DataLoader, depth/complexity, persisted queries) is not paid back outside multi-client, nested-read use cases.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

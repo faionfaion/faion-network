@@ -1,122 +1,41 @@
-/**
- * WebSocketClient with:
- * - Exponential backoff + full jitter reconnect
- * - Bounded offline message queue (max 100)
- * - Subscribe/unsubscribe with cleanup
- *
- * Usage:
- *   const client = new WebSocketClient('wss://api.example.com/ws/user123');
- *   await client.connect();
- *   const unsub = client.subscribe('chat:room-1', msg => console.log(msg));
- *   // cleanup
- *   unsub();
- *   client.disconnect();
- */
-interface WSMessage {
-  type: string;
-  channel?: string;
-  data?: unknown;
-}
-type MessageHandler = (message: WSMessage) => void;
+// __faion_header_v1__
+// purpose: TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat
+// consumes: see content/02-output-contract.xml
+// produces: spec; depends-on: content/01-core-rules.xml#versioned-envelope
+// faion_header_json: {"__faion_header__":{"purpose":"TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#versioned-envelope","token_budget_impact":"~150 tokens when loaded"}}
+type Msg = { v: number; type: string; channel: string; seq: number; ts: number; payload: unknown };
 
-const MAX_QUEUE = 100;
-const MAX_RETRIES = 10;
-const BASE_DELAY_MS = 500;
-const CAP_DELAY_MS = 30_000;
+export class WSClient {
+  private ws?: WebSocket;
+  private attempts = 0;
+  private queue: Msg[] = [];
+  private readonly maxQueue = 100;
+  private readonly url: string;
+  private heartbeat?: ReturnType<typeof setInterval>;
 
-export class WebSocketClient {
-  private ws: WebSocket | null = null;
-  private reconnectAttempts = 0;
-  private pingInterval: ReturnType<typeof setInterval> | null = null;
-  private handlers: Map<string, Set<MessageHandler>> = new Map();
-  private messageQueue: WSMessage[] = [];
-  private connected = false;
+  constructor(url: string) { this.url = url; this.connect(); }
 
-  constructor(private readonly url: string) {}
-
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.url);
-
-      this.ws.onopen = () => {
-        this.connected = true;
-        this.reconnectAttempts = 0;
-        this.startPing();
-        this.flushQueue();
-        resolve();
-      };
-
-      this.ws.onclose = () => {
-        this.connected = false;
-        this.stopPing();
-        this.scheduleReconnect();
-      };
-
-      this.ws.onerror = (err) => {
-        if (!this.connected) reject(err);
-      };
-
-      this.ws.onmessage = (ev) => {
-        const msg: WSMessage = JSON.parse(ev.data as string);
-        if (msg.type === 'pong') return;
-        if (msg.channel) {
-          this.handlers.get(msg.channel)?.forEach(h => h(msg));
-        }
-      };
-    });
-  }
-
-  subscribe(channel: string, handler: MessageHandler): () => void {
-    if (!this.handlers.has(channel)) this.handlers.set(channel, new Set());
-    this.handlers.get(channel)!.add(handler);
-    this.send({ type: 'subscribe', channel });
-    return () => {
-      this.handlers.get(channel)?.delete(handler);
-      if (this.handlers.get(channel)?.size === 0) {
-        this.send({ type: 'unsubscribe', channel });
-        this.handlers.delete(channel);
-      }
-    };
-  }
-
-  send(message: WSMessage): void {
-    if (this.connected && this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      if (this.messageQueue.length >= MAX_QUEUE) this.messageQueue.shift();
-      this.messageQueue.push(message);
-    }
-  }
-
-  disconnect(): void {
-    this.reconnectAttempts = MAX_RETRIES; // prevent further reconnects
-    this.stopPing();
-    this.ws?.close(1000, 'client-disconnect');
-  }
-
-  private startPing() {
-    this.pingInterval = setInterval(() => this.send({ type: 'ping' }), 25_000);
-  }
-
-  private stopPing() {
-    if (this.pingInterval !== null) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
-    }
-  }
-
-  private flushQueue() {
-    while (this.messageQueue.length > 0) {
-      const msg = this.messageQueue.shift()!;
-      this.ws?.send(JSON.stringify(msg));
-    }
+  private connect() {
+    this.ws = new WebSocket(this.url);
+    this.ws.onopen = () => { this.attempts = 0; this.flush(); this.startHeartbeat(); };
+    this.ws.onclose = () => { this.stopHeartbeat(); this.scheduleReconnect(); };
+    this.ws.onmessage = (e) => this.handle(JSON.parse(e.data));
   }
 
   private scheduleReconnect() {
-    if (this.reconnectAttempts >= MAX_RETRIES) return;
-    // Full jitter: uniform(0, min(cap, base * 2^n))
-    const delay = Math.random() * Math.min(CAP_DELAY_MS, BASE_DELAY_MS * 2 ** this.reconnectAttempts);
-    this.reconnectAttempts++;
-    setTimeout(() => this.connect().catch(() => {}), delay);
+    if (this.attempts > 8) return;
+    const cap = 30_000, base = 1000;
+    const delay = Math.random() * Math.min(cap, base * Math.pow(2, this.attempts));
+    this.attempts += 1;
+    setTimeout(() => this.connect(), delay);
+  }
+
+  private startHeartbeat() { this.heartbeat = setInterval(() => this.send({ type: 'ping' } as Msg), 25_000); }
+  private stopHeartbeat() { if (this.heartbeat) clearInterval(this.heartbeat); }
+  private flush() { while (this.queue.length && this.ws?.readyState === 1) this.ws.send(JSON.stringify(this.queue.shift())); }
+  private handle(_m: Msg) { /* delegate to listeners */ }
+  send(m: Msg) {
+    if (this.queue.length >= this.maxQueue) this.queue.shift();
+    this.queue.push(m); this.flush();
   }
 }
