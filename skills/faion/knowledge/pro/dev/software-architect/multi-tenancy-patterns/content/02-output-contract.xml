@@ -1,50 +1,199 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Multi-Tenancy Patterns — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the multi-tenancy ADR shape + isolation-guarantee contract. Architect or supporting agent producing the decision must satisfy these contracts.</summary>
+<text id="02-output-contract" title="Multi-Tenancy Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="adr_id" format="ADR-YYYY-NNN"/>
-      <field name="decision_model" format="enum: shared-everything | schema-per-tenant | db-per-tenant | hybrid"/>
-      <field name="requirements_scored" required_keys="tenant_count,isolation,compliance,noise_tolerance,cost_ceiling"
-             value_type="numeric_or_categorical_with_score"/>
-      <field name="isolation_guarantees" required_keys="guaranteed_yes,guaranteed_no,verification_test"/>
-      <field name="blast_radius" required_keys="full_db_outage,bad_migration,compromised_credential,single_tenant_corruption"
-             value_type="tenants_affected_RTO_RPO"/>
-      <field name="migration_path" required_keys="trigger,target_model,path_phases,pre_built_artifacts"/>
-      <field name="data_residency" required_keys="default_region,per_tenant_override_supported,key_custody"/>
-      <field name="operational_burden" required_keys="dba_hours_per_month_estimated,monitoring_changes,backup_strategy"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">decision_model chosen without requirements_scored populated (r1)</pattern>
-      <pattern id="f2">isolation_guarantees.guaranteed_no field empty (every model has trade-offs; if "none not guaranteed", you're lying) (r2)</pattern>
-      <pattern id="f3">blast_radius cells with vague values ("minimal", "low") instead of tenants_affected count + time values (r3)</pattern>
-      <pattern id="f4">migration_path field empty or "will figure out if needed" (r4)</pattern>
-      <pattern id="f5">data_residency.default_region = "wherever the cloud puts it" (r5)</pattern>
-      <pattern id="f6">verification_test absent (the guarantee is unverifiable, so untrustworthy) (r2)</pattern>
-      <pattern id="f7">operational_burden missing (the choice's true cost is unmeasured)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Choose "hybrid" (e.g., shared-everything for free tier, DB-per-tenant for enterprise) — document the boundary criterion and the operational implications of both.</transformation>
-      <transformation>Reference a parent architecture document for any guarantee that applies across multiple ADRs (e.g., "key custody per pro/infra/devops-engineer/key-management-foundations").</transformation>
-      <transformation>Defer specific implementation details (RLS rules, schema naming) to sub-ADRs IF the parent decision is final and the sub-decisions are well-scoped.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/multi-tenancy-adr.md"/>
-  </output-contract>
-
-  <section title="Self-check (run before signing the ADR)">
-    <list>
-      <item>Decision derived from requirements_scored, not preference (r1)</item>
-      <item>Both guaranteed_yes AND guaranteed_no populated (r2)</item>
-      <item>Blast radius has numeric tenant counts + RTO + RPO per failure class (r3)</item>
-      <item>Migration path documented with explicit trigger + phases (r4)</item>
-      <item>Data residency explicit per default + per-tenant override capability (r5)</item>
-      <item>Verification test referenced and runnable (scripts/audit-tenant-isolation.py) (r2)</item>
-      <item>Operational burden estimated (DBA hours, monitoring, backups)</item>
-      <item>Output validates against templates/multi-tenancy-adr.md</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/multi-tenancy-patterns.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "decision_class",
+    "alternatives_rejected"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_class": {
+      "enum": [
+        "one-way-door",
+        "two-way-door"
+      ]
+    },
+    "alternatives_rejected": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "why_rejected"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "why_rejected": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "multi-tenancy-patterns",
+  "title": "Multi-Tenancy Patterns",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "decision_class": "two-way-door",
+  "alternatives_rejected": [
+    {
+      "option": "do-nothing",
+      "why_rejected": "misses compliance window"
+    },
+    {
+      "option": "alternative-vendor",
+      "why_rejected": "contract terms incompatible"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-multi-tenancy-patterns.py">Validator script</reference>
 </text>

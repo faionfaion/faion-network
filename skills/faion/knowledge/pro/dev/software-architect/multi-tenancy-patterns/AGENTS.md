@@ -1,91 +1,98 @@
 ---
 slug: multi-tenancy-patterns
 tier: pro
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Decision framework for SaaS multi-tenancy isolation — shared-everything vs schema-per-tenant vs DB-per-tenant — with tenant-isolation guarantees, blast-radius math, and migration paths between models.
-content_id: "b780fe340e21cee8"
-tags: [dev, architecture, multi-tenancy, saas, isolation, schema-per-tenant, db-per-tenant, security]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Decision framework for SaaS multi-tenancy isolation \u2014 shared-everything / schema-per-tenant / DB-per-tenant / hybrid \u2014 with quantified blast-radius math, cost economics, compliance scoping, and migration paths between models."
+content_id: "eae3de2fb899b93e"
+complexity: deep
+produces: decision-record
+est_tokens: 4200
+tags: [architecture, pro, multi-tenancy, saas, isolation, schema-per-tenant, db-per-tenant, security]
 ---
-
 # Multi-Tenancy Patterns
 
 ## Summary
 
-**One-sentence:** A decision framework for choosing between SaaS multi-tenancy models (shared-everything / schema-per-tenant / DB-per-tenant / hybrid) based on isolation requirements, blast-radius tolerance, cost economics, and migration paths between models.
+**One-sentence:** Decision framework for SaaS multi-tenancy isolation — shared-everything / schema-per-tenant / DB-per-tenant / hybrid — with quantified blast-radius math, cost economics, compliance scoping, and migration paths between models.
 
-**One-paragraph:** Multi-tenant SaaS architects make a high-stakes early decision about tenant isolation. Picking wrong creates either security incidents (over-shared) or operational nightmares (over-isolated). Faion's current content has security-architecture for the isolation question and cost-latency budgeting for the economic question, but no single methodology that connects them with concrete decision criteria + migration paths. Mechanism: a decision matrix mapping (tenant count + isolation requirement + compliance scope + per-tenant noise tolerance + cost ceiling) to one of four canonical models, with quantified blast-radius math and a documented migration path BETWEEN models when assumptions change. Primary output: an ADR-style decision record + the implementation patterns required for the chosen model.
+**One-paragraph:** Decision framework for SaaS multi-tenancy isolation — shared-everything / schema-per-tenant / DB-per-tenant / hybrid — with quantified blast-radius math, cost economics, compliance scoping, and migration paths between models. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- product is multi-tenant SaaS (or moving toward it)
-- expected tenant count > 5 AND < 100,000 (above 100k, sharding patterns differ)
-- at least one of: compliance constraints, large customer cohort with high security expectations, noisy-neighbor concern
-- design decision can still influence the database schema (pre-launch OR pre-major-rewrite)
+- A team is producing decision-record for the topic 'Multi-Tenancy Patterns'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- single-tenant product (one customer = one deployment) — different methodology
-- B2C product with one user per account and no cross-tenant primitives — schema decisions are simpler
-- already deeply committed to a model with no migration appetite — use the current model's optimization methodology instead
-- tenant count expected &lt; 5 lifetime — simpler approach (separate deployments) is fine
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Pre-launch SaaS choosing tenant-isolation model (shared / schema-per-tenant / DB-per-tenant / hybrid).
+- Compliance-driven re-architecture from shared to per-tenant isolation.
+- Noisy-neighbor problem in shared-everything tier.
+- Documenting migration paths BETWEEN models when assumptions change.
 
 ## Prerequisites
 
-- expected tenant count + growth curve (5 / 50 / 500 / 5000 / 50000?)
-- compliance scope: SOC 2, GDPR, HIPAA, ISO 27001, FedRAMP — each has tenant-isolation implications
-- noisy-neighbor tolerance per tenant size class (free / SMB / enterprise) — what perf interference is acceptable
-- cost ceiling per tenant (especially for low-ARPU tenants)
-- DBA / SRE bandwidth available for the chosen model's operational burden
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/security-architecture-foundations` | Tenant-isolation guarantees consume threat-model patterns from this methodology |
-| `pro/dev/software-architect/cost-latency-budget` | Per-tenant cost budget feeds the model-choice decision |
-| `pro/infra/devops-engineer/sli-slo-definition` | Per-tenant SLOs differ per model (DB-per-tenant typically tightest) |
-| `pro/dev/backend-systems/postgres-row-level-security` | Implementation detail for shared-everything model; consume RLS patterns |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: decision-matrix-driven choice, isolation-guarantee-documented, blast-radius-quantified, migration-path-documented, per-tenant-data-residency-explicit | ~1100 |
-| `content/02-output-contract.xml` | essential | Multi-tenancy ADR schema + isolation-guarantee contract + forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes (RLS-bypass, noisy-neighbor cascade, cross-tenant data leak, etc.) with detector + repair | ~1200 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `requirements_collation` | sonnet | Gather compliance + tenant count + isolation needs + cost from stakeholders |
-| `model_score_per_option` | opus | Score each model (shared / schema / DB / hybrid) against requirements — synthesis |
-| `blast_radius_calc` | sonnet | Quantify failure-mode cost per model for typical incident classes |
-| `migration_path_design` | opus | Document the path from current model to target, including data-migration phases |
+| `scaffold-adr` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-class-and-tradeoff` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/multi-tenancy-adr.md` | ADR template for the multi-tenancy decision |
-| `templates/decision-matrix.csv` | Stakeholder-input matrix mapping requirements -&gt; model fit |
-| `templates/isolation-guarantee.md` | What the chosen model guarantees + what it does NOT |
-| `templates/migration-runbook.md` | Migration runbook template for moving between models |
+| `templates/adr-skeleton.md` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. |
+| `templates/_smoke-test.md` | Minimum viable filled-in ADR. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/score-models.py` | Computes per-model fit score from a requirements input | During the decision process |
-| `scripts/audit-tenant-isolation.py` | Validates the runtime that the documented isolation guarantee holds (e.g., tests RLS, schema boundaries) | Quarterly + after any auth/data-access change |
+| `scripts/validate-multi-tenancy-patterns.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodologies: `security-architecture-foundations`, `cost-latency-budget`, `postgres-row-level-security`
-- external: [AWS SaaS Lens Multi-Tenancy](https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/) · [Microsoft SaaS Patterns](https://learn.microsoft.com/en-us/azure/architecture/guide/multitenant/) · [Postgres RLS Docs](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

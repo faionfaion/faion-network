@@ -1,77 +1,100 @@
 ---
 slug: quality-attributes-analysis
 tier: pro
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Quality Attributes Analysis (QAA) is the systematic process of identifying, prioritizing, and binding non-functional requirements (NFRs) to architectural decisions using ISO/IEC 25010:2023 characteristics, 6-part quality attribute scenarios, utility trees with (Importance, Difficulty) scoring, and ATAM-style trade-off analysis.
-content_id: "c5723af11b05be4a"
-tags: [quality-attributes, non-functional-requirements, architecture, atam, utility-trees]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Systematic QAA pass binding NFRs to structural decisions \u2014 ISO/IEC 25010:2023 characteristics, 6-part quality-attribute scenarios, utility tree with (Importance, Difficulty) scoring, ATAM-style tradeoff analysis \u2014 every (H,H) scenario gates an executable fitness function in CI."
+content_id: "f8979c32c1240cee"
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [architecture, pro, quality-attributes, nfr, atam, utility-trees, iso-25010]
 ---
 # Quality Attributes Analysis
 
 ## Summary
 
-**One-sentence:** Quality Attributes Analysis (QAA) is the systematic process of identifying, prioritizing, and binding non-functional requirements (NFRs) to architectural decisions using ISO/IEC 25010:2023 characteristics, 6-part quality attribute scenarios, utility trees with (Importance, Difficulty) scoring, and ATAM-style trade-off analysis.
+**One-sentence:** Systematic QAA pass binding NFRs to structural decisions — ISO/IEC 25010:2023 characteristics, 6-part quality-attribute scenarios, utility tree with (Importance, Difficulty) scoring, ATAM-style tradeoff analysis — every (H,H) scenario gates an executable fitness function in CI.
 
-**One-paragraph:** Quality Attributes Analysis (QAA) is the systematic process of identifying, prioritizing, and binding non-functional requirements (NFRs) to architectural decisions using ISO/IEC 25010:2023 characteristics, 6-part quality attribute scenarios, utility trees with (Importance, Difficulty) scoring, and ATAM-style trade-off analysis. The concrete rule: every (H,H) scenario must have an executable fitness function (load test, chaos drill, security scan) wired into CI/CD — a scenario without a test is decoration.
+**One-paragraph:** Systematic QAA pass binding NFRs to structural decisions — ISO/IEC 25010:2023 characteristics, 6-part quality-attribute scenarios, utility tree with (Importance, Difficulty) scoring, ATAM-style tradeoff analysis — every (H,H) scenario gates an executable fitness function in CI. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Pre-architecture phase of a non-trivial system — surface NFRs that will drive structural decisions.
-- Major architectural pivot (monolith → microservices, on-prem → cloud, sync → async).
-- Investor / customer due diligence requiring evidence the architecture meets SLA / compliance promises.
-- Postmortem after a performance, security, or availability incident that the original architecture did not anticipate.
-- Multi-tenant or regulated domain (healthcare, finance, public sector) requiring ISO/IEC 25010 traceability.
-- New team onboarding — utility tree + scenarios align priorities faster than any wiki page.
+- A team is producing spec for the topic 'Quality Attributes Analysis'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- Idea / prototype stage with fewer than 5 paying customers — quality attributes are imagined; bottleneck is product-market fit.
-- Tactical sprint planning — utility trees are not a substitute for backlogs.
-- Single-developer side project with no SLA — overhead exceeds value.
-- Team will not revisit the artifact after the workshop — a one-shot ATAM is theater.
-- Trade-offs are already political, not technical — no analysis method survives a pre-decided executive choice.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Pre-architecture phase of a non-trivial system surfacing NFRs.
+- Major architectural pivot (monolith → microservices, on-prem → cloud, sync → async).
+- Investor / customer due-diligence requiring evidence the architecture meets SLA / compliance promises.
+- Postmortem after a perf/security/availability incident the original architecture did not anticipate.
+- Multi-tenant or regulated domain (healthcare, finance, public-sector) requiring ISO 25010 traceability.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-quality-attributes-analysis.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

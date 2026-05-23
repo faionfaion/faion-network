@@ -1,86 +1,98 @@
 ---
 slug: one-way-door-flagging-protocol
 tier: pro
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6962551855d94354"
-summary: An explicit decision-time protocol that flags each architecture choice as one-way-door (irreversible within 6 months without significant cost) vs two-way-door, gating one-way doors behind a heavier review path while letting two-way doors ship at velocity.
-tags: [architecture, decision-making, adr, reversibility, two-way-door, amazon]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Decision-time protocol that tags every architecture decision as one-way-door or two-way-door at the ADR header, routes one-way doors through a heavier review path (48h cooldown + devil's-advocate reviewer + rollback estimate), and reviews misclassifications quarterly for calibration."
+content_id: "01eb69ab8462955a"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
+tags: [architecture, pro, decision-making, adr, reversibility, two-way-door, amazon]
 ---
-
 # One-Way-Door Flagging Protocol
 
 ## Summary
 
-**One-sentence:** Tag every architecture decision as one-way-door or two-way-door at the moment of decision, route the two classes through different review paths, and capture the classification in the ADR header so future readers see the intended reversibility.
+**One-sentence:** Decision-time protocol that tags every architecture decision as one-way-door or two-way-door at the ADR header, routes one-way doors through a heavier review path (48h cooldown + devil's-advocate reviewer + rollback estimate), and reviews misclassifications quarterly for calibration.
 
-**One-paragraph:** Reversibility is the second most-cited driver of architecture regret (after "we did not consider scale"). Most teams implicitly know some choices are irreversible (vendor lock-in, data-model migration, public API surface) and others are easily reversible (logging format, internal naming, route handler structure), but the distinction lives in tribal knowledge instead of the ADR itself. The flagging protocol formalises the call: every ADR opens with `decision_class: one-way-door | two-way-door`, the writer justifies the call in one paragraph, and the two classes route through different review paths. One-way doors get a 48h cooldown, a named devil's-advocate reviewer, and a documented rollback estimate. Two-way doors ship with the standard PR-review path. Primary output: a `decision_class` field in every ADR, plus a quarterly review of misclassified decisions for calibration.
+**One-paragraph:** Decision-time protocol that tags every architecture decision as one-way-door or two-way-door at the ADR header, routes one-way doors through a heavier review path (48h cooldown + devil's-advocate reviewer + rollback estimate), and reviews misclassifications quarterly for calibration. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- team uses ADRs (Architecture Decision Records) or an equivalent structured decision log
-- team makes ≥ 2 architecturally-meaningful decisions per quarter
-- engineering leader has authority to enforce a heavier review path for irreversible decisions
-- team has experienced at least one architecture regret in the past 12 months (any team past Year 2 has)
+- A team is producing decision-record for the topic 'One-Way-Door Flagging Protocol'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- team has no ADR habit — establish ADRs first (`pro/dev/software-architect/adr-staleness-audit` is the right starting point)
-- single-engineer codebase — the protocol's value is in the review-path differentiation; with one engineer there is no second reviewer
-- prototype phase pre-customer — reversibility is cheap by definition, premature gating slows learning
-- regulated environment where every architecture change is already gated by external compliance — apply compliance first, this protocol second
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Teams using ADRs that want explicit reversibility tagging at decision time.
+- Routing irreversible decisions through a heavier review (cooldown + devil's-advocate + rollback).
+- Calibrating misclassification rate quarterly across an ADR corpus.
+- Engineering leaders enforcing decision hygiene after an architecture regret.
 
 ## Prerequisites
 
-- ADR template in use (markdown or otherwise) with consistent header structure
-- one engineer designated as the protocol owner (typically tech lead or principal engineer)
-- a definition of "significant cost" for the team — typically engineer-weeks-to-reverse, customer-facing-impact, or vendor-contractual-exit-clauses
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/adr-staleness-audit` | ADRs are the carrier for the decision_class flag |
-| `pro/dev/software-architect/quality-attributes-analysis` | Quality-attribute analysis often surfaces the reversibility dimension |
-| `solo/dev/software-architect/strangler-fig-playbook-vendor` | Strangler-fig is the standard reversal pattern for one-way doors that turn out to be wrong |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: explicit class, cooldown for one-way, devil's-advocate reviewer, rollback estimate, quarterly miscall review | ~900 |
-| `content/02-output-contract.xml` | essential | ADR header schema with decision_class field, reversal-estimate schema | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: every-decision-flagged-two-way, no rollback estimate, after-the-fact reclassification, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `classify_decision_one_way_or_two_way` | sonnet | Cross-input judgment from problem statement and proposed solution |
-| `estimate_reversal_cost` | sonnet | Per-decision bounded estimation in engineer-weeks |
-| `identify_devils_advocate_reviewer` | haiku | Lookup based on domain expertise tags |
-| `quarterly_miscall_review` | opus | Cross-decision synthesis: which class did we get wrong, what is the calibration error |
+| `scaffold-adr` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-class-and-tradeoff` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/adr-template-with-class.md` | ADR template with the decision_class field and reversal-estimate paragraph wired in |
-| `templates/one-way-door-checklist.md` | Pre-cooldown checklist (rollback plan, vendor exit clause, customer migration cost, public API surface impact) |
+| `templates/adr-skeleton.md` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. |
+| `templates/_smoke-test.md` | Minimum viable filled-in ADR. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/adr-classify-lint.py` | Pre-commit hook that rejects ADRs without the decision_class field set | On every ADR PR |
-| `scripts/miscall-review.py` | Reads ADRs from the past quarter, surfaces any decision whose actual reversal effort diverged from the original estimate by &gt;= 2x | Quarterly |
+| `scripts/validate-one-way-door-flagging-protocol.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/SKILL.md`
-- peer methodologies: `pro/dev/software-architect/adr-staleness-audit`, `pro/dev/software-architect/quality-attributes-analysis`
-- external: [Bezos 1997 letter, two-way door framing] · [Michael Nygard, Documenting Architecture Decisions (2011)] · [Pais and Skelton, Team Topologies Chapter 5 (IT Revolution, 2019)]
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

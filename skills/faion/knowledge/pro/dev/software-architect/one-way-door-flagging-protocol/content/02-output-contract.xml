@@ -1,48 +1,199 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="One-Way-Door Flagging Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the decision_class fields in ADRs, the devil's-advocate review, and the quarterly miscall report.</summary>
+<text id="02-output-contract" title="One-Way-Door Flagging Protocol Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="adr.decision_class" type="enum" values="one-way-door|two-way-door"/>
-      <field name="adr.classification_rationale" type="paragraph" min_words="50" max_words="150"/>
-      <field name="adr.reversal_estimate_engineer_weeks" type="number" min="0" notes="0 for trivial two-way; integer or float &gt;= 1 for one-way"/>
-      <field name="adr.reversal_estimate_breakdown" type="object" notes="keys: code, data_migration, vendor_exit, customer_impact, dependent_systems"/>
-      <field name="adr.devils_advocate_reviewer" type="string" notes="required if decision_class = one-way-door"/>
-      <field name="adr.cooldown_start" format="ISO8601" notes="required if decision_class = one-way-door"/>
-      <field name="adr.merged_at" format="ISO8601"/>
-      <field name="devils_advocate_review.objection_or_endorsement" type="paragraph" min_words="60" notes="required if decision_class = one-way-door"/>
-      <field name="miscall_report.period" format="YYYY-Qn"/>
-      <field name="miscall_report.actually_reversed" type="list_of_adr_id"/>
-      <field name="miscall_report.actually_irreversible_two_way" type="list_of_adr_id"/>
-      <field name="miscall_report.calibration_note" type="paragraph"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">decision_class missing from any new ADR (pre-commit lint blocks)</pattern>
-      <pattern id="f2">decision_class = one-way-door AND devils_advocate_reviewer empty</pattern>
-      <pattern id="f3">decision_class = one-way-door AND merged_at less than 48 hours after cooldown_start</pattern>
-      <pattern id="f4">reversal_estimate_engineer_weeks omitted on one-way ADRs OR set to a token like TBD or unknown</pattern>
-      <pattern id="f5">classification_rationale shorter than 50 words (boilerplate label is not a classification)</pattern>
-      <pattern id="f6">devils_advocate_review absent at merge time on a one-way ADR</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Shorten cooldown to 24h if the decision is time-critical (e.g. production-incident-driven) — requires engineering leader written approval logged in the ADR.</transformation>
-      <transformation>Aggregate the reversal_estimate_breakdown into a single number when posting the ADR summary; keep the breakdown in the file for the miscall review.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/adr-template-with-class.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>decision_class field set and matches the rationale paragraph</item>
-      <item>One-way-door ADRs have a 48h cooldown logged</item>
-      <item>Devil's-advocate reviewer named and rotated within quarter limits</item>
-      <item>Reversal estimate is a real number with breakdown, not a placeholder</item>
-      <item>Quarterly miscall report exists for each closed quarter</item>
-      <item>Quick-classification heuristics applied as a sanity check</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/one-way-door-flagging-protocol.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "decision_class",
+    "alternatives_rejected"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_class": {
+      "enum": [
+        "one-way-door",
+        "two-way-door"
+      ]
+    },
+    "alternatives_rejected": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "why_rejected"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "why_rejected": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "one-way-door-flagging-protocol",
+  "title": "One-Way-Door Flagging Protocol",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "decision_class": "two-way-door",
+  "alternatives_rejected": [
+    {
+      "option": "do-nothing",
+      "why_rejected": "misses compliance window"
+    },
+    {
+      "option": "alternative-vendor",
+      "why_rejected": "contract terms incompatible"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-one-way-door-flagging-protocol.py">Validator script</reference>
 </text>
