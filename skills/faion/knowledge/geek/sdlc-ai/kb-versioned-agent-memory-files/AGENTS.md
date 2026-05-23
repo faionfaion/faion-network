@@ -88,7 +88,7 @@ tags: [agent-memory, versioned-memory, decisions, patterns, session-state]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-versioned-agent-memory-files.py` | Validate the memory-bundle structure. | pre-merge of memory change |
+| `scripts/validate-kb-versioned-agent-memory-files.py` | Validate the memory-bundle structure. | pre-merge of memory change |
 
 ## Related
 

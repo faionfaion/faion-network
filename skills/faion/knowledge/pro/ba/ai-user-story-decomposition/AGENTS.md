@@ -3,78 +3,98 @@ slug: ai-user-story-decomposition
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai User Story Decomposition: codified business-analysis practice that turns the recurring 'role-business-analyst/AI-assisted requirements discovery on a new outsource engagement' decision into a repeatable, auditable artefact.
-content_id: "6399c1a7cdf6fb77"
-tags: [ai-user-story-decomposition, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decomposes vague AI-product asks ('add chatbot', 'make it smart') into INVEST-compliant user stories with explicit AI-vs-deterministic boundary, eval criteria (precision/recall/cost/latency), fallback behavior, and golden-set seed.
+content_id: "92edc49c010b31df"
+complexity: medium
+produces: spec
+est_tokens: 5100
+tags: [ba, ai, user-story, invest, decomposition]
 ---
-# Ai User Story Decomposition
+# AI User Story Decomposition
 
 ## Summary
 
-**One-sentence:** Ai User Story Decomposition: codified business-analysis practice that turns the recurring 'role-business-analyst/AI-assisted requirements discovery on a new outsource engagement' decision into a repeatable, auditable artefact.
+**One-sentence:** Decomposes vague AI-product asks ('add chatbot', 'make it smart') into INVEST-compliant user stories with explicit AI-vs-deterministic boundary, eval criteria (precision/recall/cost/latency), fallback behavior, and golden-set seed.
 
-**One-paragraph:** Ai User Story Decomposition addresses the gap identified by the role-business-analyst/AI-assisted requirements discovery on a new outsource engagement playbook: pro/ba-modeling/user-story-mapping covers traditional story mapping. Nothing covers AI-assisted epic→story decomposition with INVEST scoring, slicing patterns (workflow / data / business-rule), or BA review checklist. This is the single most repeated AI task BAs do today. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Decomposes vague AI-product asks ('add chatbot', 'make it smart') into INVEST-compliant user stories with explicit AI-vs-deterministic boundary, eval criteria (precision/recall/cost/latency), fallback behavior, and golden-set seed. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Stakeholder ask is vague ('add AI', 'make it smart') — needs decomposition.
+- AI-vs-deterministic boundary не ясний — стейкхолдери думають LLM зробить все.
+- Eval criteria для AI-feature: precision/recall/accuracy/cost — потрібно AC.
+- Fallback behavior: коли AI fails (low confidence, refusal) — який UX?
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-business-analyst/AI-assisted requirements discovery on a new outsource engagement OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Stakeholder ask is vague ('add AI', 'make it smart').
+- Production-deploy intent (not research spike).
+- BA owns the story and has access to JTBD / stakeholder records.
+- Eng team can act on numeric AC and golden seeds.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Deterministic-only story (CRUD, lookup, integration with no LLM in the loop).
+- Research spike with no production-deploy plan.
+- Story already has measurable spec attached.
 
 ## Prerequisites
 
-- recent context for the role-business-analyst/AI-assisted requirements discovery on a new outsource engagement task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stakeholder ask (raw) | email / transcript / JTBD record | PM / sponsor |
+| Existing story template | Markdown / Jira | BA repo |
+| Eval AC catalogue (precision / recall / cost / latency) | YAML | ML eng team |
+| Golden-set seed template | JSONL | ml-engineering methodology |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| `pro/ba/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding, r5-acceptance-criteria | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end (input → output) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-user-story-decomposition` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-user-story-decomposition.json` | JSON schema for the Ai User Story Decomposition output contract |
-| `templates/ai-user-story-decomposition.md` | Markdown skeleton with the required fields |
+| `templates/spec.md` | Markdown spec skeleton — sections + acceptance criteria slots |
+| `templates/spec-instance.json` | Instance of a filled spec (machine-readable mirror) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-user-story-decomposition.py` | Enforce Ai User Story Decomposition output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-user-story-decomposition.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- upstream playbook: `role-business-analyst/AI-assisted requirements discovery on a new outsource engagement`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- Parent: `pro/ba/AGENTS.md`
+- [[ambiguity-contradiction-detector]]
+- [[ba-governance]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

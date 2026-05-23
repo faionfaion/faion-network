@@ -1,43 +1,170 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Prompt Versioning And AB Framework — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A framework artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Prompt Versioning and A/B Framework Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/prompt-versioning-and-ab-framework.json",
+  "title": "Prompt Versioning and A/B Framework",
+  "type": "object",
+  "required": [
+    "prompts",
+    "variants",
+    "traffic_split",
+    "metrics",
+    "power_analysis",
+    "significance_gate",
+    "decision"
+  ],
+  "properties": {
+    "prompts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "owner",
+          "changelog"
+        ]
+      }
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "variant_id",
+          "prompt_id",
+          "version"
+        ]
+      }
+    },
+    "traffic_split": {
+      "type": "object",
+      "required": [
+        "method",
+        "buckets"
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "primary",
+        "secondary"
+      ]
+    },
+    "power_analysis": {
+      "type": "object",
+      "required": [
+        "expected_effect",
+        "mde",
+        "target_n"
+      ]
+    },
+    "significance_gate": {
+      "type": "object",
+      "required": [
+        "test",
+        "threshold"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "promote_a",
+        "promote_b",
+        "no_decision",
+        "continue"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "prompts": [
+    {
+      "id": "refund-chat",
+      "version": "2.1.0",
+      "owner": "jane@team.io",
+      "changelog": "v2.1.0: add explicit refusal path; reviewer alex@team.io; eval delta +0.03"
+    }
+  ],
+  "variants": [
+    {
+      "variant_id": "A",
+      "prompt_id": "refund-chat",
+      "version": "2.0.0"
+    },
+    {
+      "variant_id": "B",
+      "prompt_id": "refund-chat",
+      "version": "2.1.0"
+    }
+  ],
+  "traffic_split": {
+    "method": "hash(user_id) % 2",
+    "buckets": {
+      "A": 0.5,
+      "B": 0.5
+    }
+  },
+  "metrics": {
+    "primary": "csat_score",
+    "secondary": [
+      "quality",
+      "cost_per_request",
+      "p95_latency"
+    ]
+  },
+  "power_analysis": {
+    "expected_effect": 0.05,
+    "mde": 0.02,
+    "target_n": 5000
+  },
+  "significance_gate": {
+    "test": "two-sided-z",
+    "threshold": 0.05
+  },
+  "decision": "promote_b"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "prompts": [
+    {
+      "id": "p",
+      "version": "latest"
+    }
+  ],
+  "variants": [
+    {
+      "variant_id": "A"
+    }
+  ]
+}
+]]></code>
+    <note>Missing required fields; violates schema constraints for `prompt-versioning-and-ab-framework` (e.g. empty / placeholder owner, fewer items than minItems, missing evidence_quote / anti_output / exit_criterion as applicable). Validator rejects with explicit violation list.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>floating 'latest' references</pattern>
+    <pattern>random per-request split</pattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-prompt-versioning-and-ab-framework.py">Validator script</reference>
 </text>

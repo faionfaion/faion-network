@@ -1,44 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Shadow Rollout — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Schemas for shadow-rollout.yaml, the per-window quality report, and the promotion decision.</summary>
+<text id="02-output-contract" title="Shadow Traffic Rollout Pattern Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="feature_id" type="string"/>
-      <field name="candidate" required_keys="id,model_version,prompt_version,build_sha"/>
-      <field name="baseline" required_keys="id,model_version,prompt_version"/>
-      <field name="judge" required_keys="model_version,prompt_version,calibration_date,calibration_score"/>
-      <field name="shadow_window" required_keys="start,end,sample_count,coverage"/>
-      <field name="metrics" required_keys="quality_delta,latency_delta_pct,cost_delta_pct,per_intent_breakdown"/>
-      <field name="thresholds" required_keys="quality_delta_min,latency_delta_max_pct,cost_delta_max_pct"/>
-      <field name="promotion_decision" required_keys="status,rationale,signatures,rollback_owner,rollout_schedule"/>
-      <field name="continuous_shadow_config" required_keys="sample_rate,duration_days,monitor_metric"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">shadow_window.sample_count &lt; 500</pattern>
-      <pattern id="f2">shadow_window.end - shadow_window.start &lt; 48 hours</pattern>
-      <pattern id="f3">judge.calibration_date older than 30 days</pattern>
-      <pattern id="f4">any of latency_delta_pct &gt; threshold OR cost_delta_pct &gt; threshold OR quality_delta &lt; threshold AND promotion_decision.status == "go"</pattern>
-      <pattern id="f5">promotion_decision.signatures missing ml_engineer or product</pattern>
-      <pattern id="f6">continuous_shadow_config.sample_rate &lt; 5% OR duration_days &lt; 7</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Extend window beyond 48h for low-volume features.</transformation>
-      <transformation>Adjust thresholds per intent or per business segment when the acceptance contract sets different tolerances.</transformation>
-      <transformation>Add new metrics (e.g. content-safety violation rate) without removing the three required ones.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Shadow window ≥48h and ≥500 scored requests with weekday+weekend coverage</item>
-      <item>Judge version + calibration date pinned</item>
-      <item>All three gate metrics (quality, latency, cost) within thresholds</item>
-      <item>Promotion decision signed by ml_engineer and product owner</item>
-      <item>Continuous shadow config defined and active post-promotion</item>
-      <item>Rollback owner named and runbook referenced</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/shadow-traffic-rollout-pattern.json",
+  "title": "Shadow Traffic Rollout Pattern",
+  "type": "object",
+  "required": [
+    "candidate_id",
+    "baseline_id",
+    "window",
+    "judge",
+    "metrics",
+    "gate_result",
+    "promotion_decision"
+  ],
+  "properties": {
+    "candidate_id": {
+      "type": "string"
+    },
+    "baseline_id": {
+      "type": "string"
+    },
+    "window": {
+      "type": "object",
+      "required": [
+        "start",
+        "end",
+        "n_requests",
+        "coverage"
+      ]
+    },
+    "judge": {
+      "type": "object",
+      "required": [
+        "model",
+        "prompt_version",
+        "calibration_date"
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "quality_delta",
+        "latency_delta_pct",
+        "cost_delta_pct"
+      ]
+    },
+    "gate_result": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "promotion_decision": {
+      "enum": [
+        "promote",
+        "hold",
+        "abort"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "candidate_id": "sonnet-4.7@2026-05-15",
+  "baseline_id": "sonnet-4.6@2026-04-01",
+  "window": {
+    "start": "2026-05-20T00:00:00Z",
+    "end": "2026-05-22T00:00:00Z",
+    "n_requests": 2100,
+    "coverage": [
+      "weekday",
+      "weekend"
+    ]
+  },
+  "judge": {
+    "model": "opus-4.6",
+    "prompt_version": "judge-v3.1",
+    "calibration_date": "2026-05-10"
+  },
+  "metrics": {
+    "quality_delta": 0.04,
+    "latency_delta_pct": 8.0,
+    "cost_delta_pct": -3.0
+  },
+  "gate_result": "pass",
+  "promotion_decision": "promote"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "candidate_id": "x",
+  "baseline_id": "y",
+  "window": {
+    "n_requests": 100
+  }
+}
+]]></code>
+    <note>Missing required fields; violates schema constraints for `shadow-traffic-rollout-pattern` (e.g. empty / placeholder owner, fewer items than minItems, missing evidence_quote / anti_output / exit_criterion as applicable). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>window &lt;48h OR n&lt;500</pattern>
+    <pattern>judge swapped mid-window</pattern>
+  </section>
+
+  <reference path="scripts/validate-shadow-traffic-rollout-pattern.py">Validator script</reference>
 </text>

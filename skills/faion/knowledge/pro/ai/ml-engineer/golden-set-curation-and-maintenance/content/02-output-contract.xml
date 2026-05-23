@@ -1,55 +1,1112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Golden Set Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a golden-set artifact. Both per-item and dataset-level contracts apply.</summary>
+<text id="02-output-contract" title="Golden Set Curation and Maintenance Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="dataset_version" format="semver" example="2.3.0"/>
-      <field name="item_count" type="integer" min="50" max="200"/>
-      <field name="coverage_distribution" type="object"
-             required_keys="happy_path,edge_case,adversarial,known_failure_class"
-             constraint="each_value &gt;= 0.15"/>
-      <field name="items" type="array_object"
-             item_required_keys="id,feature,bucket,input,expected_output,anti_output,metadata"/>
-      <field name="bucket" type="closed_enum"
-             value="happy_path,edge_case,adversarial,known_failure_class"/>
-      <field name="anti_output" type="array" min="1"/>
-      <field name="metadata" type="object"
-             required_keys="difficulty,added_from,reviewer,added_date,last_validated_date"/>
-      <field name="quarterly_audit_log" type="array_object"
-             required_keys="audit_date,still_valid,schema_changed,retired"/>
-      <field name="incident_conversion_ratio" type="float" min="0.8"
-             window_days="90"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">items array with item_count &gt; 200 (signal: synthetic bloat; quality should improve, not size)</pattern>
-      <pattern id="f2">items with coverage_distribution.happy_path &gt; 0.55 (signal: insufficient stratification)</pattern>
-      <pattern id="f3">any item missing anti_output array OR anti_output.length == 0</pattern>
-      <pattern id="f4">item added without dataset_version bump in the same PR</pattern>
-      <pattern id="f5">metadata.reviewer == metadata.added_from.author (self-review)</pattern>
-      <pattern id="f6">audit_log entries with retired_items count == 0 over two consecutive quarters (signal: skipped audit)</pattern>
-      <pattern id="f7">expected_output containing the dataset's golden-set version string OR known seed-trigger tokens (indicates leakage)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Promote a candidate from "incident_followup" to a golden item after reviewer sign-off and bucket assignment.</transformation>
-      <transformation>Auto-redact PII fields in input while preserving the structural shape (replace email → "EMAIL_REDACTED").</transformation>
-      <transformation>Sub-bucket items within a parent bucket (e.g., known_failure_class.tax_id_format) for finer drift tracking; sub-buckets do not count for r1 distribution.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/golden-item-schema.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>item_count within 50-200</item>
-      <item>Each of 4 buckets ≥ 15% of items</item>
-      <item>Every item has anti_output array, length ≥ 1</item>
-      <item>dataset_version is bumped in any PR adding/removing items</item>
-      <item>Reviewer ≠ author for each new item</item>
-      <item>Quarterly audit_log has at least one retire OR schema_changed in 90 days OR explicit "no changes verified" entry</item>
-      <item>incident_conversion_ratio (last 90 days) ≥ 0.8</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/golden-set-curation-and-maintenance.json",
+  "title": "Golden Set Curation and Maintenance",
+  "type": "object",
+  "required": [
+    "dataset_version",
+    "items",
+    "coverage_report",
+    "owner",
+    "promotion_review"
+  ],
+  "properties": {
+    "dataset_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 50,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "bucket",
+          "input",
+          "expected_output",
+          "anti_output",
+          "metadata"
+        ]
+      }
+    },
+    "coverage_report": {
+      "type": "object",
+      "required": [
+        "per_bucket_count",
+        "min_per_bucket"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "promotion_review": {
+      "type": "object",
+      "required": [
+        "reviewer",
+        "reviewed_at"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "dataset_version": "1.0.0",
+  "items": [
+    {
+      "id": "gld-0000",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 0"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0001",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 1"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0002",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 2"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0003",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 3"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0004",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 4"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0005",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 5"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0006",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 6"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0007",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 7"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0008",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 8"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0009",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 9"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0010",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 10"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0011",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 11"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0012",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 12"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0013",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 13"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0014",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 14"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0015",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 15"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0016",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 16"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0017",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 17"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0018",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 18"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0019",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 19"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0020",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 20"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0021",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 21"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0022",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 22"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0023",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 23"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0024",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 24"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0025",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 25"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0026",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 26"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0027",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 27"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0028",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 28"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0029",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 29"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0030",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 30"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0031",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 31"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0032",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 32"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0033",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 33"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0034",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 34"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0035",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 35"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0036",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 36"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0037",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 37"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0038",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 38"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0039",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 39"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0040",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 40"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0041",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 41"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0042",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 42"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0043",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 43"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0044",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 44"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0045",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 45"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0046",
+      "bucket": "adversarial",
+      "input": {
+        "text": "sample input 46"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0047",
+      "bucket": "known_failure_class",
+      "input": {
+        "text": "sample input 47"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0048",
+      "bucket": "happy_path",
+      "input": {
+        "text": "sample input 48"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    },
+    {
+      "id": "gld-0049",
+      "bucket": "edge_case",
+      "input": {
+        "text": "sample input 49"
+      },
+      "expected_output": {
+        "label": "correct"
+      },
+      "anti_output": [
+        {
+          "label": "plausible-wrong"
+        }
+      ],
+      "metadata": {
+        "difficulty": "medium",
+        "added_from": "seed",
+        "reviewer": "jane@team.io"
+      }
+    }
+  ],
+  "coverage_report": {
+    "per_bucket_count": {
+      "happy_path": 13,
+      "edge_case": 13,
+      "adversarial": 12,
+      "known_failure_class": 12
+    },
+    "min_per_bucket": 12
+  },
+  "owner": "jane@team.io",
+  "promotion_review": {
+    "reviewer": "alex@team.io",
+    "reviewed_at": "2026-05-23"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "dataset_version": "1.0.0",
+  "items": [
+    {
+      "id": "x",
+      "bucket": "happy_path",
+      "input": {},
+      "expected_output": {}
+    }
+  ]
+}
+]]></code>
+    <note>Missing required fields; violates schema constraints for `golden-set-curation-and-maintenance` (e.g. empty / placeholder owner, fewer items than minItems, missing evidence_quote / anti_output / exit_criterion as applicable). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>item without anti_output</pattern>
+    <pattern>happy-path-only set</pattern>
+  </section>
+
+  <reference path="scripts/validate-golden-set-curation-and-maintenance.py">Validator script</reference>
 </text>

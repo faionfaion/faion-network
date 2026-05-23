@@ -1,3 +1,9 @@
+<!-- purpose: Per-sprint BA activities checklist (refinement → planning → during-sprint → review → retro) -->
+<!-- consumes: backlog state + team membership + sprint cadence -->
+<!-- produces: sprint-ba-activities.md operator checklist -->
+<!-- depends-on: content/01-core-rules.xml (assign-ba-per-phase rule) -->
+<!-- token-budget-impact: ~300-800 tokens when loaded as context -->
+
 # Sprint <N> BA Activities: <Team Name>
 
 ## Pre-Sprint (Refinement)

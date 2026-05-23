@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: scaffold a per-project governance.md skeleton with named-owner placeholders
+# consumes: project slug (and optional output path) supplied on the CLI
+# produces: governance.md under .aidocs/in-progress/<slug>/ (decision-record artefact)
+# depends-on: templates/governance.md sibling for full structure reference
+# token-budget-impact: zero at runtime (bash script, no LLM in the loop)
+#
 # scaffold-governance.sh — generate governance.md skeleton under .aidocs/in-progress/.
 # Usage: ./scaffold-governance.sh <project-slug> [output-path]
 # Example: ./scaffold-governance.sh my-project
@@ -40,11 +46,11 @@ _Last reviewed: $(date -I) — re-validate every 30 days._
 
 ## Owners
 
-- Artifact owner: <TBD — requires human confirmation>
-- Decision-log owner: <TBD>
+- Artifact owner: <FILL: named individual + email>
+- Decision-log owner: <FILL: named individual + email>
 - Re-validation cadence: 30 days
 - Stakeholder contacts: 1Password vault (NOT in this file)
 EOF
 
 echo "Wrote $OUT"
-echo "REMINDER: replace <TBD> placeholders with named individuals before sign-off."
+echo "REMINDER: replace <FILL: ...> placeholders with named individuals before sign-off."

@@ -3,73 +3,97 @@ slug: ba-requirements-mgmt
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: This methodology covers three sub-disciplines of ongoing requirements stewardship: requirements maintenance (version control, attribute management, quality monitoring, archival strategy), change impact analysis (scope, effort, risk, stakeholder impact, decision support), and requirements architecture (viewpoints, decomposition, dependencies, completeness).
-content_id: "e31dc3a4b1616f4f"
-tags: [requirements, ba, maintenance, change-impact, architecture]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a requirements-management register (change-control, traceability, approval thresholds) governing how requirements evolve through the SDLC.
+content_id: "86465d1cc92899eb"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, requirements, change-control, traceability, governance]
 ---
-# BA Requirements Management Methodologies
+# BA Requirements Management
 
 ## Summary
 
-**One-sentence:** This methodology covers three sub-disciplines of ongoing requirements stewardship: requirements maintenance (version control, attribute management, quality monitoring, archival strategy), change impact analysis (scope, effort, risk, stakeholder impact, decision support), and requirements architecture (viewpoints, decomposition, dependencies, completeness).
+**One-sentence:** Produces a requirements-management register (change-control, traceability, approval thresholds) governing how requirements evolve through the SDLC.
 
-**One-paragraph:** This methodology covers three sub-disciplines of ongoing requirements stewardship: requirements maintenance (version control, attribute management, quality monitoring, archival strategy), change impact analysis (scope, effort, risk, stakeholder impact, decision support), and requirements architecture (viewpoints, decomposition, dependencies, completeness). These practices apply after an initial requirement set exceeds ~50 items and human memory cannot track coherence across changes.
+**One-paragraph:** Produces a requirements-management register (change-control, traceability, approval thresholds) governing how requirements evolve through the SDLC. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Команда має requirements baselined у Jira/Confluence та потребує chain-of-custody при змінах.
+- Compliance audit (ISO 27001, SOC2, медичні стандарти) вимагає traceability з підписами.
+- Cross-team initiative (≥3 squads), де зміни requirement розходяться у дизайн, код, тести.
+- Тендерний/контрактний проект із чітко зафіксованим scope і CR-driven evolution.
 
 ## Applies If (ALL must hold)
 
-- Stable product past MVP where the requirement count exceeds ~50 and human memory of "what we agreed" no longer scales — periodic review cadence pays off.
-- Change-heavy environments (enterprise integrations, regulated domains) where every CR must be costed and risk-assessed before approval.
-- Multi-team systems where one team's requirements depend on another's; you need an explicit dependency graph and viewpoint partitioning to prevent silent conflicts.
-- Audit / certification preparation (ISO 9001, SOC2, MDR) where reviewers ask "show me your requirements baseline and how it has changed since last audit".
-- Migrating a legacy backlog into a structured architecture (BR → SR → FR decomposition) so AI agents can reason about scope changes.
+- A backlog or requirements set exists and needs governed evolution (change-requests, approval routing, traceability) across releases.
+- Multiple stakeholders submit changes that must be batched, scored, and approved before refinement.
+- Audit or compliance requires versioned requirement history with timestamps and approvers.
+- Cross-team initiative where requirement changes ripple into design, code, and test artefacts.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF / discovery: requirements churn faster than maintenance ceremony can follow; use `continuous-discovery` and disposable RFCs instead.
-- Tiny teams (less than 5 people, single product) where Slack + a Linear backlog covers change discussion — formal CIA forms add bureaucracy without payoff.
-- Pure agile shops with no contractual requirement baseline; the user-story backlog already encodes scope, and CIA = a 5-minute estimation chat.
-- One-shot internal tools or research prototypes — the change cost analysis exceeds the change cost.
+- Solo dev with no external stakeholders — change-control overhead exceeds the change rate.
+- Throwaway prototype where requirements are discarded weekly.
+- Continuous-discovery product where change-requests are not gated.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing requirements baseline | Jira / Confluence / GitHub Issues | BA team |
+| Stakeholder list with approvers | Markdown / CSV | T2 of ba-planning |
+| Change-request template | Markdown / form | PMO |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-planning]] | T3 governance defines who approves changes |
+| [[requirements-traceability]] | downstream consumer of the CR audit trail |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-change-request` | haiku | Mechanical categorisation: scope / clarification / defect. |
+| `score-impact` | sonnet | Cross-reference downstream artefacts; estimate effort and risk. |
+| `approve-or-reject` | opus | Final judgement under conflicting stakeholder pressure. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/change-request.md` | CR form skeleton with classification, impact, approval. |
+| `templates/requirements-register.md` | Master register linking each requirement to its CR history. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ba-requirements-mgmt.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[ba-planning]]
+- [[requirements-traceability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

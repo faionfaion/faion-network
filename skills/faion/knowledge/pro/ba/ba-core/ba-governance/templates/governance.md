@@ -1,3 +1,9 @@
+<!-- purpose: BA Governance — full skeleton (decision-authority + change-control + comms-plan + owners) -->
+<!-- consumes: project / squad charter + stakeholder roster + RACI template -->
+<!-- produces: governance.md artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~500-1500 tokens when loaded as context -->
+
 # Governance — <Project>
 
 _Last reviewed: <date> — re-validate every 30 days._

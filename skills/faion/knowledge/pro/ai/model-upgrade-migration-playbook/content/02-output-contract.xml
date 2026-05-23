@@ -1,39 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Model Upgrade Migration Playbook Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Model Upgrade Migration Playbook output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Model Upgrade Migration Playbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/model-upgrade-migration-playbook.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/model-upgrade-migration-playbook.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/model-upgrade-migration-playbook.json",
+  "title": "Model Upgrade Migration Playbook",
+  "type": "object",
+  "required": [
+    "from_model",
+    "to_model",
+    "deprecation_date",
+    "owner",
+    "fleet",
+    "rollback_plan",
+    "promotion_gate"
+  ],
+  "properties": {
+    "from_model": {
+      "type": "string"
+    },
+    "to_model": {
+      "type": "string"
+    },
+    "deprecation_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "fleet": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "prompt_id",
+          "eval_delta",
+          "decision"
+        ]
+      }
+    },
+    "rollback_plan": {
+      "type": "object",
+      "required": [
+        "kill_switch_flag",
+        "baseline_id",
+        "stepdown_sequence",
+        "owner"
+      ]
+    },
+    "promotion_gate": {
+      "type": "object",
+      "required": [
+        "golden_set_delta",
+        "shadow_gate"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "from_model": "sonnet-4.6",
+  "to_model": "sonnet-4.7",
+  "deprecation_date": "2026-08-01",
+  "owner": "jane@team.io",
+  "fleet": [
+    {
+      "prompt_id": "refund-chat",
+      "eval_delta": 0.03,
+      "decision": "promote"
+    },
+    {
+      "prompt_id": "kyc-extract",
+      "eval_delta": -0.04,
+      "decision": "rework"
+    }
+  ],
+  "rollback_plan": {
+    "kill_switch_flag": "use_sonnet_47",
+    "baseline_id": "sonnet-4.6",
+    "stepdown_sequence": [
+      "100->25",
+      "25->5",
+      "5->0"
+    ],
+    "owner": "jane@team.io"
+  },
+  "promotion_gate": {
+    "golden_set_delta": -0.01,
+    "shadow_gate": "pass"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "from_model": "x",
+  "to_model": "y",
+  "owner": "team"
+}
+]]></code>
+    <note>Missing required fields; violates schema constraints for `model-upgrade-migration-playbook` (e.g. empty / placeholder owner, fewer items than minItems, missing evidence_quote / anti_output / exit_criterion as applicable). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>missing rollback_plan</pattern>
+    <pattern>fleet promoted without per-prompt eval</pattern>
+  </section>
+
+  <reference path="scripts/validate-model-upgrade-migration-playbook.py">Validator script</reference>
 </text>

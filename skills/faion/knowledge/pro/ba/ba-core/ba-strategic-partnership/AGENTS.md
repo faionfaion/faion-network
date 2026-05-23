@@ -3,73 +3,99 @@ slug: ba-strategic-partnership
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A per-artifact stance reviewer that scores requirements documents on six axes (problem_clarity, outcome_orientation, evidence_grounding, enterprise_scope, partner_voice, kill_criterion) and rewrites order-taker language as outcome statements tied to a named OKR.
-content_id: "3b8b89b4a3c30f9b"
-tags: [ba, strategic-partnership, stance-review, requirements, outcome-focus]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a stance review naming what BA-as-partner means in this engagement — decision rights, escalation paths, value contracts.
+content_id: "403262eea095a531"
+complexity: medium
+produces: report
+est_tokens: 4300
+tags: [ba, strategy, partnership, stance, governance]
 ---
 # BA Strategic Partnership
 
 ## Summary
 
-**One-sentence:** A per-artifact stance reviewer that scores requirements documents on six axes (problem_clarity, outcome_orientation, evidence_grounding, enterprise_scope, partner_voice, kill_criterion) and rewrites order-taker language as outcome statements tied to a named OKR.
+**One-sentence:** Produces a stance review naming what BA-as-partner means in this engagement — decision rights, escalation paths, value contracts.
 
-**One-paragraph:** A per-artifact stance reviewer that scores requirements documents on six axes (problem_clarity, outcome_orientation, evidence_grounding, enterprise_scope, partner_voice, kill_criterion) and rewrites order-taker language as outcome statements tied to a named OKR. Auto-blocks any artifact where any axis scores below 2 or kill_criterion scores below 1. This is a per-engagement behavior pattern — run it at intake and at spec-review gates, not as a quarterly portfolio loop.
+**One-paragraph:** Produces a stance review naming what BA-as-partner means in this engagement — decision rights, escalation paths, value contracts. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Engagement-renewal або new-engagement розмова з C-level, де BA треба позиціонувати як partner, а не requirements-gatherer.
+- Multi-vendor програма, де BA accountability/consultancy boundary треба зафіксувати документально.
+- Pivot у scope (наприклад, BA → product-strategy), де стара стanca застаріла.
+- Внутрішній conflict між sponsor view (clerk-of-works) і BA view (thinking partner) — потрібен письмовий arbiter.
 
 ## Applies If (ALL must hold)
 
-- Intake of a new requirement or "can you just add X" request — reframe as outcome before scope is locked.
-- Re-reading an existing requirements doc, user story, or PRD to detect order-taker language.
-- Onboarding a junior BA: run the stance rubric on their last 5 artifacts and produce coaching deltas.
-- Pre-meeting framing for stakeholder calls: draft 3 strategic questions to ask before accepting the stated requirement.
-- Spec review gate before a ticket goes to engineering — block if no problem statement, no outcome metric, no kill criterion.
+- BA is being inserted into a senior leadership conversation (board, exec, founder) where positioning matters.
+- BA scope is contested — sponsor wants a 'requirements gatherer', BA wants strategic partnership.
+- Engagement renewal where BA value contribution must be articulated.
+- Multi-vendor program where BA accountability vs. consultancy boundary needs to be drawn.
 
 ## Skip If (ANY kills it)
 
-- Quarterly portfolio-level opportunity mining — use the sibling `business-analyst/ba-strategic-partnership/`.
-- Modeling work (BPMN, use-case decomposition, traceability matrices) — wrong tool.
-- Live stakeholder dialogue — agent prepares, never speaks for the BA.
-- Trivial maintenance tickets (copy edits, dependency bumps) — overhead not justified.
+- Tactical task-level work where strategic posture is irrelevant.
+- Pure execution engagement where decision rights are already named elsewhere.
+- BA role is junior / supporting — strategic stance does not apply.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Engagement brief / SOW | Markdown / contract | sponsor |
+| Sponsor expectations note | Email / interview transcript | sponsor |
+| BA self-assessed positioning | Markdown | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-planning]] | T1 approach informs partnership boundaries |
+| [[stakeholder-analysis]] | stakeholder power map shapes partnership stance |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-positioning-inputs` | haiku | Collect SOW, expectations, self-assessment. |
+| `draft-stance-review` | opus | Synthesise narrative under conflicting signals. |
+| `redline-and-iterate` | sonnet | Refine wording against sponsor feedback. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/stance-review.md` | Stance review skeleton: what BA-as-partner means here, decision rights, escalation. |
+| `templates/partnership-charter.md` | One-page partnership charter signed by BA + sponsor. |
+| `templates/stance-review-schema.json` | JSON Schema draft-07 for the ba-stance-reviewer agent output (axes, auto_block, kill_criterion). |
+| `templates/ba-frame.sh` | Helper that frames a stakeholder ask into 3 questions + strawman outcome JSON. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ba-strategic-partnership.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[ba-planning]]
+- [[stakeholder-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

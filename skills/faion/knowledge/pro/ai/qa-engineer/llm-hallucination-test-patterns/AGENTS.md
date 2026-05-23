@@ -2,91 +2,98 @@
 slug: llm-hallucination-test-patterns
 tier: pro
 group: ai
-domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: QA-facing pattern library for testing LLM hallucination — fact-checking probes, grounding-required questions, refusal-correctness tests, citation verification, contradiction tests, off-topic rejection.
-content_id: "920ff0d43fc7c96b"
-tags: [qa,llm,hallucination,grounding,refusal,citation,test-design]
+domain: ai-core
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Catalogs 6 hallucination test patterns (fact_probes / grounding_required / refusal_correctness / citation_verification / contradiction_tests / off_topic_rejection) and packages each as a CI-gated test class with anchored gold labels.
+content_id: "22c73dbb8b43482f"
+complexity: medium
+produces: code
+est_tokens: 4400
+tags: [ai, qa, hallucination, test-patterns, llm]
 ---
 # LLM Hallucination Test Patterns
 
 ## Summary
 
-**One-sentence:** QA-facing pattern library for testing LLM hallucination — fact-checking probes, grounding-required questions, refusal-correctness tests, citation verification, contradiction tests, off-topic rejection.
+**One-sentence:** Catalogs 6 hallucination test patterns (fact_probes / grounding_required / refusal_correctness / citation_verification / contradiction_tests / off_topic_rejection) and packages each as a CI-gated test class with anchored gold labels.
 
-**One-paragraph:** Hallucination is the #1 production bug class for LLM features, but eval-framework docs are abstract; QA engineers need a pattern library of CONCRETE test types they can author and maintain. This methodology defines six pattern classes, each with input shape, expected behavior, and pass/fail criteria: (1) fact_probes (verifiable facts), (2) grounding_required (must cite from given context), (3) refusal_correctness (must say "I don't know"), (4) citation_verification (cited source actually contains the claim), (5) contradiction_tests (model must not assert both A and ¬A), (6) off_topic_rejection (out-of-scope queries refused). Mechanism: per-pattern test-case schemas, gold-label authoring rules, scoring rubric. Primary output: a hallucination test suite with ≥ 10 cases per pattern, integrated with the team's eval pipeline.
+**One-paragraph:** Catalogs 6 hallucination test patterns (fact_probes / grounding_required / refusal_correctness / citation_verification / contradiction_tests / off_topic_rejection) and packages each as a CI-gated test class with anchored gold labels. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- RAG / agent / extraction feature shipping до production.
+- Hallucination — top-3 failure mode на customer-visible AI flows.
+- Test-pattern reuse: 6 universal patterns → applicable до 80% AI features.
+- CI gate: hallucination-rate >X% blocks merge.
 
 ## Applies If (ALL must hold)
 
-- LLM feature is in production OR scheduled for production within 30 days
-- feature consumes user-supplied or document-retrieved context
-- QA owns a test suite for the feature (not LLM-eval-only)
-- ≥ 1 hallucination-driven incident has occurred OR feature touches a regulated surface
-- team can author test cases in plain text or JSON
+- AI feature ships LLM output to end users (RAG / agent / extraction / summary).
+- Hallucination is in top-3 known failure modes for the feature.
+- Human SMEs available to author gold labels.
+- CI can run the test suite on PR.
 
 ## Skip If (ANY kills it)
 
-- pure structured-output feature where hallucination is impossible by schema
-- feature is offline experimentation only — no production exposure
-- feature output is creative content with no factual grounding (poem, fiction)
-- LLM-judge pipeline already produces hallucination-scoring with maintained pattern library
-- feature has been deprecated; no further QA investment planned
+- Non-LLM features (deterministic NLP, search ranking with no generation).
+- Creative-content output without consensus correctness.
+- Existing eval framework already enforces hallucination coverage.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- feature input + output schema documented
-- representative production traffic samples available (PII-redacted)
-- access to source documents the feature may cite
-- LLM-eval-pipeline available OR test harness that can record per-case pass/fail
-- per-pattern minimum case count agreed: default ≥ 10 per pattern
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Per-pattern rubric document | Markdown | QA lead |
+| Human SME availability for gold labels | calendar / roster | Team |
+| Feature input + grounding sources | JSONL | Eng team |
+| CI gate config | YAML | Infra team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ai/ml-engineer/golden-set-curation-and-maintenance` | Hallucination cases promote to golden set after incidents |
-| `geek/ai/llm-integration/guardrails-implementation` | Provides runtime guardrails; this provides their test suite |
-| `geek/ai/ml-engineer/rag-eval-test-set-generation` | Optional companion for RAG-specific cases |
+| `pro/ai/qa-engineer/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 6 pattern classes, ≥ 10 cases per pattern, gold-label authoring, scoring rubric, incident-to-case pipeline | ~1000 |
-| `content/02-output-contract.xml` | essential | Per-pattern case schema, suite-level metrics, expected pass-rate thresholds | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes (false-negative gold labels, easy-case bias, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pattern_case_generator` | sonnet | Generate candidate cases per pattern class |
-| `gold_label_authoring` | opus | Authoritative pass/fail labels; high consequence |
-| `citation_verifier` | sonnet | Check whether cited source contains the claim |
-| `contradiction_detector` | sonnet | Detect mutually exclusive claims in same response |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-llm-hallucination-test-patterns` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pattern-case-schema.json` | Per-case JSON schema with pattern_class + expected behavior |
-| `templates/gold-label-rubric.md` | Pass/fail rubric per pattern class |
-| `templates/incident-to-case.md` | Convert hallucination incident into a hallucination test case |
-| `templates/suite-scorecard.md` | Per-pattern pass-rate scorecard |
+| `templates/test-case.py` | Python test-case scaffold (pytest-style) wired to the output contract |
+| `templates/suite-config.yaml` | Suite-level config: per-attack-class or per-pattern coverage thresholds |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/pattern-coverage-check.py` | Verify ≥ 10 cases per pattern | Before suite ship |
-| `scripts/citation-validator.py` | Auto-check citation_verification cases | Suite run |
-| `scripts/contradiction-scanner.py` | Auto-detect contradictions in model outputs | Suite run |
+| `scripts/validate-llm-hallucination-test-patterns.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ai/qa-engineer/`
-- peer methodology: `golden-set-curation-and-maintenance`, `guardrails-implementation`
-- external: [TruthfulQA paper](https://arxiv.org/abs/2109.07958) · [HELM evaluation suite](https://crfm.stanford.edu/helm/) · [Eugene Yan, LLM evals](https://eugeneyan.com/writing/llm-evaluators/)
+- Parent: `pro/ai/qa-engineer/AGENTS.md`
+- [[golden-set-curation-and-maintenance]]
+- [[prompt-injection-test-suite]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

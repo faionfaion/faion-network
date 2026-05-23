@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: verify the 5 BABOK KA1 artifacts are present and within review cadence
+# consumes: directory containing T1-*.md through T5-*.md files with YAML frontmatter
+# produces: JSON report listing tasks_found, tasks_missing, errors, ok flag
+# depends-on: content/01-core-rules.xml (cadence rule), content/02-output-contract.xml
+# token-budget-impact: ~200 tokens when loaded as context
 """ka1_check.py — verify the 5 BABOK KA1 artifacts are present and within review cadence.
 Usage: python ka1_check.py <directory with T1-T5 markdown files>
 """

@@ -1,89 +1,99 @@
 ---
 slug: shadow-traffic-rollout-pattern
 tier: pro
-group: ml-engineer
-domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "0beaa317c80d6a68"
-summary: AI-specific shadow rollout pattern for new model + prompt combos — mirror live traffic, compute per-request quality delta with a judge, gate promotion on the paired quality + latency + cost metric rather than feature-flag percentage.
-tags: [shadow-deploy, model-rollout, llm-quality, ml-engineer, feature-flags]
+group: ai
+domain: ml-engineering
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Mirrors production traffic to a candidate model/prompt in parallel (no user-facing impact), captures per-request diff vs baseline, blocks promotion until joint quality + latency + cost gates stay within named thresholds across a representative window.
+content_id: "ce7003f72c2a4527"
+complexity: deep
+produces: config
+est_tokens: 5500
+tags: [ai, rollout, shadow-traffic, ml-ops, deployment]
 ---
-
 # Shadow Traffic Rollout Pattern
 
 ## Summary
 
-**One-sentence:** AI-specific shadow rollout — mirror production traffic to a candidate model+prompt, compute per-request quality delta via judge, gate promotion on quality + latency + cost metric, NOT on time-in-flag or simple percentage rollout.
+**One-sentence:** Mirrors production traffic to a candidate model/prompt in parallel (no user-facing impact), captures per-request diff vs baseline, blocks promotion until joint quality + latency + cost gates stay within named thresholds across a representative window.
 
-**One-paragraph:** Generic feature-flag rollout (10%, 25%, 50%, 100% based on no-error-spike) is insufficient for AI features because errors are not the dominant risk — quality regression is. A model + prompt change can pass health checks while producing subtly worse outputs that surface as CSAT drift two weeks later. This methodology pins an AI-specific shadow protocol: mirror 100% of live traffic to the candidate, NEVER return its output to users, compute per-request quality delta using a judge (LLM-judge or rubric-based), latency delta, cost delta, and gate promotion on all three being within the contract for ≥48 hours of representative traffic AND ≥500 scored requests. Then proceed with the standard percentage rollout but with the shadow remaining active as a continuous quality monitor. Mechanism: shadow window → joint metric review → gradual real-traffic split → continuous shadow monitor. Primary output: a `shadow-rollout.yaml` config + per-window quality report.
+**One-paragraph:** Mirrors production traffic to a candidate model/prompt in parallel (no user-facing impact), captures per-request diff vs baseline, blocks promotion until joint quality + latency + cost gates stay within named thresholds across a representative window. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Model swap (e.g. Sonnet → Opus) — потрібно перевірити divergence перед промо.
+- Prompt-template зміна на критичному шляху (refunds, KYC, support).
+- Latency-sensitive flows: candidate може повільніший — shadow вимірює перед rollout.
+- Cost-sensitive flows: candidate може дорожчий — shadow рахує реальний bill.
 
 ## Applies If (ALL must hold)
 
-- AI feature is being upgraded (new model, new prompt, new chunk strategy, new tool set)
-- existing production version handles ≥500 requests / week (enough volume to gather scores)
-- a judge or rubric exists to score quality (LLM-judge, expert label, or proxy signal)
-- the feature is user-facing (errors and quality matter to end-users), not internal-only
-- rollback path defined
+- Production-mirror infra exists (request fan-out, no user impact).
+- Judge model calibrated against ≥50 expert-labelled samples within 30 days.
+- Baseline + candidate are independently identified (model id, prompt version).
+- Traffic volume supports ≥500 scored requests in 48h.
 
 ## Skip If (ANY kills it)
 
-- internal-only AI tool with no end-users — A/B at engineering speed instead
-- traffic too low (&lt;100 req/week) — gather more first; shadow without volume is anecdote
-- no judge available — build offline labelled dataset first
-- non-AI feature — use the generic feature-flag rollout methodology
+- No production-mirror infra available — methodology can't execute.
+- Candidate is config-only (region, retry policy) with no behavior delta.
+- No judge calibration exists and cannot be produced.
 
 ## Prerequisites
 
-- traffic-mirror primitive (gateway, sidecar, app-level)
-- judge configured (LLM-judge with pinned model version, OR expert label, OR business proxy)
-- baseline cost and latency captured for current version
-- rollout flag system (LaunchDarkly, Unleash, Statsig, or in-house feature flags)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Baseline model id + prompt version | string / semver | Repo / config |
+| Candidate model id + prompt version | string / semver | Repo / config |
+| Judge config (model + prompt + calibration date) | YAML | ML eng team |
+| Mirror infra config | Kubernetes manifest / fan-out config | Infra team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer/rag-feature-acceptance-contract` | Defines the metrics the shadow gates against (if a contract is in place) |
-| `geek/ai/ml-engineer/router-shadow-deploy-protocol` | Specialised geek-tier sibling for routers; this is the broader pro-tier pattern |
-| `pro/infra/devops-engineer/canary-and-feature-flags` | Underlying flag machinery |
+| `pro/ai/ml-engineer/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: shadow-first not flag-first, joint quality+latency+cost gate, judge calibration, sustained window, continuous shadow post-promotion | ~1000 |
-| `content/02-output-contract.xml` | essential | shadow-rollout.yaml schema, per-window quality report, promotion gate decision | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: judge-pinning omitted, premature promotion, shadow leak, etc. | ~1000 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_request_judge_call` | sonnet | High volume bounded scoring |
-| `quality_delta_summary` | sonnet | Compact per-window summary |
-| `promotion_recommendation` | opus | Cross-metric synthesis with risk framing |
-| `shadow_health_monitor` | n/a | Deterministic |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-shadow-traffic-rollout-pattern` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/shadow-rollout.schema.yaml` | Config schema |
-| `templates/quality-report.md` | Per-window quality report layout |
-| `templates/promotion-decision.md` | Go/no-go template with sign-off |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/score-shadow-window.py` | Run judge over the shadow window's scored requests; produce report | Nightly during shadow |
-| `scripts/promote-or-hold.py` | Apply joint-gate logic; return decision and rationale | Before each rollout step |
+| `scripts/validate-shadow-traffic-rollout-pattern.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ai/ml-engineer/`
-- peer methodologies: `router-shadow-deploy-protocol` (geek), `rag-feature-acceptance-contract`, `retrieval-drift-alerting-recipe`, `canary-and-feature-flags`
-- external: [Anthropic — Building effective AI agents](https://www.anthropic.com/research) · [LaunchDarkly — Feature flag best practices](https://launchdarkly.com/) · [Statsig — Experimentation platform](https://statsig.com/)
+- Parent: `pro/ai/ml-engineer/AGENTS.md`
+- [[model-upgrade-migration-playbook]]
+- [[golden-set-curation-and-maintenance]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

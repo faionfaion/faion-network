@@ -3,82 +3,97 @@ slug: prompt-versioning-and-ab-framework
 tier: pro
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5931037d2521d28f"
-summary: Prompt Versioning And AB Framework — pinned framework for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so migrate an ai feature across a model upgrade without breaking users stops being folklore and starts being a reviewable operating tool.
-tags: [ai, pro, framework, prompt, versioning, and]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Version-controls prompts (semver + changelog + ownership + lockfile) and ships A/B-test rig (deterministic traffic split + per-variant metrics + power analysis + statistical significance) for safe prompt iteration.
+content_id: "4b7ef79d89304847"
+complexity: deep
+produces: config
+est_tokens: 5500
+tags: [ai, prompt-engineering, versioning, ab-test, ai-core]
 ---
-# Prompt Versioning And AB Framework
+# Prompt Versioning and A/B Framework
 
 ## Summary
 
-**One-sentence:** Prompt Versioning And AB Framework — pinned framework for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so migrate an ai feature across a model upgrade without breaking users stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Version-controls prompts (semver + changelog + ownership + lockfile) and ships A/B-test rig (deterministic traffic split + per-variant metrics + power analysis + statistical significance) for safe prompt iteration.
 
-**One-paragraph:** In AI / agent engineering, the ML engineer runs migrate an ai feature across a model upgrade without breaking users on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. prompt-engineering-production touches this loosely. Missing: a first-class methodology for versioning prompts as artifacts (semver, lockfile, registry), running A/B between versions on production traffic, and tying version → eval result. Without this, prompt drift is the silent killer. `prompt-versioning-and-ab-framework` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the ML engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored framework committed to the team's knowledge space.
+**One-paragraph:** Version-controls prompts (semver + changelog + ownership + lockfile) and ships A/B-test rig (deterministic traffic split + per-variant metrics + power analysis + statistical significance) for safe prompt iteration. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Prompt fleet >5 на team: без versioning silent regressions неминучі.
+- A/B experiments на prompts (variant_a vs variant_b) з power-analysis перед launch.
+- Per-variant cost + latency + quality metrics — порівняння на одному dashboard.
+- Changelog discipline: кожна зміна prompt = entry + reviewer + rollback path.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ml-engineer/Migrate an AI feature across a model upgrade without breaking users`
-- the ML engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Prompt fleet size ≥5 in active production use.
+- Per-user identifier exists for deterministic traffic split.
+- Eval infra exists that can attach metrics to prompt versions.
+- PR review process is enforced on prompt changes.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Prompt fleet ≤2 — versioning overhead is not justified.
+- No A/B infra and cannot be built within the migration window.
+- Anonymous traffic only — no per-user identifier for deterministic split.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the ML engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prompt repo with semver branch structure | Git directory | Eng team |
+| A/B infra config | YAML (LaunchDarkly / GrowthBook / internal) | Infra team |
+| Eval pipeline that attaches metrics to prompt version | Python module | ML eng |
+| Per-user identifier for deterministic split | string from request context | App API |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-prompt-versioning-and-ab-framework` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-prompt-versioning-and-ab-framework.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- Parent: `pro/ai/AGENTS.md`
+- [[model-upgrade-migration-playbook]]
+- [[prompt-injection-test-suite]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

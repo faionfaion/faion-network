@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# ba-frame — turn a one-line stakeholder ask into 3 framing questions + strawman outcome.
+# purpose: turn a one-line stakeholder ask into 3 framing questions + strawman outcome
+# consumes: one-line stakeholder ask as $1..$n, MODEL env var (default claude-opus-4-7)
+# produces: JSON object matching stance-review-schema.json shape
+# depends-on: content/01-core-rules.xml (positioning rule), llm CLI
+# token-budget-impact: ~150 tokens of header + variable LLM output
 # Usage: ba-frame "add a CSV export to the dashboard"
 # Requires: llm CLI (pip install llm llm-anthropic) and MODEL env var or default.
 set -euo pipefail

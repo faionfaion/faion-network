@@ -1,3 +1,9 @@
+<!-- purpose: Framework-fit report skeleton — compares IIBA AE / DA / SAFe for an initiative -->
+<!-- consumes: project context (team size, regulatory profile, scaling, maturity) -->
+<!-- produces: framework-fit.md decision-record artefact -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
+
 # Framework Fit Report — <project>
 
 ## Context

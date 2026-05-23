@@ -3,73 +3,100 @@ slug: ba-governance
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Establishes decision rights, change control, and communication planning for requirements work.
-content_id: "f135322aa0bd55ca"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Establishes decision rights (RACI), change-control workflow, and stakeholder communication plan for a requirements stream before requirements work starts.
+content_id: "33db3278c1e8a006"
+complexity: medium
+produces: decision-record
+est_tokens: 4400
 tags: [governance, ba, requirements, decision-rights, change-control]
 ---
 # BA Governance
 
 ## Summary
 
-**One-sentence:** Establishes decision rights, change control, and communication planning for requirements work.
+**One-sentence:** Establishes decision rights (RACI), change-control workflow, and stakeholder communication plan for a requirements stream before requirements work starts.
 
-**One-paragraph:** Establishes decision rights, change control, and communication planning for requirements work. Includes governance framework, communication planning, and elicitation preparation.
+**One-paragraph:** Establishes decision rights (RACI), change-control workflow, and stakeholder communication plan for a requirements stream before requirements work starts. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- New product / squad — governance set-up before requirements work begins.
+- Cross-stakeholder project (sponsor + dev + ops + legal) — communication plan mandatory.
+- Existing process audit: rework, scope drift, sign-off ambiguity observed.
+- Regulated build (SOX / HIPAA / GDPR) — decision audit trail required.
 
 ## Applies If (ALL must hold)
 
-- Setting up decision rights, change control, and approval workflow for a new product or squad before requirements work starts.
-- Projects crossing three or more stakeholder groups (sponsor, dev, ops, legal/compliance) that need a communication plan.
-- Preparing elicitation logistics and technique selection before interviews or workshops begin.
-- Auditing an existing requirements process where rework, scope drift, or sign-off ambiguity has been observed.
-- Regulated builds (SOX, HIPAA, GDPR) where a decision audit trail is mandatory.
+- Setting up decision rights, change-control, and approval workflow before requirements work starts.
+- Project crosses three or more stakeholder groups (sponsor, dev, ops, legal).
+- Elicitation logistics and technique selection prepared before interviews / workshops.
+- Regulated build (SOX / HIPAA / GDPR) requiring a decision audit trail.
 
 ## Skip If (ANY kills it)
 
-- Solo founder / single-team early MVP — formal governance burns time you do not have; use lightweight requirements-prioritization instead.
-- Pure engineering refactors with no external stakeholders — governance overhead is waste; rely on PR review.
-- Research spikes and discovery sprints where the goal is learning, not committing scope.
-- Crisis incidents — use incident command, not governance workflow.
+- Solo founder / single-team early MVP — formal governance burns time.
+- Pure engineering refactor with no external stakeholders — PR review suffices.
+- Research spike / discovery sprint where goal is learning, not committing scope.
+- Crisis incident — use incident command, not governance workflow.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Project / squad charter | Markdown / Confluence | Sponsor / PMO |
+| Stakeholder roster | Markdown / org chart | PM |
+| RACI template | Markdown / spreadsheet | BA core team |
+| Change-control system | Jira / Linear issue type | Eng tooling |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ba/ba-core/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ba-governance` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed |
+| `templates/decision-instance.json` | JSON instance of a filled decision record |
+| `templates/governance.md` | Full governance skeleton — decision-authority + change-control + comms-plan + owners |
+| `templates/scaffold-governance.sh` | Bash scaffold that writes `governance.md` into `.aidocs/in-progress/<project>/` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ba-governance.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- Parent: `pro/ba/ba-core/AGENTS.md`
+- [[agile-ba-frameworks]]
+- [[ambiguity-contradiction-detector]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

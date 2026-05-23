@@ -1,49 +1,27 @@
+<!-- purpose: T1 plan-BA-approach skeleton with stakeholders, elicitation plan, deliverables, governance. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Business Analysis Approach: <Initiative Name>
 
-**Version:** [X.X]
-**Date:** [Date]
-**Business Analyst:** [Name]
+**Version:** 1.0.0  |  **Date:** <YYYY-MM-DD>  |  **BA:** <name@org>
 
 ## 1. Initiative Overview
-
-[Brief description of the change initiative — what is changing, why, and what is the expected outcome.]
+<Brief description.>
 
 ## 2. Analysis Approach
-
-**Selected approach:** [Plan-Driven | Change-Driven | Hybrid (specify %)]
-**Rationale:** [Why this approach given scope clarity, stakeholder availability, risk tolerance, documentation expectations.]
+plan_driven_pct=<int>, change_driven_pct=<int>; rationale.
 
 ## 3. Stakeholders
-
-All stakeholders must be verified against the org chart before inclusion.
-
-| Name | Role | Category | Involvement | Availability |
-|------|------|----------|-------------|--------------|
-| [Name] | [Role] | sponsor\|user\|implementer\|regulator\|support | [How involved] | [When available] |
+Table: name | role | category | approver.
 
 ## 4. Elicitation Plan
-
-| Activity | Technique | Participants | Timing | Information type |
-|----------|-----------|--------------|--------|-----------------|
-| [Activity] | interviews\|workshops\|surveys\|observation\|document-analysis | [Who] | [When] | [What info sought] |
+Table: activity | technique | participants | timing.
 
 ## 5. Deliverables
-
-| Deliverable | Purpose | Artifact owner | Review cadence |
-|-------------|---------|----------------|----------------|
-| Stakeholder list | Identify parties | BA | Fortnightly |
-| Requirements document | Capture needs | BA + PO | Per sprint |
-| Decision log | Track decisions | BA | Ongoing |
+Table: deliverable | owner | cadence.
 
 ## 6. Governance
-
-**Requirements approval:** [Named person, not role]
-**Change request process:** [Ref to governance.md or inline]
-**Review cadence:** [Frequency per artifact type]
-**Escalation path:** [Named person + role]
-
-## 7. Risks and Constraints
-
-| Risk/Constraint | Impact | Mitigation |
-|-----------------|--------|------------|
-| [Item] | [Impact] | [Action] |
+Decision rights, escalation path, sign-off thresholds.

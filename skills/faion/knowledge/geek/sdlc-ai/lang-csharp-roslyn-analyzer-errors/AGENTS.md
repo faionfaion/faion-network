@@ -87,7 +87,7 @@ tags: [csharp, roslyn, analyzer, dotnet, public-api]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-csharp-roslyn-analyzer-errors.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
+| `scripts/validate-lang-csharp-roslyn-analyzer-errors.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
 
 ## Related
 

@@ -1,39 +1,216 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai User Story Decomposition Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai User Story Decomposition output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI User Story Decomposition Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ai-user-story-decomposition.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-user-story-decomposition.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-user-story-decomposition.json",
+  "title": "AI User Story Decomposition",
+  "type": "object",
+  "required": [
+    "ask_summary",
+    "owner",
+    "stories",
+    "ac",
+    "ai_boundary",
+    "fallback",
+    "eval_ac",
+    "golden_seeds"
+  ],
+  "properties": {
+    "ask_summary": {
+      "type": "string",
+      "minLength": 20
+    },
+    "owner": {
+      "type": "string"
+    },
+    "stories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "as_a",
+          "i_want",
+          "so_that",
+          "ac"
+        ]
+      }
+    },
+    "ac": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "criterion",
+          "metric_threshold"
+        ]
+      }
+    },
+    "ai_boundary": {
+      "type": "object",
+      "required": [
+        "ai_scope",
+        "deterministic_fallback",
+        "handoff_signal"
+      ]
+    },
+    "fallback": {
+      "type": "object",
+      "required": [
+        "low_confidence",
+        "refusal",
+        "timeout"
+      ]
+    },
+    "eval_ac": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "metric",
+          "threshold"
+        ]
+      }
+    },
+    "golden_seeds": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "input",
+          "expected",
+          "anti_output"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "ask_summary": "Add a chatbot that answers refund-policy questions for support",
+  "owner": "jane@team.io",
+  "stories": [
+    {
+      "id": "story-1",
+      "as_a": "logged-in customer",
+      "i_want": "to ask about refund policy",
+      "so_that": "I get a same-day answer",
+      "ac": [
+        "ac-1",
+        "ac-2"
+      ]
+    }
+  ],
+  "ac": [
+    {
+      "id": "ac-1",
+      "criterion": "AI returns answer grounded in /docs/refund.md",
+      "metric_threshold": "precision >= 0.92"
+    },
+    {
+      "id": "ac-2",
+      "criterion": "p95 latency under 4s",
+      "metric_threshold": "latency_p95 <= 4000ms"
+    }
+  ],
+  "ai_boundary": {
+    "ai_scope": "answer-generation from grounded snippet",
+    "deterministic_fallback": "search index returns top-3 KB articles",
+    "handoff_signal": "confidence < 0.6 OR refusal"
+  },
+  "fallback": {
+    "low_confidence": "show KB articles",
+    "refusal": "open support ticket",
+    "timeout": "show KB articles + apology"
+  },
+  "eval_ac": [
+    {
+      "metric": "precision",
+      "threshold": 0.92
+    },
+    {
+      "metric": "latency_p95_ms",
+      "threshold": 4000
+    }
+  ],
+  "golden_seeds": [
+    {
+      "input": {
+        "q": "Can I return after 30 days?"
+      },
+      "expected": "policy.no_returns_after_30",
+      "anti_output": "policy.full_refund"
+    },
+    {
+      "input": {
+        "q": "Refund on digital purchase?"
+      },
+      "expected": "policy.digital_no_refund",
+      "anti_output": "policy.full_refund"
+    },
+    {
+      "input": {
+        "q": "What if item is damaged?"
+      },
+      "expected": "policy.damaged_full_refund",
+      "anti_output": "policy.no_returns_after_30"
+    },
+    {
+      "input": {
+        "q": "How long does it take?"
+      },
+      "expected": "policy.refund_window_5d",
+      "anti_output": "policy.instant"
+    },
+    {
+      "input": {
+        "q": "Tell me a joke"
+      },
+      "expected": "refusal.off_topic",
+      "anti_output": "joke output"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "ask_summary": "add AI",
+  "owner": "team",
+  "stories": [
+    {
+      "id": "s",
+      "as_a": "user"
+    }
+  ]
+}
+]]></code>
+    <note>Missing required fields; violates schema constraints for `ai-user-story-decomposition` (e.g. empty / placeholder owner, fewer items than minItems, missing evidence_quote / anti_output / exit_criterion as applicable). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>AC without metric threshold</pattern>
+    <pattern>AI behavior without fallback</pattern>
+  </section>
+
+  <reference path="scripts/validate-ai-user-story-decomposition.py">Validator script</reference>
 </text>

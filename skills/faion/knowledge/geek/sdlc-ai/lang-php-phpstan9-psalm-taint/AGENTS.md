@@ -88,7 +88,7 @@ tags: [php, phpstan, psalm, static-analysis, taint]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-php-phpstan9-psalm-taint.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
+| `scripts/validate-lang-php-phpstan9-psalm-taint.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
 
 ## Related
 

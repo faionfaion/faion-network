@@ -3,75 +3,100 @@ slug: agile-ba-frameworks
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Maps BA competencies to agile frameworks (Scrum, SAFe, Disciplined Agile, IIBA Agile Extension) so an analyst can choose a canonical framework, audit adherence against the IIBA seven principles, and generate a framework-fit report.
-content_id: "93920e12432fb573"
-tags: [agile, framework, ba, scrum, safe]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Picks the right Agile-BA framework (Scrum-BA, SAFe-BA, Disciplined Agile, Dual-Track) for a given team shape + cadence + regulatory bar, with named per-sprint BA activities and IIBA Agile-Extension 7-principle fit-report.
+content_id: "d93ac056d8c06faf"
+complexity: medium
+produces: decision-record
+est_tokens: 4400
+tags: [ba, agile, scrum, safe, dual-track, ba-core]
 ---
 # Agile BA Frameworks
 
 ## Summary
 
-**One-sentence:** Maps BA competencies to agile frameworks (Scrum, SAFe, Disciplined Agile, IIBA Agile Extension) so an analyst can choose a canonical framework, audit adherence against the IIBA seven principles, and generate a framework-fit report.
+**One-sentence:** Picks the right Agile-BA framework (Scrum-BA, SAFe-BA, Disciplined Agile, Dual-Track) for a given team shape + cadence + regulatory bar, with named per-sprint BA activities and IIBA Agile-Extension 7-principle fit-report.
 
-**One-paragraph:** Maps BA competencies to agile frameworks (Scrum, SAFe, Disciplined Agile, IIBA Agile Extension) so an analyst can choose a canonical framework, audit adherence against the IIBA seven principles, and generate a framework-fit report. Distinct from the operational sprint-cadence BA work; this layer covers framework selection and constitution-level decisions.
+**One-paragraph:** Picks the right Agile-BA framework (Scrum-BA, SAFe-BA, Disciplined Agile, Dual-Track) for a given team shape + cadence + regulatory bar, with named per-sprint BA activities and IIBA Agile-Extension 7-principle fit-report. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- New squad — BA framework selection перед sprint-1.
+- Existing team retro: BA activities либо missing либо overloaded.
+- Scaling shift: single team → SAFe RTE — BA role змінюється.
+- Discovery-delivery friction: discovery PB drifts faster than delivery PB.
 
 ## Applies If (ALL must hold)
 
-- Picking an agile BA framework for a new initiative before the team commits to Scrum/SAFe/DA.
-- Auditing an existing delivery against IIBA Agile Extension's seven principles to produce a gap report.
-- Mapping BABOK v3 knowledge areas onto an agile horizon when a BA function migrates from waterfall.
-- Choosing between Disciplined Agile lifecycles using the DA "Way of Working" decision tree.
-- Writing a constitution or playbook section that codifies "how we do agile BA" with official source references.
-- Preparing IIBA Agile Analysis Certification (AAC) study material or competency self-assessment.
+- New initiative entering agile delivery OR major team / scope change in flight.
+- BA function exists in the org (or being established).
+- Constitution / playbook captures the framework decision.
+- IIBA Agile Extension + at least one scaling reference (SAFe / DA / LeSS) on the table.
 
 ## Skip If (ANY kills it)
 
-- Day-to-day backlog refinement and sprint-cadence artifact generation — use the business-analyst variant.
-- Single-team Scrum with no scaling concern and no regulatory traceability need — overhead is not justified.
-- Greenfield product discovery — use continuous-discovery, user-story-mapping, strategy-analysis instead.
-- Non-software domains (marketing ops, HR change) — frameworks lean software; misapplied vocabulary creates false precision.
-- Pure tooling questions (Jira API, Linear webhooks) — frameworks here are vendor-neutral.
+- Single-team Scrum with no scaling concern and no regulatory bar.
+- Greenfield product discovery — use continuous-discovery / user-story-mapping.
+- Non-software domain (marketing ops, HR change) — vocabulary misapplies.
+- Pure tooling questions (Jira API, Linear webhooks) — frameworks are vendor-neutral.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Team composition + size | Markdown / org chart | Eng manager |
+| Initiative scope brief | Markdown / Jira initiative | PM / sponsor |
+| Regulatory / compliance bar | checklist | Compliance / legal |
+| Framework-version pins | YAML in constitution | BA lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ba/ba-core/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-agile-ba-frameworks` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed |
+| `templates/decision-instance.json` | JSON instance of a filled decision record |
+| `templates/framework-fit.md` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table |
+| `templates/sprint-ba-activities.md` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agile-ba-frameworks.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- Parent: `pro/ba/ba-core/AGENTS.md`
+- [[ba-governance]]
+- [[ai-user-story-decomposition]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
