@@ -3,38 +3,98 @@ slug: eval-driven-development-tdd-for-ai
 tier: pro
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: TDD discipline for AI features — write the eval before the prompt, fail CI on regression, treat the eval suite as production code, never ship a prompt change without a green eval delta.
-content_id: 66790a9c1c7a07fd
+summary: Playbook step that enforces TDD discipline for AI features — write eval before prompt change, gate CI on regression, treat eval suite as production code, drift watch with sunset criterion.
+content_id: "761fae546d5e591d"
+complexity: deep
+produces: playbook-step
+est_tokens: 4200
+tags: [eval, tdd, ai-quality, regression-gate, drift-watch]
 ---
 
 # Eval-Driven Development: TDD for AI
 
 ## Summary
 
-Faion has many eval primitives (rag-eval-*, model-evaluation, llm-judge-rubric-evidence-first) but no methodology that states the disciplinary rule: write the eval first, fail CI on regression, treat eval suites as production code. Eval-as-afterthought is the most common ML-engineer failure mode — teams ship a prompt, observe "it looks better in spot-checks", and discover six weeks later that quality on a critical persona has collapsed. This methodology defines the TDD-for-AI loop: eval-before-prompt, regression-gated CI, eval-suite ownership, drift watch, and the explicit kill criterion for an eval suite that has lost signal value.
+**One-sentence:** Playbook step that enforces TDD discipline for AI features — write eval before prompt change, gate CI on regression, treat eval suite as production code, drift watch with sunset criterion.
 
-## Applies If
+**One-paragraph:** Playbook step that enforces TDD discipline for AI features — write eval before prompt change, gate CI on regression, treat eval suite as production code, drift watch with sunset criterion. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a playbook-step produced by an agent applying eval-driven development: tdd for ai. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
 
-- The team ships AI features (prompts, agents, RAG, fine-tunes) into a product where regressions are user-visible or cost-visible.
-- A change to a prompt, model, retrieval, or tool schema happens at least monthly.
-- The team can wire eval execution into CI and gate merges on a configurable threshold.
-- A budget exists for the inference cost of eval runs (or a cached/mock plan exists for cheap evals).
+**Ефективно для:**
 
-## Skip If
+- Building a reproducible playbook-step for eval-driven development: tdd for ai across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
-- One-shot prototype with no plan to ship, no users, no rollback need.
-- The feature is so deterministic (rule-based, no LLM) that unit tests fully capture behaviour — use ordinary TDD.
+## Applies If (ALL must hold)
 
-## Content
-See `content/01-core-rules.xml`.
+- team ships AI features (prompts, agents, RAG, fine-tunes) into a product where regressions are user-visible or cost-visible
+- a change to prompt / model / retrieval / tool schema happens at least monthly
+- team can wire eval execution into CI and gate merges on a configurable threshold
+
+## Skip If (ANY kills it)
+
+- one-shot prototype with no plan to ship, no users, no rollback need
+- feature is fully deterministic (rule-based, no LLM) and unit tests fully capture behaviour
+- no inference-cost budget for eval runs and no cached/mock plan exists — fix the budget first
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| CI system that can run eval jobs | GitHub Actions / GitLab CI / Jenkins | platform |
+| Eval harness (golden set + scoring function) | code + data | ml-engineering |
+| Inference budget (or cache plan) for eval runs | monthly cost cap | finance |
+| Suite ownership policy | named team / individual | engineering manager |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| [[ai-feature-observability-four-pillars]] | Drift detection feeds back into eval refresh |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `eval_authoring` | opus | Write eval cases + rubric for new feature. |
+| `regression_analysis` | sonnet | Diagnose stratum-level regressions in PR delta. |
+| `drift_review` | sonnet | Monthly suite-discrimination review. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/eval-spec.md` | Eval suite spec skeleton |
+| `templates/eval-delta.md` | PR description eval-delta template |
+| `templates/_smoke-test.md` | Minimum viable filled-in eval spec |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-eval-driven-development-tdd-for-ai.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
-- [[eval-contract-template]]
-- [[eval-set-stratified-sampling-recipe]]
-- [[prompt-ab-power-calculator]]
-- [[model-eval-control-bands]]
-- [[llm-drift-daily-triage]]
+
+- [[ai-feature-observability-four-pillars]]
+- [[ai-call-site-inventory]]
+- [[ai-post-mortem-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

@@ -2,75 +2,98 @@
 slug: figma-vs-adobe-strategy-2026
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for selecting or recommending between Figma and Adobe Creative Cloud for product design teams in 2026 — using a weighted decision matrix scored against team use case, AI features, developer handoff, asset creation, enterprise security, and cost.
-content_id: "ebe8291dbdc9bf4f"
-tags: [figma, adobe, design-tools, tool-selection, product-design]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decision record comparing Figma vs Adobe (XD/Firefly/Creative Cloud) for a design org in 2026 — feature parity, AI integration, total cost, lock-in risk.
+content_id: "f63e807af31b79c0"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
+tags: [figma, adobe, tooling-strategy, design-tool-decision, creative-cloud, firefly]
 ---
+
 # Figma vs Adobe Strategy 2026
 
 ## Summary
 
-**One-sentence:** Methodology for selecting or recommending between Figma and Adobe Creative Cloud for product design teams in 2026 — using a weighted decision matrix scored against team use case, AI features, developer handoff, asset creation, enterprise security, and cost.
+**One-sentence:** Decision record comparing Figma vs Adobe (XD/Firefly/Creative Cloud) for a design org in 2026 — feature parity, AI integration, total cost, lock-in risk.
 
-**One-paragraph:** Methodology for selecting or recommending between Figma and Adobe Creative Cloud for product design teams in 2026 — using a weighted decision matrix scored against team use case, AI features, developer handoff, asset creation, enterprise security, and cost. The dominant pattern for mid-size product teams is Figma (UI/UX + dev handoff) + Adobe Firefly (generative imagery).
+**One-paragraph:** Decision record comparing Figma vs Adobe (XD/Firefly/Creative Cloud) for a design org in 2026 — feature parity, AI integration, total cost, lock-in risk. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a decision-record produced by an agent applying figma vs adobe strategy 2026. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible decision-record for figma vs adobe strategy 2026 across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- Recommending toolchain selection for a new product team (Figma, Adobe, or hybrid)
-- Evaluating whether to migrate from one platform to the other given team size and use case
-- Producing a design tool cost analysis (per-seat vs Creative Cloud bundle)
-- Advising enterprise clients on vendor lock-in risk and interoperability strategy
-- Auditing an existing recommendation document or pitch deck for stale tool references
-- Building a request for proposal (RFP) section comparing design platform vendors
+- design org is at a renewal / consolidation decision point (Figma seat block expanding or Adobe ELA renewing)
+- decision must account for 2026 AI feature parity (Firefly vs Figma Make, AI tools, code-connect equivalent)
+- stakeholders include design leadership + finance + engineering hand-off
 
 ## Skip If (ANY kills it)
 
-- Solo freelancer doing print/video production — Adobe wins on output formats, no analysis needed
-- Tool selection for 3D/motion-heavy work — Blender/After Effects are the real alternatives
-- Teams already deeply committed to one platform with significant library investment — switching cost will almost always favor staying
-- Pure code-first design system (Storybook + Tailwind only) where no visual canvas tool is required
+- team is single-tool already with no friction — wait for the natural renewal trigger
+- team uses a third tool exclusively (Sketch, Penpot) — write a separate three-way comparison
+- decision is purely cost (no AI / feature considerations) — use procurement worksheet, not this methodology
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current contract terms (Figma + Adobe) | billing + procurement | finance |
+| Headcount snapshot (designers, devs consuming hand-off) | HR system | design ops |
+| AI policy on data flow per vendor | compliance doc | compliance |
+| Last 90 days of design throughput metrics | Figma activity logs or equivalent | design ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[figma-ai-ecosystem]] | Figma side of the comparison |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `feature_parity_matrix` | sonnet | Side-by-side feature mapping. |
+| `cost_modeling` | sonnet | TCO calc with renewal scenarios. |
+| `lock_in_risk_assessment` | opus | Strategic risk of migration / consolidation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | ADR-style decision record skeleton |
+| `templates/feature-parity-matrix.json` | Feature parity matrix skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled-in tool-strategy ADR |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-figma-vs-adobe-strategy-2026.py` | Validate the decision-record artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[figma-ai-ecosystem]]
+- [[ai-plugin-ecosystem]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

@@ -1,47 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llm-powered-conversational-ai Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llm-powered-conversational-ai as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>System prompt with "stay on topic" as the only topic boundary.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLMs interpret "topic" as the conversational direction — they will follow user topic changes because that is "on topic" in a conversation. Explicit allowed/forbidden lists are the correct mechanism.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Testing persona consistency with only 3-5 turn demo scenarios.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLM persona consistency degrades with conversation length. Test at 20+ turns and include adversarial turns. Demos that pass at 5 turns fail in production at 25 turns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Assuming the LLM can detect emotion reliably for escalation triggers across all languages and dialects.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Emotion detection varies significantly with language, dialect, and cultural context. For critical escalations (angry customer), use explicit keywords from the user or conversation count thresholds, not emotion classification.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Trusting ASR output without validation on critical words.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A 3% ASR word error rate on a critical word (product name, amount, action) can completely misinterpret the user intent. Route high-stakes turns through explicit confirmation dialogs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Agent-generated system prompts with 2000+ tokens due to verbose explanation and example inclusion.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Token bloat increases latency and cost in multi-turn conversations. System prompt should be under 500 tokens. Move examples to few-shot turns, not system prompt body.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Agent designs conversation flows for only the happy path.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Explicitly prompt for error recovery, ambiguity handling, and out-of-scope scenarios. Happy-path-only designs fail on the first real user interaction that deviates from the expected flow.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Agent designs tool calls without accounting for network round-trip latency per call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each function/tool call in an LLM-powered voice system adds a full network round-trip. For real-time voice, batch tool calls or pre-fetch data to avoid visible pauses.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Agent runs identical system prompt without regression tests after any modification.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>System prompt changes can break existing dialogue flows non-obviously. Run automated regression tests (Botium) on the full dialogue script corpus after every system prompt change.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="LLM-Powered Conversational UI Spec Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying llm-powered-conversational-ai. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-shortcut-the-contract" severity="high">
+      <symptom>Agent emits a spec that omits required fields the schema enforces (skips citation, leaves rationale blank, drops postconditions).</symptom>
+      <root-cause source="Internal — F-066 v3 review">Author treats the contract as advisory rather than enforceable; no validator wired into the publish step.</root-cause>
+      <fix>Wire `scripts/validate-llm-powered-conversational-ai.py` into the publish step (CI / pre-commit / orchestrator gate). Reject the artefact until the schema passes.</fix>
+    </antipattern>
+    <antipattern id="fm-skip-decision-tree" severity="high">
+      <symptom>Agent applies the methodology end-to-end on inputs that should have routed to a different methodology (Applies-If unmet, Skip-If hit).</symptom>
+      <root-cause source="Internal — F-066 v3 review">06-decision-tree never walked because the agent jumped straight to the procedure / contract.</root-cause>
+      <fix>Make the decision tree a hard gate at step 1 of the procedure. The validator cross-checks `tree_walked == true` before accepting the artefact.</fix>
+    </antipattern>
+    <antipattern id="fm-stale-context" severity="medium">
+      <symptom>Artefact cites sources / numbers / dependencies that were correct months ago but no longer apply.</symptom>
+      <root-cause source="Internal — F-066 v3 review">Refresh cadence not part of the methodology; nobody owns 'last_reviewed'.</root-cause>
+      <fix>Cap artefact freshness at 30 days for fast-moving topics, 90 days for slow-moving. Add a revisit-trigger field to the schema. The validator rejects artefacts older than the cap.</fix>
+    </antipattern>
+    <antipattern id="fm-rule-quoting-not-applying" severity="medium">
+      <symptom>Output reads like it follows 01-core-rules.xml but the verdicts on individual rules are not recorded — reviewer cannot verify each rule was checked.</symptom>
+      <root-cause source="Internal — F-066 v3 review">Agent paraphrased the rules instead of consuming them. No per-rule evidence pointer.</root-cause>
+      <fix>Force the artefact to carry a per-rule verdict + evidence_pointer field (already enforced by the schema where applicable). Rejects bypass paraphrase.</fix>
+    </antipattern>
   </section>
 </text>

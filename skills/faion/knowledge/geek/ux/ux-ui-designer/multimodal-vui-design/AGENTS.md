@@ -2,73 +2,101 @@
 slug: multimodal-vui-design
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design methodology for interfaces that combine voice input with visual display — pattern-matching voice commands to on-screen card/carousel output while maintaining touch fallbacks for every voice state.
-content_id: "50c32b1c6dd76625"
-tags: [voice-ui, multimodal, smart-display, accessibility, dialogue-design]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for voice-first UI that also exposes visual / haptic affordances — modality matrix, fallback ladder, recognition error model, persona voice constraints.
+content_id: "586d55b2e1eeecaf"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [vui, voice-ui, multimodal, speech-recognition, asr-tts]
 ---
-# Multimodal VUI Design
+
+# Multimodal VUI Design Spec
 
 ## Summary
 
-**One-sentence:** Design methodology for interfaces that combine voice input with visual display — pattern-matching voice commands to on-screen card/carousel output while maintaining touch fallbacks for every voice state.
+**One-sentence:** Spec for voice-first UI that also exposes visual / haptic affordances — modality matrix, fallback ladder, recognition error model, persona voice constraints.
 
-**One-paragraph:** Design methodology for interfaces that combine voice input with visual display — pattern-matching voice commands to on-screen card/carousel output while maintaining touch fallbacks for every voice state. Every dialogue turn must declare: voice prompt, visual state (max 5 items), valid touch actions, and silence fallback.
+**One-paragraph:** Spec for voice-first UI that also exposes visual / haptic affordances — modality matrix, fallback ladder, recognition error model, persona voice constraints. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a spec produced by an agent applying multimodal vui design spec. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible spec for multimodal vui design spec across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- Smart TV, smart display, kiosk, or automotive HMI combining voice with a screen
-- Voice assistants surfacing structured data (product cards, search results, maps)
-- Accessibility-first products where users alternate between touch and voice
-- Conversational commerce (search → carousel → voice-confirm purchase)
+- voice is a primary interaction modality (not just dictation), with visual or haptic affordances supporting it
+- the experience runs on a device with ASR + TTS available (smart speaker, in-car, wearable, phone)
+- the team owns voice prompt, wake-word policy, and recognition-error handling
 
 ## Skip If (ANY kills it)
 
-- Audio-only environments (earbuds, phone IVR) — no screen; use pure VUI
-- Text-heavy B2B tools (dashboards, IDEs) — voice adds friction with no multimodal benefit
-- Products where latency >2s is unacceptable — ASR + LLM + TTS chain is inherently slow
-- Teams without dedicated voice UX expertise — multimodal amplifies design errors
+- voice is only an accessibility option, not a primary modality — use a11y methodology instead
+- single-utterance command set with no follow-up turns — use simpler intent-design methodology
+- voice is rendered by a third-party platform (Alexa, Google Assistant) with no UX control — use platform-specific docs
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ASR + TTS capability sheet | vendor + model + language list | ml-engineering |
+| Persona voice constraints | tone, age range, language style | brand |
+| Recognition error budget | WER target + recovery turns | ml-engineering |
+| Visual or haptic surface inventory | what affordances support voice | design |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[llm-powered-conversational-ai]] | Conversational backbone |
+| [[wcag-22-checklist]] | A11y baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `modality_matrix_design` | sonnet | Per task: voice / visual / haptic mapping. |
+| `error_recovery_design` | opus | ASR / TTS / intent-mismatch recovery ladder. |
+| `voice_persona_check` | sonnet | Brand fit on TTS samples. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vui-spec.md` | Spec skeleton for multimodal VUI |
+| `templates/modality-matrix.json` | Per-task modality matrix skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled-in VUI spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-multimodal-vui-design.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[llm-powered-conversational-ai]]
+- [[ai-spatial-computing]]
+- [[generative-ui-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

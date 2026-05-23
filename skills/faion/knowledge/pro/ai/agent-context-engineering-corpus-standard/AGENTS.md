@@ -3,68 +3,99 @@ slug: agent-context-engineering-corpus-standard
 tier: pro
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Defines the canonical 2026 vocabulary, file shape, and citation rules for any agent-context-engineering artefact so faion becomes the standard reference.
-content_id: "c49abc2fe6bccbfe"
-tags: [agent-context-engineering-corpus-standard, ai, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for the canonical corpus an agent assembles per task — sources, chunking, ranking, citation, freshness — so two agents on the same task produce comparable contexts.
+content_id: "3eeaa8d54f9d42be"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [context-engineering, agent-corpus, rag, retrieval, freshness, citation]
 ---
 
-# Agent Context-Engineering Corpus Standard
+# Agent Context Engineering Corpus Standard
 
 ## Summary
 
-**One-sentence:** Defines the canonical 2026 vocabulary, file shape, and citation rules for any agent-context-engineering artefact so faion becomes the standard reference.
+**One-sentence:** Spec for the canonical corpus an agent assembles per task — sources, chunking, ranking, citation, freshness — so two agents on the same task produce comparable contexts.
 
-**One-paragraph:** P7 pain: 'no shared context-engineering corpus'. faion already has fragments (progressive-disclosure-skills, prompt-cache-prefix-order, compaction-preserve-refs, filesystem-as-working-memory, subagent-as-context-firewall, auto-evict-tool-results, inverted-header-content-first). Missing: a corpus standard. Output: glossary + artefact template + citation requirement.
+**One-paragraph:** Spec for the canonical corpus an agent assembles per task — sources, chunking, ranking, citation, freshness — so two agents on the same task produce comparable contexts. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a spec produced by an agent applying agent context engineering corpus standard. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible spec for agent context engineering corpus standard across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- author writing a new context-engineering methodology or pattern
-- audience is LLM-agent developers (P7) and AI engineers
-- artefact will be cited from other faion methodologies
+- the agent assembles a per-task corpus from multiple sources (docs, code, chats, tickets)
+- two agents on the same task must produce comparable corpora (reproducibility matters)
+- the corpus feeds an LLM call whose output downstream consumers depend on
 
 ## Skip If (ANY kills it)
 
-- writing non-context aspects (eval, RAG, tool use specifically)
-- informal post/blog — corpus standard is for canonical entries only
+- agent uses a single source verbatim (no chunking, no ranking) — corpus standard is overkill
+- agent is a one-shot prototype with no second consumer — wait until reproducibility matters
+- the corpus is itself the deliverable to a human reviewer — use research-synthesis methodology
 
 ## Prerequisites
 
-- read existing faion fragments before authoring
-- draft slug + abstract
-- evidence: ≥2 production references OR ≥1 published primary source
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source inventory (allowed sources + access policy) | list | ml-engineering |
+| Chunking + embedding model | config | ml-engineering |
+| Ranking policy | ranker + tie-break rules | ml-engineering |
+| Freshness policy | max age per source class | ml-engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `progressive-disclosure-skills` | peer methodology — produces inputs or consumes outputs |
-| `prompt-cache-prefix-order` | peer methodology — produces inputs or consumes outputs |
+| [[eval-driven-development-tdd-for-ai]] | Eval gate for corpus quality |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `source_inventory` | sonnet | Lift allowed sources + access policy from team docs. |
+| `policy_compose` | opus | Compose corpus policy (chunking + ranking + freshness + citation). |
+| `citation_audit` | sonnet | Audit citations in sample runs against policy. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/corpus-policy.md` | Spec skeleton for corpus policy |
+| `templates/output-schema.json` | Corpus envelope schema (sources + chunks + ranks + citations) |
+| `templates/_smoke-test.md` | Minimum viable filled-in corpus policy |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-agent-context-engineering-corpus-standard.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `progressive-disclosure-skills`
-- peer methodology: `prompt-cache-prefix-order`
-- peer methodology: `compaction-preserve-refs`
-- external: https://www.anthropic.com/research/building-effective-agents (Anthropic, Building Effective Agents)
+- [[eval-driven-development-tdd-for-ai]]
+- [[ai-call-site-inventory]]
+- [[ai-feature-observability-four-pillars]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

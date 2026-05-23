@@ -2,73 +2,99 @@
 slug: ai-plugin-ecosystem
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Figma's plugin ecosystem accelerates repetitive design tasks but lacks a stable external API surface.
-content_id: "94feebfd638a43bc"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decision record that catalogues which Figma AI plugins fit which design task and where the agent/plugin boundary lies (no headless plugin API).
+content_id: "4006ce2d0c98ada2"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
 tags: [figma, ai-plugins, plugin-ecosystem, design-automation, workflow-integration]
 ---
+
 # AI Plugin Ecosystem (Figma)
 
 ## Summary
 
-**One-sentence:** Figma's plugin ecosystem accelerates repetitive design tasks but lacks a stable external API surface.
+**One-sentence:** Decision record that catalogues which Figma AI plugins fit which design task and where the agent/plugin boundary lies (no headless plugin API).
 
-**One-paragraph:** Figma's plugin ecosystem accelerates repetitive design tasks but lacks a stable external API surface. Agents cannot invoke plugins directly — they can only pre-process inputs (generate data files, configuration scripts) and post-process outputs (analyze Figma JSON exports). Understanding which tasks are agent-automatable versus plugin-only prevents wasted engineering effort.
+**One-paragraph:** Decision record that catalogues which Figma AI plugins fit which design task and where the agent/plugin boundary lies (no headless plugin API). This methodology codifies the rules, output contract, failure modes, and decision tree needed for a decision-record produced by an agent applying ai plugin ecosystem (figma). The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible decision-record for ai plugin ecosystem (figma) across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- Evaluating which Figma AI plugins to adopt for a specific team workflow
-- Automating repetitive design tasks: bulk renaming, content population, icon generation
-- Generating a plugin adoption policy with accessibility and brand guardrails
-- Auditing design files for missing content, broken links, or accessibility violations at scale
+- team is evaluating which Figma AI plugins to adopt for a recurring workflow (content fill, icon gen, audit)
+- automation target is repetitive design work (bulk rename, content population, icon generation) over ≥20 components
+- adoption decision needs to be recorded with accessibility and brand guardrails
 
 ## Skip If (ANY kills it)
 
-- Final production asset export — AI plugin outputs require human QA before handoff
-- Design system creation — plugins assist but cannot own system architecture decisions
-- Small one-off tasks where plugin setup time exceeds manual effort (fewer than ~20 components)
-- Contexts where plugin API access to external services raises data privacy concerns (e.g., healthcare data in designs)
+- final production asset export — AI plugin outputs require human QA before handoff
+- design system architecture decisions — plugins assist but cannot own system architecture
+- small one-off task (<20 components) where plugin setup time exceeds manual effort
+- data-privacy-sensitive contexts (healthcare, finance PII) where plugin sends data to external services
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inventory of repetitive tasks | spreadsheet / Notion table | design ops |
+| Brand styles in Figma (variables, type styles) | Figma library | design-system team |
+| Plugin shortlist with versions | list of 3-7 candidate plugins | designer evaluation |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[figma-ai-ecosystem]] | Broader Figma AI surface — plugins are one slice |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `plugin_capability_match` | sonnet | Compare plugin spec to task list; rank fit. |
+| `data_privacy_check` | sonnet | Trace plugin data flow to external services; flag PII risk. |
+| `decision_record_write` | sonnet | Compose final ADR-style decision. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | ADR-style decision record skeleton for plugin adoption |
+| `templates/plugin-capability-matrix.json` | Capability vs task matrix skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled-in plugin-adoption ADR |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-plugin-ecosystem.py` | Validate the decision-record artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[figma-ai-ecosystem]]
+- [[ai-generated-layout-review-checklist]]
+- [[generative-ui-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

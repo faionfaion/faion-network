@@ -1,3 +1,9 @@
+# purpose: Pre-existing template carried into the multimodal-vui-design methodology
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml for produces=spec
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """
 Validate a multimodal dialogue tree JSON file for structural completeness.
 Input: path to JSON file containing a list of dialogue turns.

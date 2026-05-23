@@ -1,3 +1,9 @@
+# purpose: Pre-existing template carried into the CLAUDE-methodologies methodology
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml for produces=playbook-step
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """
 Print a Nielsen's 10 Usability Heuristics evaluation scoring template.
 Usage: python heuristic-eval-template.py > evaluation.md

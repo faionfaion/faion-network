@@ -1,3 +1,9 @@
+# purpose: Pre-existing template carried into the generative-ui-design methodology
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml for produces=spec
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """Generate multiple UI variants via Claude API in a single batch.
 
 Input:  screen_brief   — description of the screen to generate

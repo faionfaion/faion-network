@@ -2,75 +2,101 @@
 slug: llm-powered-conversational-ai
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design and implementation methodology for conversational AI systems using LLMs — system prompt authoring with explicit topic boundaries, guardrail rules, fallback and escalation logic, and red-team testing for jailbreak vectors.
-content_id: "cfe94ee1911fd184"
-tags: [conversational-ai, llm, system-design, guardrails, safety]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for text-or-voice conversational UI backed by an LLM — turn structure, tool surfaces, fallback policy, refusal model, conversational a11y.
+content_id: "41a3d8ba41910cbb"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [conversational-ai, chat-ui, llm, tool-use, refusal-design]
 ---
-# LLM-Powered Conversational AI
+
+# LLM-Powered Conversational UI Spec
 
 ## Summary
 
-**One-sentence:** Design and implementation methodology for conversational AI systems using LLMs — system prompt authoring with explicit topic boundaries, guardrail rules, fallback and escalation logic, and red-team testing for jailbreak vectors.
+**One-sentence:** Spec for text-or-voice conversational UI backed by an LLM — turn structure, tool surfaces, fallback policy, refusal model, conversational a11y.
 
-**One-paragraph:** Design and implementation methodology for conversational AI systems using LLMs — system prompt authoring with explicit topic boundaries, guardrail rules, fallback and escalation logic, and red-team testing for jailbreak vectors. Every production system prompt must define: allowed topics (list), forbidden topics (list), escalation triggers, and persona constraints.
+**One-paragraph:** Spec for text-or-voice conversational UI backed by an LLM — turn structure, tool surfaces, fallback policy, refusal model, conversational a11y. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a spec produced by an agent applying llm-powered conversational ui spec. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible spec for llm-powered conversational ui spec across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- Building a voice or chat assistant handling multi-part, ambiguous, or contextually dependent queries
-- Replacing a rule-based IVR or FAQ bot where query diversity exceeds what a decision tree covers
-- Designing a customer support agent that must maintain conversation history
-- Integrating a conversational layer into an existing product (search, onboarding, help center)
-- Prototyping dialogue flows before committing to a production NLU platform
+- primary interaction is a multi-turn conversation backed by an LLM (chat, voice, hybrid)
+- the LLM has access to tools (functions, APIs) that can change state
+- the team owns the prompt, tool schema, and refusal policy end-to-end
 
 ## Skip If (ANY kills it)
 
-- Transaction-critical flows (payments, medical orders) without deterministic validation after each LLM turn
-- Real-time phone IVR where latency >2s is unacceptable
-- Regulated industries where every utterance must be pre-approved (financial advice, clinical diagnosis)
-- Query space is small and fully enumerable — rule-based VUI is cheaper and more reliable
-- Products without a moderation or content policy layer
+- single-turn Q&A with no state mutation — use simpler prompt-only methodology
+- scripted bot (decision tree, no LLM) — use traditional chatbot design methodology
+- the LLM is consumed by another system, not by a human user — use API integration methodology
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Turn structure spec | user/assistant/tool format | ml-engineering |
+| Tool schema catalog | tools available to the LLM with side-effects mapped | engineering |
+| Refusal policy | what the LLM must refuse + how | trust & safety |
+| Conversational a11y baseline | screen-reader-friendly turn rendering, voice-first parity | a11y team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[multimodal-vui-design]] | Voice-side parity |
+| [[eval-driven-development-tdd-for-ai]] | Eval gate for conversational quality |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `turn_structure_design` | sonnet | Schema for user/assistant/tool turns + rendering rules. |
+| `refusal_policy_design` | opus | Cross-cutting refusal patterns and rendering. |
+| `a11y_review` | sonnet | Screen-reader + voice parity check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/conversational-spec.md` | Spec skeleton for conversational UI |
+| `templates/turn-schema.json` | Turn schema (user/assistant/tool) skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled-in conversational-UI spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-llm-powered-conversational-ai.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[multimodal-vui-design]]
+- [[generative-ui-design]]
+- [[ai-spatial-computing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

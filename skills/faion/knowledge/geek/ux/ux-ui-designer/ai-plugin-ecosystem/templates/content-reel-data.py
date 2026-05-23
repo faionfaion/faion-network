@@ -1,3 +1,9 @@
+# purpose: Pre-existing template carried into the ai-plugin-ecosystem methodology
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml for produces=decision-record
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """Generate Content Reel-compatible JSON data file.
 
 Output: JSON string → paste into Content Reel > Custom Data in Figma.

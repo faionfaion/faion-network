@@ -1,39 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai Post Mortem Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai Post Mortem Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI Post-Mortem Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the report artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-post-mortem-template.json",
+  "type": "object",
+  "required": ["report_id", "as_of", "findings", "recommendations", "author"],
+  "properties": {
+    "report_id": {"type": "string"},
+    "as_of": {"type": "string", "format": "date"},
+    "findings": {"type": "array", "items": {"type": "object", "required": ["id", "summary"], "properties": {"id": {"type": "string"}, "summary": {"type": "string"}, "evidence": {"type": "string"}}}, "minItems": 1},
+    "recommendations": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "author": {"type": "string"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "ai-post-mortem-template-2026Q2",
+  "as_of": "2026-05-23",
+  "findings": [{"id": "f1", "summary": "main finding", "evidence": "link/to/data"}],
+  "recommendations": ["recommendation-1"],
+  "author": "analyst@example.com"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "ai-post-mortem-template-2026Q2"
+}
+]]></code>
+    <note>Missing required fields per the schema above.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
     <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f1">report without findings array</pattern>
+      <pattern id="f2">recommendations empty</pattern>
+      <pattern id="f3">as_of missing or stale (&gt;30 days)</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
+      <transformation>Auto-populate timestamps from the validation moment.</transformation>
+      <transformation>Normalise enum casing to schema lowercase.</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/ai-post-mortem-template.json"/>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-post-mortem-template.json</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-ai-post-mortem-template.py">Validator script</reference>
 </text>

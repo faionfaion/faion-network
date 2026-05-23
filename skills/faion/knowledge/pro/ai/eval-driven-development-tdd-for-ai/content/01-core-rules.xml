@@ -1,43 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Eval-Driven Development for AI Core Rules">
-  <summary>The TDD discipline applied to AI features. Skipping any rule reopens the "shipped a regression, found it six weeks later" failure mode this methodology exists to prevent.</summary>
-  <section title="The TDD-for-AI loop">
-    <rule testable="true">
-      <statement>Write the eval before the prompt, model, retrieval, or tool change. An eval consists of inputs, expected outputs (or expected properties), a scoring function (deterministic where possible, LLM-judge with rubric otherwise), and a target score. PRs that change a prompt or model without a corresponding eval addition or update are rejected.</statement>
-      <rationale>Eval-after-the-fact bakes in the change author's blind spots: the eval only checks what the author noticed during writing. Eval-first forces the author to state the success criterion in measurable form before motivated reasoning takes over.</rationale>
+<text id="01-core-rules" title="Eval-Driven Development for AI Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules implementing the TDD discipline for AI features. Every rule has a binary check, a rationale, and an attributable source.</summary>
+  <section title="Rule set">
+
+    <rule id="r1-scope-trigger" testable="true" depth="essential">
+      <statement>This methodology applies when a PR touches prompt, prompt-rendering code, model configuration, retrieval, tool schemas, or system messages. Non-AI PRs are exempt.</statement>
+      <rationale source="F-066 v3 scope discipline">Methodology overhead must align with risk surface. Applying TDD-for-AI to a CSS PR wastes cycles and erodes trust in the gate.</rationale>
     </rule>
-    <rule testable="true">
-      <statement>The eval suite runs in CI on every PR that touches prompts, prompt-rendering code, model configuration, retrieval, tool schemas, or system messages. CI fails the merge when the regression on any stratum exceeds the configured threshold; "looks fine in dev" does not override the gate.</statement>
-      <rationale>Without a CI gate the eval is a dashboard, not a discipline. Local-only evals get skipped under deadline pressure, which is precisely when regressions ship.</rationale>
+
+    <rule id="r2-eval-delta-required" testable="true" depth="essential">
+      <statement>PRs in scope MUST include an eval-delta line in the description: stratum-level before/after on the relevant suite plus a one-sentence interpretation. PRs without an eval-delta are reopened, not silently approved.</statement>
+      <rationale source="Anthropic prompt-evaluation guides; OpenAI Evals">Without a forced delta line in the PR, regressions on minority strata (the persona that breaks while the average improves) stay invisible until customers report them.</rationale>
     </rule>
-    <rule testable="true">
-      <statement>The eval suite is treated as production code: versioned in the main repo, reviewed in PR, refactored when redundant, owned by a named team. Eval-only PRs are normal; "I just tweaked the eval to pass" without a justification linked to a real product change is rejected at review.</statement>
-      <rationale>Eval-as-secondary-artefact decays: nobody cleans up duplicate cases, the rubric drifts, the suite slows down, the team stops trusting it. Treating evals as production code keeps signal value alive across team turnover.</rationale>
+
+    <rule id="r3-stratum-gate" testable="true" depth="essential">
+      <statement>CI fails the merge when the regression on any stratum exceeds the configured threshold. "Looks fine in dev" does not override the gate.</statement>
+      <rationale source="Eval gating research; Schuster et al. 2023">Local-only evals get skipped under deadline pressure, which is precisely when regressions ship. CI gates make the eval suite a discipline, not a dashboard.</rationale>
     </rule>
-    <rule testable="true">
-      <statement>Every prompt or model change is reported with an eval delta line in the PR description: stratum-level before/after on the relevant suite, plus a one-sentence interpretation. Merges without an eval delta line are reopened, not silently approved.</statement>
-      <rationale>Without a forced delta line in the PR, regressions on minority strata (the persona that breaks while the average improves) are invisible. The line turns the suite output into a review-time artefact reviewers actually read.</rationale>
+
+    <rule id="r4-sunset-criterion" testable="true" depth="essential">
+      <statement>The eval suite has explicit drift watch: monthly review checks that scoring functions still discriminate (not saturated at 100%), strata still cover real production traffic, and judge models have not silently changed. Suites that lose discrimination on &gt;30% of cases are sunset and rebuilt rather than patched indefinitely.</statement>
+      <rationale source="Drift research; HELM benchmark retirement notes">Evals that everyone passes are no longer evals; they are decoration. A sunset criterion prevents teams from carrying a green suite that has stopped meaning anything — the worst form of false confidence.</rationale>
     </rule>
-    <rule testable="true">
-      <statement>The eval suite has explicit drift watch: monthly review checks that scoring functions still discriminate (not saturated at 100%), that strata still cover real production traffic, that judge models have not silently changed. A suite that loses discrimination on >30% of cases is sunset and rebuilt rather than patched indefinitely.</statement>
-      <rationale>Evals that everyone passes are no longer evals; they are decoration. Forcing a sunset criterion prevents teams from carrying around a green suite that has stopped meaning anything, which is the worst form of false confidence.</rationale>
+
+    <rule id="r5-merge" testable="true" depth="essential">
+      <statement>When stratum gate passes, eval-delta is recorded, and no incident is open against the affected feature, the merge is approved automatically.</statement>
+      <rationale source="F-066 v3 conclusion symmetry">Decision-tree conclusions must reference an existing rule. r5 captures the happy-path exit so the tree resolves cleanly without dangling refs.</rationale>
     </rule>
-    <example type="good">
-      <code lang="markdown"><![CDATA[
-PR: tighten system prompt for citation discipline
-Eval delta (suite: rag-eval-v3, run 2026-05-20):
-  - overall: 0.81 → 0.86 (+0.05)
-  - stratum "long-form answer": 0.72 → 0.81 (+0.09)
-  - stratum "code-block answer": 0.91 → 0.86 (-0.05) ← regression, mitigation: added two code-cite cases to suite, scored 0.86 → 0.90 after fix.
-CI: rag-eval gate passed (threshold ≥0.83 overall, ≥0.85 on code stratum).
-]]></code>
-    </example>
-    <example type="bad">
-      <code lang="markdown"><![CDATA[
-PR: improved prompt
-Tested: looks good in spot-check.
-]]></code>
-      <note>No eval, no stratum view, no gate — the regression on the code-block stratum ships and the team learns from a customer complaint.</note>
-    </example>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when Applies-If conditions are not met (no AI surface in the PR; prototype with no shipping plan; deterministic-only feature).</statement>
+      <rationale source="F-066 v3 mandatory skip leaf">Decision tree must have a clean skip path so non-applicable inputs do not produce false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

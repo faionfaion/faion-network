@@ -2,74 +2,101 @@
 slug: ai-spatial-computing
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Spatial interfaces generate complex contextual data that static UI rules cannot handle.
-content_id: "3d69e4d4c74ec51f"
-tags: [xr, spatial-computing, ar-vr-mr, ai-scene-understanding, gestural-ui]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for UX in spatial computing surfaces (Vision Pro, Meta Quest, AR overlays) where AI is the primary interaction modality — gaze, gesture, voice fused with multimodal models.
+content_id: "3f4961426cd216d7"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [spatial-computing, xr, vision-pro, ar-vr, multimodal, gaze, gesture]
 ---
-# AI + Spatial Computing
+
+# AI Spatial Computing UX
 
 ## Summary
 
-**One-sentence:** Spatial interfaces generate complex contextual data that static UI rules cannot handle.
+**One-sentence:** Spec for UX in spatial computing surfaces (Vision Pro, Meta Quest, AR overlays) where AI is the primary interaction modality — gaze, gesture, voice fused with multimodal models.
 
-**One-paragraph:** Spatial interfaces generate complex contextual data that static UI rules cannot handle. AI scene classification enables UIs to auto-adapt layouts, pre-position relevant content, and anticipate user intent — reducing interaction friction in environments where traditional 2D patterns fail. Without explicit AI fallback design, failures in scene understanding or gesture prediction degrade UX to zero.
+**One-paragraph:** Spec for UX in spatial computing surfaces (Vision Pro, Meta Quest, AR overlays) where AI is the primary interaction modality — gaze, gesture, voice fused with multimodal models. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a spec produced by an agent applying ai spatial computing ux. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible spec for ai spatial computing ux across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- Designing XR (AR/VR/MR) interfaces that must adapt to physical environment context
-- Building AI-driven spatial UI that pre-positions content based on scene understanding
-- Generating spatial layout specifications for Apple Vision Pro, Meta Quest, or WebXR targets
-- Auditing existing spatial UI for contextual awareness gaps
-- Prototyping voice + gesture interaction flows for 3D environments
+- target surface is a spatial-computing device (Vision Pro, Quest, smart-glasses) with persistent overlays
+- interaction model fuses gaze + gesture + voice with a multimodal AI backend
+- user is in motion or hands-free for ≥30% of the session
 
 ## Skip If (ANY kills it)
 
-- Standard 2D web/mobile UI — spatial computing overhead adds no value
-- Early concept validation — spatial UX requires hardware to meaningfully test
-- Budget-constrained projects where XR hardware deployment is not planned
-- Contexts where latency is unacceptable — AI scene understanding adds 50–200ms
+- flat-screen 2D phone or desktop UI — use ordinary UI methodology instead
+- single-modality interface (voice-only kiosk, gesture-only sensor) — use multimodal-vui-design or specific-modality docs
+- AR is decorative only (logo overlays, marketing demos) with no AI-driven response
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Hardware capability sheet | Vision Pro / Quest / glasses spec doc | device vendor docs |
+| Latency budget (interaction → response) | ms target end-to-end | perf team |
+| Multimodal model selection | vision + voice + reasoning model triple | ml-engineering |
+| Safety constraints | motion-sickness, fatigue, privacy of bystanders | compliance team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[multimodal-vui-design]] | Voice + visual fusion baseline |
+| [[wcag-22-checklist]] | A11y for non-traditional surfaces |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `hardware_constraint_extract` | sonnet | Pull constraints from device spec sheet. |
+| `interaction_pattern_design` | opus | Multi-modality fusion logic with safety guardrails. |
+| `safety_guardrail_review` | opus | Cross-check motion-sickness, fatigue, bystander privacy. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spatial-ux-spec.md` | Spec document skeleton for spatial-AI experience |
+| `templates/interaction-budget.json` | Latency + comfort budget table |
+| `templates/_smoke-test.md` | Minimum viable filled-in spatial-UX spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-spatial-computing.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[multimodal-vui-design]]
+- [[generative-ui-design]]
+- [[llm-powered-conversational-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

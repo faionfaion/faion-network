@@ -3,68 +3,99 @@ slug: human-in-the-loop-design
 tier: pro
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Where to insert review steps, how to design confidence-based escalation to humans, how to capture corrections back into the eval set.
-content_id: "0e643af70b2300ce"
-tags: [human-in-the-loop-design, ai, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for which AI decisions go to a human reviewer, how decisions are presented, how reviewer signals feed back into the model, and where the system blocks vs. proceeds.
+content_id: "ee7315e1165ee873"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [hitl, human-in-the-loop, review-ui, feedback-loop, approval-gate]
 ---
 
 # Human-in-the-Loop Design
 
 ## Summary
 
-**One-sentence:** Where to insert review steps, how to design confidence-based escalation to humans, how to capture corrections back into the eval set.
+**One-sentence:** Spec for which AI decisions go to a human reviewer, how decisions are presented, how reviewer signals feed back into the model, and where the system blocks vs. proceeds.
 
-**One-paragraph:** Tangentially touched by confidence-thresholded-cascade but not as a product-design methodology. Output: HITL placement map + escalation policy + correction-loop wiring.
+**One-paragraph:** Spec for which AI decisions go to a human reviewer, how decisions are presented, how reviewer signals feed back into the model, and where the system blocks vs. proceeds. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a spec produced by an agent applying human-in-the-loop design. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible spec for human-in-the-loop design across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- AI workflow with stakes (legal, money, customer-facing copy, code)
-- human reviewers available with bandwidth
-- engineering capacity to add review checkpoints
+- AI system makes decisions whose cost-of-error justifies a human review step (refund, content moderation, medical triage)
+- humans review at meaningful volume (not just escalations) and the review UX must be designed
+- reviewer feedback can flow back into model/prompt updates or routing rules
 
 ## Skip If (ANY kills it)
 
-- low-stakes high-volume tasks (categorization with high tolerance)
-- human review impossible at scale (no team)
-- fully autonomous research / agent loops outside production
+- AI decisions are low-stakes and rollback-cheap (autocomplete, ranking) — HITL is overhead
+- review volume is zero or near-zero (only escalations) — design the escalation path instead
+- review is purely audit (no decision changed by review) — use audit logging methodology
 
 ## Prerequisites
 
-- list of decision points in the workflow
-- list of available human reviewers + bandwidth
-- ability to add review queue + correction capture
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Decision inventory + stakes per decision | table | product |
+| Reviewer pool + capacity | headcount + hours/day | operations |
+| Feedback loop target (model retrain / prompt refit / rule update) | policy | ml-engineering |
+| Review SLA + escalation policy | policy | operations |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/confidence-thresholded-cascade` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/llm-judge-rubric-evidence-first` | peer methodology — produces inputs or consumes outputs |
+| [[eval-driven-development-tdd-for-ai]] | Eval gate for AI outputs that bypass review |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decision_inventory_map` | sonnet | Map decisions to stakes + review need. |
+| `review_ui_spec` | opus | Reviewer-facing UI spec + ergonomics. |
+| `feedback_loop_design` | opus | How reviewer signals retrain / refit / route. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/hitl-spec.md` | HITL spec skeleton |
+| `templates/review-decision.json` | Review decision JSON schema |
+| `templates/_smoke-test.md` | Minimum viable filled-in HITL spec |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-human-in-the-loop-design.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/confidence-thresholded-cascade`
-- peer methodology: `geek/ai/llm-judge-rubric-evidence-first`
-- external: https://arxiv.org/abs/2204.02839 (Constitutional AI); https://www.anthropic.com/research/agentic-misalignment
+- [[ai-feature-progressive-rollout]]
+- [[ai-feature-incident-runbook]]
+- [[eval-driven-development-tdd-for-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

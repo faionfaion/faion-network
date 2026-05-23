@@ -1,3 +1,9 @@
+# purpose: Pre-existing template carried into the llm-powered-conversational-ai methodology
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml for produces=spec
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """
 Minimal Anthropic SDK multi-turn conversation prototype.
 Replace SYSTEM template variables before use.

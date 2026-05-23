@@ -1,3 +1,9 @@
+# purpose: Pre-existing template carried into the figma-ai-ecosystem methodology
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml for produces=report
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """Find Figma file nodes with raster image fills — candidates for AI image tools.
 
 Input:  FIGMA_TOKEN (env), FILE_KEY (env or arg)

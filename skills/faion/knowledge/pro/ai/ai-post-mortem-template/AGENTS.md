@@ -3,78 +3,99 @@ slug: ai-post-mortem-template
 tier: pro
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Post Mortem Template: codified AI-system reliability practice that turns the recurring 'role-ml-engineer/Run an AI-feature incident from page to post-mortem' decision into a repeatable, auditable artefact.
-content_id: "44cb71792f6b6bdc"
-tags: [ai-post-mortem-template, ai, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Post-mortem report template for incidents in AI features (hallucination, refusal, drift, eval miss) — root cause, contributing factors, action items keyed to AI-specific failure modes.
+content_id: "e4bc7c011e92e856"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [post-mortem, ai-incident, hallucination, drift, root-cause-analysis]
 ---
-# Ai Post Mortem Template
+
+# AI Post-Mortem Template
 
 ## Summary
 
-**One-sentence:** Ai Post Mortem Template: codified AI-system reliability practice that turns the recurring 'role-ml-engineer/Run an AI-feature incident from page to post-mortem' decision into a repeatable, auditable artefact.
+**One-sentence:** Post-mortem report template for incidents in AI features (hallucination, refusal, drift, eval miss) — root cause, contributing factors, action items keyed to AI-specific failure modes.
 
-**One-paragraph:** Ai Post Mortem Template addresses the gap identified by the role-ml-engineer/Run an AI-feature incident from page to post-mortem playbook: Generic post-mortems don't ask the right questions for AI incidents (was it deterministic, can we reproduce on golden set, what regression test closes the loop, did we add a new golden sample). Need an AI-specific template. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Post-mortem report template for incidents in AI features (hallucination, refusal, drift, eval miss) — root cause, contributing factors, action items keyed to AI-specific failure modes. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a report produced by an agent applying ai post-mortem template. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible report for ai post-mortem template across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ml-engineer/Run an AI-feature incident from page to post-mortem OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- an AI feature incident has occurred (user-visible regression, hallucination cluster, drift detection, eval miss)
+- the org runs blameless post-mortems and expects this incident to feed corrective actions
+- the incident involves at least one LLM call in the failure path
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- incident has no AI component (pure infra outage) — use ordinary infra post-mortem template
+- incident is a single-user complaint with no signal of systemic issue — use ticket triage instead
+- team does not own the affected AI feature — escalate to the owning team
 
 ## Prerequisites
 
-- recent context for the role-ml-engineer/Run an AI-feature incident from page to post-mortem task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Incident timeline | tool / ticket / chat exports | incident commander |
+| Affected prompt + model version | git SHA + model ID | ml-engineering |
+| Eval suite history | scores + changes around incident date | ml-engineering |
+| User-impact data | sessions affected + severity | product analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+| [[eval-driven-development-tdd-for-ai]] | Eval-suite discipline context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding, r5-blameless | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `timeline_assembly` | sonnet | Stitch tool / ticket / chat exports into single timeline. |
+| `root_cause_analysis` | opus | AI-aware five-whys with hallucination / drift / refusal branches. |
+| `action_item_drafting` | sonnet | Concrete, owner-assigned action items with due dates. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-post-mortem-template.json` | JSON schema for the Ai Post Mortem Template output contract |
-| `templates/ai-post-mortem-template.md` | Markdown skeleton with the required fields |
+| `templates/post-mortem.md` | Post-mortem report skeleton with AI-specific sections |
+| `templates/action-items.json` | Action items JSON schema |
+| `templates/_smoke-test.md` | Minimum viable filled-in post-mortem |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-post-mortem-template.py` | Enforce Ai Post Mortem Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-post-mortem-template.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `pro/ai/`
-- upstream playbook: `role-ml-engineer/Run an AI-feature incident from page to post-mortem`
-- external: [Allspaw 2012](https://www.kitchensoap.com/2012/10/25/on-being-a-senior-engineer/) · [Google SRE Postmortem chapter](https://sre.google/sre-book/postmortem-culture/)
+- [[eval-driven-development-tdd-for-ai]]
+- [[ai-feature-incident-runbook]]
+- [[ai-feature-observability-four-pillars]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
