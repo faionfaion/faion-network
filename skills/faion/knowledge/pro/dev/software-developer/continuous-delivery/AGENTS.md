@@ -1,78 +1,99 @@
 ---
 slug: continuous-delivery
 tier: pro
-group: dev
+group: software-developer
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Continuous Delivery is a software development practice where code changes are automatically prepared for release to production.
-content_id: "358892d60eb7871d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Continuous Delivery: every commit is releasable, the pipeline is fully automated, expand-contract migrations protect rolling deploys, and feature flags carry owner + expiry.
+content_id: "47074f38c7af1cd6"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [continuous-integration, continuous-delivery, deployment-pipeline, automation, feature-flags]
 ---
-# Continuous Delivery (CD)
+# Continuous Delivery
 
 ## Summary
 
-**One-sentence:** Continuous Delivery is a software development practice where code changes are automatically prepared for release to production.
+**One-sentence:** Continuous Delivery: every commit is releasable, the pipeline is fully automated, expand-contract migrations protect rolling deploys, and feature flags carry owner + expiry.
 
-**One-paragraph:** Continuous Delivery is a software development practice where code changes are automatically prepared for release to production. It expands on Continuous Integration by ensuring that code is always in a deployable state. Every change that passes automated tests can be released to production with the push of a button.
+**One-paragraph:** Continuous Delivery: every commit is releasable, the pipeline is fully automated, expand-contract migrations protect rolling deploys, and feature flags carry owner + expiry. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on continuous delivery for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-developer domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- Web applications and SaaS products needing frequent releases.
-- Teams aiming to reduce deployment risk through smaller batches.
-- When manual deployments cause bottlenecks or slow iteration.
-- Projects requiring rapid iteration and quick feedback loops.
-- Organizations seeking to reduce deployment stress and enable rollback.
-- Regulated environments where audited, automated, repeatable releases beat manual change-control toil.
-- DORA elite targets: deploy daily+, lead-time less than 1 hour, change failure rate less than 15%, MTTR less than 1 hour.
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- Batched manual release contexts like firmware on shipped hardware or medical devices with formal validation per release.
-- Teams without comprehensive automated tests or with flaky test suites; fix tests first before CD.
-- Pre-MVP or pre-product-market-fit when deployment cost is a single git push; the machinery costs more than the wins.
-- Solo projects with one production environment and no customers; daily local push is sufficient.
-- Schema changes that are not backward-compatible-by-construction; without expand/contract discipline, CD turns bad migrations into downtime.
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-developer/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/software-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-continuous-delivery` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.json` | JSON skeleton for the spec artefact |
+| `templates/spec.md` | Markdown skeleton for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-continuous-delivery.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- Parent: `pro/dev/software-developer/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-developer/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

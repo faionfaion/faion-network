@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="service-mesh Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for service-mesh. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Service Mesh Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules grounding Service Mesh. Each rule pairs a binary check + sourced rationale. The {skip-this-methodology} rule routes inapplicable cases.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-architecture-default-sidecarless" testable="true" depth="essential">
+      <statement>Prefer sidecarless architectures (Istio Ambient or Cilium eBPF) for new deployments in 2025; use traditional Envoy sidecars only when full per-pod L7 isolation is a hard requirement.</statement>
+      <rationale source="Istio Ambient docs, 2025 mesh benchmarks; Solo.io / Tetrate performance reports">Ambient mode reduces latency overhead from +166% to +8% and eliminates per-pod sidecar memory cost. Most production use cases (mTLS, canary routing, basic observability) get equivalent functionality with significantly lower resource cost.</rationale>
+    </rule>
+    <rule id="r2-mtls-permissive-to-strict" testable="true" depth="essential">
+      <statement>Start mTLS in permissive mode to establish baseline metrics, then migrate to strict mode namespace-by-namespace after validating every service-to-service path is enrolled with certificates.</statement>
+      <rationale source="Istio security docs; Linkerd production patterns">Strict mode without permissive validation silently breaks external services, legacy apps, and any service with annotation exceptions. Permissive mode allows both plaintext and mTLS, giving operators a safe window to verify coverage before enforcement.</rationale>
+    </rule>
+    <rule id="r3-cert-ttl-and-ca" testable="true" depth="essential">
+      <statement>Use organisation-signed intermediate CA (cert-manager + Vault PKI or organisation PKI); certificate TTL ≤ 24h with automatic rotation; never use self-signed roots in production.</statement>
+      <rationale source="SPIFFE/SPIRE federation; cert-manager docs">Long-lived certs widen credential-theft windows; self-signed roots break revocation and audit trail. Mesh control planes rotate automatically; the only operator job is to configure the rotation period and monitor certificate expiry as a service-level metric.</rationale>
+    </rule>
+    <rule id="r4-outlier-detection-default" testable="true" depth="essential">
+      <statement>Configure outlier detection on every service VirtualDestination (or equivalent): eject endpoints returning consecutive 5xx errors for a minimum ejection period of 30s before re-admission.</statement>
+      <rationale source="Envoy outlier detection; Linkerd circuit-breaker">A degraded upstream pod returning 5xx to every request continues to receive its weighted traffic share without outlier detection. Passive health monitoring at the proxy removes unhealthy endpoints without explicit health-check infrastructure.</rationale>
+    </rule>
+    <rule id="r5-canary-weight-progression" testable="true" depth="essential">
+      <statement>Canary deployments progress through bounded weight steps (1% → 10% → 50% → 100%) gated on SLO metrics (error rate, p99 latency) measured per step; rollback by shifting weight back to the stable version.</statement>
+      <rationale source="Argo Rollouts docs; Flagger canary patterns">Big-bang weight jumps blow past SLO breach detection. Bounded steps let the SLO observer halt progression before the blast radius reaches all traffic.</rationale>
+    </rule>
+    <rule id="r6-traffic-management-config-as-code" testable="true" depth="essential">
+      <statement>VirtualServices, DestinationRules, AuthorizationPolicies and Gateways are committed to the repo and applied via GitOps (Argo CD, Flux). Manual `kubectl apply` for mesh config is forbidden in production.</statement>
+      <rationale source="GitOps with Argo CD docs; Linkerd best practices">Hand-applied mesh config drifts between clusters and is invisible to PR review. GitOps gives history, review, and rollback for every traffic-routing change.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the team has &lt;5 services, the workload is a monolith, or sub-1ms latency is mandatory.</statement>
+      <rationale source="Internal cost/benefit analyses; mesh adoption surveys">Mesh proxies add a measurable latency floor and operational complexity. Below 5 services, direct mTLS via cert-manager is simpler; for sub-1ms latency, any proxy layer is too expensive.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

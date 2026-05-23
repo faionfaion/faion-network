@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-monitoring-health-checks Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-monitoring-health-checks. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="api-monitoring-health-checks Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules grounding API Monitoring — Health Checks. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -15,5 +15,17 @@
       <statement>External dependency URLs in readiness probes MUST be from the vendor's documented health/status contract (e.g., Stripe: https://status.stripe.com/api/v2/status.json) or an in-house canary endpoint. Invented URLs like https://api.stripe.com/health are fictional; the probe will always fail.</statement>
       <rationale source="v1-source">AI agents and copy-paste culture produce hallucinated vendor health URLs constantly. Agents frequently use README's https://api.stripe.com/health — that URL does not exist. Always verify against vendor docs before wiring.</rationale>
     </rule>
-  </section>
+      <rule id="r4-bounded-probe-latency" testable="true" depth="essential">
+      <statement>Probe handlers MUST respond in ≤200ms p99 with no downstream calls in `/healthz`. `/readyz` may make bounded downstream calls (single timeout ≤500ms total).</statement>
+      <rationale source="Kubernetes probe docs; FastAPI patterns">Kubernetes default probe period is 10s. A slow probe pads the pod restart cycle and produces false unready events under load. Liveness must be cheap; readiness may be bounded but never unbounded.</rationale>
+    </rule>
+    <rule id="r5-readiness-startup-grace" testable="true" depth="essential">
+      <statement>Use Kubernetes `startupProbe` (or equivalent) to defer liveness/readiness for slow-starting apps; liveness should not kill a pod that has not yet reached steady state.</statement>
+      <rationale source="Kubernetes startupProbe docs; SRE startup patterns">Liveness probes that fire before the app has loaded its caches cause restart storms in cold starts. startupProbe gives a bounded grace period.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the runtime has no orchestrator (single-host CRON job, lambda) and no LB-driven traffic shaping.</statement>
+      <rationale source="Internal runtime maturity model">Probes only matter when something acts on them (k8s, LB, mesh). Lambda/CRON don't consume probes.</rationale>
+    </rule>
+</section>
 </text>

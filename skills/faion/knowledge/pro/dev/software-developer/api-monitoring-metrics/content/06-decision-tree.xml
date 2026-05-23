@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Monitoring — Metrics Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == no-red">
+        <question id="q-no-red">Is the API missing Rate/Errors/Duration instrumentation?</question>
+        <conclusion ref="r1" verdict="add RED metrics per endpoint with templated path label"/>
+      </branch>
+      <branch when="signal == no-use">
+        <question id="q-no-use">Are resource Utilization/Saturation/Errors metrics missing?</question>
+        <conclusion ref="r2" verdict="add USE metrics per DB pool / queue / thread pool"/>
+      </branch>
+      <branch when="signal == unbounded-labels">
+        <question id="q-unbounded-labels">Is user_id, request_id, or raw path in labels?</question>
+        <conclusion ref="r4-cardinality-bound" verdict="remove; switch to path templates and bounded labels"/>
+      </branch>
+      <branch when="signal == summary-for-latency">
+        <question id="q-summary-for-latency">Is latency tracked as a Summary?</question>
+        <conclusion ref="r5-histograms-not-summaries" verdict="switch to Histogram so quantiles aggregate across instances"/>
+      </branch>
+      <branch when="signal == hand-rolled-format">
+        <question id="q-hand-rolled-format">Is the metric format custom (not Prometheus exposition or OTLP)?</question>
+        <conclusion ref="r3" verdict="adopt Prometheus exposition format or OTLP; pick a TSDB"/>
+      </branch>
+      <branch when="signal == one-shot-batch">
+        <question id="q-one-shot-batch">Is the workload one-shot batch (no steady traffic)?</question>
+        <conclusion ref="skip-this-methodology" verdict="use job-result records instead of RED/USE metrics"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

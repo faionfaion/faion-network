@@ -1,82 +1,99 @@
 ---
 slug: clean-architecture
 tier: pro
-group: dev
+group: software-developer
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Clean Architecture separates concerns into concentric layers, with dependencies pointing inward.
-content_id: "acc09df9033210e2"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Clean Architecture separates concerns into concentric layers (entities, use cases, interface adapters, frameworks) with dependencies pointing inward.
+content_id: "789e621f6aabc261"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [clean-architecture, architecture, ddd, layered-architecture, dependency-inversion]
 ---
 # Clean Architecture
 
 ## Summary
 
-**One-sentence:** Clean Architecture separates concerns into concentric layers, with dependencies pointing inward.
+**One-sentence:** Clean Architecture separates concerns into concentric layers (entities, use cases, interface adapters, frameworks) with dependencies pointing inward.
 
-**One-paragraph:** Clean Architecture separates concerns into concentric layers, with dependencies pointing inward. The core business logic remains independent of frameworks, databases, and delivery mechanisms. This methodology covers implementation patterns across different languages and frameworks.
+**One-paragraph:** Clean Architecture separates concerns into concentric layers (entities, use cases, interface adapters, frameworks) with dependencies pointing inward. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on clean architecture for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-developer domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- Complex business logic applications
-- Long-lived enterprise systems
-- Projects requiring high testability
-- Applications that may change infrastructure
-- Teams practicing Domain-Driven Design
-- Long-lived enterprise codebases where infrastructure (DB, message bus, auth provider, payment processor) is expected to change at least once over the product lifetime
-- Domains with non-trivial business rules — pricing engines, eligibility checks, regulatory calculations — that deserve to be tested without booting the framework
-- Polyglot persistence: same domain logic must be servable from REST, GraphQL, gRPC, and a CLI without duplication
-- Greenfield builds where the team has DDD literacy and is committed to dependency-inversion as a hard rule
-- Existing Big Ball of Mud where you want a strangler-fig migration: extract a use case at a time into a clean core
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- CRUD apps with thin business logic (form → table). Three layers of indirection over a User table is pure tax.
-- Solo MVP / pre-PMF: the cost (entities + interfaces + use cases + DTOs + adapters) buys nothing while the domain is unstable
-- Throwaway scripts, batch jobs, glue code. Use the framework directly.
-- Teams without DDD/inversion experience — Clean Architecture without aggregate boundaries collapses into "DTOs all the way down" with extra mappers
-- Tight latency budgets where every layer's mapping costs measurable µs (HFT, real-time bidding). Direct paths win.
-- Frameworks designed against the dependency rule (Rails, Django) where fighting the framework costs more than it saves; modular monolith inside the framework is often the better answer
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-developer/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/software-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-clean-architecture` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.json` | JSON skeleton for the spec artefact |
+| `templates/spec.md` | Markdown skeleton for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-clean-architecture.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- Parent: `pro/dev/software-developer/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-developer/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

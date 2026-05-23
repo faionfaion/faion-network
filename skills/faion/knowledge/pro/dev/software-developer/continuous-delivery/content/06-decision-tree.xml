@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Continuous Delivery Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == non-releasable-commit">
+        <question id="q-non-releasable-commit">Is a commit on main not releasable as-is?</question>
+        <conclusion ref="r1-every-commit-releasable" verdict="stop and fix; CD requires unconditional releasability"/>
+      </branch>
+      <branch when="signal == manual-pipeline-step">
+        <question id="q-manual-pipeline-step">Is there a non-emergency manual step in the deploy pipeline?</question>
+        <conclusion ref="r2-pipeline-fully-automated" verdict="automate it before merging more changes"/>
+      </branch>
+      <branch when="signal == destructive-migration">
+        <question id="q-destructive-migration">Is a single deploy dropping or renaming schema?</question>
+        <conclusion ref="r3-expand-contract-migrations" verdict="split into expand → code → contract phases"/>
+      </branch>
+      <branch when="signal == oversized-pr">
+        <question id="q-oversized-pr">Is the PR >200 lines (excl. generated)?</question>
+        <conclusion ref="r4-small-batches" verdict="split into reviewable chunks"/>
+      </branch>
+      <branch when="signal == flag-without-owner">
+        <question id="q-flag-without-owner">Is a new flag missing owner or expiry?</question>
+        <conclusion ref="r5-feature-flags-have-owner-expiry" verdict="reject in CI; add both fields"/>
+      </branch>
+      <branch when="signal == deploy-without-rollback">
+        <question id="q-deploy-without-rollback">Does the deploy job lack a rollback step?</question>
+        <conclusion ref="r6-rollback-step-required" verdict="add `if: failure()` rollback before merge"/>
+      </branch>
+      <branch when="signal == regulated-domain">
+        <question id="q-regulated-domain">Does the regulatory regime mandate per-release human approval?</question>
+        <conclusion ref="skip-this-methodology" verdict="use Continuous Integration + manual release; full CD is out of scope"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

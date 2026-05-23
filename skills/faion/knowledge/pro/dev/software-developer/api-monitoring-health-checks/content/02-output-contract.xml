@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-monitoring-health-checks Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Monitoring — Health Checks Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, plus valid + invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "liveness_endpoint",
+    "readiness_endpoint",
+    "probe_latency_p99_ms_max",
+    "startup_probe_configured"
+  ],
+  "properties": {
+    "liveness_endpoint": {
+      "type": "string",
+      "pattern": "^/.+"
+    },
+    "readiness_endpoint": {
+      "type": "string",
+      "pattern": "^/.+"
+    },
+    "liveness_downstream_calls": {
+      "const": false
+    },
+    "readiness_downstream_timeout_ms": {
+      "type": "integer",
+      "maximum": 500
+    },
+    "probe_latency_p99_ms_max": {
+      "type": "integer",
+      "maximum": 200
+    },
+    "startup_probe_configured": {
+      "type": "boolean"
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "liveness_endpoint": "/healthz",
+  "readiness_endpoint": "/readyz",
+  "liveness_downstream_calls": false,
+  "readiness_downstream_timeout_ms": 500,
+  "probe_latency_p99_ms_max": 200,
+  "startup_probe_configured": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "liveness_endpoint": "/health",
+  "readiness_endpoint": "/health",
+  "liveness_downstream_calls": true,
+  "readiness_downstream_timeout_ms": 5000,
+  "probe_latency_p99_ms_max": 800,
+  "startup_probe_configured": false
+}
+]]></code>
+    <note>Same endpoint for both probes (r1); liveness makes downstream calls (r3); readiness timeout exceeds 500ms (r2); probe latency over 200ms cap (r4).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">liveness and readiness collapsed to one endpoint (r1)</pattern>
+      <pattern id="f2">liveness_downstream_calls is true (r3)</pattern>
+      <pattern id="f3">readiness_downstream_timeout_ms >500 (r2)</pattern>
+      <pattern id="f4">probe_latency_p99_ms_max >200 (r4)</pattern>
+      <pattern id="f5">startup_probe_configured is false on slow-starting apps (r5)</pattern>
     </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-api-monitoring-health-checks.py">Validator script</reference>
 </text>

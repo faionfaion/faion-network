@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Strangler-Fig Migration Playbook (Vendor Delivery) Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == greenfield">
+        <question id="q-greenfield">Is the project greenfield (no monolith)?</question>
+        <conclusion ref="skip-this-methodology" verdict="nothing to strangle; pick microservices-architecture instead"/>
+      </branch>
+      <branch when="signal == monolith-too-small">
+        <question id="q-monolith-too-small">Is the monolith &lt;30 routes and &lt;50 KLOC?</question>
+        <conclusion ref="skip-this-methodology" verdict="big-bang rewrite is safer for very small monoliths"/>
+      </branch>
+      <branch when="signal == first-slice-high-coupling">
+        <question id="q-first-slice-high-coupling">Did the team select a slice with coupling_depth ≥4 first?</question>
+        <conclusion ref="r1-slice-scoring-discipline" verdict="drop it; pick low-coupling rails-first slices to validate the platform"/>
+      </branch>
+      <branch when="signal == burn-in-too-short">
+        <question id="q-burn-in-too-short">Is the planned burn-in &lt;168 hours (7 days)?</question>
+        <conclusion ref="r2-parity-burn-in-window" verdict="extend to ≥7 days at 100% traffic with ±10% parity gates"/>
+      </branch>
+      <branch when="signal == kill-switch-untested">
+        <question id="q-kill-switch-untested">Is the kill-switch revert path untested before cutover?</question>
+        <conclusion ref="r3-kill-switch-per-slice" verdict="test end-to-end in staging (or percentage rollback in prod) within 7 days of cutover"/>
+      </branch>
+      <branch when="signal == dual-write-permanent">
+        <question id="q-dual-write-permanent">Is dual-write configured without an explicit termination date?</question>
+        <conclusion ref="r4-dual-write-windowed" verdict="add termination date; switch to shadow-read after burn-in"/>
+      </branch>
+      <branch when="signal == exit-criteria-missing">
+        <question id="q-exit-criteria-missing">Is the SOW missing per-slice exit criteria?</question>
+        <conclusion ref="r5-exit-criteria-contractual" verdict="add the three exit-criteria gates (legacy 5xx, parity, runbook handoff) to the contract"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-monitoring-logging Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Monitoring — Structured Logging Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, plus valid + invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "format",
+    "required_fields",
+    "request_id_header",
+    "shipper",
+    "redaction_enabled",
+    "default_level"
+  ],
+  "properties": {
+    "format": {
+      "const": "json"
+    },
+    "required_fields": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "string"
+      }
+    },
+    "request_id_header": {
+      "type": "string"
+    },
+    "shipper": {
+      "enum": [
+        "fluentbit",
+        "vector",
+        "promtail",
+        "otel-collector"
+      ]
+    },
+    "redaction_enabled": {
+      "const": true
+    },
+    "default_level": {
+      "enum": [
+        "INFO",
+        "WARN",
+        "ERROR"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "format": "json",
+  "required_fields": [
+    "timestamp",
+    "level",
+    "request_id",
+    "http.method",
+    "http.path",
+    "http.status",
+    "duration_ms"
+  ],
+  "request_id_header": "X-Request-ID",
+  "shipper": "vector",
+  "redaction_enabled": true,
+  "default_level": "INFO"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "format": "text",
+  "required_fields": [
+    "timestamp"
+  ],
+  "request_id_header": "",
+  "shipper": "none",
+  "redaction_enabled": false,
+  "default_level": "DEBUG"
+}
+]]></code>
+    <note>format=text (r1); required_fields under minItems; redaction off (r4); default_level=DEBUG in prod (r5).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">format is not `json` (r1)</pattern>
+      <pattern id="f2">required_fields missing request_id / http.status / duration_ms (r1)</pattern>
+      <pattern id="f3">request_id_header empty or absent (r2)</pattern>
+      <pattern id="f4">shipper unset (r3)</pattern>
+      <pattern id="f5">redaction_enabled is false (r4)</pattern>
+      <pattern id="f6">default_level is `DEBUG` in production (r5)</pattern>
     </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-api-monitoring-logging.py">Validator script</reference>
 </text>

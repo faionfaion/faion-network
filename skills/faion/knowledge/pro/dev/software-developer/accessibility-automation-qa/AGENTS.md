@@ -1,15 +1,18 @@
 ---
 slug: accessibility-automation-qa
 tier: pro
-group: dev
+group: software-developer
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: End-to-end playbook for accessibility automation qa that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "309fe06f55bc0c02"
-tags: [accessibility, dev, playbook]
+content_id: "4f4427c7062a8b10"
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: [accessibility, wcag, qa, automation, playbook]
 ---
 # Accessibility Automation QA
 
@@ -17,26 +20,36 @@ tags: [accessibility, dev, playbook]
 
 **One-sentence:** End-to-end playbook for accessibility automation qa that walks an operator from trigger to closed outcome with named artefacts at each step.
 
-**One-paragraph:** End-to-end playbook for accessibility automation qa that walks an operator from trigger to closed outcome with named artefacts at each step. A11y methodology exists at pro/ux/accessibility-specialist/a11y-testing but it is framed for designers/specialists. A QA engineer needs the implementation-side methodology: wiring axe-core/pa11y into unit + E2E + CI, choosing severity gates, integrating WCAG 2.2 success criteria into test plans, and assistive-tech smoke tests. The dev/testing-developer corpus is silent.
+**One-paragraph:** End-to-end playbook for accessibility automation qa that walks an operator from trigger to closed outcome with named artefacts at each step. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on accessibility automation qa for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-developer domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by accessibility automation qa end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-developer/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
@@ -48,32 +61,39 @@ tags: [accessibility, dev, playbook]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-accessibility-automation-qa` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/spec.json` | JSON skeleton for the spec artefact |
+| `templates/spec.md` | Markdown skeleton for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-accessibility-automation-qa.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- peer methodologies: see siblings under `pro/dev/software-developer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/dev/software-developer/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-developer/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

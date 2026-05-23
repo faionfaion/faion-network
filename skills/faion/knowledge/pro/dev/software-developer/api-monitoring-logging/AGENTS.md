@@ -1,73 +1,98 @@
 ---
 slug: api-monitoring-logging
 tier: pro
-group: dev
+group: software-developer
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every API request MUST be logged in JSON format with a unique request_id, HTTP metadata, response status and duration.
-content_id: "7cddc7ebfb2007d1"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Every API request is logged in JSON with a unique request_id, HTTP metadata, response status, and duration; logs ship to a central index for correlation.
+content_id: "b59e6e02331138cb"
+complexity: medium
+produces: config
+est_tokens: 3600
 tags: [api-monitoring, structured-logging, opentelemetry, observability, tracing]
 ---
-# API Structured Logging with Trace Context
+# API Monitoring — Structured Logging
 
 ## Summary
 
-**One-sentence:** Every API request MUST be logged in JSON format with a unique request_id, HTTP metadata, response status and duration.
+**One-sentence:** Every API request is logged in JSON with a unique request_id, HTTP metadata, response status, and duration; logs ship to a central index for correlation.
 
-**One-paragraph:** Every API request MUST be logged in JSON format with a unique request_id, HTTP metadata, response status and duration. Logs MUST include trace_id and span_id from OpenTelemetry context so logs and traces join in the observability platform. Sensitive fields (passwords, tokens, PAN) MUST be redacted before export.
+**One-paragraph:** Every API request is logged in JSON with a unique request_id, HTTP metadata, response status, and duration; logs ship to a central index for correlation. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on api monitoring — structured logging for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-developer domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- Any API shipping to production that needs searchable request history.
-- When migrating from print() or unstructured logger calls to a production logging setup.
-- When instrumenting with OpenTelemetry and wanting logs to join traces.
-- Before onboarding a service into a log aggregation platform (Loki, Datadog, CloudWatch).
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- Pre-product-fit prototypes — log-to-stdout with print() or basic logger is sufficient; structured logging adds setup cost without proportional value.
-- Internal scripts and one-shot tools — structured logging overhead (JSON serialization, context propagation) is not justified for tools that run for minutes.
-- Compliance contexts (HIPAA, PCI) where log export pipelines are not yet cleared for PHI/PAN — establish redaction and encryption first, then add structured logging.
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-developer/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/software-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-api-monitoring-logging` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.json` | JSON skeleton for the config artefact |
+| `templates/config.md` | Markdown skeleton for the config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-monitoring-logging.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- Parent: `pro/dev/software-developer/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-developer/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

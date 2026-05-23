@@ -1,14 +1,17 @@
 ---
 slug: api-gateway-patterns
 tier: pro
-group: dev
+group: software-developer
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Centralized API gateway for microservices: routing, JWT/mTLS auth, rate limiting per consumer, CORS, request tracing via X-Request-ID, circuit breakers, and edge caching.
-content_id: "b760d2e20b391f0f"
+content_id: "c841079ed7d4b4f5"
+complexity: medium
+produces: config
+est_tokens: 4600
 tags: [microservices, api-gateway, kong, aws-api-gateway, bff]
 ---
 # API Gateway Patterns
@@ -17,58 +20,79 @@ tags: [microservices, api-gateway, kong, aws-api-gateway, bff]
 
 **One-sentence:** Centralized API gateway for microservices: routing, JWT/mTLS auth, rate limiting per consumer, CORS, request tracing via X-Request-ID, circuit breakers, and edge caching.
 
-**One-paragraph:** Centralized API gateway for microservices: routing, JWT/mTLS auth, rate limiting per consumer, CORS, request tracing via X-Request-ID, circuit breakers, and edge caching. Covers Kong (declarative kong.yml), AWS API Gateway (Serverless/Terraform), Nginx, and BFF (Backend-for-Frontend) aggregation. Gateway must stay stateless and "boring" — no business logic in plugins.
+**One-paragraph:** Centralized API gateway for microservices: routing, JWT/mTLS auth, rate limiting per consumer, CORS, request tracing via X-Request-ID, circuit breakers, and edge caching. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on api gateway patterns for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-developer domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- Multi-service backend needing centralized auth, rate limiting, request tracing, CORS.
-- Migrating monolith to microservices: front old + new behind one gateway, then peel off routes.
-- Public APIs with plan-based quotas (free/pro) — Kong, AWS APIGW, Apigee handle usage plans natively.
-- BFF per channel (web, mobile, partner) with different auth/aggregation needs.
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- Single-service apps — a gateway is one more thing to operate.
-- Sub-1ms latency hot paths — each gateway hop adds 1–5ms; use a sidecar service mesh instead.
-- Internal east-west service-to-service traffic — service mesh (Linkerd, Istio) fits better.
-- Teams that cannot afford Kong/Envoy + config plane operational complexity.
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-developer/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/software-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-api-gateway-patterns` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.json` | JSON skeleton for the config artefact |
+| `templates/config.md` | Markdown skeleton for the config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-gateway-patterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- Parent: `pro/dev/software-developer/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-developer/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

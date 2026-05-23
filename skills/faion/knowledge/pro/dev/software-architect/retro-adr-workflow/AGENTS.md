@@ -3,86 +3,97 @@ slug: retro-adr-workflow
 tier: pro
 group: software-architect
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6d1a94dbe2132d84"
-summary: Sanctioned no-blame workflow for capturing architectural decisions AFTER code has already shipped — Retroactive ADRs — so undocumented decisions become audit-able without freezing delivery.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Sanctioned no-blame workflow for capturing architectural decisions retroactively (Retro-ADRs) when code has shipped ahead of docs, so undocumented choices become auditable without stalling delivery.
+content_id: "2774b5d404b260d6"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [adr, architecture, documentation, retro, no-blame]
 ---
-
 # Retroactive ADR Workflow
 
 ## Summary
 
-**One-sentence:** No-blame workflow for capturing architectural decisions retroactively (Retro-ADRs) when code has shipped ahead of docs, so undocumented choices become auditable without stalling delivery.
+**One-sentence:** Sanctioned no-blame workflow for capturing architectural decisions retroactively (Retro-ADRs) when code has shipped ahead of docs, so undocumented choices become auditable without stalling delivery.
 
-**One-paragraph:** ADR (Architecture Decision Records) methodology assumes decisions are written before the code lands. In practice — especially in fast solo / agency / startup teams — code routinely ships ahead of any written decision. The result is months of "tribal knowledge" that nobody admits to and nobody captures. Generic ADR docs offer no sanctioned path to write an ADR after the fact, so people don't. This methodology pins the Retro-ADR pattern: identify undocumented decisions via signal (PR comments, repeated questions, surprise behaviour), batch them in a 90-minute weekly capture, write the ADR using a constrained template that distinguishes intent-at-time vs reconstructed-now, and adopt with explicit `status: accepted-retroactively`. No blame, no rewriting history. Mechanism: a recurring ritual + a template + a discovery signal. Primary output: ADRs that close the documentation gap without demanding heroic memory work.
+**One-paragraph:** Sanctioned no-blame workflow for capturing architectural decisions retroactively (Retro-ADRs) when code has shipped ahead of docs, so undocumented choices become auditable without stalling delivery. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on retroactive adr workflow for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-architect domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- codebase already has architectural decisions that ship undocumented OR partially documented
-- team has authority to adopt the ADR pattern in this repo
-- ≥1 senior engineer or architect is available 90 min/week for the capture ritual
-- repo has a `docs/adr/` or equivalent location for decision records
-- the team accepts retroactive documentation is valuable (not just forward-looking)
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- team is greenfield with no shipped code — use the standard ADR-from-the-start methodology
-- team explicitly rejects ADRs as a practice — fix that conversation first
-- the codebase has ≥3 architects who actively disagree about decisions — Retro-ADR amplifies the disagreement; resolve the architecture-review process first
-- nobody can remember the original intent of any decision — write Decision-Archaeology notes instead and rebuild a baseline
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- ADR template adopted (MADR, Nygard, or similar)
-- a place to publish: `docs/adr/`, `architecture/decisions/`, Confluence space, etc.
-- discovery signals enabled: PR-comment scraper, repeated-question detector in chat, or simple a backlog of "things we never wrote down"
-- agreement that retroactive status is honest, not lesser than forward-looking ADRs
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-architect/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/adr-canonical-template` | The base template Retro-ADRs extend |
-| `pro/dev/software-architect/architecture-fitness-functions` | Fitness checks reference recently-captured decisions |
-| `pro/dev/software-architect/architecture-review-cadence` | Retro-ADR capture is one item on the review agenda |
+| `pro/dev/software-architect/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: no-blame framing, retroactive status field, intent vs reconstruction, weekly cadence, single-owner sign-off | ~1000 |
-| `content/02-output-contract.xml` | essential | Retro-ADR template, frontmatter schema, status enum, traceability fields | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: blame-leak, retro-as-rewrite, batch overload, stale capture, conflict between authors, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `discovery_from_pr_comments` | sonnet | Cluster PR threads referencing undocumented decisions |
-| `retro_adr_first_draft` | sonnet | Draft from PR thread + commit history + chat snippets |
-| `intent_vs_reconstruction_split` | opus | Distinguish what was decided then vs reconstructed now |
-| `adr_lint` | haiku | Frontmatter + status check |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-retro-adr-workflow` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/retro-adr.md` | Retro-ADR template with intent + reconstruction fields |
-| `templates/discovery-signal-rubric.md` | How to score undocumented decisions for capture priority |
+| `templates/spec.json` | JSON skeleton for the spec artefact |
+| `templates/spec.md` | Markdown skeleton for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/discover-undocumented-decisions.py` | Scan PR comments + chat exports for repeated architectural questions | Weekly cron before capture ritual |
-| `scripts/lint-retro-adr.py` | Verify retro-status is set, sources cited, owner named | Pre-commit hook in docs/adr/ |
+| `scripts/validate-retro-adr-workflow.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodologies: `adr-canonical-template`, `architecture-fitness-functions`, `architecture-review-cadence`, `decision-archaeology`
-- external: [Michael Nygard original ADR](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) · [MADR template](https://adr.github.io/madr/) · [ThoughtWorks ADR tech radar](https://www.thoughtworks.com/radar/techniques/lightweight-architecture-decision-records)
+- Parent: `pro/dev/software-architect/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-architect/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

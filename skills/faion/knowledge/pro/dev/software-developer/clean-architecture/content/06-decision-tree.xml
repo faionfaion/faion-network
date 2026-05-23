@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Clean Architecture Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == crud-prototype">
+        <question id="q-crud-prototype">Is the codebase a CRUD prototype with no domain logic?</question>
+        <conclusion ref="skip-this-methodology" verdict="use Transaction Script; layered architecture has no payoff yet"/>
+      </branch>
+      <branch when="signal == framework-in-entity">
+        <question id="q-framework-in-entity">Does a domain entity import the ORM or web framework?</question>
+        <conclusion ref="r1-dependency-direction-inward" verdict="invert: declare an interface in the entity layer; let the framework implement"/>
+      </branch>
+      <branch when="signal == slow-entity-tests">
+        <question id="q-slow-entity-tests">Are entity tests slower than 100ms aggregate?</question>
+        <conclusion ref="r2-entity-tests-no-io" verdict="remove IO from the test path; use in-memory state"/>
+      </branch>
+      <branch when="signal == multi-aggregate-tx">
+        <question id="q-multi-aggregate-tx">Does a use case modify >1 aggregate in one transaction?</question>
+        <conclusion ref="r4-one-aggregate-per-tx" verdict="split into two saves; model the partial-failure path explicitly"/>
+      </branch>
+      <branch when="signal == event-before-persist">
+        <question id="q-event-before-persist">Are domain events published before persist commits?</question>
+        <conclusion ref="r3-events-after-persist" verdict="use outbox or commit-then-publish"/>
+      </branch>
+      <branch when="signal == fat-mapper">
+        <question id="q-fat-mapper">Does a mapper exceed 10 lines?</question>
+        <conclusion ref="r5-mapper-discipline" verdict="reconsider boundary or use a mapping library"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

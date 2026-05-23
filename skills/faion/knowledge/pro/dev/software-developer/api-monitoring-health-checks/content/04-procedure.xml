@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="API Monitoring — Health Checks Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4-step procedure to apply API Monitoring — Health Checks end-to-end. Each step has named input, action, and output. Decision gates reference rules from `01-core-rules.xml`.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="expose-two-endpoints">
+      <input>API framework</input>
+      <action>Add `/healthz` (no downstream calls) and `/readyz` (bounded downstream checks) endpoints; both return JSON with `status` and `checks[]` fields.</action>
+      <output>Endpoints live</output>
+    </step>
+    <step n="2" name="wire-k8s-probes">
+      <input>Endpoints + manifest</input>
+      <action>Configure liveness=/healthz, readiness=/readyz, startup=/healthz (or equivalent); periodSeconds 10s, failureThreshold 3.</action>
+      <output>Probes configured</output>
+    </step>
+    <step n="3" name="verify-probe-latency">
+      <input>Deployed probes</input>
+      <action>Measure probe p99 latency; refuse to ship if `/healthz` p99 >200ms (r4).</action>
+      <output>Probe latency report</output>
+    </step>
+    <step n="4" name="validate-and-monitor">
+      <input>Endpoints + monitor</input>
+      <action>Run `scripts/validate-api-monitoring-health-checks.py --self-test`; expose probe metrics so unreadiness shows up in dashboards.</action>
+      <output>Health checks observable</output>
+    </step>
+  </section>
+
+  <section title="Decision gates">
+    <p>Between steps, consult `content/06-decision-tree.xml` if the observed signal does not match expected output. The decision tree always terminates at a rule id from `01-core-rules.xml` or at `skip-this-methodology`.</p>
+  </section>
+</text>

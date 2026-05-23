@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Monitoring — Structured Logging Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == plain-text-logs">
+        <question id="q-plain-text-logs">Are logs still emitted as plain text or unstructured?</question>
+        <conclusion ref="r1" verdict="switch to JSON logger with mandatory fields"/>
+      </branch>
+      <branch when="signal == no-request-id">
+        <question id="q-no-request-id">Are request_id fields missing from inbound logs?</question>
+        <conclusion ref="r2" verdict="add a middleware to generate/propagate X-Request-ID and include in every log"/>
+      </branch>
+      <branch when="signal == logs-not-shipped">
+        <question id="q-logs-not-shipped">Are logs only on local disk?</question>
+        <conclusion ref="r3" verdict="wire fluentbit/vector to ship to the central index"/>
+      </branch>
+      <branch when="signal == sensitive-in-logs">
+        <question id="q-sensitive-in-logs">Are tokens or PII appearing in log lines?</question>
+        <conclusion ref="r4-no-sensitive-fields" verdict="install redaction middleware; rotate exposed credentials"/>
+      </branch>
+      <branch when="signal == debug-in-prod">
+        <question id="q-debug-in-prod">Is DEBUG enabled in production?</question>
+        <conclusion ref="r5-log-level-discipline" verdict="drop level to INFO; reserve DEBUG for local dev"/>
+      </branch>
+      <branch when="signal == air-gapped">
+        <question id="q-air-gapped">Is the runtime air-gapped with no log shipping possible?</question>
+        <conclusion ref="skip-this-methodology" verdict="structured logs without an index don't justify the cost"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

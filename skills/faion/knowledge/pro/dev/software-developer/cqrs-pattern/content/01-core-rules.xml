@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cqrs-pattern Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cqrs-pattern. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="CQRS Pattern Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules grounding CQRS Pattern. Each rule pairs a binary check + sourced rationale. The {skip-this-methodology} rule routes inapplicable cases.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-separate-models" testable="true" depth="essential">
+      <statement>Commands and Queries MUST use different models (data shapes). Commands accept a command object and persist via the write model; queries return DTOs derived from a read-model projection. Sharing a single model across both is a CQRS violation.</statement>
+      <rationale source="Greg Young, CQRS (2010); Vaughn Vernon, Implementing DDD (2013)">Reusing one model forces it to satisfy both write (validation, invariants) and read (projection, joins) needs. CQRS's value is the freedom to optimize each separately.</rationale>
+    </rule>
+    <rule id="r2-commands-return-void-or-id" testable="true" depth="essential">
+      <statement>Commands MUST return void or the created entity's ID — never the persisted entity or projection. Clients that need to see the result perform a separate query.</statement>
+      <rationale source="Greg Young CQRS docs; event-sourcing patterns">Returning the persisted state couples write and read paths and breaks eventual consistency (the client expects the data to be immediately readable, which only holds under strong consistency).</rationale>
+    </rule>
+    <rule id="r3-queries-pure" testable="true" depth="essential">
+      <statement>Queries MUST NOT mutate state, increment counters, write logs by side effect, or send commands. Queries are pure functions of the read model.</statement>
+      <rationale source="Functional purity literature; CQRS principles">A query that mutates state cannot be retried safely or cached. Side-effecting queries undermine the read-side caching strategy CQRS depends on.</rationale>
+    </rule>
+    <rule id="r4-projections-from-events" testable="true" depth="essential">
+      <statement>Read models MUST be built by projections that consume domain events from the write side. Projections run as separate processes/consumers; they catch up from the event log on restart.</statement>
+      <rationale source="Greg Young, Event Sourcing (2010); Kafka Streams projections">Hand-maintained read models drift from the write side. Event-sourced projections give a single source of truth and replayability.</rationale>
+    </rule>
+    <rule id="r5-multiple-read-models" testable="true" depth="essential">
+      <statement>When a query has materially different access patterns (search, leaderboard, dashboard), build a SEPARATE read model. A single read model serving every query becomes a kitchen sink and erodes the CQRS payoff.</statement>
+      <rationale source="CQRS in practice (Microsoft Azure architecture docs)">Multiple optimized read models is the central benefit of CQRS — give up on a single shared one early.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip CQRS when the system is a simple CRUD app, the team has no need for read-side scaling, and the domain has no behaviour worth modelling.</statement>
+      <rationale source="Martin Fowler, CQRS criticisms; YAGNI">CQRS adds complexity (write model, read model, projection, eventual consistency). CRUD apps pay the cost without benefit.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

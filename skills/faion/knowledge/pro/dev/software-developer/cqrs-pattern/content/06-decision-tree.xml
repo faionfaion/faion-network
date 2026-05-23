@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="CQRS Pattern Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == simple-crud">
+        <question id="q-simple-crud">Is the system simple CRUD with no behavioural domain logic?</question>
+        <conclusion ref="skip-this-methodology" verdict="skip CQRS; the overhead has no payoff"/>
+      </branch>
+      <branch when="signal == shared-model">
+        <question id="q-shared-model">Are commands and queries sharing a model?</question>
+        <conclusion ref="r1-separate-models" verdict="split into command model + read-model DTOs"/>
+      </branch>
+      <branch when="signal == command-returns-data">
+        <question id="q-command-returns-data">Does the command return the persisted entity?</question>
+        <conclusion ref="r2-commands-return-void-or-id" verdict="return void or ID; clients query for the data"/>
+      </branch>
+      <branch when="signal == query-side-effect">
+        <question id="q-query-side-effect">Does the query write/log/send-command?</question>
+        <conclusion ref="r3-queries-pure" verdict="extract the side effect into a command"/>
+      </branch>
+      <branch when="signal == hand-maintained-read-model">
+        <question id="q-hand-maintained-read-model">Is the read model hand-updated instead of projected from events?</question>
+        <conclusion ref="r4-projections-from-events" verdict="build a projection consumer; rebuild from event log"/>
+      </branch>
+      <branch when="signal == kitchen-sink-read-model">
+        <question id="q-kitchen-sink-read-model">Is one read model serving wildly different queries?</question>
+        <conclusion ref="r5-multiple-read-models" verdict="split into per-access-pattern read models"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

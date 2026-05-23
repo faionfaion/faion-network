@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Service Mesh Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == service-count-low">
+        <question id="q-service-count-low">How many services share traffic in the cluster?</question>
+        <conclusion ref="skip-this-methodology" verdict="&lt;5 services → direct mTLS via cert-manager is simpler than a mesh"/>
+      </branch>
+      <branch when="signal == latency-budget-strict">
+        <question id="q-latency-budget-strict">Is sub-1ms latency a hard requirement?</question>
+        <conclusion ref="skip-this-methodology" verdict="any proxy layer adds latency; resolve without a mesh"/>
+      </branch>
+      <branch when="signal == mtls-only-need">
+        <question id="q-mtls-only-need">Is the requirement mTLS-only with no L7 advanced features?</question>
+        <conclusion ref="r1-architecture-default-sidecarless" verdict="use Istio Ambient (ztunnel L4) — lowest overhead"/>
+      </branch>
+      <branch when="signal == strict-without-permissive">
+        <question id="q-strict-without-permissive">Are you about to switch on STRICT mTLS without permissive validation?</question>
+        <conclusion ref="r2-mtls-permissive-to-strict" verdict="stage permissive for ≥7 days, document exceptions, then promote namespace-by-namespace"/>
+      </branch>
+      <branch when="signal == manual-config-apply">
+        <question id="q-manual-config-apply">Is mesh config being applied via `kubectl apply` outside git?</question>
+        <conclusion ref="r6-traffic-management-config-as-code" verdict="move to GitOps (Argo CD / Flux); reject manual applies in production"/>
+      </branch>
+      <branch when="signal == no-outlier-detection">
+        <question id="q-no-outlier-detection">Has outlier detection been omitted from new VirtualDestinations?</question>
+        <conclusion ref="r4-outlier-detection-default" verdict="add outlier detection with 30s ejection on every service before going live"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

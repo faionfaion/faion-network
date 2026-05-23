@@ -1,87 +1,98 @@
 ---
 slug: ai-generated-code-lint-presets
 tier: pro
-group: dev
+group: software-developer
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "196be164c9feed19"
-summary: A packaged set of ruff and ESLint lint presets that catch the dominant AI-code smells — unused imports, fabricated APIs, no-op tests, broad excepts, console-log left over from prototyping — so the daily PR review pass enforces them automatically.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: A packaged set of ruff and ESLint lint presets that catch the dominant AI-code smells — unused imports, fabricated APIs, no-op tests, broad excepts, console-log left over from prototyping.
+content_id: "7ac0130df6800d5c"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [lint, ruff, eslint, ai-codegen, presets, code-quality]
 ---
 # AI-Generated Code Lint Presets
 
 ## Summary
 
-**One-sentence:** A packaged set of ruff (Python) and ESLint (TS / JS) presets tuned for the dominant AI-code smells — unused imports, fabricated APIs, no-op tests, broad excepts, leftover console.log / debugger, magic literals, missing returns — so the daily PR review pass catches them without manual scanning.
+**One-sentence:** A packaged set of ruff and ESLint lint presets that catch the dominant AI-code smells — unused imports, fabricated APIs, no-op tests, broad excepts, console-log left over from prototyping.
 
-**One-paragraph:** AI coding assistants emit a recognizable smell signature: imports that the model "thinks" exist; `try: ... except: pass` that hides errors; tests with `assert True` or `assert response` without checking properties; commented-out blocks left behind; magic literals where constants are required; default `console.log` / `print` debug statements never removed. This methodology ships two ready-to-use lint preset files — `ruff-ai-presets.toml` and `eslint-ai-presets.json` — that turn these smells into hard errors. The developer drops them into the project, runs them as a pre-commit hook, and the typical PR review pass cleans up 80% of AI smell before a human looks. Output: zero-friction lint that the AI itself can self-correct against on the next iteration.
+**One-paragraph:** A packaged set of ruff and ESLint lint presets that catch the dominant AI-code smells — unused imports, fabricated APIs, no-op tests, broad excepts, console-log left over from prototyping. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on ai-generated code lint presets for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-developer domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- Repository contains code authored or substantially edited by an AI assistant.
-- The repo uses ruff (Python) or ESLint (TypeScript / JavaScript) — or can adopt them.
-- A pre-commit framework is installed (see `lint-precommit-floor`).
-- Daily PR review pass is the active workflow (see `Daily PR review pass (own + teammates)`).
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- Project uses a non-supported language (Go, Rust, Swift) — separate presets needed.
-- Project has heavy legacy code that would fail the presets — adopt with `--add-noqa` first, fix incrementally.
-- Lint discipline is already strict and AI smell is absent — overhead exceeds the win.
-- Pre-commit is disabled — fix `lint-precommit-floor` first.
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
 ## Prerequisites
 
-- ruff installed at &gt;= 0.6 (Python projects) OR ESLint installed at &gt;= 9 (TS / JS projects).
-- A `.pre-commit-config.yaml` or `husky` configured.
-- Branch hygiene allowing one PR per logical lint adoption.
-- A baseline lint run to identify the noqa floor for the existing code.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-developer/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/lint-precommit-floor` | Pre-commit must already be wired before these presets attach to it. |
-| `geek/sdlc-ai/lint-ruff-and-biome-as-default` | Sibling: this methodology specialises ruff for AI-code smell. |
-| `pro/dev/software-developer/code-quality` | Background on code-quality discipline. |
+| `pro/dev/software-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: presets immutable, no-op-test rule, broad-except rule, magic-literal rule, debug-statement rule | ~1100 |
-| `content/02-output-contract.xml` | essential | Lint report shape, baseline-noqa rule, exemption discipline | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: AI auto-noqa, preset drift, false positives, etc. | ~1000 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `lint-run-and-parse` | haiku | Mechanical: run lint, parse JSON output |
-| `noqa-floor-suggest` | haiku | Mechanical: tag pre-existing violations with explicit noqa |
-| `pr-comment-from-findings` | sonnet | Structured comment composition with rationale |
-| `preset-tune-suggest` | sonnet | Bounded judgement on per-project tuning |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-generated-code-lint-presets` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ruff-ai-presets.toml` | Ruff ruleset tuned for AI-code smells |
-| `templates/eslint-ai-presets.json` | ESLint ruleset tuned for AI-code smells |
-| `templates/pr-comment.md` | PR comment template structured per smell |
+| `templates/config.json` | JSON skeleton for the config artefact |
+| `templates/config.md` | Markdown skeleton for the config artefact |
 
 ## Scripts
 
-| System | Purpose | When to call |
+| File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/adopt.sh` | Copy presets in, add `--add-noqa` for existing violations, commit | First-time adoption |
-| `scripts/lint-summary.py` | Run lint, count smells per category, emit summary | Pre-PR |
+| `scripts/validate-ai-generated-code-lint-presets.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- peer methodologies: `code-quality`, `lint-precommit-floor`, `lint-ruff-and-biome-as-default`
-- external: [Ruff docs](https://docs.astral.sh/ruff/) · [ESLint typescript-eslint](https://typescript-eslint.io/) · [Astral T20 (no print)](https://docs.astral.sh/ruff/rules/print/)
+- Parent: `pro/dev/software-developer/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-developer/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

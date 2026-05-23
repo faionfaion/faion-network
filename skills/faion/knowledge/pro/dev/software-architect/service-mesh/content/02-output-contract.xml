@@ -1,22 +1,193 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="service-mesh Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Service Mesh Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, plus valid + invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "mesh",
+    "architecture",
+    "mtls",
+    "outlier_detection",
+    "traffic_management",
+    "gitops"
+  ],
+  "properties": {
+    "mesh": {
+      "enum": [
+        "istio",
+        "istio-ambient",
+        "linkerd",
+        "cilium",
+        "consul"
+      ]
+    },
+    "architecture": {
+      "enum": [
+        "sidecar",
+        "sidecarless-ambient",
+        "sidecarless-ebpf"
+      ]
+    },
+    "mtls": {
+      "type": "object",
+      "required": [
+        "mode",
+        "ca_kind",
+        "cert_ttl_seconds"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "permissive",
+            "strict"
+          ]
+        },
+        "ca_kind": {
+          "enum": [
+            "org-intermediate",
+            "vault-pki",
+            "cert-manager-letsencrypt",
+            "spire"
+          ]
+        },
+        "cert_ttl_seconds": {
+          "type": "integer",
+          "maximum": 86400
+        }
+      }
+    },
+    "outlier_detection": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "ejection_seconds"
+      ],
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "ejection_seconds": {
+          "type": "integer",
+          "minimum": 30
+        }
+      }
+    },
+    "traffic_management": {
+      "type": "object",
+      "required": [
+        "canary_steps",
+        "rollback_strategy"
+      ],
+      "properties": {
+        "canary_steps": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "minItems": 3
+        },
+        "rollback_strategy": {
+          "enum": [
+            "weight-revert",
+            "kill-switch",
+            "argo-abort"
+          ]
+        }
+      }
+    },
+    "gitops": {
+      "type": "object",
+      "required": [
+        "managed_by"
+      ],
+      "properties": {
+        "managed_by": {
+          "enum": [
+            "argo-cd",
+            "flux",
+            "none-manual"
+          ]
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "mesh": "istio-ambient",
+  "architecture": "sidecarless-ambient",
+  "mtls": {
+    "mode": "strict",
+    "ca_kind": "vault-pki",
+    "cert_ttl_seconds": 86400
+  },
+  "outlier_detection": {
+    "enabled": true,
+    "ejection_seconds": 30
+  },
+  "traffic_management": {
+    "canary_steps": [
+      1,
+      10,
+      50,
+      100
+    ],
+    "rollback_strategy": "weight-revert"
+  },
+  "gitops": {
+    "managed_by": "argo-cd"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "mesh": "istio",
+  "architecture": "sidecar",
+  "mtls": {
+    "mode": "strict",
+    "ca_kind": "self-signed",
+    "cert_ttl_seconds": 7776000
+  },
+  "outlier_detection": {
+    "enabled": false
+  },
+  "traffic_management": {
+    "canary_steps": [
+      100
+    ],
+    "rollback_strategy": "manual"
+  },
+  "gitops": {
+    "managed_by": "none-manual"
+  }
+}
+]]></code>
+    <note>self-signed CA forbidden in prod (r3); cert TTL >24h; outlier detection disabled (r4); canary single-step (r5); gitops disabled (r6).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">mtls.ca_kind is `self-signed` — r3 violation</pattern>
+      <pattern id="f2">mtls.cert_ttl_seconds >86400 — r3 violation</pattern>
+      <pattern id="f3">outlier_detection.enabled is false on production VirtualDestinations (r4)</pattern>
+      <pattern id="f4">traffic_management.canary_steps has fewer than 3 weight steps (r5)</pattern>
+      <pattern id="f5">gitops.managed_by is `none-manual` (r6)</pattern>
+      <pattern id="f6">mtls.mode is `strict` without a permissive coverage report (r2)</pattern>
     </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-service-mesh.py">Validator script</reference>
 </text>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Monitoring — Alerting Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == alert-without-slo">
+        <question id="q-alert-without-slo">Are alert rules being written before an SLO is documented?</question>
+        <conclusion ref="r1" verdict="stop and write the SLO with PM/ops sign-off"/>
+      </branch>
+      <branch when="signal == alert-missing-runbook">
+        <question id="q-alert-missing-runbook">Does an alert lack runbook_url or `for:` clause?</question>
+        <conclusion ref="r2" verdict="reject the rule in CI; require runbook_url + for: ≥2m"/>
+      </branch>
+      <branch when="signal == single-window-threshold">
+        <question id="q-single-window-threshold">Is the SLO protected by a single-window threshold alert?</question>
+        <conclusion ref="r3" verdict="replace with multi-window burn-rate (1h+6h fast, 1d+3d slow)"/>
+      </branch>
+      <branch when="signal == mis-routed-alert">
+        <question id="q-mis-routed-alert">Is a `page` alert routing to issue tracker (or vice versa)?</question>
+        <conclusion ref="r4-alert-routing-by-severity" verdict="fix routing by severity label"/>
+      </branch>
+      <branch when="signal == hand-edited-dashboard">
+        <question id="q-hand-edited-dashboard">Is a Grafana JSON being hand-edited?</question>
+        <conclusion ref="r5-dashboards-as-code" verdict="regenerate via jsonnet or grafanactl pull"/>
+      </branch>
+      <branch when="signal == no-slo-poc">
+        <question id="q-no-slo-poc">Is the env a POC with no production traffic?</question>
+        <conclusion ref="skip-this-methodology" verdict="defer alerting until SLO + traffic exist"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Monitoring — Health Checks Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == single-endpoint">
+        <question id="q-single-endpoint">Is there only one health endpoint?</question>
+        <conclusion ref="r1" verdict="split into `/healthz` (liveness) and `/readyz` (readiness)"/>
+      </branch>
+      <branch when="signal == readiness-no-downstream-check">
+        <question id="q-readiness-no-downstream-check">Does `/readyz` lack downstream checks?</question>
+        <conclusion ref="r2" verdict="add bounded checks for DB/cache/queue with single timeout ≤500ms"/>
+      </branch>
+      <branch when="signal == liveness-with-downstream">
+        <question id="q-liveness-with-downstream">Does `/healthz` make downstream calls?</question>
+        <conclusion ref="r3" verdict="remove all downstream calls; keep liveness pure"/>
+      </branch>
+      <branch when="signal == slow-probe">
+        <question id="q-slow-probe">Is `/healthz` p99 latency >200ms?</question>
+        <conclusion ref="r4-bounded-probe-latency" verdict="remove downstream calls or background work; tighten to ≤200ms"/>
+      </branch>
+      <branch when="signal == no-startup-probe">
+        <question id="q-no-startup-probe">Is the app slow-starting without a startup probe?</question>
+        <conclusion ref="r5-readiness-startup-grace" verdict="add startupProbe with sufficient grace before liveness/readiness fire"/>
+      </branch>
+      <branch when="signal == no-orchestrator">
+        <question id="q-no-orchestrator">Does the runtime lack a probe consumer (no k8s/LB)?</question>
+        <conclusion ref="skip-this-methodology" verdict="probes have no consumer; skip the methodology"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

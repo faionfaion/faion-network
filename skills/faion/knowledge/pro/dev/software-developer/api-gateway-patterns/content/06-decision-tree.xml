@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Gateway Patterns Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == business-logic-in-plugin">
+        <question id="q-business-logic-in-plugin">Is business logic landing in a Kong Lua plugin or Envoy filter?</question>
+        <conclusion ref="r1" verdict="move logic to a BFF service; reserve plugins for auth, rate-limit, request-tracing, CORS"/>
+      </branch>
+      <branch when="signal == ip-rate-limit-behind-cdn">
+        <question id="q-ip-rate-limit-behind-cdn">Is rate-limiting per-IP behind a CDN or load balancer?</question>
+        <conclusion ref="r2" verdict="rate-limit by consumer (API key / user ID) or X-Forwarded-For; never by remote IP"/>
+      </branch>
+      <branch when="signal == no-request-id">
+        <question id="q-no-request-id">Are inbound requests missing X-Request-ID propagation?</question>
+        <conclusion ref="r3" verdict="generate at ingress if missing; propagate to downstream; include in structured logs"/>
+      </branch>
+      <branch when="signal == client-shorter-timeout">
+        <question id="q-client-shorter-timeout">Is the gateway timeout ≥ the client timeout?</question>
+        <conclusion ref="r4" verdict="reduce gateway timeout below client (e.g. 5s gateway &lt; 10s client) and upstream below gateway (2s/hop)"/>
+      </branch>
+      <branch when="signal == global-circuit-breaker">
+        <question id="q-global-circuit-breaker">Is there one global circuit breaker?</question>
+        <conclusion ref="r5" verdict="configure circuit breakers per upstream service; one slow service must not kill all routes"/>
+      </branch>
+      <branch when="signal == manual-config-changes">
+        <question id="q-manual-config-changes">Are gateway config changes hand-applied without git?</question>
+        <conclusion ref="r6" verdict="manage via deck/Terraform and GitOps; reject manual `kong reload`"/>
+      </branch>
+      <branch when="signal == out-of-scope">
+        <question id="q-out-of-scope">Is the system a monolith with one backend?</question>
+        <conclusion ref="skip-this-methodology" verdict="use direct reverse-proxy with nginx; gateway adds operational overhead for no gain"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Strangler-Fig Migration Playbook (Vendor Delivery) Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to apply Strangler-Fig Migration Playbook (Vendor Delivery) end-to-end. Each step has named input, action, and output. Decision gates reference rules from `01-core-rules.xml`.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="inventory-and-score">
+      <input>Monolith route/job/queue list + traffic metrics</input>
+      <action>Build the monolith_inventory CSV (route_or_job_name, traffic_rps, error_rate_baseline, p99_latency_ms_baseline). Run `scripts/score-slices.py` to score each on coupling_depth, traffic_risk, business_priority.</action>
+      <output>Slice scoring table</output>
+    </step>
+    <step n="2" name="pick-first-3-slices">
+      <input>Slice scoring table</input>
+      <action>Select first 3 slices where coupling_depth ≤2 AND traffic_risk ≤3 AND business_priority ≥3. Reject any first slice with coupling_depth ≥4 (r1).</action>
+      <output>First-3 slice selection memo</output>
+    </step>
+    <step n="3" name="install-rails">
+      <input>First slice selection + routing facade tech (Envoy/nginx/Kong)</input>
+      <action>Deploy routing facade in front of monolith; configure observability for parity comparison; build and test the kill-switch revert path (≤5 min).</action>
+      <output>Routing facade + observability live; kill-switch tested</output>
+    </step>
+    <step n="4" name="cutover-with-dual-write">
+      <input>Slice + rails</input>
+      <action>Enable dual-write to legacy and new during the burn-in window (r4). Shift traffic 1%→10%→50%→100% gated on parity error rate ±10% (r2).</action>
+      <output>New service at 100% traffic</output>
+    </step>
+    <step n="5" name="burn-in-7d-and-shadow-read">
+      <input>100% traffic on new service</input>
+      <action>Run ≥168 hours at full traffic with error_rate_delta ≤10% and p99_latency_delta ≤10%. Switch to single-write on new + shadow-read on legacy for ≥7 more days.</action>
+      <output>parity_burn_in_record signed</output>
+    </step>
+    <step n="6" name="retire-and-handoff">
+      <input>Burn-in + shadow-read records</input>
+      <action>Retire legacy code path; generate runbook for in-house team; collect exit_criteria_signoff with all three flags true and client_architect_signature_date populated (r5).</action>
+      <output>Slice closed, runbook handed off</output>
+    </step>
+  </section>
+
+  <section title="Decision gates">
+    <p>Between steps, consult `content/06-decision-tree.xml` if the observed signal does not match expected output. The decision tree always terminates at a rule id from `01-core-rules.xml` or at `skip-this-methodology`.</p>
+  </section>
+</text>

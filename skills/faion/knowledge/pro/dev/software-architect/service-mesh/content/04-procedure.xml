@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Service Mesh Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply Service Mesh end-to-end. Each step has named input, action, and output. Decision gates reference rules from `01-core-rules.xml`.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="select-mesh">
+      <input>Service count, latency SLO, multi-cluster need, eBPF availability</input>
+      <action>Apply the mesh-selection decision matrix: mTLS-only → Istio Ambient. Advanced L7 (mirroring, fault injection) → Istio or Linkerd. Resource-constrained → Linkerd or Ambient. Multi-cluster → Istio or Cilium. Network-heavy + eBPF expertise → Cilium.</action>
+      <output>Chosen mesh + rationale recorded as ADR</output>
+    </step>
+    <step n="2" name="bootstrap-mtls-permissive">
+      <input>Cluster + chosen mesh</input>
+      <action>Install the mesh control plane; deploy the data plane (sidecar or ztunnel/waypoint) across the chosen namespaces; configure mTLS in permissive mode; verify certificate issuance via mesh telemetry.</action>
+      <output>Mesh control + data plane live, mTLS in permissive mode</output>
+    </step>
+    <step n="3" name="validate-coverage">
+      <input>Permissive-mode telemetry</input>
+      <action>Run for ≥7 days; verify every service-to-service path is encrypted in telemetry; document exceptions (external services, legacy apps) before promoting to strict.</action>
+      <output>Coverage report + exception list</output>
+    </step>
+    <step n="4" name="promote-to-strict-namespace-by-namespace">
+      <input>Coverage report</input>
+      <action>Set PeerAuthentication to STRICT one namespace at a time; monitor for 4xx/5xx spikes; roll back the namespace within 5 minutes if SLO breach detected.</action>
+      <output>Strict mTLS enforced per validated namespace</output>
+    </step>
+    <step n="5" name="wire-canary-and-outlier-detection">
+      <input>Application route table</input>
+      <action>Add VirtualService + DestinationRule per service: canary weight steps gated on SLO, outlier detection with 30s ejection. Commit to repo and apply via GitOps.</action>
+      <output>Traffic-management policies live, reviewable in git</output>
+    </step>
+  </section>
+
+  <section title="Decision gates">
+    <p>Between steps, consult `content/06-decision-tree.xml` if the observed signal does not match expected output. The decision tree always terminates at a rule id from `01-core-rules.xml` or at `skip-this-methodology`.</p>
+  </section>
+</text>

@@ -1,22 +1,154 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-monitoring-alerting Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Monitoring — Alerting Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, plus valid + invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "slo",
+    "burn_rate_rules",
+    "routing",
+    "dashboards_as_code"
+  ],
+  "properties": {
+    "slo": {
+      "type": "object",
+      "required": [
+        "target_percent",
+        "window_days",
+        "error_budget_percent"
+      ],
+      "properties": {
+        "target_percent": {
+          "type": "number",
+          "minimum": 90,
+          "maximum": 100
+        },
+        "window_days": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "burn_rate_rules": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "for",
+          "severity",
+          "runbook_url",
+          "burn_rate_short",
+          "burn_rate_long"
+        ],
+        "properties": {
+          "for": {
+            "type": "string",
+            "pattern": "^[0-9]+m$"
+          },
+          "severity": {
+            "enum": [
+              "page",
+              "ticket"
+            ]
+          },
+          "runbook_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    },
+    "routing": {
+      "type": "object",
+      "required": [
+        "page_to",
+        "ticket_to"
+      ]
+    },
+    "dashboards_as_code": {
+      "const": true
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slo": {
+    "target_percent": 99.9,
+    "window_days": 30,
+    "error_budget_percent": 0.1
+  },
+  "burn_rate_rules": [
+    {
+      "name": "page-fast-burn",
+      "for": "5m",
+      "severity": "page",
+      "runbook_url": "https://runbooks.faion.net/api-slo",
+      "burn_rate_short": "1h-2%",
+      "burn_rate_long": "6h-5%"
+    },
+    {
+      "name": "ticket-slow-burn",
+      "for": "30m",
+      "severity": "ticket",
+      "runbook_url": "https://runbooks.faion.net/api-slo",
+      "burn_rate_short": "1d-10%",
+      "burn_rate_long": "3d-10%"
+    }
+  ],
+  "routing": {
+    "page_to": "pagerduty:api-oncall",
+    "ticket_to": "jira:API"
+  },
+  "dashboards_as_code": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slo": {
+    "target_percent": 99.9,
+    "window_days": 30,
+    "error_budget_percent": 0.1
+  },
+  "burn_rate_rules": [
+    {
+      "name": "errors-1pct",
+      "for": "0s",
+      "severity": "page"
+    }
+  ],
+  "routing": {
+    "page_to": "",
+    "ticket_to": ""
+  },
+  "dashboards_as_code": false
+}
+]]></code>
+    <note>rule for=0s (r2); missing runbook_url (r2); single-window threshold (r3); dashboards-as-code disabled (r5).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">alert rule with `for: 0s` or absent (r2)</pattern>
+      <pattern id="f2">alert rule without runbook_url annotation (r2)</pattern>
+      <pattern id="f3">single-window threshold as primary SLO protection (r3)</pattern>
+      <pattern id="f4">alert severity not in {page, ticket} (r4)</pattern>
+      <pattern id="f5">dashboards hand-edited as JSON (r5)</pattern>
+      <pattern id="f6">SLO target_percent missing (r1)</pattern>
     </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-api-monitoring-alerting.py">Validator script</reference>
 </text>

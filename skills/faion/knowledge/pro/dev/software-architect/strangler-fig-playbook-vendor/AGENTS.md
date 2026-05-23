@@ -1,14 +1,17 @@
 ---
 slug: strangler-fig-playbook-vendor
 tier: pro
-group: dev
-domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "8f3523957ef658db"
+group: software-architect
+domain: dev
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: End-to-end strangler-fig migration playbook framed for vendor delivery — slice picking, traffic shifting, fallback semantics, exit criteria.
+content_id: "dbcab55f2b3874c8"
+complexity: deep
+produces: spec
+est_tokens: 4800
 tags: [strangler-fig, migration, legacy, architecture, vendor-delivery, monolith-to-services]
 ---
 # Strangler-Fig Migration Playbook (Vendor Delivery)
@@ -17,78 +20,80 @@ tags: [strangler-fig, migration, legacy, architecture, vendor-delivery, monolith
 
 **One-sentence:** End-to-end strangler-fig migration playbook framed for vendor delivery — slice picking, traffic shifting, fallback semantics, exit criteria.
 
-**One-paragraph:** Existing DDD anti-corruption-layer + microservices content cover the parts; this is the full program guide for an outsource vendor running a 3-6 month legacy-to-modern migration. Mechanism: starts with an inventory of monolith routes/jobs/queues, scores each slice on (a) coupling depth, (b) traffic risk, (c) business priority, picks the first 3 slices, deploys a Mark Fowler-style routing facade in front of the monolith, dual-writes during cutover, monitors error parity for ≥7 days per slice, retires the legacy code path with a documented kill-switch. Built for vendor-client engagements: weekly slice-status reports, contractual exit criteria, fallback-to-legacy SLA. Primary output: strangled production system + a written runbook for in-house team takeover.
+**One-paragraph:** End-to-end strangler-fig migration playbook framed for vendor delivery — slice picking, traffic shifting, fallback semantics, exit criteria. This methodology pins the testable rules, output contract, and procedure that turn the abstract pattern into a reviewable artefact. Apply when the preconditions hold; otherwise the decision tree routes to `skip-this-methodology`. Output is the artefact described in `content/02-output-contract.xml`, validated by the bundled script.
+
+**Ефективно для:**
+
+- Team that needs a reusable, reviewable take on strangler-fig migration playbook (vendor delivery) for production code or operations.
+- Cross-team alignment on the contract this methodology produces (no hand-rolled variants).
+- Onboarding new contributors to the software-architect domain via a worked example + decision tree.
+- Audit: traceable rule IDs in every conclusion of the decision tree.
+- Pre-flight check before scoping a larger initiative that depends on this pattern.
 
 ## Applies If (ALL must hold)
 
-- legacy monolith in production with documented routes/jobs (you can list them)
-- vendor (you) is delivering migration for a client who retains the legacy team
-- engagement scoped 3-6 months — long enough for slice cycles, short enough to stay focused
-- monolith and target architecture share a deployable environment (can both run in prod)
-- there is a measurable business reason for migration (cost, throughput, dev velocity) — not "modernization for its own sake"
+- Task signal matches the scope of this methodology (see decision tree).
+- The produced artefact has a named downstream consumer who will review it.
+- Required inputs (data, repo state, infra access) are reachable when the work starts.
+- The team can absorb the procedure without violating the failure-mode detectors.
 
 ## Skip If (ANY kills it)
 
-- greenfield project — no monolith to strangle
-- monolith is small enough (&lt; 30 routes / &lt; 50 KLOC) for big-bang rewrite to be safer — use rewrite playbook
-- legacy team is fully replaced by the vendor — use full-takeover migration instead
-- regulatory mandate requires synchronous cutover (banking core, regulated medical) — strangler-fig adds risk
-- no observability stack — strangler-fig is blind without metrics; install observability first
+- Task is clearly outside this methodology's scope — see `06-decision-tree.xml` for the skip branch.
+- A more specific methodology already covers the exact use case better.
+- The required preconditions for the failure-mode repairs cannot be met.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- inventory of monolith routes/jobs/queues (CSV: name, traffic, dependencies)
-- traffic data: requests/sec per route, error rate, p50/p99 latency baselines
-- target architecture decision (services + boundaries) approved by client architect
-- routing facade technology chosen (nginx + Lua, Envoy, application-layer router, API gateway)
-- observability: metrics + structured logs + tracing across both monolith and new services
-- a kill-switch design for each slice (config flag, percentage rollout)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | requester |
+| Parent skill context | Markdown | `pro/dev/software-architect/AGENTS.md` |
+| Existing artefact (if updating) | per output-contract | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/microservices-architecture` | Provides target service boundaries the migration moves into |
-| `pro/dev/software-developer/ddd-anti-corruption-layer` | The ACL pattern used at the boundary between monolith and new services |
-| `pro/dev/software-architect/observability-architecture` | Required to detect parity violations during cutover |
-| `pro/dev/software-architect/architecture-decision-records` | Each slice's cutover decision is recorded as an ADR |
+| `pro/dev/software-architect/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: slice scoring, parity-burn-in, kill-switch per slice, dual-write windowed, exit-criteria contractual | ~950 |
-| `content/02-output-contract.xml` | essential | Slice plan schema, cutover record schema, runbook schema, forbidden patterns | ~750 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes (big-slice trap, shared-state bleed, monitoring drift, vendor stub-out, partial rollback, dual-write divergence, runbook abandonment) | ~1000 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `slice_score_per_route` | sonnet | Bounded scoring on coupling/traffic/priority axes |
-| `cutover_runbook_draft` | sonnet | Step-by-step template with named commands |
-| `slice_selection_synthesis` | opus | Cross-route synthesis: which 3 slices minimize coupling damage |
-| `parity_burn_in_alert_rule_gen` | sonnet | Generate Prometheus / Datadog rules from error-rate baselines |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-strangler-fig-playbook-vendor` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/slice-plan.md` | Per-slice spec: scope, target service, traffic shape, fallback |
-| `templates/cutover-runbook.md` | Step-by-step cutover with rollback at each step |
-| `templates/weekly-status-report.md` | Client-facing report: slices live, in-progress, blocked |
-| `templates/exit-criteria-contract.md` | Contractual definition of "migration complete" per slice |
+| `templates/spec.json` | JSON skeleton for the spec artefact |
+| `templates/spec.md` | Markdown skeleton for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/score-slices.py` | Score and rank monolith routes by migration value | Before slice picking |
-| `scripts/diff-monolith-vs-service.py` | Compare responses between legacy and new for shadow traffic | During parity burn-in |
-| `scripts/kill-switch-validate.py` | Test kill-switch revert path before cutover | T-1 day before slice cutover |
+| `scripts/validate-strangler-fig-playbook-vendor.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodologies: `microservices-architecture`, `monolith-architecture`, `architecture-decision-records`
-- external: [Martin Fowler - StranglerFigApplication](https://martinfowler.com/bliki/StranglerFigApplication.html) · [Sam Newman - Monolith to Microservices (2019)](https://samnewman.io/books/monolith-to-microservices/) · [GitHub - migrating-monoliths](https://github.blog/2020-12-15-scaling-the-github-api-with-a-sharded-replicated-rate-limiter-in-redis/)
+- Parent: `pro/dev/software-architect/AGENTS.md`
+- Sibling methodologies: see `pro/dev/software-architect/` index
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,22 +1,173 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-gateway-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Gateway Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, plus valid + invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "gateway",
+    "stateless",
+    "rate_limit",
+    "request_id_propagation",
+    "timeouts",
+    "circuit_breaker",
+    "gitops"
+  ],
+  "properties": {
+    "gateway": {
+      "enum": [
+        "kong-db",
+        "kong-dbless",
+        "aws-api-gateway",
+        "envoy",
+        "nginx"
+      ]
+    },
+    "stateless": {
+      "const": true
+    },
+    "rate_limit": {
+      "type": "object",
+      "required": [
+        "scope"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "consumer",
+            "user-id",
+            "api-key",
+            "plan"
+          ]
+        }
+      }
+    },
+    "request_id_propagation": {
+      "const": true
+    },
+    "timeouts": {
+      "type": "object",
+      "required": [
+        "gateway_ms",
+        "upstream_ms",
+        "client_ms"
+      ],
+      "properties": {
+        "gateway_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "upstream_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000
+        },
+        "client_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 60000
+        }
+      }
+    },
+    "circuit_breaker": {
+      "type": "object",
+      "required": [
+        "scope"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "per-upstream-service",
+            "global"
+          ]
+        }
+      }
+    },
+    "gitops": {
+      "type": "object",
+      "required": [
+        "managed_by"
+      ],
+      "properties": {
+        "managed_by": {
+          "enum": [
+            "argo-cd",
+            "flux",
+            "terraform",
+            "deck",
+            "none-manual"
+          ]
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "gateway": "kong-db",
+  "stateless": true,
+  "rate_limit": {
+    "scope": "api-key"
+  },
+  "request_id_propagation": true,
+  "timeouts": {
+    "gateway_ms": 5000,
+    "upstream_ms": 2000,
+    "client_ms": 10000
+  },
+  "circuit_breaker": {
+    "scope": "per-upstream-service"
+  },
+  "gitops": {
+    "managed_by": "deck"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "gateway": "kong-db",
+  "stateless": false,
+  "rate_limit": {
+    "scope": "ip"
+  },
+  "request_id_propagation": false,
+  "timeouts": {
+    "gateway_ms": 30000,
+    "upstream_ms": 30000,
+    "client_ms": 10000
+  },
+  "circuit_breaker": {
+    "scope": "global"
+  },
+  "gitops": {
+    "managed_by": "none-manual"
+  }
+}
+]]></code>
+    <note>stateless=false (r1); rate-limit by IP (r2); request-id off (r3); gateway timeout ≥ client (r4); global circuit breaker (r5); manual gitops (r6).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">stateless is false — r1 violation</pattern>
+      <pattern id="f2">rate_limit.scope is `ip` (r2 violation when behind CDN/LB)</pattern>
+      <pattern id="f3">request_id_propagation is false (r3)</pattern>
+      <pattern id="f4">gateway_ms ≥ client_ms or upstream_ms ≥ gateway_ms (r4)</pattern>
+      <pattern id="f5">circuit_breaker.scope is `global` (r5)</pattern>
+      <pattern id="f6">gitops.managed_by is `none-manual` (r6)</pattern>
     </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-api-gateway-patterns.py">Validator script</reference>
 </text>

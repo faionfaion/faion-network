@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-monitoring-metrics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-monitoring-metrics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="api-monitoring-metrics Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules grounding API Monitoring — Metrics. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -15,5 +15,17 @@
       <statement>Every service MUST expose a /metrics endpoint in Prometheus text format. The metrics middleware MUST run before authentication and response modification so every request is counted including rejected ones.</statement>
       <rationale source="v1-source">Metrics missing rejected requests (401, 429) hide real load patterns and error rates. The scrape target must be reachable from the Prometheus server without authentication or with a separate scrape credential.</rationale>
     </rule>
-  </section>
+      <rule id="r4-cardinality-bound" testable="true" depth="essential">
+      <statement>Label cardinality MUST be bounded: never use user_id, request_id, or unbounded path segments as labels. Path templating (`/users/:id` not `/users/123`) keeps cardinality below 10k series per metric.</statement>
+      <rationale source="Prometheus best practices; Cortex/Mimir cardinality reports">Unbounded cardinality blows up Prometheus storage and queries. The 10k series ceiling is the practical safe bound; over that the TSDB slows or OOMs.</rationale>
+    </rule>
+    <rule id="r5-histograms-not-summaries" testable="true" depth="essential">
+      <statement>Use Histograms (not Summaries) for latency. Histograms support aggregation across instances (sum quantiles via histogram_quantile); Summaries cannot be aggregated.</statement>
+      <rationale source="Prometheus docs; histogram vs summary">Summary quantiles are per-instance; you cannot meaningfully average them across pods. Histograms record bucket counts that aggregate.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when there is no time-series database wired or the workload is one-shot batch (no steady-state metrics).</statement>
+      <rationale source="Internal observability maturity model">Metrics without a backend are just printouts. One-shot batch jobs use job-result records, not RED/USE metrics.</rationale>
+    </rule>
+</section>
 </text>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AI-Generated Code Lint Presets Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == ai-edits-presets">
+        <question id="q-ai-edits-presets">Did an AI PR modify `ruff-ai-presets.toml` or `eslint-ai-presets.json`?</question>
+        <conclusion ref="r1-preset-immutability" verdict="reject the PR; the AI is forbidden from editing its own lint"/>
+      </branch>
+      <branch when="signal == no-op-test">
+        <question id="q-no-op-test">Does a test contain only `assert True` or `expect(result)`?</question>
+        <conclusion ref="r2-no-op-test-rule" verdict="fail lint; require property assertions"/>
+      </branch>
+      <branch when="signal == broad-except">
+        <question id="q-broad-except">Does a `try/except: pass` or empty `catch` appear?</question>
+        <conclusion ref="r3-broad-except-rule" verdict="fail lint; require narrow exception + log + re-raise"/>
+      </branch>
+      <branch when="signal == magic-literal-policy">
+        <question id="q-magic-literal-policy">Is a timeout/retry/threshold literal hard-coded in production code?</question>
+        <conclusion ref="r4-magic-literal-rule" verdict="replace with a named constant; lint blocks the commit"/>
+      </branch>
+      <branch when="signal == debug-statement-in-prod">
+        <question id="q-debug-statement-in-prod">Does production code contain `print()`, `console.log()`, or `debugger;`?</question>
+        <conclusion ref="r5-debug-statement-rule" verdict="fail lint; route the diagnostic through the project logger"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>
