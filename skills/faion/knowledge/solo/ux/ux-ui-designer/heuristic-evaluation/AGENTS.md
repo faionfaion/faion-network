@@ -2,74 +2,101 @@
 slug: heuristic-evaluation
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured usability inspection method where 3-5 evaluators independently review an interface against Nielsen's 10 heuristics and rate each issue on a 0-4 severity scale (0=not a problem, 4=catastrophic).
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Have three to five evaluators independently score a UI against the ten Nielsen heuristics with severity ratings, then synthesise a deduplicated prioritised issue list.
 content_id: "432b0a5968c469ed"
-tags: [usability-testing, heuristic-evaluation, expert-review, quality-assurance, severit-scale]
+complexity: deep
+produces: report
+est_tokens: 4200
+tags: ["heuristic-evaluation", "nielsen", "expert-review", "severity", "ux-research"]
 ---
 # Heuristic Evaluation
 
 ## Summary
 
-**One-sentence:** A structured usability inspection method where 3-5 evaluators independently review an interface against Nielsen's 10 heuristics and rate each issue on a 0-4 severity scale (0=not a problem, 4=catastrophic).
+**One-sentence:** Have three to five evaluators independently score a UI against the ten Nielsen heuristics with severity ratings, then synthesise a deduplicated prioritised issue list.
 
-**One-paragraph:** A structured usability inspection method where 3-5 evaluators independently review an interface against Nielsen's 10 heuristics and rate each issue on a 0-4 severity scale (0=not a problem, 4=catastrophic). Evaluators work independently first, then findings are compiled and deduplicated. One pass per heuristic yields ~3x more findings than a single omnibus pass. Severity 4 blocks release; severity 3 is sprint-level; severity 1-2 goes to polish backlog.
+**One-paragraph:** Have three to five evaluators independently score a UI against the ten Nielsen heuristics with severity ratings, then synthesise a deduplicated prioritised issue list.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Before a usability test — eliminate obvious violations so testing resources address real user behavior
-- When no user research budget is available — gives actionable findings at near-zero cost
-- After a design sprint or major redesign — rapid expert review before development handoff
-- Code review for UI components — catching violations in PRs prevents regressions
-- Competitive analysis: apply the same heuristics to competitors to score relative quality
+- An interface is shippable and benefits from a quick expert review.
+- Three to five qualified evaluators can spend two-plus hours on it.
+- Severity-ranked actionable issue list is the desired output.
+- Team will triage and address findings within the next sprint.
+- User-research data is unavailable or supplements heuristic findings later.
 
 ## Skip If (ANY kills it)
 
-- As a replacement for usability testing — finds expert-visible violations, not real user struggles with domain tasks
-- After launch as the sole quality gate — too late for design changes; use for iterative improvements
-- When quantitative data is needed to justify decisions — heuristic evaluation produces qualitative expert opinions
-- On expert-user products where violations are worked around via muscle memory — disrupting their efficiency is worse
+- User-research data already isolates the friction points — go fix them.
+- Single evaluator available — inter-rater coverage will be poor.
+- Pre-IA wireframes — heuristics need a real interaction model.
+- Findings will not be triaged — review becomes documentation theatre.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stable UI to evaluate | url / figma | Product owner |
+| Nielsen 10-heuristic cheat sheet | markdown | Researcher |
+| Severity-rating rubric | markdown | Researcher |
+| Synthesis spreadsheet | xlsx | Researcher |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/consistency-standards` | Heuristic 4 references the design system. |
+| `solo/ux/ux-researcher/usability-testing` | Behavioural data refines or refutes heuristic findings. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/heuristic-evaluation.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/heuristic-evaluation.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-heuristic-evaluation.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[usability-testing]]
+- [[design-critique]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

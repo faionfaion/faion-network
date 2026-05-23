@@ -2,72 +2,101 @@
 slug: information-architecture
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Organize content by user tasks and goals.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Translate IA framework decisions into a sitemap, taxonomy, and navigation spec that the design team can build against without re-deriving the structure.
 content_id: "10facf6f10a90242"
-tags: [information-architecture, navigation, taxonomy, card-sorting, tree-testing]
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: ["information-architecture", "sitemap", "navigation-spec", "design-system", "ux-design"]
 ---
-# Information Architecture
+# Information Architecture (Designer Surface)
 
 ## Summary
 
-**One-sentence:** Organize content by user tasks and goals.
+**One-sentence:** Translate IA framework decisions into a sitemap, taxonomy, and navigation spec that the design team can build against without re-deriving the structure.
 
-**One-paragraph:** Organize content by user tasks and goals. Produces category structure, taxonomy, sitemap. Validate with card sorting and tree testing.
+**One-paragraph:** Translate IA framework decisions into a sitemap, taxonomy, and navigation spec that the design team can build against without re-deriving the structure.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Generating a sitemap or taxonomy from a product spec, feature list, or content inventory
-- Auditing an existing IA against card sort or tree test data to identify mismatches
-- Drafting an IA strategy document from user research findings and business requirements
-- Proposing navigation label alternatives when current labels test poorly with users
+- Designers need to start screen design but the IA decisions are unwritten.
+- Sitemap and taxonomy need to be visible in the design tool, not only docs.
+- Cross-team handover requires a single navigation spec.
+- Component library can be wired against the spec (nav, breadcrumb, footer).
+- Designers will own ongoing IA hygiene as new pages are added.
 
 ## Skip If (ANY kills it)
 
-- Validating a proposed IA — agents draft structure but cannot replace card sorting and tree testing with real users
-- Real-time search relevance tuning — IA shapes browse; search ranking is a separate discipline
-- Micro-level layout decisions — IA governs content organization, not component placement within a page
+- No agreed IA framework yet — run ia-framework first.
+- Single landing page with no hierarchy.
+- Engineering team will derive IA from CMS schema independently.
+- Reorganisation halted until further user research.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Approved IA framework | markdown | ia-framework methodology |
+| Content inventory | csv | Content audit |
+| Component library | storybook | Design system |
+| Brand and labelling rules | markdown | Design system |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/ia-framework` | Framework decisions drive the designer-facing spec. |
+| `solo/ux/ux-researcher/ia-templates` | Templates seed sitemap, taxonomy, and nav spec. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/information-architecture.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/information-architecture.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-information-architecture.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[ia-framework]]
+- [[ia-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

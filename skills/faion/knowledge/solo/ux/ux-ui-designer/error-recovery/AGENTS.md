@@ -2,75 +2,101 @@
 slug: error-recovery
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Nielsen Heuristic #9: error messages must state what happened, why it happened, and how to fix it in plain language, without error codes, without blaming the user.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Write error messages and recovery flows that name the problem in plain language, point at the offending input, and offer a concrete next action.
 content_id: "207312f33d6aa6e7"
-tags: [error-messages, microcopy, usability, heuristic-9, accessibility]
+complexity: medium
+produces: checklist
+est_tokens: 3200
+tags: ["heuristic", "error-messages", "microcopy", "recovery", "nielsen"]
 ---
-# Help Users Recognize, Diagnose, and Recover from Errors
+# Help Users Recognise, Diagnose, Recover from Errors
 
 ## Summary
 
-**One-sentence:** Nielsen Heuristic #9: error messages must state what happened, why it happened, and how to fix it in plain language, without error codes, without blaming the user.
+**One-sentence:** Write error messages and recovery flows that name the problem in plain language, point at the offending input, and offer a concrete next action.
 
-**One-paragraph:** Nielsen Heuristic #9: error messages must state what happened, why it happened, and how to fix it in plain language, without error codes, without blaming the user. Every error must offer a recovery path (button or link), not just a description. Inline placement next to the problematic element is required for form errors; system errors use modal or banner with a retry action.
+**One-paragraph:** Write error messages and recovery flows that name the problem in plain language, point at the offending input, and offer a concrete next action.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Auditing existing UI error messages for clarity and actionability before a release.
-- Writing microcopy for form validation, network errors, 404 pages, and payment failures.
-- Code review: checking that API error strings are user-presentable before surfacing in UI.
-- When support tickets reveal users confused by a specific error message.
-- Systematic pre-launch sweep of all error states in a feature.
+- Forms or workflows surface error states that block progress.
+- Support tickets cite confusing error messages or dead-end states.
+- Errors include codes, stack traces, or technical jargon shown to end users.
+- Recovery requires user action and the path forward is not obvious.
+- Design and engineering can collaborate on copy, layout, and instrumentation.
 
 ## Skip If (ANY kills it)
 
-- Preventing errors in the first place — use Heuristic #5 (Error Prevention) instead.
-- Designing empty states or onboarding flows — different UX domain.
-- Performance or reliability issues causing errors — fix the root cause, not the message.
-- Silent background errors that auto-retry without user involvement.
-- Good error messages cannot fix bad IA — if users reach the wrong place, clarity is irrelevant.
+- System is back-office only and admins debug from logs.
+- Errors are exclusively system-side and surfaced via on-call alerts.
+- Microcopy is owned solely by legal and cannot be changed.
+- Prototype too early — wait for real backend error catalogue.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Error catalogue | yaml | Backend team |
+| Support-ticket sample with error keywords | csv | Support tool |
+| Microcopy guidelines | markdown | Content team |
+| Component inventory for inline errors | storybook | Design system |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/error-prevention` | Prevention reduces what recovery must handle. |
+| `solo/ux/ux-ui-designer/user-control-freedom` | Undo plus recovery is the safety net pair. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/error-recovery.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/error-recovery.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-error-recovery.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[error-prevention]]
+- [[user-control-freedom]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
