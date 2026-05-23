@@ -3,72 +3,97 @@ slug: gha-deployment-patterns
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structure CD pipelines as staged deploy jobs (staging auto, production manual approval) backed by GitHub Environments.
-content_id: "ddbbc3f1be8e7d48"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a CD config (staged deploys with environment protection + reusable workflows + composite actions + canary/blue-green choice + release automation with changelog).
+content_id: "5298bb89298c0d59"
+complexity: deep
+produces: config
+est_tokens: 4300
 tags: [github-actions, cd, deployment, reusable-workflows, release]
 ---
-# GitHub Actions Deployment Patterns
+# GitHub Actions — Deployment Patterns
 
 ## Summary
 
-**One-sentence:** Structure CD pipelines as staged deploy jobs (staging auto, production manual approval) backed by GitHub Environments.
+**One-sentence:** Generates a CD config (staged deploys with environment protection + reusable workflows + composite actions + canary/blue-green choice + release automation with changelog).
 
-**One-paragraph:** Structure CD pipelines as staged deploy jobs (staging auto, production manual approval) backed by GitHub Environments. Extract shared deploy logic into reusable workflows called with workflow_call and shared steps into composite actions. For production, implement canary (10% traffic, metrics gate, full rollout) or blue-green (swap load balancer after validation). Release workflows trigger on version tags and publish packages plus Docker images.
+**One-paragraph:** Generates a CD config (staged deploys with environment protection + reusable workflows + composite actions + canary/blue-green choice + release automation with changelog). The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Multi-env deploys (dev → staging → prod) з environment protection.
+- Canary / blue-green rollouts з metric-based rollback.
+- Centralized reusable workflows для DRY-up CD pipelines.
+- Release automation: changelog generation + git tag + GitHub Release.
 
 ## Applies If (ALL must hold)
 
-- Any push to main that should automatically deploy to staging and optionally to production after review.
-- Organisations with multiple service repos that share the same deploy target (K8s cluster, ECS, Vercel org).
-- Release pipelines that must publish npm/PyPI packages and Docker images together on a version tag.
-- Workflows that need to deploy to more than two environments (dev, staging, prod) with different approval requirements.
+- Repository deploys to ≥2 environments (e.g. staging + prod).
+- Deployment is automatable (no manual UI clicks required).
+- Health metrics exist for the deployed service (HTTP 2xx ratio, P95 latency, error rate).
+- Release cadence is at least weekly — automation overhead pays back.
 
 ## Skip If (ANY kills it)
 
-- Long-running batch jobs exceeding GHA's 6-hour job limit — use Argo Workflows or Airflow instead.
-- Deployments requiring shared mutable state between jobs — GHA jobs run on isolated runners; passing large state via artifacts is slow and fragile.
-- Heavy parallel fanout (1000+ jobs at once) — GHA concurrency limits and queuing cause stalls; use BuildKit cluster or Buildbarn.
-- Repos on GitLab/Bitbucket — a GHA mirror creates a dual source of truth and fragments PR review.
+- Single-env deploy without progression (a personal project).
+- Deployments require manual UI steps that cannot be scripted — fix tooling first.
+- No service health metrics — rollback gates have no signal to act on.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Environment list | YAML (name, url, approvers) | Platform team |
+| Service health metrics | Prometheus / Datadog query refs | SRE |
+| Reusable workflow library | repo + path | CI team |
+| Release notes template | MD template | PM / engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/cicd-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-gha-deployment-patterns` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gha-deployment-patterns.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/AGENTS.md`
+- [[finops-framework]]
+- [[gitops-core-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

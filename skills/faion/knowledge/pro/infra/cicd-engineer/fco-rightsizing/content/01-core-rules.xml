@@ -1,15 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fco-rightsizing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fco-rightsizing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="FinOps — Rightsizing + Graviton Migration Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the fco-rightsizing methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Before rightsizing any production instance, collect at minimum 4 weeks of CPU and memory utilization data, identify peak values (not just averages), and implement the change in non-production first with a 48-hour validation window before promoting to production.</statement>
-      <rationale source="v1-source">Averages hide spikes. A 15% average CPU with a 95th-percentile of 85% is NOT a rightsizing candidate. The 4-week window captures weekly patterns including batch jobs, end-of-month processing, and marketing campaigns.</rationale>
+
+    <rule id="4-week-baseline-required" testable="true" depth="essential">
+      <statement>Rightsizing recommendation MUST be backed by ≥ 4 weeks of CPU + memory + network utilization data; sub-4-week recommendations are forbidden.</statement>
+      <rationale source="AWS Compute Optimizer docs, FinOps Foundation">Shorter baselines miss weekly cycles, batch jobs, monthly reports; 4 weeks is the empirical floor.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Migrate all EBS GP2 volumes to GP3 during the next maintenance window; GP3 costs 20% less and provides higher baseline IOPS (3,000 vs 100 for GP2) without requiring size changes.</statement>
-      <rationale source="v1-source">GP3 is strictly better than GP2 in both price and baseline performance. The migration requires no instance restart and no application changes.</rationale>
+
+    <rule id="p95-headroom" testable="true" depth="essential">
+      <statement>Recommended instance MUST have ≥ 20% headroom over the workload's p95 CPU + p95 memory; sizing to p50 is forbidden.</statement>
+      <rationale source="Google SRE Workbook ch.5">Sizing to p50 produces frequent saturation events; the 20% headroom over p95 covers normal variance.</rationale>
     </rule>
+
+    <rule id="graviton-eligibility-check" testable="true" depth="essential">
+      <statement>Before recommending x86 sizing, the workload MUST be evaluated for Graviton migration; eligible workloads MUST be recommended Graviton with ~20-40% additional savings.</statement>
+      <rationale source="AWS Graviton docs, AWS Graviton Ready partners">Graviton offers the largest single-step compute saving currently available; missing it leaves money on the table.</rationale>
+    </rule>
+
+    <rule id="no-downsize-on-burst" testable="true" depth="essential">
+      <statement>Downsizing MUST account for burst capacity (T-series credits, short-lived batch jobs); downsizing into credit depletion is forbidden.</statement>
+      <rationale source="AWS T-instance docs">T-instance credit exhaustion produces throttle events that look like an outage; the savings disappear under support cost.</rationale>
+    </rule>
+
+    <rule id="a-b-rollout" testable="true" depth="essential">
+      <statement>Rightsizing changes MUST roll out via blue/green or canary; in-place stop/resize/start on production is forbidden.</statement>
+      <rationale source="Internal release-engineering review">Stop/resize/start incurs downtime; canary catches sizing regressions before they hit all users.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If workload has &lt; 4 weeks of utilization data OR is bound to x86-only commercial software, this methodology MUST be skipped (collect baseline first OR use commercial vendor's sizing guide).</statement>
+      <rationale source="AWS Compute Optimizer docs">Insufficient data or hard constraint makes the recommendation noise.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

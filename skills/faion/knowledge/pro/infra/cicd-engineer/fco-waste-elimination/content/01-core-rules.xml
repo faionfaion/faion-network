@@ -1,15 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fco-waste-elimination Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fco-waste-elimination. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cloud Waste Elimination and Non-Production Scheduling Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>All non-production environments (dev, staging, QA, sandbox) MUST implement scheduled shutdown during off-hours. Minimum schedule: stop at 20:00, start at 06:00 on weekdays; stop Friday 20:00, start Monday 06:00 for weekends. Target 70% cost reduction on non-prod compute.</statement>
-      <rationale source="v1-source">Non-production environments are used during business hours only. Running them 24/7 wastes 65-70% of their cost. The AWS Instance Scheduler, Lambda cron, or Terraform scheduled actions implement this in under 2 hours with 65-70% immediate savings.</rationale>
+
+    <rule id="non-prod-scheduled-shutdown" testable="true" depth="essential">
+      <statement>All non-production environments (dev, staging, QA, sandbox) MUST implement scheduled shutdown during off-hours. Minimum: stop 20:00, start 06:00 weekdays; stop Fri 20:00, start Mon 06:00 weekends. Target 70% cost reduction on non-prod compute.</statement>
+      <rationale source="FinOps Foundation Framework">Running non-prod 24/7 when used 9h/day wastes 65-70% of compute cost; scheduled shutdown is the fastest FinOps ROI available.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Implement automated idle resource detection to run weekly. Alerts MUST include: resource ID, age, estimated monthly cost, and last-active date. Cleanup MUST require human approval for production resources; non-production cleanup can be automated with a 7-day warning period.</statement>
-      <rationale source="v1-source">Manual audits decay — after the initial cleanup sprint, the process is forgotten and waste re-accumulates within 3-6 months. Automated weekly scanning with human-readable alerts keeps the pipeline clean continuously.</rationale>
+    <rule id="automated-weekly-idle-scan" testable="true" depth="essential">
+      <statement>Implement automated idle resource detection running weekly. Alerts MUST include resource ID, age, estimated monthly cost, and last-active date. Cleanup MUST require human approval for production; non-prod cleanup may auto-execute with a 7-day warning period.</statement>
+      <rationale source="AWS Well-Architected Cost Pillar">Manual audits decay within 3-6 months — automation keeps the pipeline clean continuously.</rationale>
     </rule>
+    <rule id="dry-run-before-delete" testable="true" depth="essential">
+      <statement>Every cleanup script MUST default to dry-run mode and require an explicit `--apply` flag to mutate. Output a per-resource preview (id, age, cost, action) before any destructive call.</statement>
+      <rationale source="Cloud Cost Optimization best practice">Running cleanup without preview destroys legitimate resources and erodes trust in FinOps automation; trust loss is permanent.</rationale>
+    </rule>
+    <rule id="tagged-exception-policy" testable="true" depth="essential">
+      <statement>Resources exempt from waste cleanup MUST carry a tag `waste-exception=&lt;reason&gt;` with an owner email and an expiry date. Untagged exemptions are rejected by the scanner.</statement>
+      <rationale source="Tagging discipline">Untagged exceptions become institutional dark matter — nobody knows why a resource is 'special' six months later.</rationale>
+    </rule>
+    <rule id="waste-rate-target" testable="true" depth="essential">
+      <statement>Target overall cloud waste rate ≤25% of baseline spend; untagged resources ≤5%; non-prod scheduled savings ≥70% of non-prod compute. Track monthly and break the build (CI cost gate) on regression beyond a 5% MoM drift.</statement>
+      <rationale source="FinOps KPI catalogue">Without numeric targets the program slides into theatre; KPI gates force evidence-based progress.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when cloud spend &lt;$5k/month OR all non-prod already on schedule with waste-rate &lt;30% OR no authority to schedule shutdowns / approve deletes.</statement>
+      <rationale source="Scope guard">Below threshold the overhead outweighs the savings; above-threshold prerequisites must hold or the method cannot execute.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

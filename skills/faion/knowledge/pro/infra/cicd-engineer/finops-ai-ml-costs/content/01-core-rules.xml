@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="finops-ai-ml-costs Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for finops-ai-ml-costs. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="FinOps for AI / ML Workloads Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="gpu-spot-with-checkpointing" testable="true" depth="essential">
+      <statement>GPU training MUST use spot/preemptible instances when (a) job supports checkpointing every ≤30 min and (b) target interruption rate ≤5%. Otherwise on-demand.</statement>
+      <rationale source="Cloud GPU pricing economics">Spot delivers 60-90% savings but is unsafe without checkpoints; non-checkpointable jobs lose more in re-training than they save.</rationale>
     </rule>
+    <rule id="inference-cache-mandatory" testable="true" depth="essential">
+      <statement>Inference endpoints MUST cache deterministic / near-deterministic responses (embeddings, classification, system-prompt-bound classification) with TTL aligned to model version lifecycle.</statement>
+      <rationale source="Latency + cost tradeoff">Repeat-input rate of 20-40% is typical in production; caching trims both cost and latency.</rationale>
+    </rule>
+    <rule id="quantization-as-default" testable="true" depth="essential">
+      <statement>New model deployments MUST evaluate int8/int4 quantization first; full-precision deployments require evidence that quality regresses beyond the SLA threshold.</statement>
+      <rationale source="Quantization research consensus 2024-2025">Modern quantization holds quality within 1-3% on most tasks while halving cost; skipping evaluation is leaving money on the table.</rationale>
+    </rule>
+    <rule id="batched-inference-when-allowed" testable="true" depth="essential">
+      <statement>Batchable inference workloads (offline scoring, embeddings ingestion, async tasks) MUST use dynamic batching with target batch size matching the model's optimal throughput curve.</statement>
+      <rationale source="Throughput economics">Single-request inference underutilizes GPU; dynamic batching can 3-10x throughput on the same hardware.</rationale>
+    </rule>
+    <rule id="per-run-cost-attribution" testable="true" depth="essential">
+      <statement>Every training run MUST emit a cost record with job_id, team, dataset_hash, gpu_hours, total_cost. Every inference endpoint MUST emit per-team cost tags.</statement>
+      <rationale source="Chargeback enablement">Without attribution, FinOps reviews devolve into shared blame; chargeback puts the spend conversation with the team that drives it.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when GPU spend &lt;$2k/month AND inference spend &lt;$1k/month — vendor SKU optimization wins; OR no checkpointing primitive available; OR latency-critical inference incompatible with cache TTL.</statement>
+      <rationale source="Scope guard">Below threshold the engineering overhead exceeds savings; above threshold prerequisites are non-negotiable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

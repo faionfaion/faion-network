@@ -3,75 +3,96 @@ slug: finops-framework
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: FinOps is a cultural practice that brings financial accountability to cloud spending through cross-functional collaboration between Engineering, Finance, and Business teams.
-content_id: "101019bb7330c2b6"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates the program-level FinOps config (phase assessment + team structure + RACI + cadence + phase-specific checklists) that scaffolds the cultural practice end-to-end.
+content_id: "bd241fd2c83914aa"
+complexity: deep
+produces: config
+est_tokens: 4300
 tags: [finops, cloud-cost, governance, framework, cost-management]
 ---
-# FinOps Framework: Cloud Financial Operations
+# FinOps Framework — INFORM / OPTIMIZE / OPERATE
 
 ## Summary
 
-**One-sentence:** FinOps is a cultural practice that brings financial accountability to cloud spending through cross-functional collaboration between Engineering, Finance, and Business teams.
+**One-sentence:** Generates the program-level FinOps config (phase assessment + team structure + RACI + cadence + phase-specific checklists) that scaffolds the cultural practice end-to-end.
 
-**One-paragraph:** FinOps is a cultural practice that brings financial accountability to cloud spending through cross-functional collaboration between Engineering, Finance, and Business teams. It operates in three phases — INFORM (visibility), OPTIMIZE (efficiency), OPERATE (governance) — and addresses a market where 32% of $723.4B annual cloud spend is wasted.
+**One-paragraph:** Generates the program-level FinOps config (phase assessment + team structure + RACI + cadence + phase-specific checklists) that scaffolds the cultural practice end-to-end. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Запуск FinOps program з нуля в компанії з cloud spend ≥$50k/month.
+- Маturity audit існуючої програми (де ми зараз: INFORM / OPTIMIZE / OPERATE).
+- Сross-functional alignment між Eng / Finance / Business.
+- Quarterly executive review: показати phase mix, KPI prog, next steps.
 
 ## Applies If (ALL must hold)
 
-- Cloud bill above $5k/month and growing 20%+ month-over-month with no per-team visibility.
-- Multi-team or multi-product engineering org needing showback or chargeback reporting.
-- Pre-IPO or due-diligence phase requiring credible unit economics ($/customer, $/transaction, $/inference).
-- Reserved Instance or Savings Plan renewal approaching — need data-driven commitment sizing.
-- Kubernetes cluster shared across teams where pods are unaccounted.
-- CFO or board flagged cloud cost as a top-3 P&L concern.
-- Untagged spend exceeds 20% of bill — allocation impossible without remediation.
+- Annual cloud spend ≥$500k (the FinOps overhead pays back).
+- Cross-functional sponsorship exists (Eng + Finance + Business lead).
+- At least one named FinOps practitioner / lead.
+- No formal phase-based framework currently in place.
 
 ## Skip If (ANY kills it)
 
-- Cloud bill below $1k/month — FinOps tooling overhead exceeds savings; eyeball billing weekly instead.
-- Workloads on flat-fee infrastructure (bare metal, fixed VPS) — no elastic cost to optimize.
-- Crisis cost-cutting that cannot wait — apply blunt instruments first (turn off non-prod overnight, kill orphan resources), then formalize FinOps.
-- Strictly regulated workloads where security/compliance trumps cost (dedicated HSMs, isolated tenancy).
+- Single-team org with <$100k annual cloud spend — lightweight cost hygiene is enough.
+- No cross-functional sponsorship — framework cannot work alone in eng silo.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Cloud spend baseline | $/month + YoY growth | Finance |
+| Org structure | team list with owners | HR / Eng leadership |
+| Cost dashboard | URL | BI / Platform |
+| Mandate from leadership | signed off charter doc | Exec sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/cicd-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-finops-framework` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-finops-framework.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/AGENTS.md`
+- [[finops-framework]]
+- [[gitops-core-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

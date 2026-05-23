@@ -1,23 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gha-caching-artifacts Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gha-caching-artifacts. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitHub Actions — Caching and Artifacts Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Cache keys MUST include hashFiles('**/lockfile') so the cache is invalidated when dependencies change. Never use a bare runner.os key without a content hash.</statement>
-      <rationale source="v1-source">A cache key without a lockfile hash will restore a stale node_modules or site-packages that does not match the current lockfile, causing hard-to-diagnose test failures and version drift.</rationale>
+
+    <rule id="deterministic-cache-key" testable="true" depth="essential">
+      <statement>Cache keys MUST hash the lockfile and the OS+language version (e.g. `${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}`). Random or branch-name keys are rejected.</statement>
+      <rationale source="GitHub Actions cache docs">Non-deterministic keys cause cache poisoning or constant misses; deterministic keys give predictable hit ratio.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Set retention-days: 7 on intermediate build artifacts. Reserve the 90-day default only for release artifacts that must be downloadable post-deployment.</statement>
-      <rationale source="v1-source">Every run's artifacts consume storage billed to the org. 7-day retention for intermediate outputs keeps storage costs proportional to actual usage.</rationale>
+    <rule id="restore-keys-fallback" testable="true" depth="essential">
+      <statement>Cache restore MUST declare a `restore-keys` fallback that prefixes-matches older keys, enabling partial reuse when lockfile changes incrementally.</statement>
+      <rationale source="Cache miss recovery">Without restore-keys every lockfile change is a cold cache; partial reuse cuts the cold-cache cost in half.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use actions/cache@v4 (not v3). The v4 service was rewritten in Feb 2025; v3 silently fails to restore on new runner images. Verify cache hits in the job log after upgrading.</statement>
-      <rationale source="v1-source">The v3 → v4 API change broke existing restore logic silently. You lose the entire performance benefit of caching without any error to diagnose.</rationale>
+    <rule id="artifact-not-cache-for-job-handoff" testable="true" depth="essential">
+      <statement>Cross-job handoff of build outputs (binary, html report, container image manifest) MUST use `actions/upload-artifact` / `download-artifact`, not the cache. Cache is for inputs; artifacts are for outputs.</statement>
+      <rationale source="Semantic separation">Conflating cache with artifact leads to lost data (cache evicted) or stale data (artifact treated as cache).</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>For Docker Buildx: use cache-from: type=gha and cache-to: type=gha,mode=max. Do not use a manual actions/cache step for Docker layers.</statement>
-      <rationale source="v1-source">type=gha is the native GHA cache backend for Buildx; it handles layer deduplication correctly. Manual cache steps for Docker layers corrupt layer ordering.</rationale>
+    <rule id="docker-buildx-layer-cache" testable="true" depth="essential">
+      <statement>Docker builds MUST use `docker/build-push-action` with `cache-from` + `cache-to` targeting either GHA cache or registry cache. Plain `docker build` without layer cache is rejected for pipelines &gt;30s.</statement>
+      <rationale source="Buildx cache docs">Without layer cache, base layers rebuild on every CI run, wasting minutes per build.</rationale>
     </rule>
+    <rule id="artifact-retention-set" testable="true" depth="essential">
+      <statement>Artifact retention MUST be set explicitly (default 90d is wasteful). Recommended: 7d for PR artifacts, 30d for main, 90d for releases.</statement>
+      <rationale source="Retention discipline">Default retention bloats storage; explicit retention keeps the cost predictable.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when all builds &lt;2min OR cache key cannot be deterministic OR security policy forbids cache for the secret class.</statement>
+      <rationale source="Scope guard">Below threshold caching wastes engineering; without deterministic keys it actively harms; secret classes need different controls.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

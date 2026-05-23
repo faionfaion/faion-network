@@ -1,22 +1,170 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="gitlab-cicd Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="GitLab CI/CD Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/gitlab-cicd.json",
+  "title": "GitLab CI/CD",
+  "type": "object",
+  "required": [
+    "stages",
+    "jobs",
+    "variables_policy",
+    "security_scanners",
+    "environments",
+    "owner",
+    "last_reviewed"
+  ],
+  "properties": {
+    "stages": {
+      "type": "array",
+      "minItems": 1
+    },
+    "jobs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "stage",
+          "needs",
+          "rules"
+        ]
+      }
+    },
+    "variables_policy": {
+      "type": "object",
+      "required": [
+        "all_protected",
+        "all_masked_when_sensitive"
+      ]
+    },
+    "security_scanners": {
+      "type": "array",
+      "minItems": 1
+    },
+    "environments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "url",
+          "deployment_tier"
+        ]
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "last_reviewed": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "stages": [
+    "build",
+    "test",
+    "security",
+    "deploy"
+  ],
+  "jobs": [
+    {
+      "name": "build",
+      "stage": "build",
+      "needs": [],
+      "rules": [
+        {
+          "if": "$CI_PIPELINE_SOURCE == 'merge_request_event'"
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "stage": "test",
+      "needs": [
+        "build"
+      ],
+      "rules": [
+        {
+          "if": "$CI_PIPELINE_SOURCE == 'merge_request_event'"
+        }
+      ]
+    },
+    {
+      "name": "sast",
+      "stage": "security",
+      "needs": [],
+      "rules": [
+        {
+          "if": "$CI_PIPELINE_SOURCE == 'merge_request_event'"
+        }
+      ]
+    },
+    {
+      "name": "deploy-prod",
+      "stage": "deploy",
+      "needs": [
+        "test",
+        "sast"
+      ],
+      "rules": [
+        {
+          "if": "$CI_COMMIT_BRANCH == 'main'",
+          "when": "manual"
+        }
+      ]
+    }
+  ],
+  "variables_policy": {
+    "all_protected": true,
+    "all_masked_when_sensitive": true
+  },
+  "security_scanners": [
+    "sast",
+    "secret_detection",
+    "dependency_scanning"
+  ],
+  "environments": [
+    {
+      "name": "production",
+      "url": "https://acme.io",
+      "deployment_tier": "production"
+    }
+  ],
+  "owner": "platform@team.io",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "stages": null,
+  "owner": "team"
+}
+]]></code>
+    <note>Missing or empty required fields; placeholder owner ('team'). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>missing required keys per schema</pattern>
+  </section>
+
+  <reference path="scripts/validate-gitlab-cicd.py">Validator script</reference>
 </text>

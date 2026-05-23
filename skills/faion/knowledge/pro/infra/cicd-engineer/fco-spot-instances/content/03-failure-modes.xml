@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="fco-spot-instances Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for fco-spot-instances as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="FinOps — Spot / Preemptible Instances for Fault-Tolerant Workloads Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="no-checkpointing">
+      <symptom>ML training job runs on spot for 12 hours; interruption at hour 11 wipes all progress; team runs it on-demand thereafter.</symptom>
+      <root-cause source="AWS Spot docs">Author moved a long-running, uncheckpointed job to spot.</root-cause>
+      <fix>Add checkpointing every 5 min (model snapshot to S3); on resume, load latest checkpoint; verify checkpoint restore works under interruption.</fix>
+    </antipattern>
+
+    <antipattern id="single-instance-family">
+      <symptom>Spot fleet 100% m5.large; AWS reclaims m5 in the region; fleet drops to zero for 4 hours.</symptom>
+      <root-cause source="AWS Spot Best Practices">Author chose one family for 'simplicity'.</root-cause>
+      <fix>Diversify across m5, m6i, m6a, c5, c6i in ≥ 2 AZs; let EC2 Fleet pick lowest-priced capacity available.</fix>
+    </antipattern>
+
+    <antipattern id="no-on-demand-base">
+      <symptom>Service runs 100% spot; large reclamation event zeros the fleet; on-demand fallback never provisioned; full outage 30 min.</symptom>
+      <root-cause source="AWS EC2 Fleet docs">Author bet 100% on spot to maximize savings.</root-cause>
+      <fix>Provision a 10-20% on-demand floor in the fleet; spot is the cheap upper layer, on-demand is the survival floor.</fix>
+    </antipattern>
+
   </section>
 </text>

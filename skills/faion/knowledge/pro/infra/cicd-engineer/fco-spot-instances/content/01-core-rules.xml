@@ -1,15 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fco-spot-instances Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fco-spot-instances. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="FinOps — Spot / Preemptible Instances for Fault-Tolerant Workloads Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the fco-spot-instances methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Any workload running on Spot MUST implement: (1) graceful shutdown handler for the 2-minute interruption notice, (2) application checkpointing for jobs longer than 10 minutes, (3) automatic fallback to on-demand if Spot is unavailable for more than 10 minutes, and (4) instance type diversification across at least 3 instance families and 2 availability zones.</statement>
-      <rationale source="v1-source">A single failure mode breaks all four requirements: if any one is missing, interruptions cause data loss, job restarts, or service unavailability that exceeds the cost savings. Diversification prevents the "no capacity" failure where a single instance type is fully claimed by on-demand demand in all AZs simultaneously.</rationale>
+
+    <rule id="checkpointing-required" testable="true" depth="essential">
+      <statement>Spot workloads MUST checkpoint state at interval ≤ 5 minutes; uncheckpointed compute on spot is forbidden because interruption forfeits all in-progress work.</statement>
+      <rationale source="AWS Spot docs, GCP preemptible docs">Without checkpoints, interruption resets the job; the savings are erased by re-execution cost.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Configure Spot Fleet or ASG mixed instances policy with at least 3-4 instance types of equivalent vCPU and memory across 2+ availability zones. Never request a single Spot instance type — the combination of high demand + single type creates frequent unavailability.</statement>
-      <rationale source="v1-source">A single instance type (e.g., c5.4xlarge) may have 100% interruption frequency in a region during peak demand. Diversifying across c5.4xlarge, c5a.4xlarge, c6i.4xlarge, and m5.4xlarge means at least one variant will have available capacity.</rationale>
+
+    <rule id="interruption-handler" testable="true" depth="essential">
+      <statement>Workload MUST implement an interruption-notice handler (Instance Metadata Service / preemption hook) that drains gracefully within 90 seconds.</statement>
+      <rationale source="AWS Spot Instance interruption notice docs">Ungraceful interruption produces partial writes and orphaned tasks; the 2-minute warning is the only chance to drain.</rationale>
     </rule>
+
+    <rule id="instance-diversification" testable="true" depth="essential">
+      <statement>Spot fleet MUST diversify across ≥ 3 instance types AND ≥ 2 AZs; single-instance-family spot is forbidden.</statement>
+      <rationale source="AWS Spot Best Practices">Single-family spot pools spike to zero capacity during demand surges; diversification keeps the fleet alive.</rationale>
+    </rule>
+
+    <rule id="max-price-on-demand" testable="true" depth="essential">
+      <statement>Max spot price MUST be capped at on-demand price; bidding above on-demand defeats the entire saving rationale.</statement>
+      <rationale source="AWS Spot docs">Above-on-demand bids exist for rare cases; default policy is never to exceed on-demand.</rationale>
+    </rule>
+
+    <rule id="on-demand-fallback-for-base" testable="true" depth="essential">
+      <statement>Critical-path workload MUST keep a minimum on-demand fleet (≥ 10% of capacity) so a complete spot interruption does not zero the service.</statement>
+      <rationale source="AWS EC2 Fleet docs, GCP preemptible best practices">Total fleet zero is a real risk during spot reclamation events; the on-demand floor prevents full outage.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the workload is stateful without checkpoint capability OR latency-critical with no replacement gap tolerance, this methodology MUST be skipped.</statement>
+      <rationale source="Internal scope review">Spot under those constraints produces an outage, not savings.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

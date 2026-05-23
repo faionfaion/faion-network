@@ -1,23 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gha-matrix-builds Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gha-matrix-builds. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitHub Actions — Matrix Builds Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Test matrix jobs MUST set fail-fast: false so that a failure on one combination does not cancel the remaining combinations.</statement>
-      <rationale source="v1-source">The default fail-fast: true hides failures on secondary platforms. You need the full cross-product result to triage regressions accurately.</rationale>
+
+    <rule id="explicit-axes" testable="true" depth="essential">
+      <statement>Matrix axes MUST be explicit named lists (`python-version: [3.10, 3.11, 3.12]`). Wildcards or implicit fallbacks rejected.</statement>
+      <rationale source="GitHub matrix docs">Implicit axes drift silently when GHA updates; explicit lists are auditable and reproducible.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use exclude to remove invalid combinations and include to add special configurations with extra variables (e.g., coverage: true for one canonical combination).</statement>
-      <rationale source="v1-source">Phantom combinations waste CI minutes and can fail for unrelated reasons. Include allows attaching extra variables to a specific combination without duplicating the matrix.</rationale>
+    <rule id="include-exclude-discipline" testable="true" depth="essential">
+      <statement>Use `include` to add specific combinations (e.g. one extra job for python 3.12 on windows-only) and `exclude` to skip combinations that don't make sense (e.g. mac on python 3.10 is unsupported). Both are version-controlled.</statement>
+      <rationale source="Matrix discipline">Without include/exclude the matrix is N×M; the right matrix is often a sparse subset.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>When uploading artifacts from a matrix job, embed the matrix variables in the artifact name: name: build-${{ matrix.os }}-${{ matrix.node }}.</statement>
-      <rationale source="v1-source">Artifacts with the same name overwrite each other. Matrix-keyed names allow the downstream combine job to download-artifact with pattern: build-* and merge-multiple: true.</rationale>
+    <rule id="fail-fast-tuned" testable="true" depth="essential">
+      <statement>`fail-fast` MUST be set explicitly. Default `true` is fine for cheap matrices; set `false` when each combination's failure carries unique signal (cross-OS compat).</statement>
+      <rationale source="Failure mode signal">Default fail-fast hides cross-OS issues by killing the first failure; deliberate choice is required.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Set max-parallel only when runner quota is constrained; otherwise omit to let GHA schedule all combinations as fast as possible.</statement>
-      <rationale source="v1-source">Artificially serialising a matrix defeats its purpose. Throttle only when you know the concurrency limit of your runner pool.</rationale>
+    <rule id="max-parallel-bound" testable="true" depth="essential">
+      <statement>`max-parallel` MUST be set when matrix size &gt;10 to avoid burning runner budget; align with GitHub plan concurrency limit.</statement>
+      <rationale source="Runner budget guard">Unbounded parallelism in big matrices exhausts the runner queue and starves other workflows.</rationale>
     </rule>
+    <rule id="per-combo-artifacts-named" testable="true" depth="essential">
+      <statement>Per-combination artifacts MUST be named with the combination key (e.g. `coverage-${{matrix.os}}-${{matrix.python}}`) to avoid overwrite conflicts.</statement>
+      <rationale source="Artifact naming">Unscoped names cause silent overwrite; the last job wins and others' data is lost.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when matrix is 1×1 OR tests cannot run concurrently OR runner-budget cost outweighs coverage value.</statement>
+      <rationale source="Scope guard">Without true combinatorial coverage the matrix degrades to single-job-with-extra-yaml.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

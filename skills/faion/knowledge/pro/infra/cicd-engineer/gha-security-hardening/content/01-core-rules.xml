@@ -1,31 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gha-security-hardening Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gha-security-hardening. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitHub Actions — Security Hardening Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every uses: reference MUST be pinned to a full 40-character SHA commit hash, not a tag or branch. Add the version number as a comment: uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1</statement>
-      <rationale source="v1-source">Tags are mutable. A supply-chain attack replaces the tag on the upstream repo and every downstream workflow runs malicious code on the next trigger. SHA is immutable.</rationale>
+
+    <rule id="sha-pin-third-party-actions" testable="true" depth="essential">
+      <statement>Third-party actions MUST be pinned to a specific commit SHA, never a tag. `uses: actions/checkout@v4` is rejected; `uses: actions/checkout@&lt;sha&gt;` is required.</statement>
+      <rationale source="Supply chain integrity">Tags are mutable; a compromised tag = compromised workflow. SHA pinning is the only audit-friendly form.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Set permissions: at the job level (not workflow level) with only the scopes the job needs. Start with contents: read and add scopes incrementally. Never set permissions: write-all.</statement>
-      <rationale source="v1-source">Workflow-level permissions apply to every job. A test job that only reads code should never have packages: write or deployments: write. Job-level scope limits the blast radius of a compromised step.</rationale>
+    <rule id="oidc-not-static-keys" testable="true" depth="essential">
+      <statement>Cloud authentication MUST use OIDC with a trust policy scoped to the repo + branch + workflow. Long-lived access keys in secrets are rejected.</statement>
+      <rationale source="Short-lived credentials">Static keys leak; OIDC issues per-run tokens with scoped trust, eliminating the leak class.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All cloud authentication MUST use OIDC. Add id-token: write permission, configure the provider's trust policy to accept the GH OIDC issuer, and use the provider's official configure-credentials action.</statement>
-      <rationale source="v1-source">Long-lived cloud credentials stored as repo secrets persist until manually rotated. An OIDC token is valid for 15 minutes and is scoped to the specific workflow run; a leaked token is useless after the run completes.</rationale>
+    <rule id="scoped-token-permissions" testable="true" depth="essential">
+      <statement>`permissions:` block MUST be declared at job or workflow scope with explicit minimum scopes. Implicit default (write-all) is rejected.</statement>
+      <rationale source="Least privilege">Default GITHUB_TOKEN has broad write; scoping it caps blast radius if a step is compromised.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>NEVER use pull_request_target to get secrets for fork PRs. Use pull_request with minimal token scopes. If fork PRs genuinely need secrets, deploy to a sandbox environment protected by required reviewers and check out only the base ref, never the PR head.</statement>
-      <rationale source="v1-source">pull_request_target runs in the target repo context with all its secrets. A PR with malicious workflow changes can exfiltrate every secret on the first trigger. This is the most common critical GHA vulnerability pattern.</rationale>
+    <rule id="no-pull-request-target-with-checkout-pr" testable="true" depth="essential">
+      <statement>`pull_request_target` workflows MUST NOT check out the PR branch and execute its code with secrets. The combination is the most common GHA supply-chain exploit class.</statement>
+      <rationale source="GHA security advisory">The pattern lets a PR from a fork execute arbitrary code with repo secrets — historically exploited multiple times.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Avoid ${{ github.event.* }} interpolation directly in run: shell commands. Assign to an env: variable and reference the env var with $VARNAME to prevent shell injection.</statement>
-      <rationale source="v1-source">A PR title like "; rm -rf /" interpolated directly into run: echo "${{ github.event.pull_request.title }}" executes as a shell command. env: variables are passed safely without shell evaluation.</rationale>
+    <rule id="actionlint-gate" testable="true" depth="essential">
+      <statement>Repository MUST run `actionlint` (or equivalent) as a required check on workflow file changes. Manual review alone is insufficient.</statement>
+      <rationale source="Static analysis">actionlint catches expression-injection, missing permissions, and other patterns that humans miss.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Self-hosted runners MUST use specific labels (e.g., runs-on: [self-hosted, repo-name, ephemeral]) and MUST be ephemeral (Actions Runner Controller on K8s, not long-lived VMs). Public repos MUST NOT use self-hosted runners for PR workflows.</statement>
-      <rationale source="v1-source">runs-on: self-hosted without labels targets any available runner. A fork PR can run on a privileged runner with access to internal network resources. Ephemeral ARC runners are isolated per job.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when (a) repo internal-only with no external PRs AND no secrets in workflows AND no cloud-auth; OR (b) prototype repo with no production path.</statement>
+      <rationale source="Scope guard">Below threshold the overhead exceeds risk; above threshold the methodology is non-optional.</rationale>
     </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

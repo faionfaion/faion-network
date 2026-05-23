@@ -3,78 +3,96 @@ slug: github-actions-basics
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GitHub Actions is a CI/CD platform integrated directly into GitHub repositories.
-content_id: "f0e4e52fdead7db9"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an entry-level GHA config (single repo workflow with trigger + permissions + a canonical 2-job pipeline + cache + artifact) that pre-installs the discipline of the later methodologies.
+content_id: "1a19177bd5357de0"
+complexity: medium
+produces: config
+est_tokens: 4300
 tags: [github-actions, ci-cd, automation, workflows, devops]
 ---
-# GitHub Actions Basics
+# GitHub Actions — Basics
 
 ## Summary
 
-**One-sentence:** GitHub Actions is a CI/CD platform integrated directly into GitHub repositories.
+**One-sentence:** Generates an entry-level GHA config (single repo workflow with trigger + permissions + a canonical 2-job pipeline + cache + artifact) that pre-installs the discipline of the later methodologies.
 
-**One-paragraph:** GitHub Actions is a CI/CD platform integrated directly into GitHub repositories. It enables automated workflows triggered by events like pushes, pull requests, and releases, with support for matrix builds, reusable workflows, and extensive marketplace actions. Platform Scale (2025): 11.5 billion minutes used in public/open source projects (35% YoY growth), powering 71 million jobs per day.
+**One-paragraph:** Generates an entry-level GHA config (single repo workflow with trigger + permissions + a canonical 2-job pipeline + cache + artifact) that pre-installs the discipline of the later methodologies. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Перший GHA workflow в репо: lint + test + small artifact.
+- Onboarding eng-team на GHA з безпечним baseline.
+- Прототип pipeline що еволюціонує у складніший CD.
+- Internal tooling repos де треба швидкий CI з мінімумом ceremony.
 
 ## Applies If (ALL must hold)
 
-- Projects hosted on GitHub
-- Open source projects needing free CI/CD
-- Teams already using GitHub ecosystem
-- Workflows requiring GitHub integration (issues, PRs, releases)
-- Multi-platform builds (Linux, Windows, macOS)
-- Repos hosted on GitHub: GHA is the path of least resistance for CI
-- Open source projects — public repos run free, including Linux/Win/Mac matrix
-- Teams that want PR checks, status badges, and release automation tied directly to GitHub events
-- Simple-to-medium pipelines (build, test, lint, deploy) — most workflows fit comfortably in a single .github/workflows/ci.yml
-- First CI/CD setup for a project: GHA's marketplace + minimal config gets a green build in minutes
+- Repository hosted on GitHub with Actions available.
+- Code has a runnable test or lint step (`npm test`, `pytest`, etc.).
+- Owner exists who will maintain the workflow.
+- Standard project layout (one main branch + PRs).
 
 ## Skip If (ANY kills it)
 
-- Code on GitLab/Bitbucket — the native CI is a better fit
-- Complex multi-team multi-repo orchestration where reusable workflows / composite actions strain — at that point evaluate true workflow engines
-- Heavy long-running batch (greater than 6h on hosted runners; greater than 35 days on self-hosted with ARC) — use Argo Workflows / Airflow / Prefect
-- Deeply customized agents needing persistent state — GHA runners are ephemeral; engineering around that is more work than picking a different tool
+- Repo already has a hardened GHA setup — jump to specific methodology (security/matrix/cd).
+- Tests don't run — fix the test setup before adding CI.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Test command | string | Eng team |
+| Default branch name | string (main / master) | GitHub admin |
+| Build output path | string | Eng team |
+| Owner email | string | Eng team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/cicd-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-github-actions-basics` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-github-actions-basics.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/AGENTS.md`
+- [[finops-framework]]
+- [[gitops-core-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
