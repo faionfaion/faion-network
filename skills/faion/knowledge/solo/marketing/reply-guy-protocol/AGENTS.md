@@ -3,82 +3,97 @@ slug: reply-guy-protocol
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "dcf1775a59b8b107"
-summary: Reply Guy Protocol — pinned protocol for the indie hacker: fixed shape + named owner + evidence anchors + outcome review, so build-in-public audience growth: 0 to 5k followers over 6 months stops being folklore and starts being a reviewable operating tool.
-tags: [marketing, solo, protocol, reply, guy]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Systematic reply-game protocol for build-in-public audience growth — produces a protocol spec naming target list, rotation, anti-cringe heuristics, and time-box."
+content_id: "98ff6741c3046b22"
+complexity: medium
+produces: playbook-step
+est_tokens: 4900
+tags: [marketing, solo, build-in-public, reply, protocol]
 ---
 # Reply Guy Protocol
 
 ## Summary
 
-**One-sentence:** Reply Guy Protocol — pinned protocol for the indie hacker: fixed shape + named owner + evidence anchors + outcome review, so build-in-public audience growth: 0 to 5k followers over 6 months stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Systematic reply-game protocol for build-in-public audience growth — produces a protocol spec naming target list, rotation, anti-cringe heuristics, and time-box.
 
-**One-paragraph:** In growth and marketing, the indie hacker runs build-in-public audience growth: 0 to 5k followers over 6 months on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Most indie audience growth happens in replies, not original posts. faion has no methodology on how to do this systematically without being spammy: target list, rotation, anti-cringe heuristics, time-box. `reply-guy-protocol` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the indie hacker starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored protocol committed to the team's knowledge space.
+**One-paragraph:** Systematic reply-game protocol for build-in-public audience growth — produces a protocol spec naming target list, rotation, anti-cringe heuristics, and time-box. The methodology pins a typed input → bounded transformation → contract-checked output for the recurring decision named in `Applies If`, and produces a versioned, owner-signed artefact downstream consumers can act on without re-deriving the reasoning. Hard rules block fabrication and silent template drift; the decision tree maps observable input signals to a conclusion that names which rule applies.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months`
-- the indie hacker owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Indie operator is on a build-in-public audience growth track (0→5K followers, 6-month horizon).
+- A named target list of 30–100 accounts to engage with weekly exists (or can be drafted).
+- A named owner will personally execute (not a VA, not automation).
+- A version-controlled space exists where the protocol is committed and reviewed.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Operator is not on social platforms or refuses to engage publicly — protocol does not apply.
+- Goal is paid ads / pure inbound — `ppc-manager` or content engine instead.
+- Automation tools auto-reply on the operator's behalf — protocol is incompatible (and looks spammy).
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the indie hacker.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Reply Guy Protocol task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `solo/sdd/sdd/AGENTS.md` | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/reply-protocol.md` | Markdown protocol: target-list schema, rotation rules, anti-cringe heuristics, daily time-box. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-reply-guy-protocol.py` | Validate the artefact against the 02-output-contract schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[build-in-public-cadence]]
+- [[outreach-personalization-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

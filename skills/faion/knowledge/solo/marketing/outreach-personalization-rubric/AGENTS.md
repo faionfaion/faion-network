@@ -3,77 +3,97 @@ slug: outreach-personalization-rubric
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Outreach Personalization Rubric: codified marketing practice that turns the recurring 'role-growth-marketing/Outreach batch: backlinks + influencers + community (90 min, weekly)' decision into a repeatable, auditable artefact.
-content_id: "1c8e085f787a8f96"
-tags: [outreach-personalization-rubric, marketing, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Scoring rubric for outbound personalization — verbatim-anchor count, specificity, recency, evidence — produces a 0–10 score per message blocking AI-mass-mail-shaped sends."
+content_id: "ce63f7cc1e0ea1e0"
+complexity: medium
+produces: rubric
+est_tokens: 4900
+tags: [marketing, solo, outreach, personalization, rubric]
 ---
 # Outreach Personalization Rubric
 
 ## Summary
 
-**One-sentence:** Outreach Personalization Rubric: codified marketing practice that turns the recurring 'role-growth-marketing/Outreach batch: backlinks + influencers + community (90 min, weekly)' decision into a repeatable, auditable artefact.
+**One-sentence:** Scoring rubric for outbound personalization — verbatim-anchor count, specificity, recency, evidence — produces a 0–10 score per message blocking AI-mass-mail-shaped sends.
 
-**One-paragraph:** Outreach Personalization Rubric addresses the gap identified by the role-growth-marketing/Outreach batch: backlinks + influencers + community (90 min, weekly) playbook: growth-cold-outreach exists but lacks 'what makes personalization actually personal' rubric — to avoid AI-mass-mail penalty. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Scoring rubric for outbound personalization — verbatim-anchor count, specificity, recency, evidence — produces a 0–10 score per message blocking AI-mass-mail-shaped sends. The methodology pins a typed input → bounded transformation → contract-checked output for the recurring decision named in `Applies If`, and produces a versioned, owner-signed artefact downstream consumers can act on without re-deriving the reasoning. Hard rules block fabrication and silent template drift; the decision tree maps observable input signals to a conclusion that names which rule applies.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-growth-marketing/Outreach batch: backlinks + influencers + community (90 min, weekly) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Operator runs outbound (cold email, LinkedIn DM, X DM) at any volume above 5 messages / week.
+- Each draft can be inspected before send (no auto-mass-send tool that bypasses review).
+- A named owner is responsible for the campaign's reply-rate and bounce-rate metrics.
+- Source-of-truth signals (LinkedIn profile, recent post, repo, podcast) for the recipient are accessible.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Operator is running brand awareness blasts, not 1:1 outreach — different methodology.
+- Tooling does not allow per-message inspection — fix the tool before applying the rubric.
+- Recipient list is purchased / scraped without signal — personalization rubric does not save spam.
 
 ## Prerequisites
 
-- recent context for the role-growth-marketing/Outreach batch: backlinks + influencers + community (90 min, weekly) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Outreach Personalization Rubric task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/content-marketer` | parent role skill — provides the operating context for this methodology |
+| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `solo/sdd/sdd/AGENTS.md` | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/outreach-personalization-rubric.json` | JSON schema for the Outreach Personalization Rubric output contract |
-| `templates/outreach-personalization-rubric.md` | Markdown skeleton with the required fields |
+| `templates/personalization-rubric.md` | Markdown rubric with 5 scoring criteria, weight, evidence requirement, pass threshold. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-outreach-personalization-rubric.py` | Enforce Outreach Personalization Rubric output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-outreach-personalization-rubric.py` | Validate the artefact against the 02-output-contract schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
-- upstream playbook: `role-growth-marketing/Outreach batch: backlinks + influencers + community (90 min, weekly)`
+- [[outreach-crm-minimal-schema]]
+- [[reply-guy-protocol]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

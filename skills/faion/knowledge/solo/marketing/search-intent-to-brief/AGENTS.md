@@ -3,64 +3,97 @@ slug: search-intent-to-brief
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: "Convert a target query into a structured content brief — intent class, must-cover entities, JTBD framing, SERP-feature inventory — before any drafting starts."
-content_id: "43986eee5b2dc80c"
-tags: [search-intent-to-brief, marketing, solo]
+summary: "Convert a target query into a structured content brief — intent class, must-cover entities, JTBD framing, SERP-feature inventory — produces a brief spec drafters cannot ignore."
+content_id: "54158e9655d2ec69"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [marketing, solo, seo, search-intent, brief]
 ---
-# Search Intent to Brief
+# Search Intent To Brief
 
 ## Summary
 
-**One-sentence:** A structured handoff between keyword research and content drafting that produces a brief tagged with intent class, must-cover entities, JTBD frame, and SERP-feature inventory.
+**One-sentence:** Convert a target query into a structured content brief — intent class, must-cover entities, JTBD framing, SERP-feature inventory — produces a brief spec drafters cannot ignore.
 
-**One-paragraph:** Faion has `growth-seo-fundamentals` and `topical-authority` but no methodology for the highest-leverage handoff: turning a target query into a brief an AI or human can draft against. Without an explicit intent tag, drafts drift toward generic prose and miss SERP-feature opportunities (featured snippets, PAA, video carousels, etc.). This methodology fixes that with a 5-rule production pipeline: classify intent (I/C/T/N), enumerate must-cover entities from top-10 SERP, frame the JTBD ("when I have query X, I want to Y, so I can Z"), inventory current SERP features, and write the brief as a contract draft authors cannot ignore.
+**One-paragraph:** Convert a target query into a structured content brief — intent class, must-cover entities, JTBD framing, SERP-feature inventory — produces a brief spec drafters cannot ignore. The methodology pins a typed input → bounded transformation → contract-checked output for the recurring decision named in `Applies If`, and produces a versioned, owner-signed artefact downstream consumers can act on without re-deriving the reasoning. Hard rules block fabrication and silent template drift; the decision tree maps observable input signals to a conclusion that names which rule applies.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- you have a single target query (head term or long-tail) ready for content
-- you can access live SERP for that query (manual or API)
-- output will be handed to a drafter (human or AI) — not used internally
-- tier == solo or higher
+- A single target query (head term or long-tail) is selected for content.
+- Live SERP for that query is reachable (manual or API).
+- Output will be handed to a drafter (human or AI), not used internally.
+- Tier == solo or higher (gating enforced by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- query is below 10 monthly searches AND not a topical-authority hub piece
-- intent is purely transactional and the page is already a product page (no editorial brief needed)
-- you are writing for an internal audience with no organic-search goal
+- Query has zero search volume (CTR is meaningless) — pick a different target.
+- Site is non-indexable or staged — fix indexing first.
+- Drafter has no contract authority — briefs become suggestions and are ignored.
 
 ## Prerequisites
 
-- target query string
-- top-10 SERP snapshot (URL, title, snippet, page type)
-- access to the topical cluster map this brief slots into
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Search Intent To Brief task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/seo-manager` | parent — provides cluster-level context |
-| `solo/marketing/on-page-seo-checklist-2026` | downstream consumer of the brief |
+| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `solo/sdd/sdd/AGENTS.md` | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + 1 worked example brief | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `classify_intent` | haiku | 4-class classification from query + SERP titles |
-| `extract_entities` | sonnet | NER over top-10 snippets, dedupe, rank |
-| `frame_jtbd` | sonnet | one-shot prompt with bounded inputs |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/search-intent-brief.md` | Markdown brief: intent / entities / JTBD / SERP-features / contract blocks per rule. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-search-intent-to-brief.py` | Validate the artefact against the 02-output-contract schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- `solo/marketing/seo-manager`
-- upstream playbook: `role-growth-marketing/Synthesis: Build a topical-authority cluster end-to-end with E-E-A-T evidence`
+- [[on-page-seo-checklist-2026]]
+- [[seo-manager/seo-techniques]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

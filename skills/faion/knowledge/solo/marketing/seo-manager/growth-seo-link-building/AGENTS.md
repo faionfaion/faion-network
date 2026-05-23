@@ -3,72 +3,97 @@ slug: growth-seo-link-building
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A value-first link building methodology: create genuinely link-worthy content, identify who would link and why, conduct personalized outreach, and measure results iteratively.
-content_id: "b257120db6ad095e"
-tags: [link-building, seo, backlinks, outreach, content]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Off-page link-building methodology covering target qualification, outreach cadence, anchor-text diversity, and toxic-link audit — produces a link-building campaign checklist."
+content_id: "faaef1247d7e9e4a"
+complexity: medium
+produces: checklist
+est_tokens: 4900
+tags: [marketing, solo, seo, link-building, off-page]
 ---
-# SEO Link Building
+# Growth SEO Link Building
 
 ## Summary
 
-**One-sentence:** A value-first link building methodology: create genuinely link-worthy content, identify who would link and why, conduct personalized outreach, and measure results iteratively.
+**One-sentence:** Off-page link-building methodology covering target qualification, outreach cadence, anchor-text diversity, and toxic-link audit — produces a link-building campaign checklist.
 
-**One-paragraph:** A value-first link building methodology: create genuinely link-worthy content, identify who would link and why, conduct personalized outreach, and measure results iteratively. Covers content types with high link potential, prospecting methods (competitor analysis, resource pages, broken links, HARO), outreach templates, and tracking.
+**One-paragraph:** Off-page link-building methodology covering target qualification, outreach cadence, anchor-text diversity, and toxic-link audit — produces a link-building campaign checklist. The methodology pins a typed input → bounded transformation → contract-checked output for the recurring decision named in `Applies If`, and produces a versioned, owner-signed artefact downstream consumers can act on without re-deriving the reasoning. Hard rules block fabrication and silent template drift; the decision tree maps observable input signals to a conclusion that names which rule applies.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Site has good content but low organic visibility due to lack of backlinks
-- Starting a link building campaign for a specific asset (guide, tool, research)
-- Setting up a repeatable outreach process for ongoing link acquisition
-- Analyzing competitor backlink profiles to find gaps and opportunities
+- On-page SEO is already passing baseline (`growth-seo-fundamentals` checklist green).
+- Target list of 50–200 candidate sites exists with relevance + authority signal.
+- A named owner will run outreach and log every reply / placement.
+- Backlink monitoring tool (Ahrefs / SEMrush / GSC) is connected and authoritative.
 
 ## Skip If (ANY kills it)
 
-- Site has critical technical SEO issues — fix those first before building links
-- Content quality is thin — links won't help if the asset isn't link-worthy
-- Domain is brand new (under 3 months) — focus on technical foundation first
-- Expecting results within days — link building has a 3-6 month ranking lag
+- On-page issues unresolved — links do not save a broken on-page foundation.
+- Operator wants to buy links — out of scope; the methodology refuses paid-link patterns.
+- Site is in a sandboxed / penalised state — fix penalty first, then build links.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Growth SEO Link Building task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `solo/sdd/sdd/AGENTS.md` | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/link-building-checklist.md` | Markdown checklist: target qualification, outreach drafts, anchor-text mix, toxic-link audit cadence. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-seo-link-building.py` | Validate the artefact against the 02-output-contract schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/seo-manager/`
+- [[seo-manager/growth-seo-fundamentals]]
+- [[outreach-personalization-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

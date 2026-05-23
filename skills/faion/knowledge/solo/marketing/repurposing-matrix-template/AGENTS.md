@@ -3,82 +3,97 @@ slug: repurposing-matrix-template
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "1aa1719829624194"
-summary: Repurposing Matrix Template — pinned template for the growth marketer: fixed shape + named owner + evidence anchors + outcome review, so content engine build from zero (12 weeks) stops being folklore and starts being a reviewable operating tool.
-tags: [marketing, solo, template, repurposing, matrix]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Hub-and-spoke repurposing matrix: format × channel × cadence × adaptation rule — produces a versioned matrix spec wiring one hub artefact to N derivative spokes."
+content_id: "b47acfa53f334e17"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [marketing, solo, repurposing, content, matrix]
 ---
 # Repurposing Matrix Template
 
 ## Summary
 
-**One-sentence:** Repurposing Matrix Template — pinned template for the growth marketer: fixed shape + named owner + evidence anchors + outcome review, so content engine build from zero (12 weeks) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Hub-and-spoke repurposing matrix: format × channel × cadence × adaptation rule — produces a versioned matrix spec wiring one hub artefact to N derivative spokes.
 
-**One-paragraph:** In growth and marketing, the growth marketer runs content engine build from zero (12 weeks) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Hub-and-spoke repurposing is referenced in social-media-strategy but lacks a concrete matrix mapping format × channel × cadence × adaptation rules. `repurposing-matrix-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the growth marketer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Hub-and-spoke repurposing matrix: format × channel × cadence × adaptation rule — produces a versioned matrix spec wiring one hub artefact to N derivative spokes. The methodology pins a typed input → bounded transformation → contract-checked output for the recurring decision named in `Applies If`, and produces a versioned, owner-signed artefact downstream consumers can act on without re-deriving the reasoning. Hard rules block fabrication and silent template drift; the decision tree maps observable input signals to a conclusion that names which rule applies.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-growth-marketing/Content Engine Build from Zero (12 weeks)`
-- the growth marketer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Operator publishes a recurring hub artefact (newsletter, podcast, long-form post, build-log).
+- ≥2 derivative channels are in scope (X / LinkedIn / Threads / IG / shorts / community).
+- A named owner will fill and ship the matrix weekly for at least 4 weeks before re-evaluation.
+- Version-controlled space exists where the matrix is committed and reviewed.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- No hub artefact yet — build the hub first, repurposing without a hub is noise.
+- Single-channel strategy is intentional (focused-on-X-only) — matrix overhead does not pay back.
+- Hub artefact is paid-only and confidential — derivatives leak the wedge.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the growth marketer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Repurposing Matrix Template task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `solo/sdd/sdd/AGENTS.md` | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/repurposing-matrix.csv` | CSV matrix: rows=hub-element, columns=channel, cells=format + adaptation-rule + cadence-slot. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-repurposing-matrix-template.py` | Validate the artefact against the 02-output-contract schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[platform-native-format-matrix]]
+- [[build-in-public-cadence]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
