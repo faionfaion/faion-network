@@ -1,44 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Spec-Driven Debugging Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Spec-Driven Debugging output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="bug_id" type="string" required="true">issue/ticket reference</field>
-      <field name="failing_spec" type="string" required="true">test code</field>
-      <field name="minimal_repro" type="string" required="true">minimized repro state</field>
-      <field name="fix_commit" type="string" required="true">commit SHA</field>
-      <field name="test_commit" type="string" required="true">commit SHA before fix</field>
-      <field name="regression_suite_path" type="string" required="true">file where test lives</field>
-      <field name="owner" type="string" required="true">named developer</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">fix committed before failing test</pattern>
-      <pattern id="f2">fix includes unrelated refactors</pattern>
-      <pattern id="f3">failing_spec missing — fix without test</pattern>
-      <pattern id="f4">test deleted after fix without documented decision</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/spec-driven-debugging.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Spec-Driven Debugging Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/spec-driven-debugging.json",
+  "type": "object",
+  "required": [
+    "bug_id",
+    "symptom",
+    "expected",
+    "repro_loc",
+    "fix_commit",
+    "regression_test_path"
+  ],
+  "properties": {
+    "bug_id": {
+      "type": "string"
+    },
+    "symptom": {
+      "type": "string"
+    },
+    "expected": {
+      "type": "string"
+    },
+    "repro_loc": {
+      "type": "integer",
+      "maximum": 20
+    },
+    "bisect_commit": {
+      "type": "string"
+    },
+    "fix_commit": {
+      "type": "string"
+    },
+    "regression_test_path": {
+      "type": "string"
+    },
+    "incident_link": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "bug_id": "BUG-2026-05-001",
+  "symptom": "POST /api/orders returns 200 OK with empty body when total exceeds 9999",
+  "expected": "POST /api/orders returns 422 + problem+json with validation detail",
+  "repro_loc": 12,
+  "bisect_commit": "a3f1c8d",
+  "fix_commit": "b4e2d9f",
+  "regression_test_path": "tests/test_orders_validation.py::test_total_over_max",
+  "incident_link": "https://github.com/x/y/issues/142"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "bug_id": "x",
+  "symptom": "",
+  "expected": "",
+  "repro_loc": 50,
+  "fix_commit": "",
+  "regression_test_path": ""
+}
+]]></code>
+    <note>symptom + expected empty (rule name-the-symptom-precisely); repro_loc &gt; 20 (forbidden); fix_commit + regression_test_path empty.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>bug_id populated with a typed value</item>
-      <item>failing_spec populated with a typed value</item>
-      <item>minimal_repro populated with a typed value</item>
-      <item>fix_commit populated with a typed value</item>
-      <item>test_commit populated with a typed value</item>
-      <item>regression_suite_path populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <pattern id="no-regression-test">Bug returns 3 sprints later under a different reviewer.</pattern>
+      <pattern id="two-hundred-line-repro">Repro takes 200 lines; only 3 lines actually matter.</pattern>
+      <pattern id="guess-instead-of-bisect">3 hours spent speculating which commit introduced the regression.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-spec-driven-debugging.py">Validator script (see scripts/).</reference>
 </text>

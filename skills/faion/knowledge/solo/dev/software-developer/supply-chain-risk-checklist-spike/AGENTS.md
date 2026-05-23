@@ -3,86 +3,103 @@ slug: supply-chain-risk-checklist-spike
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "89fa19c2f2789673"
-summary: A 7-signal checklist for evaluating a library before adoption (license, maintainer count, last release, CVE history, GitHub star vs npm-download ratio, transitive depth, vendor lock-in) producing a numeric risk score.
-tags: [supply-chain, dependency-risk, library-evaluation, security, SBOM]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 7-signal library risk report (license, maintainer count, last release, CVE history, stars-to-downloads, transitive depth, vendor lock-in) producing an aggregate score and a green/yellow/red verdict.
+content_id: "c94db12a0d8d753a"
+complexity: medium
+produces: report
+est_tokens: 5300
+tags: [supply-chain, dependency-risk, library-evaluation, security, sbom]
 ---
-
 # Supply Chain Risk Checklist Spike
 
 ## Summary
 
-**One-sentence:** A 7-signal checklist for evaluating a library before adoption (license, maintainer count, last release, CVE history, GitHub star vs npm-download ratio, transitive depth, vendor lock-in) producing a numeric risk score.
+**One-sentence:** 7-signal library risk report (license, maintainer count, last release, CVE history, stars-to-downloads, transitive depth, vendor lock-in) producing an aggregate score and a green/yellow/red verdict.
 
-**One-paragraph:** After log4shell (CVE-2021-44228), event-stream (2018 npm hijack), and the xz-utils backdoor (CVE-2024-3094), library evaluation cannot be reduced to "is it popular?". This methodology walks a 7-signal checklist using `npm audit`, `pip-audit`, `osv.dev`, `socket.dev`, GitHub API, and Snyk Open Source Advisor as data sources, scores each on 0-3 (low/med/high/critical risk), and emits a `LibraryRiskReport`. Output: numeric risk score (0-21), traffic-light decision (green ≤ 6, yellow 7-12, red ≥ 13), and a remediation suggestion (fork, pin, replace).
+**One-paragraph:** After log4shell, event-stream, and xz-utils, library evaluation cannot reduce to 'is it popular?'. This methodology walks a 7-signal checklist using osv.dev, the registry API, GitHub stars vs downloads, and SBOM data; scores each signal 0-3; aggregates to a 0-21 score with green (<=6) / yellow (7-12) / red (>=13) verdict; emits a remediation suggestion (adopt / pin / fork / decline). Data must be fresh within 24h; SSPL/BUSL/custom licenses always score 3.
+
+**Ефективно для:**
+
+- Перед adoption нової бібліотеки на production code path.
+- Quarterly rescore критичних залежностей.
+- Інцидент supply-chain (event-stream / xz / tj-actions) - re-audit affected deps.
+- Custom license bumped - оцінити legal/SaaS impact.
+- Transitive bloat - оцінити блокучу важкість.
 
 ## Applies If (ALL must hold)
 
-- evaluating a new library / framework / SDK before adoption OR auditing an existing dependency
-- the library will be on the production code path OR build path
-- you can run network calls (osv.dev, GitHub API) from the eval machine
-- there is at least 30min available — this is a spike, not a glance
+- Evaluating a new library / framework / SDK before adoption OR auditing an existing dependency.
+- The library will be on the production code path OR build path.
+- Network access to osv.dev + GitHub API is available.
+- At least 30 minutes is available - this is a spike, not a glance.
 
 ## Skip If (ANY kills it)
 
-- the library is a transitive dep you do not directly import — evaluate the direct parent instead
-- this is a one-off script (e.g. data migration) that will be deleted next week
-- the library is officially blessed by your platform (e.g. AWS SDK on AWS Lambda) and substitution costs &gt; risk
-- you have already evaluated this library in the last 90 days
+- Library is a transitive dep you do not directly import (evaluate parent instead).
+- Throwaway script that will be deleted next week.
+- Platform-blessed SDK (AWS SDK on Lambda) where substitution costs > risk.
+- Library was evaluated within the last 90 days and nothing changed.
 
 ## Prerequisites
 
-- library name + ecosystem (npm, PyPI, crates.io, Maven, RubyGems, Go modules)
-- API access to osv.dev (public) and GitHub (token recommended for rate limits)
-- access to `npm audit` / `pip-audit` / `cargo audit` for the local dependency
-- list of permissive licenses your project accepts (MIT, Apache-2.0, BSD)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Library name + ecosystem | npm / PyPI / crates.io / Maven / RubyGems / Go | engineering |
+| License allowlist | operator-accepted SPDX list | legal |
+| GitHub token | personal access token for rate limits | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer/dependency-audit` | Periodic-audit upstream — uses this checklist for spot-checks |
-| `geek/sdlc-ai/sca-supply-chain-analysis` | SCA tooling integration that consumes this report |
-| `pro/dev/software-developer/fork-vs-fix-decision-rule` | Chosen when this checklist returns RED + critical dependency |
+| [[security-testing]] | consumer of this report; library risk feeds into release security pass. |
+| [[supply-chain-risk-checklist-spike]] | self-reference for re-evaluation cycle. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 7-signal coverage, fresh data, license closed list, transitive depth, no-stars-without-downloads | ~1000 |
-| `content/02-output-contract.xml` | essential | `LibraryRiskReport` schema with scores, decision, remediation | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: stars-as-quality, missing CVE check, license confusion | ~900 |
+| `content/01-core-rules.xml` | essential | 7 rules: 7-signal coverage, data fresh 24h, license closed list, transitive depth cap, stars without downloads, decision record, remediation explicit | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: fetch signals, score, aggregate, verdict, remediation | ~900 |
+| `content/05-examples.xml` | essential | Worked example: xz-utils retro evaluation | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `cve_lookup_osv` | haiku | API call + parse |
-| `maintainer_count_github` | haiku | GitHub API mechanical |
-| `license_classification` | sonnet | SPDX matching with edge cases |
-| `risk_score_synthesis` | sonnet | Aggregation rule application |
-| `remediation_suggestion` | opus | Cross-signal reasoning (fork vs pin vs replace) |
+| `cve_lookup_osv` | haiku | API call + parse. |
+| `maintainer_count_github` | haiku | GitHub API mechanical. |
+| `license_classification` | sonnet | SPDX matching with edge cases. |
+| `risk_score_synthesis` | sonnet | Aggregation rule application. |
+| `remediation_suggestion` | opus | Cross-signal reasoning (fork vs pin vs replace). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/library-risk-report.json` | Output schema |
-| `templates/license-allowlist.yaml` | Operator's accepted licenses |
+| `templates/library-risk-report.json` | JSON skeleton for the 7-signal library risk report. |
+| `templates/license-allowlist.yaml` | Operator-accepted SPDX license allowlist. |
+| `templates/_smoke-test.json` | Minimum viable library risk report for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/evaluate-library.sh` | Driver: fetch all 7 signals, emit report | Pre-adoption spike |
-| `scripts/quarterly-rescore.py` | Re-run scoring on all production deps | Quarterly cadence |
+| `scripts/validate-supply-chain-risk-checklist-spike.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- peer methodologies: `dependency-audit`, `fork-vs-fix-decision-rule`
-- external: [OSV (Google open vulnerability DB)](https://osv.dev/) · [Socket — npm/PyPI supply-chain](https://socket.dev/) · [Snyk Open Source Advisor](https://snyk.io/advisor/) · [OpenSSF Scorecard](https://github.com/ossf/scorecard) · [Sonatype State of the Software Supply Chain 2023](https://www.sonatype.com/state-of-the-software-supply-chain/introduction)
+- [[security-testing]]
+- [[openapi-specification]]
+- [[performance-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - signal coverage, data freshness, license class, aggregate band - onto a rule from `content/01-core-rules.xml`. Use it before any adoption: it catches stars-only-eval and stale-CVE-data upstream.

@@ -3,73 +3,102 @@ slug: tailwind-architecture
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A utility-first CSS architecture for React/Vue/Svelte apps: design tokens live in `tailwind.
-content_id: "c1e1a963e330cd87"
-tags: [tailwind, css, design-tokens, utility-first, variants]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tailwind architecture spec: tokens in config (no arbitrary values), cn() everywhere via tailwind-merge, primitive extraction threshold (5 utils + 3 sites), @apply only in @layer components, prettier-plugin-tailwindcss for class order.
+content_id: "4d3dd6cb7d1f2ae9"
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: [tailwind, design-tokens, cva, cn]
 ---
 # Tailwind Architecture
 
 ## Summary
 
-**One-sentence:** A utility-first CSS architecture for React/Vue/Svelte apps: design tokens live in `tailwind.
+**One-sentence:** Tailwind architecture spec: tokens in config (no arbitrary values), cn() everywhere via tailwind-merge, primitive extraction threshold (5 utils + 3 sites), @apply only in @layer components, prettier-plugin-tailwindcss for class order.
 
-**One-paragraph:** A utility-first CSS architecture for React/Vue/Svelte apps: design tokens live in `tailwind.config.ts` (or v4 `@theme`); all conditional class merging goes through a project-tuned `cn()` (`tailwind-merge` + `clsx`); variant-rich components use `cva` or `tv()`; `@apply` is restricted to `@layer components` only; `prettier-plugin-tailwindcss` enforces class order; `eslint-plugin-tailwindcss` blocks unknown utilities. Any duplicated 5+ utility chain across 3+ files becomes a primitive component.
+**One-paragraph:** Tailwind degenerates when arbitrary values bypass the token pipeline, when conditional class strings rely on raw clsx and conflicts silently win by source order, when chains are extracted too early (or never), when @apply leaks into component files defeating JIT, and when manual class reorder fights the formatter. This methodology produces an architecture spec: all design values in tailwind.config / @theme block; project cn() wrapping clsx + tailwind-merge with extendTailwindMerge; extraction threshold 5 utils + 3 call sites + named UI concept; @apply only in @layer components; prettier-plugin-tailwindcss for canonical class order.
+
+**Ефективно для:**
+
+- Перший Tailwind rollout - зафіксувати config, cn(), prettier-plugin-tailwindcss.
+- Arbitrary values розповзаються (w-[347px]) - впровадити token policy.
+- Conflict class issues (bg-red-500 vs bg-blue-500) - перейти на cn() через tailwind-merge.
+- @apply використовується в component файлах - винести в @layer.
+- Кожен PR переставляє класи - підключити prettier-plugin-tailwindcss.
 
 ## Applies If (ALL must hold)
 
-- Greenfield React/Vue/Svelte/Next.js apps where utility-first is the team standard
-- Building design-token-driven Tailwind config for a multi-app design system
-- Refactoring CSS Modules / styled-components / SCSS to Tailwind v3 / v4
-- Auditing utility class chaos — extracting components, normalizing variants
-- Wiring `tailwind-merge` + `cva` / `tv()` for variant-rich component libraries
+- Codebase uses Tailwind CSS (v3 or v4).
+- ESLint + Prettier are wired into the build pipeline.
+- Team can refuse PRs that violate the token policy.
+- Design system is in active growth (>20 components).
 
 ## Skip If (ANY kills it)
 
-- Email HTML — CSS support is sparse, use inlining tools instead
-- Strict CSP environments banning `style-src 'unsafe-inline'` for Tailwind's runtime
-- Static-site generators with a hard 14KB CSS budget
-- Server-rendered apps shipped to non-Tailwind designers maintaining handcrafted CSS
+- Project uses CSS Modules or vanilla-extract instead of Tailwind.
+- Tiny prototype with <5 components and no design tokens.
+- Project is being migrated off Tailwind - lock the surface, do not invest.
+- Team chose UnoCSS or similar - rule names differ.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Design tokens | color / spacing / radius / shadow values | design |
+| Tailwind version | v3 (config) or v4 (@theme) | engineering |
+| ESLint config | .eslintrc with Tailwind plugin | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[shadcn-ui-architecture]] | primitive layer composed on top of Tailwind tokens. |
+| [[react-component-architecture]] | feature-folder layout this spec presupposes. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: tokens in config only, cn() wraps clsx+merge, extraction threshold, @apply only in @layer, prettier-plugin class order, extendTailwindMerge for custom, dark via semantic tokens | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: tokens, cn(), extraction threshold, @apply scope, formatter | ~900 |
+| `content/05-examples.xml` | essential | Worked example for a Next.js + shadcn project | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `migrate-arbitrary-values` | sonnet | Per-occurrence judgement on which token replaces. |
+| `wire-cn-util` | haiku | Boilerplate file. |
+| `extract-primitive` | sonnet | Identify named UI concepts. |
+| `audit-apply-usage` | sonnet | Component file scan + decision per occurrence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tailwind.config.ts` | Tailwind v3 config skeleton with design tokens + dark mode + safelist. |
+| `templates/utils.ts` | Project cn() wrapping clsx + tailwind-merge with extendTailwindMerge. |
+| `templates/_smoke-test.json` | Minimum viable tailwind architecture artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tailwind-architecture.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[shadcn-ui-architecture]]
+- [[ui-component-library]]
+- [[react-component-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - tokens source, cn() shape, extraction threshold, @apply scope - onto a rule from `content/01-core-rules.xml`. Use it before merging styling work: it catches arbitrary-values-creep and raw-clsx-conflicts upstream.

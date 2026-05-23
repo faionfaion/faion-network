@@ -1,47 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="sql-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for sql-optimization. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="SQL Optimization Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the SQL Optimization methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always run EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) before adding any index or rewriting any query.</statement>
-      <rationale source="v1-source">The planner's chosen plan often differs from developer expectations. Optimization without measurement produces indexes that are never used and rewrites that change nothing.</rationale>
+    <rule id="explain-before-change" testable="true" depth="essential">
+      <statement>Every optimisation MUST start with `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` capturing the current plan; index/rewrite changes without a captured baseline plan are rejected.</statement>
+      <rationale source="PostgreSQL docs; performance-engineering practice">Without a baseline plan, the planner's actual choice is invisible; optimisation guesses produce indexes that are never used.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Investigate when actual rows differ from estimated rows by more than 10x — this signals stale statistics.</statement>
-      <rationale source="v1-source">The planner chooses join order and index use based on row estimates. Large discrepancies cause poor plan choices that cannot be fixed by indexes alone; run ANALYZE first.</rationale>
+    <rule id="investigate-row-estimate-skew" testable="true" depth="essential">
+      <statement>When actual rows differ from estimated by &gt;10x, the report MUST run `ANALYZE` on the table and re-capture the plan; ignoring statistics skew is forbidden.</statement>
+      <rationale source="PostgreSQL planner notes">Planner chooses join order + index use on estimates; skewed estimates produce wrong plans that no new index fixes.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>In composite indexes, place equality-filter columns first, range-filter columns last.</statement>
-      <rationale source="v1-source">The B-tree can use prefix columns for equality and then traverse a range on the last column. Placing range columns first makes the index unusable for the equality filter.</rationale>
+    <rule id="composite-index-ordering" testable="true" depth="essential">
+      <statement>Composite indexes MUST place equality columns first, range columns last; reversed ordering is rejected unless a documented reason applies.</statement>
+      <rationale source="B-tree index ordering rules">B-tree uses prefix columns for equality + traverses range on last; reversed ordering makes the index unusable for equality.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use INCLUDE columns to add non-filtered columns to an index to avoid heap lookups for read-heavy queries.</statement>
-      <rationale source="v1-source">A covering index satisfies the query entirely from index pages, eliminating the heap fetch (table lookup) for each matched row.</rationale>
+    <rule id="cursor-for-deep-pagination" testable="true" depth="essential">
+      <statement>Pagination beyond 1k rows MUST use keyset (cursor) pagination keyed on `(last_seen_at, id)`; OFFSET-based pagination at depth is forbidden.</statement>
+      <rationale source="Postgres OFFSET-perf studies">OFFSET scans and discards rows on every page; cursor uses an index seek regardless of depth.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use partial indexes with a WHERE clause for queries that always filter on a specific value.</statement>
-      <rationale source="v1-source">Partial indexes are smaller (fewer rows indexed) and faster to scan than full indexes. Useful for status columns where only one value (e.g. 'pending') is queried frequently.</rationale>
+    <rule id="no-subquery-in-select" testable="true" depth="essential">
+      <statement>Subqueries in `SELECT` lists MUST be rewritten as JOIN + aggregation; per-row subqueries create N+1 patterns.</statement>
+      <rationale source="Postgres planner notes">A subquery in SELECT executes once per outer row; JOIN executes once regardless of row count.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Create an expression index when queries apply a function to an indexed column; do not apply functions to indexed columns in WHERE clauses.</statement>
-      <rationale source="v1-source">WHERE LOWER(email) = ? bypasses the regular index on email. An expression index on LOWER(email) makes the query use the index.</rationale>
+    <rule id="materialized-views-for-aggregates" testable="true" depth="essential">
+      <statement>Expensive aggregations queried frequently MUST be precomputed via materialized view with `REFRESH CONCURRENTLY`; re-computing on every read is forbidden.</statement>
+      <rationale source="Postgres MV docs">Re-computing GROUP BY over millions of rows on every dashboard load is wasteful; MV + CONCURRENTLY refresh avoids the read lock.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use keyset (cursor) pagination instead of OFFSET for any collection larger than ~1000 rows.</statement>
-      <rationale source="v1-source">OFFSET N scans and discards N rows on every page. At page 500 with 20 items per page, the database scans 10,000 rows to return 20. Keyset pagination uses an index seek regardless of page depth.</rationale>
+    <rule id="regression-gate-before-merge" testable="true" depth="essential">
+      <statement>Optimisation PR MUST include before/after EXPLAIN + wall-clock delta + sample size; un-evidenced 'looks faster' claims are rejected.</statement>
+      <rationale source="Engineering-rigour retros">Without evidence, regressions ship; explicit deltas with sample sizes pass review.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Replace subqueries in SELECT lists with a single JOIN plus aggregation to eliminate N+1 query patterns.</statement>
-      <rationale source="v1-source">A subquery in the SELECT list executes once per row in the outer result. 1000 rows = 1001 queries. A JOIN executes once regardless of result set size.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use multi-row INSERT for bulk inserts; use CTE with LIMIT for large batch updates to avoid long-running transactions.</statement>
-      <rationale source="v1-source">Individual INSERT per row in a loop causes N round trips and N transaction commits. A batched UPDATE without LIMIT locks all matching rows for the full duration.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use materialized views for expensive aggregations queried frequently; refresh CONCURRENTLY to avoid blocking reads.</statement>
-      <rationale source="v1-source">Re-computing GROUP BY over millions of rows on every dashboard load is wasteful. A materialized view precomputes it; CONCURRENTLY refresh avoids a read lock on the view.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>

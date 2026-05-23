@@ -3,73 +3,102 @@ slug: seo-for-spas
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for making JavaScript-heavy applications indexable.
-content_id: "9e1fb98853ad1f54"
-tags: [seo, spa, meta-tags, ssr, structured-data]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: SEO spec for SPAs: rendering mode (SSG / SSR / ISR / hybrid), per-page metadata + structured data, canonical URLs, sitemap, hreflang for i18n, Core Web Vitals targets.
+content_id: "2ceee0bd7c26f389"
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: [seo, spa, ssr, ssg, metadata, sitemap]
 ---
 # SEO for SPAs
 
 ## Summary
 
-**One-sentence:** A methodology for making JavaScript-heavy applications indexable.
+**One-sentence:** SEO spec for SPAs: rendering mode (SSG / SSR / ISR / hybrid), per-page metadata + structured data, canonical URLs, sitemap, hreflang for i18n, Core Web Vitals targets.
 
-**One-paragraph:** A methodology for making JavaScript-heavy applications indexable. Every public route must deliver title, meta[name=description], link[rel=canonical], og:image, and valid JSON-LD in the server-rendered HTML — not just the post-hydration DOM. Verify with curl -A "Googlebot/2.1", not Playwright. Treat SEO as a build-time contract verified by Lighthouse CI on every PR.
+**One-paragraph:** SPAs lose SEO when content depends on JS for the first paint, when meta tags are global instead of per-route, when canonical and hreflang are missing, and when LCP is dominated by client-side hydration. This methodology produces an SEO spec: rendering mode picked per route (SSG, SSR, ISR), per-page metadata (title, description, OG, structured data JSON-LD), canonical URL per route, hreflang for i18n, sitemap.xml + robots.txt, and Core Web Vitals targets (LCP<=2.5s, INP<=200ms, CLS<=0.1).
+
+**Ефективно для:**
+
+- Next.js / Nuxt / Remix app з search-driven traffic - вибрати rendering mode per route.
+- Marketing pages ховаються від Google - hydration-only без SSR/SSG.
+- Duplicate-content issues - відсутні canonical URL.
+- Multi-language site - відсутні hreflang.
+- LCP > 4s - перевести above-the-fold на SSR/SSG.
 
 ## Applies If (ALL must hold)
 
-- Migrating CSR React/Vue/Angular app to SSR/SSG/ISR for indexable pages
-- Auditing meta tags and OG/Twitter cards across dynamic routes
-- Generating sitemap.xml + robots.txt from CMS or DB content at build time
-- Wiring JSON-LD structured data (Product, Article, Breadcrumb, Organization)
-- Fixing Core Web Vitals regressions surfaced by PageSpeed Insights
-- Building OG image generation routes for share previews
+- Web property has search-driven traffic as a goal.
+- Codebase is a SPA / framework with rendering options (Next, Nuxt, Remix, Astro, Gatsby).
+- Team can ship per-route rendering mode changes.
+- Analytics + Search Console access available to verify outcomes.
 
 ## Skip If (ANY kills it)
 
-- Authenticated dashboards or SaaS app shells — no SEO value, ship as CSR
-- Internal tools or extranets behind login walls
-- Sites where social share previews and search ranking are not goals
+- Site is a logged-in dashboard with noindex policy.
+- Web property is entirely brand promotion via paid social - no SEO budget.
+- App lives behind auth wall with no public pages.
+- Team has chosen a server-rendered framework already (plain Django / Rails) - SPA SEO is moot.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Route map | list of routes + traffic class (marketing / product / dashboard) | product |
+| Locale list | supported languages + url pattern | i18n |
+| Core Web Vitals baseline | current LCP / INP / CLS p75 | analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[pwa-development]] | shared SPA shell concerns and offline behaviour. |
+| [[performance-testing]] | Core Web Vitals interleave with perf SLOs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: rendering mode per route, per-page metadata, structured data, hreflang, sitemap+robots, CWV targets, no client-only above the fold | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: routes, metadata, structured data, sitemap+hreflang, CWV targets | ~900 |
+| `content/05-examples.xml` | essential | Worked example for a multi-locale content site | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-routes` | sonnet | Per-route judgement on traffic + freshness. |
+| `metadata-templates` | haiku | Boilerplate metadata API wiring. |
+| `structured-data` | sonnet | Map template fields to schema.org type. |
+| `cwv-budget` | opus | Stakes high; CWV is a ranking factor. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/metadata.ts` | Next.js app-router metadata + structured data per route. |
+| `templates/sitemap.ts` | Sitemap generator stub for Next.js app router. |
+| `templates/_smoke-test.json` | Minimum viable SEO spec for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-seo-for-spas.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[pwa-development]]
+- [[performance-testing]]
+- [[react-component-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - rendering mode per route, metadata scope, locale presence, CWV baseline - onto a rule from `content/01-core-rules.xml`. Use it before launch: it catches csr-marketing and global-metadata upstream.

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="SQL Optimization Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Step-by-step procedure to apply SQL Optimization end-to-end. Each step lists input, action, output, and an optional decision gate.</summary>
+  <section title="Procedure">
+    <step n="1" name="capture-baseline">
+      <input>Slow query + reproducer.</input>
+      <action>Run EXPLAIN (ANALYZE, BUFFERS) on staging; capture text + actual_rows + buffers.</action>
+      <output>baseline_plan block.</output>
+      <decision-gate>Reject optimisation without captured baseline.</decision-gate>
+    </step>
+    <step n="2" name="investigate-skew">
+      <input>baseline_plan.</input>
+      <action>Check actual vs estimated; if &gt;10x, ANALYZE + re-capture.</action>
+      <output>post-ANALYZE plan.</output>
+      <decision-gate>Reject continuing without fixing skew.</decision-gate>
+    </step>
+    <step n="3" name="design-change">
+      <input>Plan + query.</input>
+      <action>Pick index_added / query_rewrite / materialized_view / VACUUM; document choice.</action>
+      <output>applied_change field.</output>
+      <decision-gate>Reject 'I think this is faster' without plan analysis.</decision-gate>
+    </step>
+    <step n="4" name="apply-and-measure">
+      <input>Change.</input>
+      <action>Apply on staging; run EXPLAIN ANALYZE again; capture wall-clock over sample_size runs.</action>
+      <output>after_plan + wall_clock_delta_ms.</output>
+      <decision-gate>Reject without sample_size.</decision-gate>
+    </step>
+    <step n="5" name="regression-gate">
+      <input>Before vs after deltas.</input>
+      <action>Compare; if regression or no improvement, revert.</action>
+      <output>gate decision.</output>
+      <decision-gate>Reject merge without measurable improvement OR documented exception.</decision-gate>
+    </step>
+  </section>
+</text>

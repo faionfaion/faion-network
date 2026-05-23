@@ -1,22 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="sql-optimization Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="SQL Optimization Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sql-optimization.json",
+  "type": "object",
+  "required": [
+    "query_id",
+    "baseline_plan",
+    "applied_change",
+    "after_plan",
+    "wall_clock_delta_ms"
+  ],
+  "properties": {
+    "query_id": {
+      "type": "string"
+    },
+    "baseline_plan": {
+      "type": "object",
+      "required": [
+        "plan_text",
+        "actual_rows",
+        "buffers"
+      ]
+    },
+    "applied_change": {
+      "type": "string",
+      "enum": [
+        "index_added",
+        "index_dropped",
+        "query_rewrite",
+        "analyze",
+        "materialized_view",
+        "vacuum"
+      ]
+    },
+    "after_plan": {
+      "type": "object",
+      "required": [
+        "plan_text",
+        "actual_rows"
+      ]
+    },
+    "wall_clock_delta_ms": {
+      "type": "integer"
+    },
+    "sample_size": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "query_id": "slow_orders_list_v3",
+  "baseline_plan": {
+    "plan_text": "Seq Scan on orders ...",
+    "actual_rows": 1500000,
+    "buffers": "shared hit=12345"
+  },
+  "applied_change": "index_added",
+  "after_plan": {
+    "plan_text": "Index Scan using ix_orders_created_at_id ...",
+    "actual_rows": 100
+  },
+  "wall_clock_delta_ms": -7200,
+  "sample_size": 50
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "query_id": "slow_orders",
+  "baseline_plan": {
+    "plan_text": "..."
+  },
+  "applied_change": "guessed",
+  "after_plan": {},
+  "wall_clock_delta_ms": 0
+}
+]]></code>
+    <note>baseline_plan missing actual_rows + buffers; applied_change not in enum; after_plan empty; sample_size missing (must be &gt;=1).</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="explain-skipped">Index added 'because it might help'; no measurable improvement; index later dropped.</pattern>
+      <pattern id="stats-skew-ignored">Planner picks nested-loop on 1M rows; new index does nothing.</pattern>
+      <pattern id="composite-order-reversed">Composite index on (created_at, tenant_id); tenant_id equality query does seq scan.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-sql-optimization.py">Validator script (see scripts/).</reference>
 </text>

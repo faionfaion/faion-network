@@ -1,37 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="websocket-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for websocket-design as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>No heartbeat: connections sit idle and the server never detects stale connections.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Stale connections accumulate and consume file descriptors. On Linux, the default `nofile` limit is 1024. 10k idle connections exhaust the limit and block new connections.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>No per-connection or per-user limit on concurrent connections.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A single user or bot can open thousands of connections, exhausting server resources and starving legitimate users.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>No authentication on the upgrade handshake — anonymous connections accepted, authorization checked after the first message.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unauthenticated connections consume resources before rejection. If auth is checked after the first message, an attacker can open thousands of connections without sending any data.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Blocking or CPU-intensive operations inside async message handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Async WebSocket handlers run on the event loop. A blocking call (file read, CPU hash, synchronous DB) stalls all other WebSocket connections on the same worker until it completes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Sending large payloads (tens of KB or more) directly in WebSocket messages.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Large messages block the send buffer, introduce latency for other subscribers, and can cause memory pressure. Use HTTP for large payloads; send only a reference ID over WebSocket.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Subscription state keyed by socket object rather than user ID, causing authorization to leak across reconnects.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>On reconnect, a new socket is created. If subscriptions are keyed by socket, old subscriptions linger. If keyed by user ID without revoking old sockets, a user might receive messages intended for a different session.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="WebSocket Design Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of WebSocket Design. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="freeform-payload" severity="high">
+      <symptom>Client crashes when server adds a new field to payload.</symptom>
+      <root-cause source="WS-protocol retro">No envelope; no version.</root-cause>
+      <fix>Adopt envelope `{v, type, id, ts, payload}`; clients ignore unknown fields under same `v`.</fix>
+    </antipattern>
+    <antipattern id="no-heartbeat" severity="high">
+      <symptom>Connection appears alive client-side; server has dropped it 4 minutes ago via NAT timeout.</symptom>
+      <root-cause source="NAT-timeout retro">No application heartbeat.</root-cause>
+      <fix>Send ping every 30s; close after 90s no pong; client reconnects.</fix>
+    </antipattern>
+    <antipattern id="reconnect-storm" severity="critical">
+      <symptom>After server restart, 100k clients reconnect within 200ms; server crashes again.</symptom>
+      <root-cause source="Reconnect-storm retro">Fixed-interval reconnect.</root-cause>
+      <fix>Exponential backoff base 1s max 60s + full jitter; reconnects spread over 60s.</fix>
+    </antipattern>
+    <antipattern id="unbounded-send-oom" severity="high">
+      <symptom>Server OOM after one client stopped reading; metrics showed 50M messages queued.</symptom>
+      <root-cause source="WebSocket OOM retro">Per-connection outgoing queue unbounded.</root-cause>
+      <fix>Bound queue at 1000; shed_policy=drop_oldest; emit close code 1008 if shed exceeds threshold.</fix>
+    </antipattern>
   </section>
 </text>

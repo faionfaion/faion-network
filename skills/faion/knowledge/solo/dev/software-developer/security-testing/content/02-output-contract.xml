@@ -1,22 +1,135 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Security Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-testing.json",
+  "type": "object",
+  "required": [
+    "release",
+    "sast_tools",
+    "dep_audit",
+    "dast",
+    "secrets_scan",
+    "asvs_coverage",
+    "fix_windows"
+  ],
+  "properties": {
+    "release": {
+      "type": "string"
+    },
+    "sast_tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "dep_audit": {
+      "type": "object",
+      "required": [
+        "sources",
+        "transitive"
+      ]
+    },
+    "dast": {
+      "type": "object",
+      "required": [
+        "authenticated",
+        "target"
+      ]
+    },
+    "secrets_scan": {
+      "type": "object",
+      "required": [
+        "pre_commit",
+        "ci"
+      ]
+    },
+    "asvs_coverage": {
+      "type": "object",
+      "required": [
+        "level",
+        "covered_pct"
+      ]
+    },
+    "fix_windows": {
+      "type": "object",
+      "required": [
+        "critical_hours",
+        "high_days",
+        "medium_days"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "release": "2026-05-25",
+  "sast_tools": [
+    "semgrep",
+    "bandit"
+  ],
+  "dep_audit": {
+    "sources": [
+      "osv.dev",
+      "pip-audit"
+    ],
+    "transitive": true
+  },
+  "dast": {
+    "authenticated": true,
+    "target": "https://staging.example.com"
+  },
+  "secrets_scan": {
+    "pre_commit": true,
+    "ci": true
+  },
+  "asvs_coverage": {
+    "level": "L1",
+    "covered_pct": 90
+  },
+  "fix_windows": {
+    "critical_hours": 24,
+    "high_days": 7,
+    "medium_days": 30
+  }
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "release": "next",
+  "sast_tools": [],
+  "dep_audit": {
+    "transitive": false
+  },
+  "dast": {
+    "authenticated": false
+  },
+  "secrets_scan": {
+    "ci": true
+  },
+  "asvs_coverage": {
+    "level": "?"
+  },
+  "fix_windows": {}
+}
+]]></code>
+    <note>sast_tools empty; dep_audit transitive=false forbidden; dast unauth-only forbidden; secrets_scan missing pre_commit; asvs_coverage missing covered_pct; fix_windows empty.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="quarterly-sast">SAST findings published once a quarter; fix backlog is 200+ items at release.</pattern>
+      <pattern id="direct-deps-only">log4shell-style CVE in transitive dep; audit reported zero issues.</pattern>
+      <pattern id="unauth-only-dast">ZAP report covers /health, /login, /signup; no CRUD endpoints scanned.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-security-testing.py">Validator script (see scripts/).</reference>
 </text>

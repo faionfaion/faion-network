@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="WebSocket Design Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="ws-long-lived">Are WS connections long-lived (&gt;30s) AND scaled (&gt;1k concurrent)?</root-question>
+      <branch when="ws == short_or_small">
+        <conclusion ref="skip-this-methodology" verdict="skip; SSE or polling fits"/>
+      </branch>
+      <branch when="ws == long_lived_scaled">
+        <question id="envelope-versioned">Does every message use a versioned envelope?</question>
+          <branch when="envelope == freeform">
+            <conclusion ref="versioned-envelope" verdict="adopt envelope {v,type,id,ts,payload}"/>
+          </branch>
+          <branch when="envelope == versioned">
+            <question id="heartbeat-present">Is application-level heartbeat in place?</question>
+              <branch when="heartbeat == missing">
+                <conclusion ref="heartbeat-30s-tcp" verdict="wire ping/pong 30s/90s"/>
+              </branch>
+              <branch when="heartbeat == present">
+                <conclusion ref="bounded-send-queue" verdict="bound send queue + shed policy"/>
+              </branch>
+          </branch>
+      </branch>
+  </decision-tree>
+  <example trace="ws=long_lived_scaled -&amp;gt; envelope=versioned -&amp;gt; heartbeat=present -&amp;gt; bounded-send-queue.">Worked path from root-question to conclusion.</example>
+</text>

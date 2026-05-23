@@ -3,71 +3,102 @@ slug: ui-component-library
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Versioned, semver-controlled React component library with a layered structure (primitives → composite → patterns → layout), consistent prop API doctrine, design token integration, co-located Storybook stories + tests, and Radix UI/React Aria for interactive primitives.
-content_id: "fda6367bddcdad09"
-tags: [react, component-library, storybook, accessibility, design-tokens]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: UI component library spec: layered architecture (tokens / primitives / patterns / templates), Storybook story per component, semver release process, a11y baseline, visual regression gate.
+content_id: "f00a0ca8274439fd"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [ui, component-library, design-system, storybook]
 ---
 # UI Component Library
 
 ## Summary
 
-**One-sentence:** Versioned, semver-controlled React component library with a layered structure (primitives → composite → patterns → layout), consistent prop API doctrine, design token integration, co-located Storybook stories + tests, and Radix UI/React Aria for interactive primitives.
+**One-sentence:** UI component library spec: layered architecture (tokens / primitives / patterns / templates), Storybook story per component, semver release process, a11y baseline, visual regression gate.
 
-**One-paragraph:** Versioned, semver-controlled React component library with a layered structure (primitives → composite → patterns → layout), consistent prop API doctrine, design token integration, co-located Storybook stories + tests, and Radix UI/React Aria for interactive primitives. Distinct from the shadcn copy-paste model — this methodology produces a packaged library.
+**One-paragraph:** UI libraries fail when there is no clear layering, when stories miss states (loading / empty / error), when a11y is checked only manually, when releases are tagged ad-hoc, and when visual regression is skipped. This methodology produces a library spec: 4-layer architecture (tokens / primitives / patterns / templates), Storybook story per component with all variants, axe-core a11y baseline in CI, Chromatic / Percy visual gate, semver + changelog, deprecation policy.
+
+**Ефективно для:**
+
+- Перший проект design system - зафіксувати layering + Storybook + release.
+- Adoption blocked відсутністю stories - запровадити мандат.
+- A11y regressions - axe-core в CI.
+- Visual regressions - Chromatic snapshot gate.
+- Деpreations губляться - зафіксувати policy.
 
 ## Applies If (ALL must hold)
 
-- Multi-app monorepo that needs shared, versioned UI components (web, admin, mobile-web)
-- Enforcing accessibility, theming, and prop API consistency via code review and audits
-- Need semver-controlled exports consumed by multiple packages
+- Project ships a reusable component library (internal or public).
+- Multiple consuming apps OR one app with sustained component growth.
+- Team can ship Storybook + visual regression infrastructure.
+- Owner can sign off semver bumps and deprecation timelines.
 
 ## Skip If (ANY kills it)
 
-- Single small app with no plans to share components — premature extraction adds overhead
-- Heavy bespoke-per-page styling with low reuse (marketing landing pages, one-off campaigns)
-- Replacing well-maintained external libraries (MUI, Mantine) without a clear extension story
-- Team cannot commit to maintaining stories, tests, and tokens — the library will rot
+- Project is a single app with <20 components - library overhead is not justified.
+- Library is externally maintained (e.g. shadcn vendored primitives) - use that methodology.
+- Team is in pre-MVP discovery - components churn too fast for stable library.
+- Compliance forbids external visual-regression services and no internal alternative exists.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Component inventory | list of components + consumers | engineering |
+| Design tokens | tailwind.config or design-tokens JSON | design |
+| Visual regression budget | Chromatic / Percy / internal | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[shadcn-ui-architecture]] | primitive layer convention this spec inherits. |
+| [[tailwind-architecture]] | styling layer this spec assumes is in place. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: 4-layer arch, story per component+states, a11y axe in CI, visual regression gate, semver+changelog, deprecation timeline, no business in library | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: layers, storybook, a11y, visual regression, release | ~900 |
+| `content/05-examples.xml` | essential | Worked example for an internal SaaS UI library | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-layers` | sonnet | Per-component judgement. |
+| `author-stories` | haiku | Boilerplate per state. |
+| `wire-a11y` | haiku | Config snippet. |
+| `review-visual-diff` | opus | Stakes high; visual regressions ship to all consumers. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Button.stories.tsx` | Storybook story covering all required states for a Button primitive. |
+| `templates/changeset.md` | Changeset entry template for a UI library release. |
+| `templates/_smoke-test.json` | Minimum viable UI-library spec for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ui-component-library.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[shadcn-ui-architecture]]
+- [[tailwind-architecture]]
+- [[react-component-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - consumer count, storybook coverage, a11y gate, release process - onto a rule from `content/01-core-rules.xml`. Use it before adopting a library: it catches missing-states and ad-hoc tagging upstream.

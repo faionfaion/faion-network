@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="SQL Optimization Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="explain-captured">Has EXPLAIN (ANALYZE, BUFFERS) been captured for the slow query?</root-question>
+      <branch when="explain == missing">
+        <conclusion ref="explain-before-change" verdict="halt; capture baseline plan first"/>
+      </branch>
+      <branch when="explain == present">
+        <question id="stats-skew">Is actual/estimated rows skewed by &gt;10x?</question>
+          <branch when="skew == yes">
+            <conclusion ref="investigate-row-estimate-skew" verdict="ANALYZE + re-capture before adding indexes"/>
+          </branch>
+          <branch when="skew == no">
+            <question id="pagination-shape">Is the query OFFSET-paginated above 1k rows?</question>
+              <branch when="pagination == deep_offset">
+                <conclusion ref="cursor-for-deep-pagination" verdict="switch to cursor pagination"/>
+              </branch>
+              <branch when="pagination == ok">
+                <conclusion ref="composite-index-ordering" verdict="verify composite index has equality columns first"/>
+              </branch>
+          </branch>
+      </branch>
+  </decision-tree>
+  <example trace="explain=present -&amp;gt; skew=no -&amp;gt; pagination=ok -&amp;gt; composite-index-ordering.">Worked path from root-question to conclusion.</example>
+</text>

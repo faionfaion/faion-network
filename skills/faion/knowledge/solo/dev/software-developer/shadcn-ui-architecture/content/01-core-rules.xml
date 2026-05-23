@@ -1,35 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="shadcn-ui-architecture Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for shadcn-ui-architecture. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="shadcn/ui Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the shadcn/ui Architecture methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Keep `components/ui/` as vendored primitives only: no business logic, no feature-specific state. Feature compositions live in `components/&lt;feature&gt;/` and reference `ui/` primitives.</statement>
-      <rationale source="v1-source">Mixing business logic into primitives makes them reusable in name only; every feature requirement bleeds in and the component becomes untestable independently.</rationale>
+    <rule id="primitives-no-business" testable="true" depth="essential">
+      <statement>`components/ui/*` MUST NOT import from `features/*`, business APIs, or auth/state stores; primitives stay generic.</statement>
+      <rationale source="shadcn architecture; design-system audit">Business leakage makes primitives reusable in name only; every feature requirement bleeds in and primitives become untestable independently.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Treat `components/ui/*` as protected: gate via CODEOWNERS or a lint rule; require a separate explicit PR to modify them, never silent edits during feature work.</statement>
-      <rationale source="v1-source">UI primitive changes are blast-radius high — they affect every consumer. Silent agent edits during feature work are a top source of regressions.</rationale>
+    <rule id="codeowners-gate-on-primitives" testable="true" depth="essential">
+      <statement>`components/ui/` MUST be guarded by CODEOWNERS + a lint rule OR require a separate explicit PR; silent edits inside feature PRs are forbidden.</statement>
+      <rationale source="Design-system change-control retros">Primitive changes are blast-radius high — they affect every consumer. Silent agent edits are a top source of regressions.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Define all colors, radii, and spacing tokens in ONE place — `globals.css` `:root` and `.dark` blocks. Ban inline hex values (`#fff`, `bg-[#abc123]`) via an ESLint rule.</statement>
-      <rationale source="v1-source">Scattered hardcoded values make theme changes require a global search-replace; a single token source makes dark mode and brand updates a one-line change.</rationale>
+    <rule id="semantic-tokens-only" testable="true" depth="essential">
+      <statement>Colors, radii, spacing MUST be defined as semantic tokens in `:root` and `.dark` of `globals.css`; concrete Tailwind shades (`dark:bg-gray-800`, `bg-[#abc123]`) are banned via ESLint.</statement>
+      <rationale source="shadcn/ui token system">Concrete shades require per-component dark-mode overrides; semantic tokens propagate theme changes automatically.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>In dark mode, always use semantic token names (`--background`, `--foreground`, `--destructive`), never concrete Tailwind shades (`dark:bg-gray-800`).</statement>
-      <rationale source="v1-source">Concrete shades require per-component dark-mode overrides and drift across components; semantic tokens propagate theme changes automatically.</rationale>
+    <rule id="cva-with-compound" testable="true" depth="essential">
+      <statement>Variants MUST use `cva` with `compoundVariants` for state combinations; flat variants beyond 6 per prop are forbidden.</statement>
+      <rationale source="cva docs; junk-drawer-component audits">Flat variant explosion creates a 12+-variant primitive impossible to maintain or visually verify.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use `cva` for variants; use `compoundVariants` for state combinations (`variant="outline" + size="sm"`) instead of adding new flat variants. Stop adding variants when count exceeds ~6 per prop.</statement>
-      <rationale source="v1-source">Flat variant explosion creates a junk-drawer component with 12+ variants that are impossible to maintain or visually verify.</rationale>
+    <rule id="forwardref-and-displayname" testable="true" depth="essential">
+      <statement>Every primitive MUST use `React.forwardRef` and set `displayName` immediately after; missing forwardRef or displayName is rejected.</statement>
+      <rationale source="React + Radix docs">Without forwardRef, Radix asChild slot breaks; without displayName, React DevTools shows `_c2` and debugging is impossible.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Always export both the component and its `*Variants` CVA function (e.g., `buttonVariants`). Downstream code may need `cn(buttonVariants({ variant }))` for non-button elements.</statement>
-      <rationale source="v1-source">Exporting only the component hides the variant contract from compositions that style non-semantic elements to match.</rationale>
+    <rule id="export-variants-fn" testable="true" depth="essential">
+      <statement>Components MUST export both the component AND its `*Variants` cva function (e.g. `buttonVariants`); component-only export is rejected.</statement>
+      <rationale source="shadcn pattern">Downstream compositions need `cn(buttonVariants({ variant }))` for non-button elements styled to match.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>All primitive components must use `React.forwardRef`. Add `ComponentName.displayName = 'ComponentName'` immediately after the `forwardRef` call.</statement>
-      <rationale source="v1-source">Without `forwardRef`, ref wiring breaks for Radix `asChild` slots. Without `displayName`, React DevTools shows `_c2` and agent debugging is impossible.</rationale>
+    <rule id="asChild-slot-supported" testable="true" depth="essential">
+      <statement>Primitives that wrap an HTML element MUST accept Radix `asChild` (or equivalent) via the Slot pattern; hard-coded element types are forbidden for primitives.</statement>
+      <rationale source="Radix UI docs">Without asChild, primitives cannot be composed into different elements (e.g. Button-as-Link), forcing feature code to reimplement styling.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>

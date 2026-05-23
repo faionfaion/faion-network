@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="websocket-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for websocket-design. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="WebSocket Design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the WebSocket Design methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="versioned-envelope" testable="true" depth="essential">
+      <statement>Every message MUST use envelope `{v: int, type: string, id: string, ts: int, payload: object}`; raw payloads without envelope are forbidden.</statement>
+      <rationale source="WS-protocol retros; versioning patterns">Without `v`, breaking changes have no migration path; without `id`, retries and idempotency are impossible; without `ts`, ordering after reconnect is broken.</rationale>
+    </rule>
+    <rule id="heartbeat-30s-tcp" testable="true" depth="essential">
+      <statement>Both endpoints MUST send ping every 30s and disconnect after 90s of no pong; raw TCP keep-alive alone is insufficient.</statement>
+      <rationale source="RFC 6455 heartbeat; NAT-timeout postmortems">NAT and corporate firewalls drop idle TCP connections silently after 1-5 minutes; application-layer ping detects this faster than TCP keep-alive.</rationale>
+    </rule>
+    <rule id="reconnect-with-jitter" testable="true" depth="essential">
+      <statement>Client MUST reconnect with exponential backoff (base 1s, max 60s) + full jitter; fixed-interval reconnect is forbidden.</statement>
+      <rationale source="AWS Architecture blog jitter post">Synchronised reconnects DoS the recovering server; jitter spreads the load over the window.</rationale>
+    </rule>
+    <rule id="bounded-send-queue" testable="true" depth="essential">
+      <statement>Server outgoing per-connection queue MUST be bounded (e.g. 1000 messages) with explicit shed policy (drop_oldest / drop_newest / close); unbounded queues are forbidden.</statement>
+      <rationale source="WebSocket OOM retros">Slow clients let unbounded queues grow unbounded; server OOMs while it still 'looks healthy'.</rationale>
+    </rule>
+    <rule id="short-lived-token-auth" testable="true" depth="essential">
+      <statement>Handshake MUST authenticate via short-lived (≤5min) signed token in URL query or `Sec-WebSocket-Protocol` header; long-lived cookies as the only auth are forbidden.</statement>
+      <rationale source="OWASP WS guidance; token-theft retros">Long-lived cookies cannot be revoked promptly; short-lived tokens limit replay window.</rationale>
+    </rule>
+    <rule id="schema-validated-per-type" testable="true" depth="essential">
+      <statement>Each message type MUST have a JSON schema; payload MUST be validated against the schema on both client and server; lax validation is forbidden.</statement>
+      <rationale source="JSON Schema usage; production fuzz retros">Without schema validation, agents and malicious clients can crash handlers with malformed payloads.</rationale>
+    </rule>
+    <rule id="close-code-truthful" testable="true" depth="essential">
+      <statement>Close MUST emit a code per RFC 6455 (1000 normal, 1001 going away, 1008 policy violation, 1009 too big, 4xxx app-specific); bare close without code is forbidden.</statement>
+      <rationale source="RFC 6455; client-debug retros">Without close codes, client cannot decide reconnect vs give-up; debugging is impossible.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>
