@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="task-spec-kit-three-step Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for task-spec-kit-three-step. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spec-Kit Three-Step Pipeline (specify → plan → tasks) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the task-spec-kit-three-step methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The agent MUST run `/speckit.specify` before `/speckit.plan`, and `/speckit.plan` before `/speckit.tasks`. The agent MUST NOT edit any source file until `tasks.md` exists, lists the file in scope, and is checked into the feature branch. Any unresolved `[NEEDS CLARIFICATION]` marker in `spec.md` blocks plan generation.</statement>
-      <rationale source="v1-source">The spec is the only artifact that survives model swaps and conversation truncation; the plan is the only artifact that records architectural rationale for review; tasks.md is the only artifact that decomposes the work into parallelizable, AC-anchored units the coding agent can attempt independently. Reordering or skipping breaks the audit chain.</rationale>
+
+    <rule id="artifact-order-fixed" testable="true" depth="essential">
+      <statement>The pipeline MUST run `specify` → `plan` → `tasks` in this exact order. `plan.md` MUST NOT exist before `spec.md`; `tasks.md` MUST NOT exist before `plan.md`. A missing predecessor is a hard failure.</statement>
+      <rationale source="GitHub spec-kit docs">Out-of-order artifacts let the agent ship code without grounding; the order is what makes the spec the durable source of truth.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>plan.md MUST contain a "Constitution Gates" section enumerating each principle with one of three values: `pass` (with one-sentence evidence), `waived` (with reviewer name and link to the waiver issue), or `blocked` (which halts the pipeline). The agent MUST NOT generate tasks.md while any gate is `blocked`. Waivers are only valid if signed by a CODEOWNER and reference an issue ID.</statement>
-      <rationale source="v1-source">Without recorded evidence, the gate degenerates into a comment the LLM ignores. By forcing a value plus citation per principle, the plan becomes auditable and the cost of skipping a principle (a CODEOWNER review) is now non-zero — which is what makes the gate behavioural.</rationale>
+    <rule id="clarification-markers-honored" testable="true" depth="essential">
+      <statement>Every `[NEEDS CLARIFICATION]` marker in `spec.md` MUST be resolved (replaced with a concrete value or dropped with rationale) before `plan` runs. Unresolved markers block the pipeline.</statement>
+      <rationale source="spec-kit prompt conventions">Unresolved clarifications are how LLM-generated specs leak hallucinated requirements into the plan.</rationale>
     </rule>
+    <rule id="constitution-gate-evidence" testable="true" depth="essential">
+      <statement>`plan.md` MUST contain a `Constitution Gate` section that cites the standards consulted (filename + section anchor) and explicitly states either compliance or an approved exception.</statement>
+      <rationale source="GitHub spec-kit /plan template">Without cited evidence, `plan.md` is opinion; with citations it becomes auditable.</rationale>
+    </rule>
+    <rule id="tasks-drive-agent-only" testable="true" depth="essential">
+      <statement>Only `tasks.md` MAY be the coding agent&apos;s prompt. The agent MUST NOT consume `spec.md` or `plan.md` as direct instructions — they are reference context only.</statement>
+      <rationale source="Internal — agent prompt audit">Mixing layers (spec + plan + tasks) into one prompt collapses the abstraction; the agent loses the `what vs how vs work item` boundary.</rationale>
+    </rule>
+    <rule id="parallel-tag-meaning" testable="true" depth="essential">
+      <statement>A task tagged `[P]` MUST be safe to execute in parallel with every other `[P]` task in the same group: no shared file edits, no shared schema migrations. Mis-tagging `[P]` is a hard failure.</statement>
+      <rationale source="spec-kit /tasks output convention">Parallel tagging that is not actually parallel breaks fleet orchestration with silent merge conflicts.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

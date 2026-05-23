@@ -3,57 +3,98 @@ slug: role-cheatsheet-generator
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Role Cheatsheet Generator: auto-builds a per-role one-pager of the top-N faion methodologies from corpus + role-tag metadata so every PM/Architect/QA/DevOps opens the same path.
-content_id: "43612aea9d2d89f5"
-tags: [role-cheatsheet-generator, sdlc-ai, geek]
+summary: Generates a deterministic per-role one-pager (`cheatsheet-<role>.md`) listing the top-10 faion methodologies for that role, filtered to the org's tier, derived from corpus role-tag metadata + priority signals.
+content_id: "b5e16e55fea38611"
+complexity: medium
+produces: report
+est_tokens: 3300
+tags: [role-cheatsheet-generator, sdlc-ai, geek, corpus-tools]
 ---
 # Role Cheatsheet Generator
 
 ## Summary
 
-**One-sentence:** Generate a per-role one-pager (PM, Architect, QA, DevOps, etc.) listing the top-N faion methodologies for that role, derived deterministically from the corpus and role-tag metadata so every team member opens the same canonical path.
+**One-sentence:** Generates a deterministic per-role one-pager (`cheatsheet-<role>.md`) listing the top-10 faion methodologies for that role, filtered to the org's tier, derived from corpus role-tag metadata + priority signals.
 
-**One-paragraph:** When a team adopts faion org-wide, the team-wide-methodology-base pain ("each dev googles differently") returns at the next layer up: each role opens a different faion path for the same situation. This methodology defines how to auto-generate a `cheatsheet-<role>.md` artefact from (a) corpus-wide role-tag metadata, (b) blocks_count / flagged_by_units priority signals, and (c) the org's tier so the cheatsheet only references content the team can actually read. Output is a stable, regeneratable, tier-aware top-10 list that can ship as `faion cheatsheet --role architect` and be diffed across releases.
+**One-paragraph:** When a team adopts faion org-wide, each role (PM / Architect / QA / DevOps) opens a different faion path for the same situation. This methodology produces a regeneratable, tier-aware top-10 cheatsheet per role: input = (corpus version, role, tier); output = byte-identical `cheatsheet-<role>.md` ordered by priority signal → role-tag-match → slug. Manual overrides live in a separate `cheatsheet-<role>.overrides.md` so the regenerate-from-scratch property survives.
+
+**Ефективно для:**
+
+- Team-wide faion adoption, де PM/Architect/QA відкривають різні шляхи.
+- Onboarding: одна канонічна сторінка per role.
+- Audit: cheatsheet diff across corpus releases показує, що змінилось.
+- Tier-gated org: cheatsheet не містить content вище за org-tier.
 
 ## Applies If (ALL must hold)
 
-- the corpus has role-tag metadata (role-product-manager, role-software-architect, role-devops-engineer, role-qa, etc.) on at least 80% of methodologies for the target role
-- a tier policy is set (the cheatsheet must not list content above the org's tier)
-- the generator output is consumed by humans opening it during work, not by an LLM at runtime
-- tier == geek (the generator is an internal tool, not customer-facing content)
+- Corpus has role-tag metadata on ≥80% of methodologies for the target role.
+- A tier policy is set (cheatsheet must not list content above org tier).
+- Generator output is consumed by humans during work, not by an LLM at runtime.
+- Tier == geek (internal tool, not customer-facing content).
 
 ## Skip If (ANY kills it)
 
-- role-tag coverage is below 80% — generate tags first; a partial cheatsheet teaches the wrong defaults
-- the org already maintains a hand-curated cheatsheet that is actively reviewed every release — extend it, do not replace
-- the role does not yet have ≥10 distinct methodologies in the corpus (output would be padding)
+- Role-tag coverage &lt;80% — generate tags first; partial cheatsheet teaches the wrong defaults.
+- Org already maintains a hand-curated cheatsheet reviewed every release — extend it, do not replace.
+- Role does not yet have ≥10 distinct methodologies in the corpus.
+- Customer-facing context — methodology content is CLI-only by policy.
 
 ## Prerequisites
 
-- corpus index with per-methodology role tags
-- tier-manifest.json snapshot
-- priority signal: blocks_count or flagged_by_units count per methodology
-- target role name (must match a known role-tag slug)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Corpus index | XML / JSON | faion-network |
+| Role-tag metadata | per-methodology frontmatter `role:` list | corpus |
+| Priority signal | blocks_count or flagged_by_units | corpus |
+| tier-manifest snapshot | JSON | faion-network |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/kb-agents-md-context-pyramid` | corpus-as-context pattern this generator implements |
-| `geek/sdlc-ai/team-mode-cli-flag` | tier and team-mode awareness for output gating |
+| [[mr-graph-vs-diff-reviewer]] | Corpus-graph traversal pattern reused here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: deterministic-ordering, tier-gated, role-tag-source-of-truth, regeneratable-not-edited, top-n-cap | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 700 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 600 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 500 |
+| `content/05-examples.xml` | essential | Worked report example end-to-end | 400 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 400 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `corpus_filter` | haiku | Mechanical filter by role-tag + tier. |
+| `priority_rank` | haiku | Sort by priority signal + tie-breakers. |
+| `overrides_merge` | sonnet | Light judgement merging human override file. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/cheatsheet-skeleton.md` | Generated cheatsheet skeleton with header + numbered list of 10 methodologies. |
+| `templates/cheatsheet-overrides-skeleton.md` | Override skeleton — pinned entries that survive regenerate. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-role-cheatsheet-generator.py` | Validate generated cheatsheet artefact + verify tier-gating + deterministic header. | Pre-merge of every regenerate |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- upstream playbook: `p6-product-dev-team/Adopt faion org-wide and override with company patterns`
-- adjacent methodology: `geek/sdlc-ai/kb-symbol-index-fresh-tags`
+- [[mr-graph-vs-diff-reviewer]]
+- [[task-agent-drafts-spec-before-coding]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (role-tag coverage, role methodology count, tier policy) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to invoke the generator — the tree terminates either on the active rule or on `skip-this-methodology`.

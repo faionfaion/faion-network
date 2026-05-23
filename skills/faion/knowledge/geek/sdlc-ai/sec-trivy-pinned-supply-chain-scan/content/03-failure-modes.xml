@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="sec-trivy-pinned-supply-chain-scan Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for sec-trivy-pinned-supply-chain-scan as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Trivy Pinned Supply-Chain Scan Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns observed when deploying Trivy + SBOM. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Bumping the SHA without reviewing release notes or rerunning cosign verification because "Dependabot suggested it."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Automated SHA bumps reintroduce the floating-ref risk in slow motion; require a human or agent review of the upstream changelog and signature on every bump.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding a CVE to .trivyignore with the comment "noisy" and no owner.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The allowlist becomes a perpetual cover; require owner + sunset so review is unavoidable.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Generating the SBOM nightly against main rather than against the tagged commit.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The SBOM diverges from any released artifact between two nightly runs and is no longer admissible evidence; pin generation to the tag event.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="action-pinned-by-tag" severity="high">
+      <symptom>Workflow references `aquasecurity/trivy-action@v0.30.0`; tag was retroactively repointed to malicious commit; CI ran malicious code.</symptom>
+      <root-cause source="2026 compromised-tag incident registry">Tag-based pinning is mutable; SHA-based is immutable.</root-cause>
+      <fix>Replace every tag reference with full 40-char SHA; cross-check SHA against compromised registry; commit `compromised-tags.blocklist` so CI fails any future reintroduction.</fix>
+    </antipattern>
+
+    <antipattern id="severity-set-too-low" severity="medium">
+      <symptom>Trivy gate set to fail on MEDIUM+; CI fails 5x/day on noise; team disables the check.</symptom>
+      <root-cause source="Severity calibration audits">MEDIUM has too much noise for a blocking gate.</root-cause>
+      <fix>Set blocking gate to HIGH,CRITICAL only; route MEDIUM/LOW to advisory PR comment; revisit threshold quarterly.</fix>
+    </antipattern>
+
+    <antipattern id="sbom-missing-on-release" severity="high">
+      <symptom>Release tagged; downstream EU CRA compliance audit asks for SBOM; nobody generated one.</symptom>
+      <root-cause source="EU CRA compliance audit findings">Release pipeline lacked SBOM emission step.</root-cause>
+      <fix>Add `release-sbom.sh` step running `trivy fs --format cyclonedx --output sbom.cdx.json .` + `gh release upload --clobber $TAG sbom.cdx.json`; require the step in release workflow.</fix>
+    </antipattern>
+
   </section>
 </text>

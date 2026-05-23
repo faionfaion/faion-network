@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="task-worktree-runtime-isolation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for task-worktree-runtime-isolation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="One Task → One Branch → One Worktree → One Agent (Runtime-Isolated) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the task-worktree-runtime-isolation methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The harness MUST create one git worktree per dispatched agent, on a unique branch named after the task slug. Each worktree MUST carry a file-scope manifest (e.g. `WT-SCOPE`) listing the path globs the agent is allowed to edit; any Edit/Write outside the manifest aborts the agent. The orchestrator MUST NOT dispatch two agents into the same worktree, and MUST NOT reuse a worktree across tasks.</statement>
-      <rationale source="v1-source">Without the manifest, the agent silently broadens scope and the merge conflict surfaces as "agent A and agent B both edited unrelated files in the same worktree" — equivalent to the no-worktree case. Without the unique branch, `git worktree add` refuses (a branch can be checked out by only one worktree at a time), so the contract is enforced by git itself.</rationale>
+
+    <rule id="one-task-one-worktree" testable="true" depth="essential">
+      <statement>Each scheduled task MUST get its own `git worktree add` directory and a dedicated feature branch. Reusing a worktree across tasks is forbidden.</statement>
+      <rationale source="git docs (man git-worktree) + parallel-agent harness audit">Sharing a worktree races on the index and working tree; the only safe primitive for concurrency is one worktree per agent.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>For every dispatched worktree the harness MUST emit a per-worktree env file containing PORT, DATABASE_URL (with a worktree-unique database name), REDIS_URL (with a unique key prefix or DB index), and SECRETS_PROFILE (a 1Password / vault profile scoped to this worktree). Ports MUST come from a tracked range (e.g. 4000-4999) with a free-port allocator; DB names MUST encode the worktree slug; cache prefixes MUST include the slug. The agent MUST source this env file before any local service starts.</statement>
-      <rationale source="v1-source">This is the difference between "filesystem isolation" and "runtime isolation". Without per-worktree allocation, parallel test suites step on each other's data, parallel dev servers fail to bind, and parallel CI jobs hold the same external rate limits. The penligent.ai 2026 report names this as the dominant production failure mode for worktree-based parallel agents.</rationale>
+    <rule id="scoped-file-manifest" testable="true" depth="essential">
+      <statement>Every worktree MUST ship with a manifest naming the paths the agent may edit. Writes outside the manifest MUST be rejected by a pre-commit hook or harness wrapper.</statement>
+      <rationale source="Internal — file-scope policy">Without a manifest, agents quietly modify shared files and merge conflicts blow up at integration.</rationale>
     </rule>
+    <rule id="port-namespace-per-worktree" testable="true" depth="essential">
+      <statement>Each worktree MUST receive a distinct port range allocated by the harness (e.g., 4000 + 100 × worktree_index). Hard-coded ports in code are flagged.</statement>
+      <rationale source="Parallel-agent runtime audit 2026">Two agents both bind to 4000 → second fails to boot, the agent retries, then `kills` the first agent&apos;s server. Port allocation must be central.</rationale>
+    </rule>
+    <rule id="db-namespace-per-worktree" testable="true" depth="essential">
+      <statement>Each worktree MUST use a dedicated DB schema or database name (`appname_wt_&lt;n&gt;`) and a dedicated cache key prefix. Migrations run inside the worktree&apos;s namespace, never the shared one.</statement>
+      <rationale source="Parallel-agent state-leak audit">Shared DB → migration in worktree A corrupts data in worktree B. Per-worktree schemas isolate state without spinning up new containers.</rationale>
+    </rule>
+    <rule id="secrets-per-worktree-bundle" testable="true" depth="essential">
+      <statement>Each worktree MUST receive its own secret bundle (env file or Vault path). Reading the shared production bundle from a worktree is forbidden.</statement>
+      <rationale source="Internal — secrets isolation policy">Parallel agents reading the same secret bundle either rotate counters out from under each other or, worse, write production logs from a feature branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

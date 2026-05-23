@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="sec-secrets-defense-in-depth Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for sec-secrets-defense-in-depth as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Two-Layer Secret Scanning Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns observed when deploying two-layer secret scanning. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Adding `*.env`, `*.pem`, `credentials.json` to `.gitignore` and considering the problem solved.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>`.gitignore` only protects untracked files; once a secret is committed it stays in history regardless. Combine `.gitignore` with the hook plus a gitleaks allowlist.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running TruffleHog non-verified and adding everything it finds to the dismiss list.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The dismiss list grows until real secrets land and are auto-suppressed; pairing diff-scope with `--results=verified` gives you a list that stays small and meaningful.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Rotating the secret silently, without logging the issuer's confirmation ID, "to avoid embarrassment."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Future audits cannot prove revocation; SOC2 and ISO 27001 control evidence requires the confirmation artifact.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="precommit-bypassed" severity="high">
+      <symptom>Developer commits with `--no-verify` to ship a fix; secret enters local git history; CI catches it 30 min later.</symptom>
+      <root-cause source="Pre-commit adoption studies">Hook is slow or noisy; team trained to bypass.</root-cause>
+      <fix>Tune gitleaks to staged-files-only; CI mirrors the gitleaks scan as a required check so `--no-verify` is caught at PR time.</fix>
+    </antipattern>
+
+    <antipattern id="allowlist-bloat" severity="medium">
+      <symptom>`gitleaks.toml` has 30 allowlist entries; nobody remembers why they're there.</symptom>
+      <root-cause source="Allowlist hygiene research">Entries added without comments; never re-audited.</root-cause>
+      <fix>Require a one-line comment per allowlist entry (rule + reason); quarterly re-audit removes entries that no longer apply.</fix>
+    </antipattern>
+
+    <antipattern id="verified-finding-ignored" severity="high">
+      <symptom>CI reports verified AWS token; PR merged with the comment "we'll rotate later"; token used by attacker within 24h.</symptom>
+      <root-cause source="Secret-incident response audits">No automated paging on verified findings; rotation not enforced before merge.</root-cause>
+      <fix>Make verified-finding a hard CI failure; auto-page security owner; block merge until rotation evidence (e.g., AWS STS GetCallerIdentity returns AccessDenied on the old key) is attached.</fix>
+    </antipattern>
+
   </section>
 </text>

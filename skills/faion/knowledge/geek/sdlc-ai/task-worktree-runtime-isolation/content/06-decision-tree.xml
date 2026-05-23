@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="One Task → One Branch → One Worktree → One Agent (Runtime-Isolated) Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml. Every leaf references a rule id (including `skip-this-methodology`).</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Will the agent boot a long-running service or write to a shared DB/cache during this task?</root-question>
+
+      <branch when="boots_service == false AND writes_shared_state == false">
+        <conclusion ref="skip-this-methodology" verdict="static analysis only — no runtime to isolate"/>
+      </branch>
+      <branch when="boots_service == true AND port_range_collision == true">
+        <conclusion ref="port-namespace-per-worktree" verdict="reject: port collision risk"/>
+      </branch>
+      <branch when="writes_shared_state == true AND db_namespace_shared == true">
+        <conclusion ref="db-namespace-per-worktree" verdict="reject: shared DB writes"/>
+      </branch>
+      <branch when="file_manifest_wildcard == true OR file_manifest_empty == true">
+        <conclusion ref="scoped-file-manifest" verdict="reject: unbounded write scope"/>
+      </branch>
+      <branch when="secrets_bundle == production_shared">
+        <conclusion ref="secrets-per-worktree-bundle" verdict="reject: production secrets in worktree"/>
+      </branch>
+      <branch when="worktree_reused_across_tasks == true">
+        <conclusion ref="one-task-one-worktree" verdict="reject: shared worktree"/>
+      </branch>
+      <branch when="all_above_pass == true">
+        <conclusion ref="one-task-one-worktree" verdict="accept: isolated worktree+runtime ready"/>
+      </branch>
+
+  </decision-tree>
+
+  <example trace="task-worktree-runtime-isolation-happy-path">
+    Agent #7 spawns worktree wt-007 → port range 4700-4799 → db app_wt_007 → vault wt-007 → boots service → smoke green → merge → slot freed.
+  </example>
+</text>

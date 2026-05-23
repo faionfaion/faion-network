@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="task-worktree-runtime-isolation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for task-worktree-runtime-isolation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="One Task → One Branch → One Worktree → One Agent (Runtime-Isolated) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments of this methodology. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Reusing the same worktree across sequential tasks "to save the venv install" without resetting branch / scope.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Branch state from task N leaks into task N+1; the next merge contains accidental commits from the prior task and the scope file is stale.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Allocating ports randomly per run instead of deterministically per slug, so a re-attached worktree gets a different port and the running dev server is orphaned.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Determinism per slug is what makes the worktree resumable across crashes and restarts; randomness leaks dangling processes that bind ports the next agent expects.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="worktree-only-no-runtime" severity="medium">
+      <symptom>Harness spawns N worktrees but they all boot servers on port 4000. Only the first works; subsequent agents fail boot and retry-storm.</symptom>
+      <root-cause source="Internal — task-worktree-runtime-isolation antipattern audit">Author assumed worktrees isolate runtime. They don&apos;t.</root-cause>
+      <fix>Allocate port ranges per worktree centrally; assert no overlap at spawn.</fix>
+    </antipattern>
+    <antipattern id="shared-db-migrations" severity="medium">
+      <symptom>Two worktrees run migrations against the same DB. Schema half-applied; both fail.</symptom>
+      <root-cause source="Internal — task-worktree-runtime-isolation antipattern audit">DB namespace not parameterized per worktree.</root-cause>
+      <fix>Inject `APP_DB_NAMESPACE` env per worktree; reject empty values.</fix>
+    </antipattern>
+    <antipattern id="manifest-wildcard" severity="medium">
+      <symptom>File manifest is `**/*`. Agent edits every file; merge conflicts at every PR.</symptom>
+      <root-cause source="Internal — task-worktree-runtime-isolation antipattern audit">Author copy-pasted a tutorial config.</root-cause>
+      <fix>Reject wildcards in manifest; require explicit path list with a max length (e.g., ≤30 paths).</fix>
+    </antipattern>
+
   </section>
 </text>

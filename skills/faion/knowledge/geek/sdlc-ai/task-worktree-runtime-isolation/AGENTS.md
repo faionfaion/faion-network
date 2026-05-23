@@ -3,73 +3,94 @@ slug: task-worktree-runtime-isolation
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Each parallel agent run gets its own git worktree, its own feature branch, its own scoped file-ownership manifest, AND its own runtime sandbox: distinct ports, database name, cache namespace, and secret bundle.
-content_id: "87d7620d2270dd77"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a worktree-spawn config that gives each parallel agent its own branch, worktree, file-scope manifest, and runtime sandbox (ports/DB/cache/secrets).
+content_id: "b7773ddb55406bb3"
+complexity: deep
+produces: config
+est_tokens: 4200
 tags: [worktree, runtime-isolation, parallel-agents, sandbox, git-worktree]
 ---
-# One Task → One Branch → One Worktree → One Agent (with Runtime Isolation)
+# One Task → One Branch → One Worktree → One Agent (Runtime-Isolated)
 
 ## Summary
 
-**One-sentence:** Each parallel agent run gets its own git worktree, its own feature branch, its own scoped file-ownership manifest, AND its own runtime sandbox: distinct ports, database name, cache namespace, and secret bundle.
+**One-sentence:** Map every parallel agent run to one git worktree + one branch + one file-ownership scope + one runtime sandbox (ports, DB, cache, secrets) so collisions surface at merge, never at edit or boot.
 
 **One-paragraph:** Each parallel agent run gets its own git worktree, its own feature branch, its own scoped file-ownership manifest, AND its own runtime sandbox: distinct ports, database name, cache namespace, and secret bundle. The mapping is exactly one task → one branch → one worktree → one agent. The agent is forbidden from editing files outside its declared scope; collisions surface only at merge time, never at edit time. Crucially, worktrees alone do not isolate runtime — port and DB collisions are the documented 2026 failure mode — so the harness MUST allocate a runtime sandbox per worktree, not just a working directory.
 
+**Ефективно для:**
+
+- Parallel coding-agent fleet, де 3+ агенти бігають одночасно.
+- Stateful apps (Postgres/Redis): port + DB collisions inakshe рвуть build.
+- Trunk-based dev із багатьма concurrent feature branches.
+- CI runners that must spin up isolated sandboxes per PR.
+
 ## Applies If (ALL must hold)
 
-- Any time more than one agent runs concurrently on the same repository.
-- Multi-feature parallel build (orchestrator dispatches N subagents on different branches).
-- Fan-out / map-reduce subagent dispatch where each leaf does isolated work.
-- Comparison / arena mode (run the same task with different models, compare diffs).
-- Long-running agent jobs where the human still needs to use the main checkout.
+- More than one coding agent runs in parallel against the same repo.
+- The project boots a long-running service (web/api/db) the agent must exercise.
+- Shared infra (Postgres, Redis, ports < 65536) is otherwise contended.
 
 ## Skip If (ANY kills it)
 
-- A single agent doing sequential work — one worktree is enough; branching adds no value.
-- Pure read-only research subagents that never write files — shared sandbox is fine, no isolation cost.
-- Tiny scripts under ~50 LOC where the worktree setup overhead dominates the task.
-- Repositories without local services (pure code-only, no DB, no port-bound dev server) — runtime isolation is a no-op there, but worktree isolation still applies.
+- Single agent, single task, no parallel execution.
+- Pure static-analysis or doc edits with no runtime boot.
+- Mandatory shared singleton (e.g., system service that cannot be sandboxed) makes per-worktree runtimes impossible.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo with main branch | git | repo root |
+| Service boot config | docker-compose / Procfile / env | repo |
+| Port and DB allocation policy | Markdown | infra docs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-output` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wt-env.example` | Env-file template with placeholders for port range, DB namespace, cache prefix, secrets ref. |
+| `templates/wt-spawn.sh` | Shell harness that allocates a slot and spawns an isolated worktree. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-task-worktree-runtime-isolation.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[task-plan-mode-locked-execution]]
+- [[task-spec-kit-three-step]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

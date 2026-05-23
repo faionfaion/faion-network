@@ -3,72 +3,100 @@ slug: sec-trivy-pinned-supply-chain-scan
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every container image, Helm chart, Terraform module, Kubernetes manifest, and release tarball passes through trivy fs (filesystem) plus trivy image (containers) in CI.
-content_id: "fd057ef748748d46"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run `trivy fs` (filesystem) + `trivy image` (containers) in CI on every PR; fail on HIGH/CRITICAL CVEs + misconfig; attach CycloneDX SBOM to each Release; pin trivy itself by SHA.
+content_id: "f53a27df91608d1f"
+complexity: medium
+produces: config
+est_tokens: 3400
 tags: [security, supply-chain, trivy, sbom, container-scanning]
 ---
 # Trivy with Pinned-Version Supply-Chain Scan + SBOM
 
 ## Summary
 
-**One-sentence:** Every container image, Helm chart, Terraform module, Kubernetes manifest, and release tarball passes through trivy fs (filesystem) plus trivy image (containers) in CI.
+**One-sentence:** Run `trivy fs` (filesystem) + `trivy image` (containers) in CI on every PR; fail on HIGH/CRITICAL CVEs + misconfig; attach CycloneDX SBOM to each Release; pin trivy itself by SHA.
 
-**One-paragraph:** Every container image, Helm chart, Terraform module, Kubernetes manifest, and release tarball passes through trivy fs (filesystem) plus trivy image (containers) in CI. The job fails on HIGH or CRITICAL CVEs and on misconfigurations, blocking merge. Each release tag also generates an SBOM in CycloneDX or SPDX and attaches it to the GitHub Release. Trivy itself is pinned by SHA — the action is referenced as aquasecurity/trivy-action@<sha> and the binary version in CI is set explicitly to a known-clean release, never latest.
+**One-paragraph:** Container, IaC, and release-tarball pipelines ship vulnerable transitive deps and base-image CVEs silently. This methodology produces a Trivy-pinned CI workflow that runs `trivy fs` over the repo (Dockerfile, terraform/, helm/, k8s/, package-lock.json) and `trivy image` on built images; fails the job on HIGH/CRITICAL CVEs and misconfigurations; emits SBOM per release for EU CRA / US EO 14028 compliance. The Trivy action and binary are pinned by SHA — never `@latest`, never compromised tag.
+
+**Ефективно для:**
+
+- Repo, що випускає container image, Helm chart, Terraform module, k8s manifest, release tarball.
+- Agent-driven base-image upgrade — agent запускає trivy image на candidate перед PR.
+- Polyglot monorepo з Dockerfile + terraform + helm + k8s + package-lock.json.
+- Release pipeline, що mustcomply з EU CRA / US EO 14028 (SBOM required).
 
 ## Applies If (ALL must hold)
 
-- Any repo that produces a container image, IaC artifact, or release tarball.
-- Any agent-driven dependency bump or base-image upgrade — agent runs trivy image on the candidate before opening the PR.
-- Polyglot monorepos that need one scanner across Dockerfile, terraform/, helm/, k8s/, and package-lock.json.
-- Release pipelines that must attach an SBOM for EU CRA or US EO 14028 compliance.
+- Repo produces a container image, IaC artifact, or release tarball.
+- CI has outbound network egress (Trivy DB updates).
+- Team accepts blocking merge on HIGH/CRITICAL CVE or misconfig.
+- Release pipeline can attach an SBOM artefact.
 
 ## Skip If (ANY kills it)
 
-- Pure documentation, asset, or static-blog repos with no container, IaC, or distributable binary — no supply-chain surface to scan.
-- Highly air-gapped environments where Trivy's online DB updates are impossible — switch to a mirrored offline DB or substitute Anchore Enterprise with a private feed; do not run the scanner with stale signatures.
-- Notebook-only research repos where dependency churn is constant and signal-to-noise is too low — use Snyk or Renovate-driven advisories instead and gate at deploy time.
-- The exact tag aquasecurity/trivy@v0.69.4 and aquasecurity/trivy-action@v0.30.0 (compromised) — never use those refs anywhere.
+- Pure docs/asset/static-blog repo with no container, IaC, or distributable binary.
+- Air-gapped environment without offline-DB mirror.
+- Notebook-only research repo with constant dep churn — gate at deploy time via different tooling.
+- The exact compromised tags `aquasecurity/trivy@v0.69.4` and `aquasecurity/trivy-action@v0.30.0` MUST NEVER be referenced.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| GitHub workflow | .github/workflows/trivy.yml | platform |
+| Trivy action SHA pin | known-clean SHA | sec |
+| SBOM tool | trivy fs --format cyclonedx OR syft | platform |
+| Release pipeline | gh release upload | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[sec-codeql-autofix-on-pr]] | Complementary SAST layer. |
+| [[sec-secrets-defense-in-depth]] | Complementary secret-scan layer. |
+| [[mr-renovate-ai-handoff]] | Renovate handles deps Trivy flags as breaking. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `workflow_draft` | haiku | Boilerplate Trivy YAML. |
+| `sha_pin` | haiku | Mechanical lookup. |
+| `cve_triage` | sonnet | HIGH/CRITICAL triage requires judgement (exploitable in our context?). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/trivy-action.yml` | Trivy fs + image workflow with SHA-pinned action. |
+| `templates/release-sbom.sh` | Release-time script that emits CycloneDX SBOM and attaches to gh release. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-sec-trivy-pinned-supply-chain-scan.py` | Validate workflow + SBOM emission config against schema. | Pre-merge of trivy.yml |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[sec-codeql-autofix-on-pr]]
+- [[sec-secrets-defense-in-depth]]
+- [[mr-renovate-ai-handoff]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (produces container/IaC/release? egress? compliance need?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to enable Trivy — the tree terminates either on the active rule or on `skip-this-methodology`.

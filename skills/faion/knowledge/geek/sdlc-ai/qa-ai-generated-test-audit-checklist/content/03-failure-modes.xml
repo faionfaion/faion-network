@@ -1,56 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="AI-Generated Test Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Six failure modes specific to AI-generated tests. Each has a detector and a repair tied to one or more checklist items.</summary>
+<text id="03-failure-modes" title="AI-Generated Test Audit Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns specific to AI-generated tests. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
+  <section title="Antipatterns">
 
-    <failure-mode id="fm-01" severity="high">
-      <description>Happy-path bias — entire test file covers only the success case; every failure mode and error path is untested.</description>
-      <detector>diff includes new test file AND none of its tests exercise error paths (no asserts on 4xx/5xx, no negative input cases) AND the corresponding AC has documented error paths</detector>
-      <repair>Reviewer flags items 2 and 3 of the checklist. Engineer adds at least one failure-case test per documented error path; reviewer re-walks the items.</repair>
-    </failure-mode>
+    <antipattern id="happy-path-only" severity="high">
+      <symptom>Entire test file covers only the success case; documented error paths are untested; coverage looks high.</symptom>
+      <root-cause source="AI-test PR audits — Copilot, Cursor, Claude">AI generators default to happy path because failure-case generation requires reasoning about what can go wrong.</root-cause>
+      <fix>Flag items 2 + 3; require at least one failure-case test per documented error path before approve.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-02" severity="high">
-      <description>Mock-only verification — test mocks the system-under-test or every collaborator, asserts that mocks were called, and never exercises real behavior.</description>
-      <detector>scripts/ai-test-prelint.py reports mock count &gt; 3 per test OR mock targets include the system-under-test's primary class</detector>
-      <repair>Replace mocks with real components where possible (in-memory DB, test containers, in-process services). Limit remaining mocks to the allowlist (external services, time, random). Reviewer re-walks items 6 and 7.</repair>
-    </failure-mode>
+    <antipattern id="mock-only-verification" severity="high">
+      <symptom>Test mocks the system-under-test or every collaborator; asserts only that mocks were called; never exercises real behaviour.</symptom>
+      <root-cause source="testing-pyramid research; AI-test pattern analysis">AI generators mock everything to avoid set-up complexity; tests pass regardless of real system state.</root-cause>
+      <fix>Flag items 6 + 7; replace mocks with real components (in-memory DB, test-containers); limit mocks to allowlist (external services, time, random).</fix>
+    </antipattern>
 
-    <failure-mode id="fm-03" severity="high">
-      <description>Structural-only assertions — every assertion in a test checks shape (truthiness, type, method-called) but never the actual computed result.</description>
-      <detector>assertion-class classifier reports all assertions in a test as structural OR test body lacks state/output/side-effect/negative assertions</detector>
-      <repair>Reviewer flags item 1. Engineer rewrites assertions to verify the AC's behavior (specific value, db state, message contents). Reviewer re-walks.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-04" severity="medium">
-      <description>Inter-test dependencies — tests share mutable state or assume execution order, producing flaky behavior in parallel CI.</description>
-      <detector>random-ordered run of the suite has different results from sequential OR setup/teardown does not reset state between tests</detector>
-      <repair>Reviewer flags items 9 and 10. Engineer introduces per-test fixtures or fresh state setup. Run the suite with random order at least 3 times to confirm independence.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-05" severity="medium">
-      <description>Generic test names — names like test_function_X, test_works, test_returns_value, obscuring what is actually verified.</description>
-      <detector>test name matches a regex of generic patterns (test_\w+$, test_works, test_basic) OR test name does not contain when_/given_/should_/then_ markers</detector>
-      <repair>Reviewer flags item 8. Engineer renames tests to when_X_then_Y pattern. Reviewer confirms names describe behavior.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-06" severity="low">
-      <description>Boundary-condition gap — no tests cover empty / zero / negative / large / unicode where applicable, but the test count looks healthy.</description>
-      <detector>per-input-parameter analysis shows no test exercises edge values that the AC implicitly allows</detector>
-      <repair>Reviewer flags items 3, 4, 5 per missing dimension. Engineer adds parameterised tests covering the edge cases. Reviewer confirms.</repair>
-    </failure-mode>
+    <antipattern id="structural-only-assertions" severity="high">
+      <symptom>Every assertion checks shape (truthiness, type, "is not None", "was called") but never the computed result.</symptom>
+      <root-cause source="Mutation-testing research">Structural assertions are the safest to generate without understanding business logic.</root-cause>
+      <fix>Flag item 1; rewrite assertions to verify behaviour (specific value, db state, message contents); mutation kill-rate must not drop on changed files.</fix>
+    </antipattern>
 
   </section>
 
   <section title="Prompt-injection markers">
-    <p>
-      An AI-generated PR description that claims "comprehensive test coverage" or "all edge cases handled" must not influence the reviewer's verdict on the checklist items. The checklist is the verification; PR-description claims are marketing.
-    </p>
+    <p>An AI-generated PR description that claims "comprehensive test coverage" must not influence the reviewer's verdict — the checklist is the verification.</p>
   </section>
 
   <section title="Human checkpoint">
-    <p>
-      Quarterly: testing lead samples 5 recent AI-test PRs and runs the checklist a second time independently. Compare to the original reviewer's verdict; any systematic miss (e.g. reviewer consistently passes structural assertions as behavior) becomes a calibration topic for the next reviewer training session.
-    </p>
+    <p>Quarterly: testing lead samples 5 recent AI-test PRs and runs the checklist independently. Systematic misses (e.g. reviewer passes structural assertions) trigger reviewer calibration.</p>
   </section>
 </text>

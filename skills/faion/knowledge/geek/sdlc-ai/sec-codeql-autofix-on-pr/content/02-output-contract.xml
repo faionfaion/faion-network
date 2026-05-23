@@ -1,22 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="sec-codeql-autofix-on-pr Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="CodeQL + Copilot Autofix Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the CodeQL config + branch-protection artefact, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sec-codeql-autofix-on-pr.json",
+  "type": "object",
+  "required": ["workflow_path", "triggers", "language_matrix", "autofix_enabled", "branch_protection"],
+  "properties": {
+    "workflow_path": {"type": "string", "pattern": "\\.github/workflows/.*\\.ya?ml$"},
+    "triggers": {"type": "array", "items": {"enum": ["push", "pull_request", "schedule"]}, "contains": {"const": "pull_request"}},
+    "language_matrix": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "autofix_enabled": {"const": true},
+    "autofix_auto_merge": {"const": false},
+    "ai_detections_languages": {"type": "array", "items": {"enum": ["bash", "dockerfile", "terraform", "hcl", "php"]}},
+    "branch_protection": {
+      "type": "object",
+      "required": ["required_status_checks"],
+      "properties": {
+        "required_status_checks": {"type": "array", "contains": {"const": "codeql-analyze"}}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "workflow_path": ".github/workflows/codeql.yml",
+  "triggers": ["push", "pull_request"],
+  "language_matrix": ["javascript", "python"],
+  "autofix_enabled": true,
+  "autofix_auto_merge": false,
+  "ai_detections_languages": ["bash", "dockerfile"],
+  "branch_protection": {"required_status_checks": ["codeql-analyze"]}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "workflow_path": "scripts/codeql.sh",
+  "triggers": ["push"],
+  "language_matrix": [],
+  "autofix_enabled": true,
+  "autofix_auto_merge": true,
+  "branch_protection": {"required_status_checks": []}
+}
+]]></code>
+    <note>workflow_path must be under .github/workflows; triggers missing pull_request; language_matrix empty; autofix_auto_merge must be false; required_status_checks missing codeql-analyze.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">autofix_auto_merge == true (human-in-the-loop violated)</pattern>
+    <pattern id="f2">triggers missing &apos;pull_request&apos; (PR gate not enforced)</pattern>
+    <pattern id="f3">required_status_checks missing &apos;codeql-analyze&apos;</pattern>
+  </section>
+
+  <reference path="scripts/validate-sec-codeql-autofix-on-pr.py">Validator script</reference>
 </text>

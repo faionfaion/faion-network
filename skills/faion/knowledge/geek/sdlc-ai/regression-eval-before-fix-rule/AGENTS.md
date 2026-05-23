@@ -3,82 +3,99 @@ slug: regression-eval-before-fix-rule
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9396904a3a7e2c2e"
-summary: Regression Eval Before Fix Rule — pinned decision-rule for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so run a blameless agent-incident postmortem when the agent is the defendant stops being folklore and starts being a reviewable operating tool.
-tags: [sdlc-ai, geek, decision-rule, regression, eval, before, fix, rule]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Every LLM-agent incident MUST produce a failing regression-eval case BEFORE the fix lands — the eval is the merge gate. Postmortem→eval→fix is non-skippable; eval-first is non-negotiable.
+content_id: "a51ba9b7f087b305"
+complexity: medium
+produces: decision-record
+est_tokens: 3300
+tags: [llm-agents, regression-eval, postmortem, fix-discipline, ai-incident]
 ---
 # Regression Eval Before Fix Rule
 
 ## Summary
 
-**One-sentence:** Regression Eval Before Fix Rule — pinned decision-rule for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so run a blameless agent-incident postmortem when the agent is the defendant stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Every LLM-agent incident MUST produce a failing regression-eval case BEFORE the fix lands — the eval is the merge gate. Postmortem→eval→fix is non-skippable; eval-first is non-negotiable.
 
-**One-paragraph:** In SDLC + AI tooling, the LLM-agent developer runs run a blameless agent-incident postmortem when the agent is the defendant on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Discipline rule: every agent-incident must produce a failing regression eval BEFORE the fix lands. Codifies that postmortem→eval is non-skippable. Five-line methodology with high leverage. `regression-eval-before-fix-rule` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the LLM-agent developer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored decision-rule committed to the team's knowledge space.
+**One-paragraph:** LLM-agent fixes regress silently: a prompt tweak that "obviously fixes" issue A re-introduces issue B that was fixed last month. Without a captured regression eval per incident, the team rediscovers the same bug every quarter. This methodology pins the rule: every postmortem on an agent incident MUST author a failing eval case that captures the bug deterministically; the fix PR cannot merge until that case flips from failing to passing AND no other eval cases regress. The output artefact is a decision-record linking incident → eval case path → fix PR.
+
+**Ефективно для:**
+
+- Repo з LLM agent (prompts, RAG, tools) що зазнає incidents.
+- Команда, де "fix" без eval повертає старі баги через 2 місяці.
+- Postmortem culture, що хоче перетворити incidents у permanent regression suite.
+- Merge gate, де required check може блокувати на eval delta.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p7-llm-agent-developer/Run a blameless agent-incident postmortem when the agent is the defendant`
-- the LLM-agent developer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Repo runs an LLM agent in production (chat, code, RAG, tools).
+- An eval set exists (or can be created) with a deterministic replay harness.
+- Incidents are reported (tracker, alert, user feedback) with reproducible inputs.
+- CI can run the eval set as a required PR check.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- No LLM agent in scope.
+- Incident is non-reproducible (one-off transient like vendor outage) — log it as "no-fix; vendor".
+- Bug is a UX-only complaint with no model-output trigger — handle via UX backlog.
+- Pre-prod prototype with no users — formal regression discipline is premature.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the LLM-agent developer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Incident report | tracker ticket with reproducible input | reporter |
+| Eval-set repo | jsonl + replay harness | ml-engineer |
+| CI required check | GitHub Actions workflow | platform |
+| Decision-record template | Markdown | docs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[postmortem-action-item-slo-tracking]] | Tracks action items including the eval case. |
+| [[pr-time-cost-diff-tool]] | Same eval set powers cost-diff. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 700 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `reproduce-incident` | sonnet | Needs judgement to extract deterministic inputs. |
+| `author-eval-case` | sonnet | Per-incident eval-case design. |
+| `verify-fix-flip` | haiku | Mechanical: rerun eval before/after fix; check flip + no regressions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/regression-eval-record.md` | Decision-record skeleton (incident → eval case path → fix PR). |
+| `templates/eval-case-jsonl.fixture` | Minimal failing eval-case JSONL fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-regression-eval-before-fix-rule.py` | Validate decision-record artefact + check eval case file exists. | Pre-merge of fix PR |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[postmortem-action-item-slo-tracking]]
+- [[pr-time-cost-diff-tool]]
+- [[task-agent-drafts-spec-before-coding]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (incident reproducible? eval-set available? CI check live?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether the rule should fire on a given incident — the tree terminates either on the active rule or on `skip-this-methodology`.

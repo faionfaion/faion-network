@@ -1,22 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="sec-secrets-defense-in-depth Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Two-Layer Secret Scanning Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the two-layer config artefact (pre-commit + CI), with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sec-secrets-defense-in-depth.json",
+  "type": "object",
+  "required": ["precommit_hook", "ci_workflow", "gitleaks_config_path", "trufflehog_verified_flag", "verified_finding_response"],
+  "properties": {
+    "precommit_hook": {"enum": ["pre-commit", "lefthook", "husky"]},
+    "ci_workflow": {"type": "string", "pattern": "\\.github/workflows/.*\\.ya?ml$"},
+    "gitleaks_config_path": {"type": "string"},
+    "trufflehog_verified_flag": {"const": true},
+    "verified_finding_response": {"enum": ["rotate_then_revert", "rotate_and_revert"]},
+    "detect_secrets_baseline": {"type": "string"},
+    "allowlist_entries_have_comments": {"const": true}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "precommit_hook": "pre-commit",
+  "ci_workflow": ".github/workflows/trufflehog.yml",
+  "gitleaks_config_path": "gitleaks.toml",
+  "trufflehog_verified_flag": true,
+  "verified_finding_response": "rotate_then_revert",
+  "detect_secrets_baseline": ".secrets.baseline",
+  "allowlist_entries_have_comments": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "precommit_hook": "manual",
+  "ci_workflow": "scripts/scan.sh",
+  "trufflehog_verified_flag": false,
+  "verified_finding_response": "ignore"
+}
+]]></code>
+    <note>precommit_hook not in enum; ci_workflow not in .github/workflows; verified flag must be true; response not in enum.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">trufflehog_verified_flag == false — unverified findings are noise</pattern>
+    <pattern id="f2">verified_finding_response not in {rotate_then_revert, rotate_and_revert}</pattern>
+    <pattern id="f3">allowlist entries without comments — bypass route</pattern>
+  </section>
+
+  <reference path="scripts/validate-sec-secrets-defense-in-depth.py">Validator script</reference>
 </text>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Plan Mode Then Locked Execution Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml. Every leaf references a rule id (including `skip-this-methodology`).</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the change touch &gt; 3 files OR run &gt; 5 min of agent time OR include side-effects (DB / deploy / secrets)?</root-question>
+
+      <branch when="scope_size &lt;= 3 AND runtime_minutes &lt; 5 AND side_effects == false">
+        <conclusion ref="skip-this-methodology" verdict="trivial — Plan Mode overhead not justified"/>
+      </branch>
+      <branch when="plan_mode_tool_writes == true">
+        <conclusion ref="plan-mode-readonly" verdict="reject: planning harness can mutate state"/>
+      </branch>
+      <branch when="plan_steps_count == 0 OR out_of_scope_missing == true">
+        <conclusion ref="plan-has-numbered-steps" verdict="reject: plan is vague or unbounded"/>
+      </branch>
+      <branch when="approved == false OR approval_token_hash != plan_hash">
+        <conclusion ref="human-approval-before-execute" verdict="reject: execution without matching approval"/>
+      </branch>
+      <branch when="during_execute_plan_edited == true">
+        <conclusion ref="no-silent-replan" verdict="halt: re-request approval"/>
+      </branch>
+      <branch when="pr_opened AND plan_hash_in_description == false">
+        <conclusion ref="plan-hash-in-pr" verdict="reject: missing audit link"/>
+      </branch>
+      <branch when="all_above_pass == true">
+        <conclusion ref="plan-hash-in-pr" verdict="accept: locked-execution complete"/>
+      </branch>
+
+  </decision-tree>
+
+  <example trace="task-plan-mode-locked-execution-happy-path">
+    8-file refactor → plan with 6 numbered steps → approver alice signs PL-2026-0521-001 → executed verbatim → PR embeds plan_hash → review trivial.
+  </example>
+</text>

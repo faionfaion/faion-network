@@ -3,72 +3,94 @@ slug: test-mutation-feedback-loop
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Coverage percent is a near-useless signal for AI-written tests — agents can hit 90% line coverage with assertions that never observe a mutation.
-content_id: "bb5fe34dbe9b00b6"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a mutation-score config that replaces line-coverage gates with diff-scoped Stryker/mutmut/PIT scoring, feeding the surviving-mutants report back to the coding agent.
+content_id: "91f82a8c748bc021"
+complexity: deep
+produces: config
+est_tokens: 4200
 tags: [mutation-testing, stryker, agent-feedback, ci-gate, test-quality]
 ---
 # Mutation Testing as the Agent Feedback Signal
 
 ## Summary
 
-**One-sentence:** Coverage percent is a near-useless signal for AI-written tests — agents can hit 90% line coverage with assertions that never observe a mutation.
+**One-sentence:** Replace coverage gates with diff-scoped mutation testing (Stryker / mutmut / PIT); feed surviving-mutants back to the agent's next iteration; gate merges on a mutation-score threshold.
 
 **One-paragraph:** Coverage percent is a near-useless signal for AI-written tests — agents can hit 90% line coverage with assertions that never observe a mutation. Replace coverage gates with mutation testing (Stryker, mutmut, PIT) scoped to changed files, and feed the surviving-mutants report back into the agent's next iteration. The gate passes only when the mutation score on the diff clears a threshold (typical: 70 break / 80 high). Meta's ACH (FSE 2025) extended the pattern: an LLM both generates targeted mutants for a domain (privacy, compliance, payments) and writes the tests that kill them — 73% of ACH-suggested tests merged at Messenger and WhatsApp.
 
+**Ефективно для:**
+
+- Agent-written tests, де coverage% — фейковий сигнал.
+- Stripe-like high-stakes domains: payments / privacy / compliance.
+- FSE 2025 Meta ACH pattern: LLM генерує mutants + tests, що їх kill.
+- CI що уже стабільний (flaky base = mutation noise).
+
 ## Applies If (ALL must hold)
 
-- Critical business logic where a wrong answer is expensive: payments, auth, pricing, rules engines, tax/refund logic.
-- CI quality gates on PRs authored or co-authored by coding agents.
-- Retrofitting a test suite onto legacy code that has shipped without one.
-- Per-file gates on libraries where the public API surface is small and well bounded.
+- Project has a stable test suite and CI capacity for an extra slow job.
+- Agent-written tests are common in the workflow.
+- Critical domain (payments, privacy, compliance) where weak tests cost real money.
 
 ## Skip If (ANY kills it)
 
-- Slow test suites where mutation cost (N_mutants x test_time) makes CI unaffordable — fix the suite first.
-- Generated/serialization code where most mutants are equivalent (a + b vs b + a on a commutative op).
-- Greenfield prototypes still discovering the spec — the test set churns too fast to gate on.
-- UI/visual code where behavior is "looks right" rather than a checkable invariant.
+- Pure prototype or research code where test quality is not gated.
+- Test suite is so flaky that mutation noise drowns out signal.
+- Language without a viable mutation tool (rare in 2026 mainstream stacks).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stable test suite | code | repo |
+| Mutation tool installed | Stryker / mutmut / PIT | dev environment |
+| CI runner with slow-job budget | infra | CI provider |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-output` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/stryker.conf.json` | Stryker config with diff scope + break/high thresholds. |
+| `templates/mutation-prompt.txt` | Prompt feeding surviving mutants back to the coding agent for iteration 2. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-test-mutation-feedback-loop.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[test-tdd-red-green-split-agents]]
+- [[test-property-based-llm-invariants]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

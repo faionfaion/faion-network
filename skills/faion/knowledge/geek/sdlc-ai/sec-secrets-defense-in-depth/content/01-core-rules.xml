@@ -1,19 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="sec-secrets-defense-in-depth Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for sec-secrets-defense-in-depth. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Two-Layer Secret Scanning Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules pinning the two-layer secret-scan discipline and skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every repo MUST install `gitleaks` as a `pre-commit` hook scanning staged content. The hook MUST run by default for every contributor (humans and agents). Agents MUST treat a hook failure as a real finding: rotate first, then scrub from the diff. Bypassing with `git commit --no-verify` is forbidden — fix the root cause and recommit.</statement>
-      <rationale source="v1-source">Defense in depth begins where the secret would otherwise originate; CI scanners catch what slips through but cannot un-publish a token that landed on a public branch. Local-first matches the same "shift-left" pattern that made format/lint hooks effective and that GitGuardian's 2026 sprawl report identifies as the highest-leverage point.</rationale>
+
+    <rule id="gitleaks-pre-commit" testable="true" depth="essential">
+      <statement>Every repo MUST run gitleaks as a pre-commit hook on the developer or agent machine — sub-second, blocks commit before secret enters local git history.</statement>
+      <rationale source="gitleaks docs + secret-leak postmortems">Pre-commit is the only layer that prevents the secret from ever existing in local git history.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every PR MUST run TruffleHog against the diff between `base..head` with `--results=verified` and the job MUST fail the required check on any verified finding. Unverified findings are reported as warnings, not blockers, to keep the gate signal clean. The PR description MUST link the rotation receipt before merge if a verified finding is acknowledged as expected (rare — typically only test fixtures using known invalidated keys).</statement>
-      <rationale source="v1-source">A verified finding is not a "potential secret" — it is a key that the issuer just answered as authentic. Treating it as anything other than P0 is a process bug. Restricting the merge gate to verified findings stops alert fatigue and gives agents a sharp signal they can act on.</rationale>
+
+    <rule id="trufflehog-verified-in-ci" testable="true" depth="essential">
+      <statement>CI MUST run TruffleHog with `--results=verified` so candidate tokens are validated against the issuing provider (AWS STS, GitHub, Stripe, Slack, OpenAI, Anthropic). Unverified findings are advisory only.</statement>
+      <rationale source="TruffleHog verified mode docs">Provider verification eliminates false-positive noise and isolates real live tokens.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>The first action on a verified secret finding MUST be rotation at the issuer (AWS IAM key delete, GitHub token revoke, OpenAI/Anthropic key revoke, Stripe key roll). Only after the issuer confirms revocation does the responder rewrite history if desired. The rotation event MUST be logged in the incident channel with the issuer's confirmation ID and the new secret stored in the team secret manager (Vault, 1Password, AWS Secrets Manager). The PR that introduced the leak MUST be closed without merge until the new secret is wired in.</statement>
-      <rationale source="v1-source">An attacker who clones the repo before a force-push still has the leaked token; a `git filter-repo` on the remote does not delete the value from anyone's local copy or any cache, fork, or backup. Issuer-side revocation is the only operation that breaks the attacker's access.</rationale>
+
+    <rule id="verified-treated-as-p0" testable="true" depth="essential">
+      <statement>A verified-live finding MUST trigger immediate rotation + revert. Issue automation MUST page the security owner; no merge until rotation confirmed.</statement>
+      <rationale source="Secret-incident response runbooks">Live tokens are exploitable in minutes; rotation must precede or accompany revert.</rationale>
     </rule>
+
+    <rule id="allowlist-explicit" testable="true" depth="essential">
+      <statement>`gitleaks.toml` MUST carry an explicit allowlist of test fixtures + documentation examples; entries with no comment explaining "why allowed" are forbidden.</statement>
+      <rationale source="Allowlist hygiene research">Unexplained allowlist entries become persistent bypass routes.</rationale>
+    </rule>
+
+    <rule id="history-baseline-with-detect-secrets" testable="true" depth="essential">
+      <statement>Migrations of historical secrets MUST pair with `detect-secrets` baseline so legacy findings can be ratcheted out without blocking every PR.</statement>
+      <rationale source="detect-secrets baseline docs">Without baseline, legacy findings flood the gate and adoption stalls.</rationale>
+    </rule>
+
+    <rule id="ci-mirrors-precommit-allowlist" testable="true" depth="essential">
+      <statement>CI's gitleaks job MUST use the same `gitleaks.toml` as the pre-commit hook so allowlists do not drift between layers.</statement>
+      <rationale source="Drift-prevention CI patterns">Different allowlists between layers create silent gaps.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If CI has no outbound egress AND no offline provider-format substitute is acceptable, OR repo is a read-only vendor mirror, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies when verification cannot be performed and the team accepts the gap.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

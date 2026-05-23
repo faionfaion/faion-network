@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-mutation-feedback-loop Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-mutation-feedback-loop. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Mutation Testing as the Agent Feedback Signal Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the test-mutation-feedback-loop methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>CI MUST run mutation testing scoped to changed files on every agent-authored PR with break: 70, low: 60, high: 80 thresholds. The job MUST fail (non-zero exit) when the diff mutation score falls below break. Coverage percent alone MUST NOT be used as the merge gate when an LLM authored or modified the tests.</statement>
-      <rationale source="v1-source">Coverage measures execution; mutation measures detection. AI-written tests routinely show high coverage with low mutation score because assertions are weak ("not None", "len &gt; 0"). Mutation surfaces every weak assertion as a concrete surviving mutant.</rationale>
+
+    <rule id="diff-scoped-mutation" testable="true" depth="essential">
+      <statement>Mutation testing MUST be scoped to changed files in the PR (diff scope), not the whole codebase. Full-codebase mutation runs once weekly at most.</statement>
+      <rationale source="Stryker / mutmut docs">Whole-codebase mutation per PR balloons CI cost; diff scope keeps the signal tight to the change under review.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>When mutation CI fails, the next agent turn MUST receive (a) the list of surviving mutants with file, line, mutator name, and original-vs-mutated source, and (b) the explicit instruction "add or strengthen assertions that detect each mutant; do not change source under test." The loop MUST terminate either by clearing the threshold or by the agent labelling each remaining mutant as equivalent with a one-line justification committed to mutants.equivalent.md.</statement>
-      <rationale source="v1-source">Without the structured surviving-mutants list, the agent re-runs coverage tactics that already failed. With it, the agent has unambiguous targets and converges in 1-3 iterations on real-world legacy retrofit benchmarks (Meta ACH: 73% merge rate at Messenger/WhatsApp).</rationale>
+    <rule id="threshold-break-high" testable="true" depth="essential">
+      <statement>PRs MUST set two thresholds: `break` (typical 70%) blocks merge; `high` (typical 80%) is the goal. Below break → fail; between break and high → warn; above high → pass clean.</statement>
+      <rationale source="Stryker config conventions">A single hard threshold creates pass/fail cliffs; the two-tier band gives the agent a clear `good enough vs aspirational` signal.</rationale>
     </rule>
+    <rule id="survivors-fed-back" testable="true" depth="essential">
+      <statement>Surviving mutants MUST be returned to the coding agent&apos;s next iteration as structured input (mutant ID + diff + which test SHOULD have killed it). The agent iterates until all mutants die or are tagged equivalent.</statement>
+      <rationale source="FSE 2025 Meta ACH report">Mutation as a one-way gate produces frustrated humans; mutation as feedback produces tests that get stronger over iterations.</rationale>
+    </rule>
+    <rule id="equivalent-mutants-justified" testable="true" depth="essential">
+      <statement>Tagging a mutant as `equivalent` (no test can distinguish it) MUST include a written justification stored alongside the test. A reviewer signs off on equivalence claims.</statement>
+      <rationale source="Mutation-testing literature">Without justification, `equivalent` becomes the escape hatch that silently lowers the threshold.</rationale>
+    </rule>
+    <rule id="baseline-not-eroded" testable="true" depth="essential">
+      <statement>When new tests are added, the project-wide mutation score MUST NOT regress below the rolling 4-week baseline. CI gates merges that lower the baseline by &gt; 1 point.</statement>
+      <rationale source="Internal — quality-ratchet policy">Without a ratchet, mutation score drifts down as flaky equivalence claims accumulate.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

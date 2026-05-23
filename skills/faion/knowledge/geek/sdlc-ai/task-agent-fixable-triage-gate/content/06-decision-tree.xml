@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="`agent-fixable` Triage Gate (Humans Pick, Agents Work) Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml. Every leaf references a rule id (including `skip-this-methodology`).</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the issue carry the `agent-fixable` label applied by a human or by a read-only triage bot?</root-question>
+
+      <branch when="label_applied == false">
+        <conclusion ref="skip-this-methodology" verdict="no precondition; agent must not pick up"/>
+      </branch>
+      <branch when="label_applied == true AND applied_by matches `*-bot$` AND bot_has_write_tools == true">
+        <conclusion ref="triage-bot-read-only" verdict="reject: triage identity has code-write privileges"/>
+      </branch>
+      <branch when="label_applied == true AND applied_by == coding_agent">
+        <conclusion ref="no-self-labelling" verdict="reject: agent self-labelled"/>
+      </branch>
+      <branch when="label_applied == true AND vendor_label_present_before_pickup == true">
+        <conclusion ref="vendor-neutral-label" verdict="reject: vendor pinning at triage time"/>
+      </branch>
+      <branch when="label_applied == true AND dispatch_event != issues.labeled">
+        <conclusion ref="label-as-precondition" verdict="reject: wrong trigger event"/>
+      </branch>
+      <branch when="label_applied == true AND all_above_pass == true">
+        <conclusion ref="merge-rate-telemetry" verdict="accept: dispatch and record outcome"/>
+      </branch>
+
+  </decision-tree>
+
+  <example trace="task-agent-fixable-triage-gate-happy-path">
+    Issue #1402 labelled `agent-fixable` by maintainer alice; dispatch fires on issues.labeled; merge-rate counter increments on merge.
+  </example>
+</text>

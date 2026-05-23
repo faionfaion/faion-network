@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-golden-master-legacy-rewrite Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-golden-master-legacy-rewrite. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Golden-Master Corpus for AI-Driven Legacy Rewrites Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the test-golden-master-legacy-rewrite methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Before any agent touches the legacy module, capture at least 200 distinct (input, expected_output) pairs into a versioned JSONL corpus under tests/golden/. The capture script MUST normalize timestamps (frozen value), random IDs (deterministic seed or strip), and order-sensitive collections (sort by stable key). The corpus file MUST be committed and immutable; new pairs append, existing pairs MUST NOT be silently rewritten.</statement>
-      <rationale source="v1-source">Untested legacy has no other spec. Without a captured baseline, every agent rewrite is unverifiable. Without normalization, the replay test goes flaky and gets disabled — the worst possible outcome.</rationale>
+
+    <rule id="corpus-committed" testable="true" depth="essential">
+      <statement>The (input, expected_output) corpus MUST be committed in the repo (compressed if large, LFS-tracked if &gt;100 MB). Generation scripts MUST be re-runnable from CI.</statement>
+      <rationale source="Internal — corpus reproducibility policy">An uncommitted corpus is no corpus; it cannot gate a rewrite or be diffed when the agent&apos;s output drifts.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The replay test MUST iterate the entire corpus and assert byte-for-byte parity (after the same normalization used at capture). On divergence the test MUST print case_id, input, and a unified diff of expected vs actual. CI MUST fail when any case diverges. Updating an expected value requires a separate commit whose message starts with golden: and explains the behaviour change; PR review checks each updated row.</statement>
-      <rationale source="v1-source">Bulk-accepting a corpus diff turns golden-master into a rubber-stamp. Per-row review keeps the cost of "I changed behaviour" visible to the human approver and forces the agent to surface its assumptions.</rationale>
+    <rule id="byte-for-byte-default" testable="true" depth="essential">
+      <statement>The default pass criterion is byte-for-byte equality of `actual_output` and `expected_output`. Non-determinism must be eliminated by canonicalization (sort, redact, normalize) before comparison.</statement>
+      <rationale source="Approval-tests library docs">Soft equality (substring, fuzzy) lets the AI hallucinate `close enough` output that diverges in production.</rationale>
     </rule>
+    <rule id="diff-row-approval" testable="true" depth="essential">
+      <statement>When a diff is intentional (bug fix, behaviour upgrade), it MUST be approved row-by-row in a structured review file (`approved_diffs.yaml`). Approving the whole corpus diff in one click is forbidden.</statement>
+      <rationale source="Internal — diff-approval policy">Bulk approval erases the audit trail that distinguishes an intentional behaviour change from an accidental regression.</rationale>
+    </rule>
+    <rule id="sampling-from-production" testable="true" depth="essential">
+      <statement>Inputs MUST be sampled to cover the legacy&apos;s real-world distribution (top-N by frequency + tail samples + adversarial fuzz). Random uniform sampling alone is insufficient.</statement>
+      <rationale source="Diff-testing literature (taming-aliases, Hypothesis)">Real-world bugs hide in low-frequency edge cases; uniform sampling misses them.</rationale>
+    </rule>
+    <rule id="canonicalize-non-determinism" testable="true" depth="essential">
+      <statement>Any non-deterministic output (timestamps, UUIDs, hash maps) MUST be canonicalized with a documented function before storage AND comparison. The canonicalization function is version-pinned alongside the corpus.</statement>
+      <rationale source="Approval-tests / golden-master patterns">Naive comparison of timestamps explodes the corpus into flaky red builds the first time the system clock moves.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

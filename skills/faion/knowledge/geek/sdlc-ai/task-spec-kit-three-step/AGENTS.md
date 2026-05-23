@@ -3,72 +3,95 @@ slug: task-spec-kit-three-step
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Before any agent writes code, run the GitHub spec-kit chain `/speckit.
-content_id: "7fb80600d9b688e3"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces three versioned artifacts (spec.md, plan.md, tasks.md) in fixed order; only tasks.md is allowed to drive the coding agent.
+content_id: "e0e174922d47a353"
+complexity: medium
+produces: spec
+est_tokens: 5100
 tags: [spec-kit, spec-driven-development, task-lifecycle, constitution-gate, artifact-order]
 ---
 # Spec-Kit Three-Step Pipeline (specify → plan → tasks)
 
 ## Summary
 
-**One-sentence:** Before any agent writes code, run the GitHub spec-kit chain `/speckit.
+**One-sentence:** Run the GitHub spec-kit chain /speckit.specify → /speckit.plan → /speckit.tasks so spec.md (WHAT/WHY) → plan.md (HOW) → tasks.md (parallelizable units) are produced in this fixed order before any code is written.
 
 **One-paragraph:** Before any agent writes code, run the GitHub spec-kit chain `/speckit.specify` → `/speckit.plan` → `/speckit.tasks` so the workflow yields three versioned artifacts in this fixed order: `spec.md` (WHAT/WHY with explicit `[NEEDS CLARIFICATION]` markers), `plan.md` (HOW + tech rationale + constitution gate evidence), and `tasks.md` (parallelizable work items, each tagged `[P]` if it can run concurrently). Only `tasks.md` is allowed to drive the coding agent — the spec, not the generated code, is the durable source of truth that survives model swaps and context resets.
 
+**Ефективно для:**
+
+- Greenfield feature, де модель часом скаче через 2-3 sessions.
+- Constitution-driven repos: plan.md цитує rules, code їх не порушує.
+- Parallel agent fleets: [P]-tagged tasks бігають одночасно без conflicts.
+- Audit для compliance: spec/plan/tasks — три versioned артефакти, легко переглянути.
+
 ## Applies If (ALL must hold)
 
-- Any non-trivial feature touching more than ~3 files or one service boundary.
-- High-stakes domains traceable to a regulator or contract: payments, auth, migrations, PII flows.
-- Multi-agent fan-out where each parallel agent needs an isolable task with its own AC.
-- Greenfield modules where the public API surface is the artifact others will depend on.
+- Greenfield feature or non-trivial enhancement (not a single-file bugfix).
+- Team plans to drive coding agents across multiple sessions or model versions.
+- Constitution / architecture standards exist and the plan must cite them.
 
 ## Skip If (ANY kills it)
 
-- True one-line bug fixes, typo corrections, dependency patch bumps — spec ceremony exceeds the change.
-- Throwaway exploratory spike branches whose code is committed but never merged.
-- `npm audit fix` / `cargo update` style mechanical work — Renovate/Dependabot, not spec-kit.
-- Pure ops tasks with no code change (cert renewal, DNS edit) — runbook, not spec.
+- Bug fix where the spec is the failing test.
+- Throwaway prototype not destined for production.
+- No constitution / architecture standards exist yet — write those first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature request | Markdown / ticket | PM |
+| Constitution / standards | Markdown | repo `/docs/constitution.md` |
+| spec-kit CLI installed | binary | developer machine |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-output` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec-skeleton.md` | spec.md skeleton with [NEEDS CLARIFICATION] markers and WHAT/WHY sections. |
+| `templates/tasks-skeleton.md` | tasks.md skeleton with [P] tag column and file-overlap proof column. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-task-spec-kit-three-step.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[task-plan-mode-locked-execution]]
+- [[task-worktree-runtime-isolation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

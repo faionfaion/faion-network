@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-property-based-llm-invariants Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-property-based-llm-invariants. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Property-Based Tests From LLM-Inferred Invariants Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the test-property-based-llm-invariants methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The agent MUST classify each proposed property under exactly one of: `round-trip` (`f(g(x)) == x`), `idempotence` (`f(f(x)) == f(x)`), `oracle-equivalence` (`f(x) == oracle(x)`), `metamorphic` (`f(t(x))` relates to `f(x)` by some `R`), or `invariant-on-output` (`P(f(x))` holds for all valid `x`). Any property the agent cannot label MUST be rejected and not committed.</statement>
-      <rationale source="v1-source">A closed rubric (a) makes review tractable, (b) forces the agent to think about the function's algebraic structure rather than its current implementation, (c) matches the categories Hypothesis/fast-check/proptest already shrink against well.</rationale>
+
+    <rule id="invariant-must-be-grounded" testable="true" depth="essential">
+      <statement>Every proposed invariant MUST cite the source text (docstring line, type annotation, or example call) that justifies it. Ungrounded invariants are rejected.</statement>
+      <rationale source="Anthropic red-team agent 2026 report">Ungrounded properties hallucinate behaviour; grounding pins each property to a falsifiable claim in the source.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every committed property MUST carry a one-line comment of the form `# grounded: &lt;quoted source fragment&gt;` immediately above the `@given` (or `fc.assert` / `proptest!`) decorator. Properties with no quotable source MUST be deleted, not weakened. Code review MUST reject any property whose grounding comment does not appear in the source under test.</statement>
-      <rationale source="v1-source">The grounding comment makes review O(seconds) per property and turns the "specification gap" into a hard error: if the agent cannot quote a source line, the spec is silent on the invariant and the property is the agent's hallucination, not the function's contract.</rationale>
+    <rule id="five-property-families" testable="true" depth="essential">
+      <statement>The agent MUST consider the five canonical families (round-trip, idempotence, oracle, metamorphic, monotonicity) and explicitly mark which apply and which do not (with reason).</statement>
+      <rationale source="Property-based testing literature (Hypothesis docs, QuickCheck)">Without an exhaustive sweep, agents default to one family (usually round-trip) and miss the easy wins.</rationale>
     </rule>
+    <rule id="property-before-example" testable="true" depth="essential">
+      <statement>Property-based tests MUST be written before example-based tests. Example tests are reserved for documenting failing-case minimizations the property test produces.</statement>
+      <rationale source="Internal — test-priority policy">Example tests written first anchor the agent&apos;s thinking on specific inputs; properties anchor it on general claims.</rationale>
+    </rule>
+    <rule id="seed-pinned" testable="true" depth="essential">
+      <statement>Each property test MUST pin its random seed and shrink budget so failures are reproducible in CI. Floating seeds are forbidden in committed tests.</statement>
+      <rationale source="Hypothesis / fast-check docs">Floating seeds turn a real failure into a flaky one nobody can reproduce.</rationale>
+    </rule>
+    <rule id="pure-functions-only" testable="true" depth="essential">
+      <statement>Property-based tests MUST only target pure functions. Impure functions go through example-based or contract tests, not property tests.</statement>
+      <rationale source="Internal — property-test policy">Property tests over impure code generate spurious failures (network errors, race conditions) that pollute the signal.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

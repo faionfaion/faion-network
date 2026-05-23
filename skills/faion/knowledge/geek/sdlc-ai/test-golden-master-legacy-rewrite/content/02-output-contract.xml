@@ -1,22 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="test-golden-master-legacy-rewrite Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Golden-Master Corpus for AI-Driven Legacy Rewrites Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the code artefact this methodology produces, plus one valid example, one invalid example, and the forbidden-pattern list. The companion validator (`scripts/validate-test-golden-master-legacy-rewrite.py`) enforces the same constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/test-golden-master-legacy-rewrite.json",
+  "title": "GoldenMasterCorpusSpec",
+  "type": "object",
+  "required": [
+    "module_under_rewrite",
+    "corpus_path",
+    "pair_count",
+    "sampling_strategy",
+    "canonicalize_fn",
+    "approved_diffs_path",
+    "pass_criterion"
+  ],
+  "properties": {
+    "module_under_rewrite": {
+      "type": "string"
+    },
+    "corpus_path": {
+      "type": "string"
+    },
+    "pair_count": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "sampling_strategy": {
+      "enum": [
+        "top-n+tail+fuzz",
+        "stratified",
+        "production-mirror"
+      ]
+    },
+    "canonicalize_fn": {
+      "type": "string"
+    },
+    "approved_diffs_path": {
+      "type": "string"
+    },
+    "pass_criterion": {
+      "enum": [
+        "byte-equal",
+        "approved-row-diff"
+      ]
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "module_under_rewrite": "src/legacy/pricing.py",
+  "corpus_path": "tests/golden/pricing/",
+  "pair_count": 1200,
+  "sampling_strategy": "top-n+tail+fuzz",
+  "canonicalize_fn": "tests/golden/canon.py:canonicalize_pricing",
+  "approved_diffs_path": "tests/golden/approved_diffs.yaml",
+  "pass_criterion": "byte-equal"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "module_under_rewrite": "src/legacy/pricing.py",
+  "pair_count": 3,
+  "pass_criterion": "fuzzy"
+}
+]]></code>
+    <note>pair_count below floor; corpus_path missing; canonicalize_fn missing; pass_criterion not in enum.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden>
+      <pattern id="f1">pair_count &lt; 10</pattern>
+      <pattern id="f2">pass_criterion ∉ {byte-equal, approved-row-diff}</pattern>
+      <pattern id="f3">approving all diffs in one commit (`approved_diffs.yaml` whole-file replace)</pattern>
+    </forbidden>
+  </section>
+
+  <reference path="scripts/validate-test-golden-master-legacy-rewrite.py">Validator script enforcing this contract.</reference>
 </text>

@@ -1,3 +1,9 @@
+# purpose: Shell harness that allocates a slot and spawns an isolated worktree.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-1200 tokens when loaded as context
+
 #!/usr/bin/env bash
 # wt-spawn.sh — create a worktree with branch, scope manifest, and runtime env.
 # Usage:  source wt-spawn.sh && wt_spawn billing apps/billing/** tests/billing/**

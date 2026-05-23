@@ -1,22 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="sec-trivy-pinned-supply-chain-scan Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trivy Pinned Supply-Chain Scan Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the Trivy workflow + SBOM emission artefact, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sec-trivy-pinned-supply-chain-scan.json",
+  "type": "object",
+  "required": ["workflow_path", "action_sha", "binary_version", "scan_modes", "severity_threshold", "sbom_emission"],
+  "properties": {
+    "workflow_path": {"type": "string", "pattern": "\\.github/workflows/.*\\.ya?ml$"},
+    "action_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "binary_version": {"type": "string", "pattern": "^v?[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "scan_modes": {"type": "array", "items": {"enum": ["fs", "image", "config", "rootfs"]}, "minItems": 2, "contains": {"const": "fs"}},
+    "severity_threshold": {"enum": ["HIGH,CRITICAL", "CRITICAL"]},
+    "sbom_emission": {
+      "type": "object",
+      "required": ["format", "attach_to_release"],
+      "properties": {
+        "format": {"enum": ["cyclonedx", "spdx-json"]},
+        "attach_to_release": {"const": true}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "workflow_path": ".github/workflows/trivy.yml",
+  "action_sha": "0123456789abcdef0123456789abcdef01234567",
+  "binary_version": "v0.70.0",
+  "scan_modes": ["fs", "image"],
+  "severity_threshold": "HIGH,CRITICAL",
+  "sbom_emission": {"format": "cyclonedx", "attach_to_release": true}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "workflow_path": ".github/workflows/trivy.yml",
+  "action_sha": "v0.30.0",
+  "binary_version": "latest",
+  "scan_modes": ["fs"],
+  "severity_threshold": "MEDIUM",
+  "sbom_emission": {"format": "txt", "attach_to_release": false}
+}
+]]></code>
+    <note>action_sha must be 40-char hex (not version tag); binary_version cannot be `latest`; scan_modes must include both fs + image; severity threshold not in enum; sbom format invalid + attach must be true.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">action_sha not matching ^[a-f0-9]{40}$ (version tags forbidden)</pattern>
+    <pattern id="f2">binary_version == &apos;latest&apos;</pattern>
+    <pattern id="f3">references to compromised tags v0.69.4 or trivy-action@v0.30.0</pattern>
+  </section>
+
+  <reference path="scripts/validate-sec-trivy-pinned-supply-chain-scan.py">Validator script</reference>
 </text>

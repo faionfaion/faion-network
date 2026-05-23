@@ -1,43 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Regression Eval Before Fix Rule — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A decision-rule artefact: named inputs, published thresholds, a default branch, and a per-invocation log.</summary>
+<text id="02-output-contract" title="Regression Eval Before Fix Rule Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact linking incident → eval case → fix PR, with valid + invalid examples and forbidden patterns.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>rule.inputs (name + source per input)</item>
-      <item>rule.thresholds (numeric or boolean)</item>
-      <item>rule.default_branch (the unhappy-path action)</item>
-      <item>invocation.log (timestamp + inputs + branch + decider)</item>
-      <item>owner + version + last_reviewed</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/regression-eval-before-fix-rule.json",
+  "type": "object",
+  "required": ["incident_id", "eval_case_path", "fix_pr", "root_cause_class", "ci_required_check_id", "verdict"],
+  "properties": {
+    "incident_id": {"type": "string"},
+    "eval_case_path": {"type": "string", "pattern": "\\.jsonl$"},
+    "fix_pr": {"type": "string"},
+    "root_cause_class": {"enum": ["prompt", "tool", "model", "context-assembly", "rag-retrieval", "vendor-outage", "user-input"]},
+    "ci_required_check_id": {"type": "string"},
+    "verdict": {"enum": ["flipped", "no-flip", "regressed-others", "no-fix-transient", "no-fix-vendor"]}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "incident_id": "INC-441",
+  "eval_case_path": "eval/regressions/INC-441.jsonl",
+  "fix_pr": "https://github.com/org/repo/pull/482",
+  "root_cause_class": "prompt",
+  "ci_required_check_id": "eval-suite",
+  "verdict": "flipped"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "incident_id": "INC-441",
+  "eval_case_path": "TBD",
+  "fix_pr": "",
+  "verdict": "passed"
+}
+]]></code>
+    <note>eval_case_path must end with .jsonl; fix_pr empty; missing root_cause_class + ci_required_check_id; verdict not in enum.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>input named &apos;judgment&apos;</description>
-      <reason>Unnamed inputs let bias dominate.</reason>
-    </antipattern>
-    <antipattern>
-      <description>thresholds without numbers</description>
-      <reason>Not reproducible.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no default branch</description>
-      <reason>Edge cases collapse the rule.</reason>
-    </antipattern>
-    <antipattern>
-      <description>invocations not logged</description>
-      <reason>Rule cannot be reviewed against outcomes.</reason>
-    </antipattern>
+    <pattern id="f1">eval_case_path empty or does not end with .jsonl</pattern>
+    <pattern id="f2">verdict not in {flipped, no-flip, regressed-others, no-fix-transient, no-fix-vendor}</pattern>
+    <pattern id="f3">ci_required_check_id absent — merge gate not enforced</pattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Inputs named with source.</item>
-      <item>Thresholds carry numbers.</item>
-      <item>Default branch documented.</item>
-      <item>Each invocation logged with branch and decider.</item>
-      <item>Owner + last_reviewed populated.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-regression-eval-before-fix-rule.py">Validator script</reference>
 </text>

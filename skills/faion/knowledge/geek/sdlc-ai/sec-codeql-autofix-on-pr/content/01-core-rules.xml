@@ -1,15 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="sec-codeql-autofix-on-pr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for sec-codeql-autofix-on-pr. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="CodeQL + Copilot Autofix Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules pinning the CodeQL SAST gate, Autofix policy, and skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every protected branch MUST list the CodeQL check name (for example `CodeQL / Analyze (javascript-typescript)`) as a required status check, and the CodeQL workflow MUST run on `pull_request` for every language matrix entry. A PR introducing one or more new CodeQL alerts MUST fail the check until the alert is dismissed-with-reason or fixed in the same PR.</statement>
-      <rationale source="v1-source">If the check is not required, a PR can be merged with red alerts and the gate is theatre. GitHub's own Advanced Security guidance ties the merge decision to the SARIF diff between base and head — that diff has to be the source of truth for the bot, the human reviewer, and the agent.</rationale>
+
+    <rule id="codeql-on-push-and-pr" testable="true" depth="essential">
+      <statement>`.github/workflows/codeql.yml` MUST trigger on both `push` (to default branch) and `pull_request`. Scheduled runs are SHOULD, not MUST.</statement>
+      <rationale source="GitHub Code Scanning docs">PRs surface new alerts before merge; push covers main-branch baseline drift.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>An agent or human MUST treat each Copilot Autofix suggestion as a draft patch: read the alert's data-flow explanation, run the test suite locally with the patch applied, and only then apply via "Commit suggestion" or rewrite. Autofix patches MUST NOT be auto-applied by a bot, and MUST NOT be merged without at least one non-author approval.</statement>
-      <rationale source="v1-source">Autofix achieves more than two-thirds correctness on common alert types but the remaining third either misses a constraint (locale, framework version, custom wrapper) or shifts the bug rather than fixing it; the reviewable-suggestion contract keeps the human or agent in the loop while still cutting median time-to-fix by roughly five times.</rationale>
+
+    <rule id="codeql-required-check" testable="true" depth="essential">
+      <statement>Branch protection MUST make `codeql-analyze` a required status check for merge.</statement>
+      <rationale source="Merge-gate discipline">Without required check, CodeQL alerts can be ignored at merge.</rationale>
     </rule>
+
+    <rule id="autofix-never-auto-merge" testable="true" depth="essential">
+      <statement>Copilot Autofix MUST post patches as PR suggestions only; auto-merge of Autofix patches is forbidden. A human accepts, edits, or rejects each.</statement>
+      <rationale source="Autofix policy research">AI-generated patches can introduce regressions; human-in-the-loop is non-negotiable.</rationale>
+    </rule>
+
+    <rule id="language-matrix-explicit" testable="true" depth="essential">
+      <statement>Workflow MUST declare a `language` matrix (e.g., `[javascript, python, go]`). Polyglot repos MUST list every CodeQL-supported language present in the repo.</statement>
+      <rationale source="CodeQL action docs">Matrix per language is the standard idiom; missing a language silently skips it.</rationale>
+    </rule>
+
+    <rule id="ai-detections-lane-for-non-codeql" testable="true" depth="essential">
+      <statement>For repos with Bash / Dockerfile / Terraform / PHP, AI-powered detections MUST be enabled in Code Scanning so the gate is uniform across the stack.</statement>
+      <rationale source="GitHub AI detections beta">CodeQL covers ~10 languages; the AI lane fills the gap on remaining surfaces.</rationale>
+    </rule>
+
+    <rule id="baseline-reset-on-mass-refactor" testable="true" depth="essential">
+      <statement>Mass-renaming refactors (≥1k LOC churn) MUST schedule a one-shot baseline reset of CodeQL alerts BEFORE the PR opens; otherwise the PR floods reviewers with false-positive alerts.</statement>
+      <rationale source="CodeQL baseline-reset playbook">Mass refactor floods are an operational hazard; baseline reset is the documented escape hatch.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo is not hosted on GitHub OR is documentation/asset-only OR lacks GHAS license while being private, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies when CodeQL has no surface or no license.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

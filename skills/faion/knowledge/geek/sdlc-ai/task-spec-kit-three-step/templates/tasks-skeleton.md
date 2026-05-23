@@ -1,3 +1,9 @@
+<!-- purpose: tasks.md skeleton with [P] tag column and file-overlap proof column. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
+<!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
+
 # Tasks: <feature-name>
 
 > Generated from `plan.md`. Do NOT edit by hand — re-run `/speckit.tasks`.

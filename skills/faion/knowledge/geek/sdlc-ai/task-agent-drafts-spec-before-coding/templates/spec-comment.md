@@ -1,5 +1,10 @@
 <!--
-  Agent spec-comment template — first comment on an assigned ticket.
+  purpose: agent spec-comment with current state / desired state / proposed plan
+  consumes: ticket body + linked Notion/Slack/prior tickets + code-intel search
+  produces: spec (markdown posted as first comment on the assigned ticket)
+  depends-on: content/01-core-rules.xml (spec-comment-first, three-section-shape, discovery-includes-linked-context)
+  token-budget-impact: low — ~200 tokens when loaded as context
+
   Fill every section. Mention the issue creator. Do NOT open a PR until
   the approval gate (see templates/approval-gate.yaml) clears.
 -->

@@ -1,19 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="sec-trivy-pinned-supply-chain-scan Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for sec-trivy-pinned-supply-chain-scan. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Trivy Pinned Supply-Chain Scan Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules pinning the Trivy CI gate, SBOM emission, and skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every CI workflow MUST reference aquasecurity/trivy-action by its full 40-character commit SHA, and MUST pass version: with an explicit Trivy release that has been verified by cosign signature against aquasecurity/trivy keys. Floating refs (@main, @v0, @latest) and the known-bad versions trivy@v0.69.4 and trivy-action@v0.30.0 MUST NOT appear anywhere in the repo, including in archived branches and example documentation.</statement>
-      <rationale source="v1-source">SHA pins are immutable; tag pins are not. The 2026 compromise reused legitimate tags after the attacker pushed malicious commits, so pipelines pinned to @v0.30.0 ran the malicious code while believing they were on a known release. SHA pin + signature verification breaks that path.</rationale>
+
+    <rule id="trivy-fs-and-image" testable="true" depth="essential">
+      <statement>CI MUST run BOTH `trivy fs` (over repo / IaC / lockfiles) AND `trivy image` (over built container images). Skipping either leaves a gap.</statement>
+      <rationale source="Trivy docs">`fs` catches deps + IaC misconfig; `image` catches base-image CVEs. Both are required.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Each PR MUST run trivy fs --severity HIGH,CRITICAL --exit-code 1 . against the source tree and, when the PR builds a container, trivy image --severity HIGH,CRITICAL --exit-code 1 &lt;image-ref&gt; against the built artifact. Either non-zero exit MUST block merge. CVE allowlist entries in .trivyignore MUST include a one-line justification, an owner, and a # sunset:YYYY-MM-DD comment; CI MUST fail if any allowlist entry is past its sunset.</statement>
-      <rationale source="v1-source">Filesystem-only scans miss vulnerabilities introduced by the base image; image-only scans miss source-level CVEs in tooling that never lands in the container. Running both is cheap (seconds in cache) and closes both gaps. Sunset dates prevent the allowlist from becoming a graveyard of forgotten exceptions.</rationale>
+
+    <rule id="fail-on-high-critical" testable="true" depth="essential">
+      <statement>Trivy job MUST fail on HIGH or CRITICAL CVE OR on any misconfig finding. PR merge MUST be blocked until resolved or explicitly waived.</statement>
+      <rationale source="CVE severity policy">HIGH/CRITICAL are the minimum severity that warrants attention; MEDIUM/LOW can be advisory.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every git tag matching the release pattern (for example v*.*.*) MUST trigger a workflow that generates a CycloneDX SBOM with trivy sbom --format cyclonedx, signs the SBOM with cosign, and uploads both the SBOM and the signature to the GitHub Release as release assets. The release MUST NOT be marked non-draft until the SBOM upload step succeeds.</statement>
-      <rationale source="v1-source">Tying SBOM generation to the tag event guarantees the SBOM matches the exact artifact shipped, which is what auditors verify. Cosign signing prevents downstream consumers from being fed a swapped SBOM.</rationale>
+
+    <rule id="action-pinned-by-sha" testable="true" depth="essential">
+      <statement>The Trivy GitHub Action MUST be referenced by full SHA (40-char), never by `@latest` or `@vX.Y`. The action SHA MUST be from a known-clean release.</statement>
+      <rationale source="GitHub Actions supply-chain audits + 2026 compromised-tag incidents">Compromised tags ship malicious code under the same version; only SHA-pinning is safe.</rationale>
     </rule>
+
+    <rule id="trivy-binary-pinned" testable="true" depth="essential">
+      <statement>The Trivy binary version in CI MUST be explicitly set to a known-clean release. `latest` is forbidden.</statement>
+      <rationale source="Supply-chain hygiene">Same compromise vector as the action; pin the binary separately.</rationale>
+    </rule>
+
+    <rule id="sbom-per-release" testable="true" depth="essential">
+      <statement>Every release tag MUST produce a CycloneDX or SPDX SBOM and attach it to the GitHub Release (via `gh release upload`). Compliance (EU CRA, US EO 14028) requires this.</statement>
+      <rationale source="EU CRA + US EO 14028 SBOM requirements">SBOM is mandatory for distributable software in those jurisdictions.</rationale>
+    </rule>
+
+    <rule id="compromised-tags-blocklist" testable="true" depth="essential">
+      <statement>The refs `aquasecurity/trivy@v0.69.4` and `aquasecurity/trivy-action@v0.30.0` MUST NEVER be used anywhere in any workflow or build step.</statement>
+      <rationale source="Compromised-tag incident registry">These specific tags shipped malicious code; never use them.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo is docs-only OR is air-gapped with no offline-DB mirror OR is a notebook-only research repo, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies when no supply-chain surface exists or scanner cannot run.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

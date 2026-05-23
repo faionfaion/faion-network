@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="One Task → One Branch → One Worktree → One Agent (Runtime-Isolated) Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the task-worktree-runtime-isolation methodology end-to-end. Decision-gates surface stops when inputs do not pass.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="plan-allocations">
+      <input>Active worktree count</input>
+      <action>Reserve `n` slots: ports [4000+100i .. 4099+100i], DB `app_wt_&lt;i&gt;`, cache `wt&lt;i&gt;:`, vault path `…/wt-&lt;i&gt;`.</action>
+      <output>Allocation table.</output>
+    </step>
+    <step n="2" name="spawn-worktree">
+      <input>Branch name + slot</input>
+      <action>`git worktree add &lt;path&gt; &lt;branch&gt;`; inject env via templates/wt-env.example.</action>
+      <output>Worktree on disk with env file.</output>
+    </step>
+    <step n="3" name="emit-manifest">
+      <input>Task scope</input>
+      <action>Write the file manifest (explicit paths) into the worktree as `.faion/scope.txt`.</action>
+      <output>Scope manifest committed to worktree.</output>
+    </step>
+    <step n="4" name="boot-isolated-runtime">
+      <input>env file</input>
+      <action>Start the service with the per-worktree port/DB/cache/secrets; run smoke tests.</action>
+      <output>Service reachable on allocated port only.</output>
+      <decision-gate>If smoke fails, FREE the slot and abort the agent run.</decision-gate>
+    </step>
+    <step n="5" name="merge-and-recycle">
+      <input>Final diff</input>
+      <action>After merge, `git worktree remove`, drop DB namespace, free port range, revoke secrets bundle.</action>
+      <output>Slot returned to the pool.</output>
+    </step>
+
+  </section>
+</text>

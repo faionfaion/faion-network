@@ -1,22 +1,120 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="task-worktree-runtime-isolation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="One Task → One Branch → One Worktree → One Agent (Runtime-Isolated) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the config artefact this methodology produces, plus one valid example, one invalid example, and the forbidden-pattern list. The companion validator (`scripts/validate-task-worktree-runtime-isolation.py`) enforces the same constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/task-worktree-runtime-isolation.json",
+  "title": "WorktreeRuntimeSpec",
+  "type": "object",
+  "required": [
+    "worktree_id",
+    "branch",
+    "path",
+    "file_manifest",
+    "port_range",
+    "db_namespace",
+    "cache_prefix",
+    "secrets_bundle_ref"
+  ],
+  "properties": {
+    "worktree_id": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-/_]+$"
+    },
+    "path": {
+      "type": "string"
+    },
+    "file_manifest": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "port_range": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "integer"
+        },
+        "end": {
+          "type": "integer"
+        }
+      }
+    },
+    "db_namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]+$"
+    },
+    "cache_prefix": {
+      "type": "string"
+    },
+    "secrets_bundle_ref": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "worktree_id": "wt-007",
+  "branch": "feat/export-csv",
+  "path": "/repo.wt/007",
+  "file_manifest": [
+    "src/export/",
+    "tests/export/"
+  ],
+  "port_range": {
+    "start": 4700,
+    "end": 4799
+  },
+  "db_namespace": "app_wt_007",
+  "cache_prefix": "wt007:",
+  "secrets_bundle_ref": "vault://teams/app/wt-007"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "worktree_id": "wt-007",
+  "branch": "feat/export-csv",
+  "path": "/repo",
+  "file_manifest": [],
+  "port_range": {
+    "start": 4000,
+    "end": 4000
+  },
+  "db_namespace": "production",
+  "cache_prefix": "",
+  "secrets_bundle_ref": "vault://prod/main"
+}
+]]></code>
+    <note>Path is main checkout (not a worktree); empty manifest; collapsed port range; production DB; empty cache prefix; production secrets.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden>
+      <pattern id="f1">two worktrees with overlapping port ranges</pattern>
+      <pattern id="f2">two worktrees on the same db_namespace</pattern>
+      <pattern id="f3">file_manifest empty or wildcard `**/*`</pattern>
+      <pattern id="f4">secrets_bundle_ref pointing to shared production bundle</pattern>
+    </forbidden>
+  </section>
+
+  <reference path="scripts/validate-task-worktree-runtime-isolation.py">Validator script enforcing this contract.</reference>
 </text>

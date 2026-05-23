@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# release-sbom.sh — generate, sign, and attach a CycloneDX SBOM to a GitHub Release.
-# Invoked from a tag-triggered workflow with $TAG and $GITHUB_TOKEN exported.
+# purpose: generate CycloneDX SBOM, sign with cosign, attach to GitHub Release
+# consumes: $TAG + $GITHUB_TOKEN environment + repo content
+# produces: config (sbom.cdx.json + signature uploaded to gh release)
+# depends-on: content/01-core-rules.xml (sbom-per-release)
+# token-budget-impact: low — ~150 tokens when loaded as context
+# Invoked from a tag-triggered workflow.
 set -euo pipefail
 
 : "${TAG:?TAG must be set to the release tag (e.g. v1.2.3)}"

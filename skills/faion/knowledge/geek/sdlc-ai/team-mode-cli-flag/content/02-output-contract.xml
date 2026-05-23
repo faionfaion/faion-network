@@ -1,39 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Team Mode Cli Flag Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Team Mode Cli Flag output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Team Mode CLI Flag (`--team-config` Overlay) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the config artefact this methodology produces, plus one valid example, one invalid example, and the forbidden-pattern list. The companion validator (`scripts/validate-team-mode-cli-flag.py`) enforces the same constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/team-mode-cli-flag.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/team-mode-cli-flag.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/team-mode-cli-flag.json",
+  "title": "TeamConfigOverlay",
+  "type": "object",
+  "required": [
+    "version",
+    "last_reviewed",
+    "signed_by",
+    "signature",
+    "overrides"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "signed_by": {
+      "type": "string"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=]{40,}$"
+    },
+    "overrides": {
+      "type": "object",
+      "minProperties": 1
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "version": "1.2.0",
+  "last_reviewed": "2026-05-10",
+  "signed_by": "ops@acme.com",
+  "signature": "MEUCIQDxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "overrides": {
+    "model_whitelist": [
+      "claude-opus",
+      "claude-sonnet"
+    ],
+    "mcp_allowlist": [
+      "pact",
+      "github"
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "1.2",
+  "signed_by": "we",
+  "overrides": {}
+}
+]]></code>
+    <note>Version not semver; signed_by is plural; signature missing; overrides empty; last_reviewed missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden>
+      <pattern id="f1">signed_by ∈ {team, we, all, anyone}</pattern>
+      <pattern id="f2">signature absent or shorter than 40 chars</pattern>
+      <pattern id="f3">overrides empty (overlay with no overrides is meaningless)</pattern>
+      <pattern id="f4">last_reviewed older than 90 days without explicit acknowledgement</pattern>
+    </forbidden>
+  </section>
+
+  <reference path="scripts/validate-team-mode-cli-flag.py">Validator script enforcing this contract.</reference>
 </text>

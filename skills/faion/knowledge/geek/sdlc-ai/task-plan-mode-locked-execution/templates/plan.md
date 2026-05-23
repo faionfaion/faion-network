@@ -1,3 +1,9 @@
+<!-- purpose: Markdown skeleton for the locked plan (numbered steps, verify cmds, out-of-scope, risks). -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
+<!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
+
 # Plan: <change-title>
 
 > Generated in Plan Mode (read-only). Approval required before execution.

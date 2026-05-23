@@ -3,72 +3,94 @@ slug: task-agent-fixable-triage-gate
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Agents that turn issues into pull requests (Devin, Copilot Coding Agent, Codex, Cursor Background) waste tokens spinning on tickets they cannot solve: no acceptance criteria, no reproducible bug, blocked on product decisions, or duplicates of an existing issue.
-content_id: "6dfd70640e4cb475"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a label-gated triage policy that lets coding agents (Devin, Copilot, Codex, Cursor) only pick up issues a human has marked agent-fixable.
+content_id: "74aec9fff68b75a4"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [task-lifecycle, triage, agent-fleet, label-gate, coding-agent]
 ---
 # `agent-fixable` Triage Gate (Humans Pick, Agents Work)
 
 ## Summary
 
-**One-sentence:** Agents that turn issues into pull requests (Devin, Copilot Coding Agent, Codex, Cursor Background) waste tokens spinning on tickets they cannot solve: no acceptance criteria, no reproducible bug, blocked on product decisions, or duplicates of an existing issue.
+**One-sentence:** Insert a human-applied `agent-fixable` label as the precondition coding agents listen for, so the fleet stops burning tokens on unspeccable tickets.
 
-**One-paragraph:** Agents that turn issues into pull requests (Devin, Copilot Coding Agent, Codex, Cursor Background) waste tokens spinning on tickets they cannot solve: no acceptance criteria, no reproducible bug, blocked on product decisions, or duplicates of an existing issue. Insert a triage gate as a label — agent-fixable (or copilot, devin-pickup) — applied by a human or by a triage bot AFTER spam/duplicate/scope checks. The coding agent only listens for that label, never for "issue opened". Cognition's published Devin numbers show PR merge rate climbing from 34% to 67% over 2025 once gating was added; the same shape works for any coding agent fleet.
+**One-paragraph:** Coding agents that turn issues into PRs waste tokens spinning on tickets they cannot solve: no acceptance criteria, no reproducible bug, blocked on product decisions, or duplicates. Insert a triage gate as a label (`agent-fixable`) applied by a human or by a read-only triage bot AFTER spam/duplicate/scope checks. The coding agent only listens for that label, never for `issue opened`. Cognition's published Devin numbers show PR merge rate climbing from 34% to 67% over 2025 once gating was added; the same shape works for any coding-agent fleet.
+
+**Ефективно для:**
+
+- Mixed coding-agent fleets де треба один common precondition label.
+- Backlog із 50+ open issues, де агенти інакше підбирали би сміття.
+- Strict CODEOWNERS repos: stale agent PRs створюють шум для review.
+- Onboarding першого coding agent — стартує з вузького allowlist.
 
 ## Applies If (ALL must hold)
 
 - Issue trackers with more than 50 open items where agents would otherwise pick the wrong ones.
 - Mixed agent fleets (Devin + Copilot + Codex + Cursor) sharing the same backlog.
 - Repos with strict CODEOWNERS where mis-routed agent attempts produce noisy stale PRs.
-- Teams adopting their first coding agent — start with a tiny agent-fixable allowlist, expand as merge rate stabilizes.
 
 ## Skip If (ANY kills it)
 
 - Tiny backlogs (fewer than 10 open issues) where a human picks each issue manually anyway.
 - Tickets needing product discovery, not code — those should carry needs-spec, never agent-fixable.
-- One-off prototypes with no merge rate to optimize.
-- Teams that have not yet defined what "fixable by an agent" means — write the criteria first, label after.
+- Teams that have not yet defined what 'fixable by an agent' means — write the criteria first, label after.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Issue tracker config | YAML / JSON | infra repo |
+| Agent fleet inventory | Markdown table | platform team |
+| CODEOWNERS file | text | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-output` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agent-pickup.yml` | GitHub Actions workflow dispatching an agent only on `agent-fixable` label-add. |
+| `templates/triage-checklist.md` | Pre-label checklist a human or read-only triage bot must satisfy before applying agent-fixable. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-task-agent-fixable-triage-gate.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[task-plan-mode-locked-execution]]
+- [[tracker-ai-triage-classify-route]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
