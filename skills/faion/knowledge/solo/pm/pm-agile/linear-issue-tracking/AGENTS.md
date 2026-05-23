@@ -4,72 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Linear's opinionated, minimal workflow eliminates configuration overhead — teams are productive in under an hour.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Solo / small-team Linear setup: workspace, cycle policy, issue states, label taxonomy, Slack/GitHub linkages, automation hygiene.
 content_id: "47d11764c93d3e16"
-tags: [linear, issue-tracking, sprints, velocity, graphql, automation]
+complexity: medium
+produces: spec
+est_tokens: 4100
+tags: ["linear", "pm-agile", "pm", "solo", "issue-tracking"]
 ---
-# Linear Issue Tracking for Engineering Teams
+# Linear Issue Tracking (PM Agile)
 
 ## Summary
 
-**One-sentence:** Linear's opinionated, minimal workflow eliminates configuration overhead — teams are productive in under an hour.
+**One-sentence:** Solo / small-team Linear setup: workspace, cycle policy, issue states, label taxonomy, Slack/GitHub linkages, automation hygiene.
 
-**One-paragraph:** Linear's opinionated, minimal workflow eliminates configuration overhead — teams are productive in under an hour. The GraphQL API is best-in-class for agents: rich query and mutation support with a stable schema. GitHub integration auto-transitions issue status when PRs are opened or merged, removing the manual "move to In Review" step. Velocity and cycle metrics are built-in without formula configuration.
+**One-paragraph:** Pins the Linear baseline for solo founders + small teams: one workspace, weekly cycles, canonical state set, ≤15 labels, GitHub + Slack integrations on. Output is a versioned spec covering setup + governance + agent-integration limits.
+
+**Ефективно для:**
+
+- Solo founder or 2-10-person team adopting Linear who wants to skip the rewrite-in-month-3 phase. One spec covering workspace shape, cycle policy, label taxonomy, integrations.
 
 ## Applies If (ALL must hold)
 
-- Building software products with engineering-focused teams valuing speed and keyboard shortcuts
-- Automating cycle hygiene: moving stale issues, closing duplicates, adding labels from SDD tasks
-- Syncing Linear issue state with GitHub PR status in CI pipelines
-- Creating issues in bulk from structured input (SDD implementation-plan.md, CSV backlogs)
-- Generating weekly velocity or cycle summary reports
+- Adopting Linear OR auditing existing Linear workspace
+- Team size 1-10 (small enough for one workspace)
+- Issues estimated in story points OR T-shirt sizes
 
 ## Skip If (ANY kills it)
 
-- Teams not using Linear — do not retrofit this workflow onto Jira, Trello, or GitHub Projects
-- Real-time incident response — Linear's async model is too slow for live war-rooms
-- One-time exploratory tasks where creating an issue adds overhead, not value
-- Replacing human judgment on priority or roadmap sequencing
+- Already use Jira / GitHub Projects exclusively and not migrating
+- Team size >25 — Linear architecture differs from enterprise
+- Issues are not estimated AND not planning to start
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Team roster + roles | table | people doc |
+| Existing repos / Slack channels to integrate | list | stack inventory |
+| Cycle length decision (1w / 2w) | doc | team agreement |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/pm/capacity-fit-calculator` | Peer methodology — capacity computation reads Linear estimates. |
+| `solo/pm/burndown-diagnosis-cheatsheet` | Peer methodology — burndown chart sourced from Linear cycle data. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-linear-issue-tracking` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-linear-issue-tracking` | haiku | Schema check + threshold checks; deterministic. |
+| `review-linear-issue-tracking` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/linear-issue-tracking.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/linear-issue-tracking.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-linear-issue-tracking.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/pm-agile/`
+- [[capacity-fit-calculator]]
+- [[github-projects]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

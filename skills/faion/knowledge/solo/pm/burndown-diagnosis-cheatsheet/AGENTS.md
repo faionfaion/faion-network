@@ -4,76 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Burndown Diagnosis Cheatsheet: codified delivery-management practice that turns the recurring 'role-project-manager/Update the burndown / burnup and decide one corrective action' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: One-page cheatsheet for diagnosing why a burndown chart is off-track: scope creep / capacity loss / blocker stack / estimate drift.
 content_id: "e9d822e4ecd07e9b"
-tags: [burndown-diagnosis-cheatsheet, pm, solo]
+complexity: medium
+produces: report
+est_tokens: 3700
+tags: ["burndown", "pm", "solo", "sprint", "diagnostics"]
 ---
 # Burndown Diagnosis Cheatsheet
 
 ## Summary
 
-**One-sentence:** Burndown Diagnosis Cheatsheet: codified delivery-management practice that turns the recurring 'role-project-manager/Update the burndown / burnup and decide one corrective action' decision into a repeatable, auditable artefact.
+**One-sentence:** One-page cheatsheet for diagnosing why a burndown chart is off-track: scope creep / capacity loss / blocker stack / estimate drift.
 
-**One-paragraph:** Burndown Diagnosis Cheatsheet addresses the gap identified by the role-project-manager/Update the burndown / burnup and decide one corrective action playbook: Reading burndown slope → cause mapping is tribal knowledge; no methodology codifies the diagnostic patterns. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Pins a 4-cause diagnostic flow for off-track burndowns: scope creep, capacity loss, blocker stack, estimate drift. Output is a versioned spec naming the cause, evidence, and remediation — the founder runs it in <15 min mid-sprint instead of staring at the chart.
+
+**Ефективно для:**
+
+- Solo founder or PM watching a sprint burndown go flat at day 5 of 10 with no idea why. 15-min diagnostic that names the cause and remediation instead of just 'we're behind'.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-project-manager/Update the burndown / burnup and decide one corrective action OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Active sprint with ≥3 days remaining
+- Burndown chart available (Linear / Jira / GitHub Projects / spreadsheet)
+- Actual line is ≥20% above ideal line at mid-sprint
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Sprint not started (no data)
+- Sprint within last 1 day — restart sprint planning instead
+- Single-task sprint — diagnostic overkill
 
 ## Prerequisites
 
-- recent context for the role-project-manager/Update the burndown / burnup and decide one corrective action task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current sprint scope (list of stories + estimates) | table | sprint planning |
+| Daily burndown data points (ideal vs actual) | CSV | PM tool export |
+| Sprint goal statement | doc | sprint kickoff |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `solo/pm/audience-okr-template-indie` | Peer methodology — sprint feeds the quarter OKRs that burndown drift threatens. |
+| `solo/pm/capacity-fit-calculator` | Peer methodology — capacity-loss diagnosis routes here for re-planning. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-headroom-floor | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-burndown-diagnosis-cheatsheet` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-burndown-diagnosis-cheatsheet` | haiku | Schema check + threshold checks; deterministic. |
+| `review-burndown-diagnosis-cheatsheet` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/burndown-diagnosis-cheatsheet.json` | JSON schema for the Burndown Diagnosis Cheatsheet output contract |
-| `templates/burndown-diagnosis-cheatsheet.md` | Markdown skeleton with the required fields |
+| `templates/burndown-diagnosis-cheatsheet.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/burndown-diagnosis-cheatsheet.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-burndown-diagnosis-cheatsheet.py` | Enforce Burndown Diagnosis Cheatsheet output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-burndown-diagnosis-cheatsheet.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- upstream playbook: `role-project-manager/Update the burndown / burnup and decide one corrective action`
+- [[capacity-fit-calculator]]
+- [[action-item-carryover-tracker]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

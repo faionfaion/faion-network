@@ -1,66 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Capacity-Fit Calculator Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Four testable rules that turn the calculator from a vibes estimate into a defensible sprint-planning input.</summary>
+<text id="01-core-rules" title="Capacity Fit Calculator Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Testable rules grounding Capacity Fit Calculator. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
-  <section title="The four rules">
+  <section title="Rule set">
 
-    <rule id="r1-deterministic-formula" testable="true" depth="essential">
-      <statement>Effective capacity MUST be computed as: <code>effective_capacity = sum(per_person(work_days × focus_hours)) − ceremonies_total − pto_total − interrupt_buffer</code>. Skipping any term silently is not allowed. If a term is zero, it is recorded as zero with a one-line note.</statement>
-      <rationale source="Standard agile capacity-planning math; Cohn 2005">The repeating failure is "we'll just use last sprint's velocity" — which embeds last sprint's interruption pattern as if it were a constant. The deterministic formula forces each term into the open.</rationale>
+    <rule id="r1-baseline-from-4-sprints" testable="true" depth="essential">
+      <statement>Baseline velocity = median of last 4 sprints (not mean — outliers distort).</statement>
+      <rationale source="Velocity practice">Median is robust to one bad sprint; 4 sprints is the minimum window where rolling median is stable.</rationale>
     </rule>
 
-    <rule id="r2-subtraction-order" testable="true" depth="essential">
-      <statement>Subtractions MUST be applied in this order: PTO (whole-person), ceremonies (fixed slots), interrupt buffer (default 15-20% of remaining). The interrupt buffer is computed on the post-PTO-post-ceremony base, not the raw nominal hours.</statement>
-      <rationale source="Empirical: applying buffer to nominal hours over-allocates because PTO already eliminates entire person-days">Order matters: 20% of 50h is not 20% of 30h. Wrong order routinely overstates capacity by 10-20%.</rationale>
+    <rule id="r2-focus-factor-cap" testable="true" depth="essential">
+      <statement>Focus factor cap = 0.75 for solo / small teams. Higher = optimism; lower = under-loading.</statement>
+      <rationale source="Mike Cohn Agile Estimating">Capacity-planning literature pins solo focus factor in 0.60-0.80 band; 0.75 is the safe centre.</rationale>
     </rule>
 
-    <rule id="r3-interrupt-buffer-explicit" testable="true" depth="essential">
-      <statement>The interrupt buffer is mandatory and defaults to 15% (mature team, low support load) or 20% (mixed support + product work). A buffer of 0% is forbidden unless the team has a dedicated separate on-call rotation explicitly excluding the planning members. The buffer is justified in writing if set above 25%.</statement>
-      <rationale source="DORA reports on unplanned-work share">Teams measure unplanned work post-hoc at 15-30% even when self-described as "shielded." Pretending it is zero is the dominant source of sprint failure.</rationale>
+    <rule id="r3-explicit-reductions-list" testable="true" depth="essential">
+      <statement>Subtract explicit reductions: PTO days, holidays, planned ops days, on-call shifts.</statement>
+      <rationale source="Practitioner experience">Implicit reductions are why sprints fail; making them explicit at planning time forces a real number.</rationale>
     </rule>
 
-    <rule id="r4-fit-bands" testable="true" depth="essential">
-      <statement>The fit ratio <code>committed_velocity_estimate / effective_capacity</code> MUST be classified into three bands: GREEN 0.5-0.85 (commit), YELLOW 0.85-1.0 (trim or accept risk in writing), RED &gt; 1.0 OR &lt; 0.5 (re-plan). The band is the calculator's output, not the raw ratio. PM must record the band in sprint-fit-statement.md.</statement>
-      <rationale source="DORA + Scrum.org sprint commitment outcomes">Teams that commit consistently in 0.7-0.85 hit their commitments &gt;90% of the time. Teams that consistently commit above 0.9 miss 50%+ of commitments and accumulate debt rapidly.</rationale>
+    <rule id="r4-no-stretch-goals" testable="true" depth="essential">
+      <statement>If scope &gt; computed capacity, cut scope — do not &apos;stretch&apos;. Stretch goals are a planning antipattern.</statement>
+      <rationale source="Agile literature">Stretch goals incentivise over-commit; they&apos;re the input to next sprint&apos;s burndown drift.</rationale>
     </rule>
 
-  </section>
+    <rule id="r5-recompute-each-sprint" testable="true" depth="essential">
+      <statement>Capacity is recomputed each sprint, not carried over. Velocity changes; one stale capacity number is a trap.</statement>
+      <rationale source="Velocity practice">Velocity drifts ±20% across quarters; stale capacity = silent over-load.</rationale>
+    </rule>
 
-  <section title="Canonical examples">
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent context budget.</rationale>
+    </rule>
 
-    <example type="good" title="Computed example">
-      <code lang="text"><![CDATA[
-Team: 5 engineers, 2-week sprint (10 working days)
-focus_hours_per_day: 6 (senior x3), 5 (junior x1), 4 (tech lead x1)
-
-Per-person nominal:
-  3 x 6 x 10 = 180h
-  1 x 5 x 10 = 50h
-  1 x 4 x 10 = 40h
-  total nominal = 270h
-
-PTO: tech lead 2 days off = -8h     -> 262h
-Ceremonies per person: 6h x 5 = 30h -> 232h
-Interrupt buffer 20%: 0.2 x 232 = 46.4 -> effective_capacity = ~186h
-
-Velocity baseline (rolling 3 sprints): 180h delivered avg
-Committed this sprint: 200h
-Fit = 200 / 186 = 1.07 -> RED, must trim
-      ]]></code>
-      <note>Concrete numbers, all terms present, fit band explicit.</note>
-    </example>
-
-    <example type="bad" title="Vibe estimate">
-      <code lang="text"><![CDATA[
-"Last sprint we did 200 points. Let's commit to 220 because the new joiner is up to speed."
-      ]]></code>
-      <note>No formula, no subtraction, no fit ratio. The "new joiner" effect is invented. Violates r1 and r4.</note>
-    </example>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-capacity-fit-calculator.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

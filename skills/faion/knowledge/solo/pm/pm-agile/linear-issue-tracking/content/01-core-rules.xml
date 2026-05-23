@@ -1,71 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="linear-issue-tracking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for linear-issue-tracking. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Linear Issue Tracking (PM Agile) Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Testable rules grounding Linear Issue Tracking (PM Agile). Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Configure each team with: key prefix (e.g., BAK), workflow states (Backlog/Todo/In Progress/In Review/Done/Canceled), Fibonacci estimate scale (0/1/2/3/5/8/13), and triage enabled.</statement>
-      <rationale source="v1-source">Team key prefixes make issue identifiers human-readable across multi-team workspaces (BAK-123 vs FE-456); Fibonacci scale prevents false precision in estimates.</rationale>
+
+    <rule id="r1-one-workspace" testable="true" depth="essential">
+      <statement>One workspace per organisation; one team per actual team (not per project). Multiple workspaces = sync hell.</statement>
+      <rationale source="Linear docs + practitioner experience">Linear&apos;s design assumes one workspace; cross-workspace ops are intentionally limited.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Set cycle duration to 2 weeks, start day Monday, auto-archive enabled — cycles provide time-boxing without requiring manual sprint management.</statement>
-      <rationale source="v1-source">Linear cycles auto-advance and archive completed issues; manual sprint management adds overhead that Linear's opinionated workflow is designed to eliminate.</rationale>
+
+    <rule id="r2-cycle-cadence-fixed" testable="true" depth="essential">
+      <statement>Fixed cycle cadence: 1 week or 2 weeks. Mixed cadences across teams break velocity comparison.</statement>
+      <rationale source="Practitioner experience">Velocity is cycle-bound; mixed cadence forces re-normalisation that erases the signal.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Required issue properties: Status, Priority (Urgent/High/Medium/Low/No Priority), Estimate (Fibonacci), Cycle, Project, Label, Assignee. Priority is an integer enum (Urgent=1, High=2, Medium=3, Low=4, NoPriority=0) in the API — not a string.</statement>
-      <rationale source="v1-source">Agents receiving natural-language priority must map explicitly to integers before calling the API; passing strings causes silent mutation failure.</rationale>
+
+    <rule id="r3-canonical-state-set" testable="true" depth="essential">
+      <statement>States: Backlog → Todo → In Progress → In Review → Done → Cancelled. ≤7 states total; no per-team state proliferation.</statement>
+      <rationale source="Linear docs">State proliferation kills filter consistency + reports; ≤7 keeps mental model intact.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Cycle scope must be frozen after Day 2 of the cycle; API-driven cycle assignment must target nextCycle or futureCycle only — never the active cycle.</statement>
-      <rationale source="v1-source">Mid-cycle additions disrupt velocity tracking and flow; agents that auto-add issues to active cycles create scope creep without human intent.</rationale>
+
+    <rule id="r4-label-budget" testable="true" depth="essential">
+      <statement>≤15 labels per workspace; labels are types not statuses (bug / feat / chore / spike / docs). State is a separate axis.</statement>
+      <rationale source="Practitioner experience">Label sprawl is the leading cause of Linear workspace bankruptcy in year 1.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Cycle IDs rotate every cycle; always resolve the current cycle by querying team.activeCycle — never hardcode a cycle ID in agent configuration.</statement>
-      <rationale source="v1-source">Hardcoded cycle IDs break every 2 weeks when the cycle advances; dynamic resolution via activeCycle query is always correct.</rationale>
+
+    <rule id="r5-integrations-bidirectional" testable="true" depth="essential">
+      <statement>GitHub (PR linkage), Slack (notifications), and Calendar (cycle reminders) integrations turned on. One-way push = invisible work.</statement>
+      <rationale source="Linear docs">Bidirectional sync is Linear&apos;s value over GitHub Issues; not using it = downgrade.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Projects span multiple cycles and represent initiatives; use milestones within projects to mark key deliverables with target dates.</statement>
-      <rationale source="v1-source">Cycles are time-boxes; projects are outcome-scopes. Mixing them confuses velocity (cycle) with delivery (project completion).</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent context budget.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Process triage in this order: valid? → urgent? → scoped? → ready for backlog. Invalid issues go to Closed/Duplicate immediately; unscoped issues get "Needs Refinement" label and stay in triage.</statement>
-      <rationale source="v1-source">Triage order prevents time spent scoping issues that should be closed; "Needs Refinement" creates a visible queue for refinement sessions without cluttering the backlog.</rationale>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-linear-issue-tracking.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Triage is a human-only step; agents must not auto-close or auto-route issues from the triage inbox without a human checkpoint.</statement>
-      <rationale source="v1-source">Triage decisions require context that agents cannot infer from issue text alone (duplicate detection, organizational priority, business context).</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Configure GitHub integration: branch format "{username}/bak-{issue_number}-{issue_title}", PR-opened → "In Review", PR-merged → "Done", commit pattern "Fixes BAK-\\d+".</statement>
-      <rationale source="v1-source">Consistent branch naming enables bidirectional traceability; fix commit pattern auto-links PRs to issues; auto-transitions eliminate manual status updates.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Store issue identifiers (e.g., BAK-123) in git branch names and PR titles to enable bidirectional traceability between Linear issues and GitHub PRs.</statement>
-      <rationale source="v1-source">Linear's GitHub integration matches PRs to issues by identifier in branch name or PR title; without this, no automatic status transitions occur.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Create four standard views: my_work (assignee:me, group by priority), team_board (team filter, group by status, show estimates), bugs_triage (label:bug, status:triage, sort by created date), release_scope (project filter, status:-canceled).</statement>
-      <rationale source="v1-source">These four views cover the four daily PM workflows: individual task focus, team coordination, bug queue, and release tracking — without proliferating context-specific views.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Use issueSearch with server-side filters rather than fetching issues and filtering client-side — server-side filtering is 10x faster on large workspaces.</statement>
-      <rationale source="v1-source">Client-side filtering on 5000+ issues requires fetching all pages then discarding most results; server-side filters push this work to Linear's query engine.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Convert SDD implementation-plan.md TASK_ blocks to Linear issues: map task complexity (Low → NoPriority=0, Medium → Medium=3, High → High=2, Critical → Urgent=1); validate acceptance criteria non-empty before calling issueCreate mutation.</statement>
-      <rationale source="v1-source">Linear's issueCreate mutation does not validate acceptance criteria completeness; the agent must enforce this before calling the API, otherwise issues enter the backlog without enough information for developers.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Implement cursor-based pagination for all issues queries; Linear GraphQL returns max 250 items per page by default. Pass after: cursor argument with endCursor from previous response until hasNextPage is false.</statement>
-      <rationale source="v1-source">Agents that fetch only the first page silently miss issues beyond the page size; partial results produce incorrect velocity counts and incomplete blockers lists.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Always resolve the active cycle by querying team.activeCycle at runtime; never hardcode a cycle ID in agent configuration or prompts.</statement>
-      <rationale source="v1-source">Cycle IDs rotate every 2 weeks; hardcoded IDs break silently after the cycle advances, causing all cycle-assignment mutations to fail without an obvious error.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Verify Linear webhook HMAC signature on every incoming request; reject requests without valid signatures — an agent endpoint without HMAC validation is an injection vector.</statement>
-      <rationale source="v1-source">Linear sends webhooks with an X-Linear-Signature header containing an HMAC-SHA256 signature; without validation any caller can inject fake events into the agent pipeline.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

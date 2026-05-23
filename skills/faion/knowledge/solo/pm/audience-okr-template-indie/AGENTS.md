@@ -4,76 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Audience Okr Template Indie: codified delivery-management practice that turns the recurring 'p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Quarterly OKR template scoped to a single audience segment for indie founders: one Objective, 3 measurable Key Results, weekly check-in cadence.
 content_id: "7f2ce421a96052f2"
-tags: [audience-okr-template-indie, pm, solo]
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: ["okr", "pm", "indie", "solo", "audience", "quarterly"]
 ---
-# Audience Okr Template Indie
+# Audience OKR Template (Indie)
 
 ## Summary
 
-**One-sentence:** Audience Okr Template Indie: codified delivery-management practice that turns the recurring 'p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months' decision into a repeatable, auditable artefact.
+**One-sentence:** Quarterly OKR template scoped to a single audience segment for indie founders: one Objective, 3 measurable Key Results, weekly check-in cadence.
 
-**One-paragraph:** Audience Okr Template Indie addresses the gap identified by the p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months playbook: okr-setting is too generic for an indie hacker. A dedicated audience-OKR template (followers, list size, qualified DMs, paid conversion) tied to revenue forecasts would convert OKRs from corporate ritual to indie steering wheel. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Cuts the corporate OKR ritual down to indie scale: one audience segment, one Objective, 3 measurable Key Results (one growth, one engagement, one retention), weekly check-in. Output is a versioned spec that survives the next quarter's planning meeting.
+
+**Ефективно для:**
+
+- Indie founder serving 1-2 distinct audience segments who keeps shipping features for 'users' in general. Forces one Objective per segment per quarter and 3 measurable KRs — kills shotgun roadmap drift.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Founder serves ≥1 audience segment with ≥10 paid or active users
+- Quarterly planning happens (formal or informal)
+- ≥1 measurable metric per segment exists (signups, MRR, retention, NPS)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pre-product phase with <10 active users — too early for OKRs
+- Enterprise PM workflow with formal corporate OKR system
+- Single-customer consulting work — use client-1pager instead
 
 ## Prerequisites
 
-- recent context for the p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Audience segment definition (persona, ICP, channel) | doc | marketing |
+| Current quarter baseline metrics for the segment | table | analytics |
+| Last 2 quarters of metrics history | CSV | analytics export |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `solo/pm/burndown-diagnosis-cheatsheet` | Peer methodology — diagnoses OKR slippage mid-quarter. |
+| `solo/marketing/seo-manager` | Peer methodology — provides growth-side input for one of the 3 KRs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-conversion-window | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-audience-okr-template-indie` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-audience-okr-template-indie` | haiku | Schema check + threshold checks; deterministic. |
+| `review-audience-okr-template-indie` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/audience-okr-template-indie.json` | JSON schema for the Audience Okr Template Indie output contract |
-| `templates/audience-okr-template-indie.md` | Markdown skeleton with the required fields |
+| `templates/audience-okr-template-indie.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/audience-okr-template-indie.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-audience-okr-template-indie.py` | Enforce Audience Okr Template Indie output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-audience-okr-template-indie.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- upstream playbook: `p2-indie-hacker/Build-in-public audience growth: 0 to 5K followers over 6 months`
+- [[burndown-diagnosis-cheatsheet]]
+- [[capacity-fit-calculator]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

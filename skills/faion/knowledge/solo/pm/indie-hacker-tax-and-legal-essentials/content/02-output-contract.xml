@@ -1,46 +1,141 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Indie Hacker Tax and Legal Essentials Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Indie Hacker Tax and Legal Essentials output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Indie Hacker Tax and Legal Essentials Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="residence_country" type="string" required="true">ISO-3166 country of residence</field>
-      <field name="entity_shape" type="string" required="true">sole-trader|home-llc|ee-ou|us-llc-non-resident|uk-ltd|other</field>
-      <field name="mor_decision" type="object" required="true">{mor_or_direct, vendor, rationale}</field>
-      <field name="advisor_engaged" type="object" required="true">{name, jurisdiction, engaged_date}</field>
-      <field name="registration_thresholds" type="list" required="true">[{jurisdiction, threshold, trigger_action}]</field>
-      <field name="banking_picks" type="list" required="true">[{provider, account_type, rationale}]</field>
-      <field name="owner" type="string" required="true">the solo founder</field>
-      <field name="disclaimer" type="string" required="true">NOT LEGAL ADVICE — confirms advisor engagement</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/indie-hacker-tax-and-legal-essentials.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "entity",
+    "tax_residency",
+    "vat_status",
+    "sales_tax_status",
+    "customer_contract",
+    "privacy_policy",
+    "processor_list",
+    "next_review_date",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "entity": {
+      "type": "object"
+    },
+    "tax_residency": {
+      "type": "string"
+    },
+    "vat_status": {
+      "type": "string"
+    },
+    "sales_tax_status": {
+      "type": "string"
+    },
+    "customer_contract": {
+      "type": "object"
+    },
+    "privacy_policy": {
+      "type": "object"
+    },
+    "processor_list": {
+      "type": "array"
+    },
+    "next_review_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">advisor_engaged is empty AND first sale completed</pattern>
-      <pattern id="f2">mor_decision missing</pattern>
-      <pattern id="f3">registration_thresholds empty</pattern>
-      <pattern id="f4">disclaimer missing or weakened</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/indie-hacker-tax-and-legal-essentials.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>residence_country populated with a typed value</item>
-      <item>entity_shape populated with a typed value</item>
-      <item>mor_decision populated with a typed value</item>
-      <item>advisor_engaged populated with a typed value</item>
-      <item>registration_thresholds populated with a typed value</item>
-      <item>banking_picks populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>disclaimer populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <pattern id="f1">entity missing OR rationale empty — violates r2</pattern>
+      <pattern id="f2">EU customers &gt;0 AND vat_status == &apos;none&apos; — violates r3</pattern>
+      <pattern id="f3">customer_contract.terms_url empty OR privacy_policy.url empty — violates r4</pattern>
+      <pattern id="f4">next_review_date &gt; last_reviewed + 18 months — violates r5</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "legal-inventory-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "entity": {
+    "type": "sole-trader-PT",
+    "registration_id": "NIF-XXX",
+    "registered_at": "2025-09-10",
+    "rationale": "EU resident, <50K rev"
+  },
+  "tax_residency": "PT",
+  "vat_status": "stripe-tax-collected",
+  "sales_tax_status": "stripe-tax-collected-US-nexus-states",
+  "customer_contract": {
+    "terms_url": "https://faion.net/terms",
+    "version": "1.2.0"
+  },
+  "privacy_policy": {
+    "url": "https://faion.net/privacy",
+    "version": "1.1.0"
+  },
+  "processor_list": [
+    {
+      "name": "stripe",
+      "purpose": "billing"
+    },
+    {
+      "name": "cloudflare",
+      "purpose": "cdn"
+    }
+  ],
+  "next_review_date": "2027-05-23",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "entity": {},
+  "tax_residency": "PT",
+  "vat_status": "none",
+  "sales_tax_status": "none",
+  "customer_contract": {
+    "terms_url": ""
+  },
+  "privacy_policy": {
+    "url": ""
+  },
+  "processor_list": [],
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-indie-hacker-tax-and-legal-essentials.py">Schema validator (stdlib only).</reference>
 </text>

@@ -1,39 +1,165 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Weekly Gsc Diagnostic Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Weekly Gsc Diagnostic Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Weekly GSC Diagnostic Template Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/weekly-gsc-diagnostic-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "top_winners",
+    "top_losers",
+    "intent_mismatches",
+    "indexation_status",
+    "named_actions",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "top_winners": {
+      "type": "array",
+      "minItems": 5
+    },
+    "top_losers": {
+      "type": "array",
+      "minItems": 5
+    },
+    "intent_mismatches": {
+      "type": "array"
+    },
+    "indexation_status": {
+      "type": "object"
+    },
+    "named_actions": {
+      "type": "array",
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/weekly-gsc-diagnostic-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/weekly-gsc-diagnostic-template.json</item>
+      <pattern id="f1">top_winners.length &lt; 5 OR top_losers.length &lt; 5 — violates r1</pattern>
+      <pattern id="f2">named_actions empty — violates r4</pattern>
+      <pattern id="f3">indexation_status missing — violates r3</pattern>
+      <pattern id="f4">named_actions contains &apos;monitor&apos; / &apos;keep watching&apos; — violates r4</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "gsc-diagnostic-2026-w21",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "top_winners": [
+    {
+      "query": "faion cli install",
+      "clicks_delta": 42
+    },
+    {
+      "query": "agent sdk skills",
+      "clicks_delta": 31
+    },
+    {
+      "query": "solo founder dev stack",
+      "clicks_delta": 22
+    },
+    {
+      "query": "claude code plugin",
+      "clicks_delta": 18
+    },
+    {
+      "query": "sdd methodology",
+      "clicks_delta": 14
+    }
+  ],
+  "top_losers": [
+    {
+      "query": "ai marketplace",
+      "clicks_delta": -18
+    },
+    {
+      "query": "faion alternative",
+      "clicks_delta": -12
+    },
+    {
+      "query": "open source agent",
+      "clicks_delta": -9
+    },
+    {
+      "query": "claude vs cursor",
+      "clicks_delta": -7
+    },
+    {
+      "query": "best ide for ai",
+      "clicks_delta": -5
+    }
+  ],
+  "intent_mismatches": [
+    {
+      "query": "ai marketplace",
+      "page_intent": "info",
+      "query_intent": "commercial"
+    }
+  ],
+  "indexation_status": {
+    "discovered": 220,
+    "indexed": 180,
+    "excluded": 40,
+    "indexed_ratio": 0.82
+  },
+  "named_actions": [
+    {
+      "action": "Rewrite /ai-marketplace landing to commercial intent",
+      "owner": "@ruslan",
+      "due": "2026-05-30"
+    }
+  ],
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "top_winners": [
+    {
+      "query": "x"
+    }
+  ],
+  "top_losers": [],
+  "intent_mismatches": [],
+  "indexation_status": {},
+  "named_actions": [],
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-weekly-gsc-diagnostic-template.py">Schema validator (stdlib only).</reference>
 </text>

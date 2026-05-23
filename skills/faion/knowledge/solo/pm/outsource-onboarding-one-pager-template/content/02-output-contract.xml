@@ -1,39 +1,154 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Outsource Onboarding One Pager Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Outsource Onboarding One Pager Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Outsource Onboarding One-Pager Template Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/outsource-onboarding-one-pager-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "contractor",
+    "scope",
+    "deliverables",
+    "comms_cadence",
+    "access_list",
+    "payment_terms",
+    "kill_switch",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "contractor": {
+      "type": "object"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "deliverables": {
+      "type": "array",
+      "minItems": 1
+    },
+    "comms_cadence": {
+      "type": "object"
+    },
+    "access_list": {
+      "type": "array",
+      "minItems": 1
+    },
+    "payment_terms": {
+      "type": "object"
+    },
+    "kill_switch": {
+      "type": "object"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/outsource-onboarding-one-pager-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/outsource-onboarding-one-pager-template.json</item>
+      <pattern id="f1">deliverables empty OR first deliverable due_in_hours &gt; 48 — violates r3</pattern>
+      <pattern id="f2">kill_switch.trial_period_weeks missing — violates r4</pattern>
+      <pattern id="f3">access_list empty AND contractor scope requires access — violates r2</pattern>
+      <pattern id="f4">word_count &gt; 500 — violates r1</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "onboard-contractor-x-2026-w22",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "contractor": {
+    "name": "designer-x",
+    "agreement_signed": "2026-05-22"
+  },
+  "scope": "Lead designer for /pricing redesign + /home hero refresh; output Figma files + production-ready assets.",
+  "deliverables": [
+    {
+      "id": "d1",
+      "what": "/pricing v1 wireframe",
+      "due_in_hours": 24
+    },
+    {
+      "id": "d2",
+      "what": "/pricing final mocks",
+      "due_in_hours": 168
+    }
+  ],
+  "comms_cadence": {
+    "daily_standup": "#daily-standup by 11:00",
+    "weekly_call": "Friday 14:00 30min"
+  },
+  "access_list": [
+    {
+      "tool": "figma",
+      "level": "edit"
+    },
+    {
+      "tool": "slack",
+      "level": "guest"
+    },
+    {
+      "tool": "github",
+      "level": "read"
+    }
+  ],
+  "payment_terms": {
+    "rate": 80,
+    "currency": "EUR",
+    "cycle": "biweekly",
+    "via": "wise"
+  },
+  "kill_switch": {
+    "trial_period_weeks": 2,
+    "criterion": "first 2 deliverables on time AND figma fidelity",
+    "exit_pay_days": 14
+  },
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "contractor": {
+    "name": "x"
+  },
+  "scope": "general help with stuff",
+  "deliverables": [],
+  "comms_cadence": {},
+  "access_list": [],
+  "payment_terms": {},
+  "kill_switch": {},
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-outsource-onboarding-one-pager-template.py">Schema validator (stdlib only).</reference>
 </text>

@@ -1,46 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Capacity-Fit Calculator Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>The calculator's output is a sprint-fit-statement plus a row in the capacity-sheet. Sprint planning that lacks both is "vibes planning."</summary>
+<text id="02-output-contract" title="Capacity Fit Calculator Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <section title="Required outputs">
-    <list>
-      <item><code>capacity-sheet.csv</code> row per sprint: sprint_id, headcount, nominal_hours, pto_hours, ceremonies_hours, interrupt_buffer_pct, effective_capacity, velocity_baseline, committed_velocity, fit_ratio, fit_band, notes.</item>
-      <item><code>sprint-fit-statement.md</code>: 1 paragraph quoting the fit ratio + band, listing PTO entries, and naming the trim recommendation when YELLOW/RED.</item>
-    </list>
-  </section>
-
-  <section title="Required statement fields">
-    <list>
-      <item>Sprint identifier and date range.</item>
-      <item>Effective capacity (h) with the four terms broken out.</item>
-      <item>Committed velocity (h or points) and its source (story-point conversion or hour estimate).</item>
-      <item>Fit ratio (2 decimals) and band (GREEN/YELLOW/RED).</item>
-      <item>Action: commit / trim / re-plan, with the story(ies) to drop if trimming.</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/capacity-fit-calculator.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "sprint_id",
+    "baseline_velocity",
+    "focus_factor",
+    "reductions",
+    "available_capacity",
+    "proposed_scope",
+    "fit_decision",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "sprint_id": {
+      "type": "string"
+    },
+    "baseline_velocity": {
+      "type": "number"
+    },
+    "focus_factor": {
+      "type": "number",
+      "minimum": 0.3,
+      "maximum": 0.9
+    },
+    "reductions": {
+      "type": "array"
+    },
+    "available_capacity": {
+      "type": "number"
+    },
+    "proposed_scope": {
+      "type": "number"
+    },
+    "fit_decision": {
+      "type": "string",
+      "enum": [
+        "fits",
+        "cut-required",
+        "expand-allowed"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>capacity-sheet row missing PTO or interrupt-buffer column.</description>
-      <reason>Violates r1. Reviewer cannot tell whether the term was zero or forgotten.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Fit ratio recorded but no band; or band manually set without matching ratio.</description>
-      <reason>Bands are a deterministic mapping; manual override defeats the gate. Override allowed only with a written exception in notes.</reason>
-    </antipattern>
-    <antipattern>
-      <description>RED-band sprint committed anyway without "accept risk" sign-off line.</description>
-      <reason>RED is a stop-the-presses signal. Proceeding requires an explicit named risk-acceptance, not a quiet decision.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>All four formula terms populated (zero allowed with note).</item>
-      <item>Subtraction order matches r2.</item>
-      <item>Interrupt buffer &gt;= 15% unless documented exception.</item>
-      <item>Fit ratio classified into a band per r4 thresholds.</item>
-      <item>If YELLOW/RED, trim list or risk-acceptance present.</item>
+      <pattern id="f1">focus_factor &gt; 0.85 — violates r2</pattern>
+      <pattern id="f2">reductions missing for upcoming sprint with PTO/holidays — violates r3</pattern>
+      <pattern id="f3">fit_decision == &apos;fits&apos; AND proposed_scope &gt; available_capacity — math violation + r4 violation</pattern>
+      <pattern id="f4">baseline_velocity from &lt;4 sprints — violates r1</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "capacity-fit-2026-w22",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "sprint_id": "2026-W22",
+  "baseline_velocity": 24,
+  "focus_factor": 0.75,
+  "reductions": [
+    {
+      "reason": "ruslan-pto-1d",
+      "points": 4
+    }
+  ],
+  "available_capacity": 14,
+  "proposed_scope": 16,
+  "fit_decision": "cut-required",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "sprint_id": "2026-W22",
+  "baseline_velocity": 24,
+  "focus_factor": 0.95,
+  "reductions": [],
+  "available_capacity": 22,
+  "proposed_scope": 30,
+  "fit_decision": "fits",
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-capacity-fit-calculator.py">Schema validator (stdlib only).</reference>
 </text>

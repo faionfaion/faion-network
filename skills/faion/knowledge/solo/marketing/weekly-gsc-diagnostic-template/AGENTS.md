@@ -4,77 +4,92 @@ tier: solo
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Weekly Search Console review template: top movers, query intent shift, indexation health, action — turns GSC numbers into a one-page verdict.
 content_id: "13393509123578fc"
-summary: "Weekly Gsc Diagnostic Template: produces a versioned, owner-signed artefact that closes the gap 'role-growth-marketing/Weekly Search Console + analytics review (60 min)'."
-tags: [weekly-gsc-diagnostic-template, marketing, solo]
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: ["weekly-gsc-diagnostic-template", "marketing", "seo", "search-console", "solo"]
 ---
-# Weekly Gsc Diagnostic Template
+# Weekly GSC Diagnostic Template
 
 ## Summary
 
-**One-sentence:** Weekly Gsc Diagnostic Template: produces a versioned, owner-signed artefact that closes the gap 'role-growth-marketing/Weekly Search Console + analytics review (60 min)'.
+**One-sentence:** Weekly Search Console review template: top movers, query intent shift, indexation health, action — turns GSC numbers into a one-page verdict.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-growth-marketing/Weekly Search Console + analytics review (60 min)': GSC dumps numbers but not a verdict. Need a structured 'why did this win/lose' rubric so reviews end with decisions, not vibes. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a weekly gsc diagnostic template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Search Console dumps numbers; founders need a verdict. This methodology pins a weekly 60-min ritual that produces a one-page report: top click/impression winners and losers, query-intent shift, indexation health, ≥1 named action with owner. Output is a versioned spec ready for the next-week comparison.
+
+**Ефективно для:**
+
+- Solo SEO operator with ≥50 ranking pages who opens GSC every Monday, stares at the chart, and closes it without writing anything down. Needs a 60-min ritual that ends with one decision.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-growth-marketing/Weekly Search Console + analytics review (60 min)' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Site has ≥50 ranking pages in GSC
+- GSC property verified ≥30 days ago (data settled)
+- Founder has 60 min/week to review
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working weekly gsc diagnostic template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- <50 ranking pages — noise dominates signal
+- GSC verified <30 days ago — data unreliable
+- Paid traffic dominates — use ppc-diagnostic instead
 
 ## Prerequisites
 
-- recent context for the 'role-growth-marketing/Weekly Search Console + analytics review (60 min)' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| GSC property URL | URL | Search Console |
+| Last week's GSC export (Performance report, 7 days) | CSV | Search Console export |
+| Indexation status (pages discovered/indexed/excluded) | table | GSC Coverage report |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/marketing` | parent domain group — provides operating context for Weekly Gsc Diagnostic Template |
+| `solo/marketing/seo-manager` | Parent skill — provides the broader SEO operating context. |
+| `pro/marketing/conversion-optimizer` | Peer methodology — downstream of GSC diagnostic when query→landing-page intent shifts. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-weekly-gsc-diagnostic-template` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-weekly-gsc-diagnostic-template` | haiku | Schema check + threshold checks; deterministic. |
+| `review-weekly-gsc-diagnostic-template` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-gsc-diagnostic-template.json` | JSON schema for the Weekly Gsc Diagnostic Template output contract |
-| `templates/weekly-gsc-diagnostic-template.md` | Markdown skeleton with the required fields |
+| `templates/weekly-gsc-diagnostic-template.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/weekly-gsc-diagnostic-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-weekly-gsc-diagnostic-template.py` | Enforce Weekly Gsc Diagnostic Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-weekly-gsc-diagnostic-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- upstream playbook: `role-growth-marketing/Weekly Search Console + analytics review (60 min)`
-- solo/marketing/role-growth-marketing
+- [[weekly-growth-review-rhythm]]
+- [[growth-newsletter-growth]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

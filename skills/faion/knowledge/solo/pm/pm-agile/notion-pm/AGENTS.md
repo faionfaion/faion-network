@@ -4,72 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Notion PM uses interconnected databases (Projects, Tasks, Sprints) with relation and rollup fields to build a customizable agile workspace.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Solo / small-team Notion PM workspace: Projects + Tasks + Sprints databases with relations + rollups; single tasks DB across sprints; ≤20 properties.
 content_id: "ae344d00cc415537"
-tags: [notion, agile, pm, sprint, database]
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: ["notion", "pm-agile", "pm", "solo", "sprint", "database"]
 ---
 # Notion PM
 
 ## Summary
 
-**One-sentence:** Notion PM uses interconnected databases (Projects, Tasks, Sprints) with relation and rollup fields to build a customizable agile workspace.
+**One-sentence:** Solo / small-team Notion PM workspace: Projects + Tasks + Sprints databases with relations + rollups; single tasks DB across sprints; ≤20 properties.
 
-**One-paragraph:** Notion PM uses interconnected databases (Projects, Tasks, Sprints) with relation and rollup fields to build a customizable agile workspace. Tasks must exist as individual database pages — not as sub-bullets inside sprint documents — to be queryable via the API. Use a single Tasks database with Sprint as a relation field; never create a new database per sprint, which fragments history and breaks velocity computation.
+**One-paragraph:** Pins the Notion PM baseline: one Tasks database with Sprint as a relation field, one Projects database with rollups, four canonical views per DB, native automations bounded to property triggers, external automation via n8n for time-triggered jobs. Output is a versioned setup spec covering schemas + views + automation + API gotchas.
+
+**Ефективно для:**
+
+- Solo founder or 2-10-person team using Notion as PM + docs + wiki. Avoids the per-sprint-database trap and the 60-property bloat; sets up the workspace once for the year.
 
 ## Applies If (ALL must hold)
 
-- Small agile team (2–10 people) wanting sprint planning, backlog, and docs in one tool
-- When sprint retrospectives, meeting notes, and task tracking need inline cross-references
-- When workflow is still evolving — Notion databases restructure faster than Jira or Linear
-- Solopreneur or micro-team where full sprint tooling (velocity charts, burndowns) is overkill
-- When stakeholders need read-only project status via shareable page without PM tool accounts
+- Small agile team (2-10) using Notion as primary PM
+- Sprint cadence exists (1w / 2w)
+- Tasks queried programmatically via Notion API OR planning to ≤30 days
 
 ## Skip If (ANY kills it)
 
-- Teams with mature Scrum practices needing native burndown charts, velocity tracking, and sprint analytics
-- High-velocity engineering teams with 10+ members — database performance degrades with large datasets
-- When issues need tight Git/PR integration (auto-close on merge, branch naming)
-- Organizations needing SOC2/HIPAA compliant issue tracking with field-level audit logs
+- Team >10 people — Notion DB performance degrades
+- Strict SOC2/HIPAA compliance with field-level audit requirements
+- Native burndown/velocity charts required — use Linear instead
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Notion workspace + integration token (admin) | config | Notion admin |
+| Team roster + assignee identities (Notion or email) | table | people doc |
+| Sprint cadence + start-day decision | doc | team agreement |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/pm/capacity-fit-calculator` | Peer methodology — reads Tasks DB rollups for velocity inputs. |
+| `solo/pm/pm-agile/linear-issue-tracking` | Peer methodology — comparison baseline; Notion picks here, Linear there. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-notion-pm` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-notion-pm` | haiku | Schema check + threshold checks; deterministic. |
+| `review-notion-pm` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/notion-pm.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/notion-pm.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-notion-pm.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/pm-agile/`
+- [[linear-issue-tracking]]
+- [[capacity-fit-calculator]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

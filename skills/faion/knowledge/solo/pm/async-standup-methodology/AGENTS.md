@@ -4,76 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Async Standup Methodology: codified delivery-management practice that turns the recurring 'role-project-manager/Async cross-timezone delivery cadence (P4 outsource)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Daily 3-question async standup over Slack/Discord/Notion: yesterday / today / blockers — replaces 15-min sync while preserving visibility.
 content_id: "bd542ca157a5c66c"
-tags: [async-standup-methodology, pm, solo]
+complexity: medium
+produces: spec
+est_tokens: 3900
+tags: ["async-standup", "pm", "remote", "solo", "rituals"]
 ---
 # Async Standup Methodology
 
 ## Summary
 
-**One-sentence:** Async Standup Methodology: codified delivery-management practice that turns the recurring 'role-project-manager/Async cross-timezone delivery cadence (P4 outsource)' decision into a repeatable, auditable artefact.
+**One-sentence:** Daily 3-question async standup over Slack/Discord/Notion: yesterday / today / blockers — replaces 15-min sync while preserving visibility.
 
-**One-paragraph:** Async Standup Methodology addresses the gap identified by the role-project-manager/Async cross-timezone delivery cadence (P4 outsource) playbook: scrum-ceremonies assumes co-located sync standup. P4 outsource PMs with < 2h overlap need a written-first, bot-aggregated, AI-summarized format with explicit blocker-routing rules. agile-ceremonies-setup/standup-bot.yaml is a template fragment, not a methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Pins a daily async standup format that produces a structured digest the founder/team can scan in 60 seconds. Three named fields, fixed time, public channel, response window. Output: a per-day artefact (one row per teammate) with blockers extracted into a separate watch list.
+
+**Ефективно для:**
+
+- Distributed team of 2-10 (or solo with contractors) whose sync standup costs more than it produces. Replaces the daily 15-min Zoom with a 3-question Slack thread that still surfaces blockers within 24h.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-project-manager/Async cross-timezone delivery cadence (P4 outsource) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Team distributed across ≥2 time zones OR fully async by policy
+- ≥2 people contributing daily (solo founder + ≥1 contractor)
+- A shared chat channel exists (Slack / Discord / Telegram / Notion)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Solo founder with no recurring collaborators — no audience for the artefact
+- Team already runs successful synchronous standup
+- Critical-incident response phase — needs synchronous coordination
 
 ## Prerequisites
 
-- recent context for the role-project-manager/Async cross-timezone delivery cadence (P4 outsource) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Channel name + members list | config | Slack/Discord admin |
+| Time-zone matrix of participants | table | team roster |
+| Standup time-window policy (post-by HH:MM in each tz) | doc | team agreement |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `solo/pm/project-manager/freelancer-personal-crm-minimal` | Peer methodology — captures contractor follow-ups blockers identify. |
+| `solo/pm/project-manager/action-item-carryover-tracker` | Peer methodology — owns carry-over from blockers list. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-async-standup-methodology` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-async-standup-methodology` | haiku | Schema check + threshold checks; deterministic. |
+| `review-async-standup-methodology` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/async-standup-methodology.json` | JSON schema for the Async Standup Methodology output contract |
-| `templates/async-standup-methodology.md` | Markdown skeleton with the required fields |
+| `templates/async-standup-methodology.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/async-standup-methodology.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-async-standup-methodology.py` | Enforce Async Standup Methodology output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-async-standup-methodology.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- upstream playbook: `role-project-manager/Async cross-timezone delivery cadence (P4 outsource)`
+- [[pm-1on1-template-engineering-design]]
+- [[action-item-carryover-tracker]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -1,42 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Weekly Growth Review Rhythm Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Weekly Growth Review Rhythm output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Weekly Growth Review Rhythm Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="metrics" type="list" required="true">5-7 entries: {name, type: nsm|leading|efficiency|health, definition}</field>
-      <field name="hypothesis_log_url" type="string" required="true">rolling log</field>
-      <field name="decision_template" type="string" required="true">format for weekly decision</field>
-      <field name="review_slot" type="object" required="true">{day_of_week, time, duration_min}</field>
-      <field name="quarterly_revisit_date" type="date" required="true">next metric review</field>
-      <field name="owner" type="string" required="true">the founder</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/weekly-growth-review-rhythm.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "metrics",
+    "hypothesis_log_url",
+    "decision_template",
+    "review_slot",
+    "quarterly_revisit_date",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 7
+    },
+    "hypothesis_log_url": {
+      "type": "string"
+    },
+    "decision_template": {
+      "type": "string"
+    },
+    "review_slot": {
+      "type": "object"
+    },
+    "quarterly_revisit_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">metrics.length &lt; 4 OR &gt; 9</pattern>
-      <pattern id="f2">hypothesis_log skipped &gt; 4 weeks</pattern>
-      <pattern id="f3">review held with no decision</pattern>
-      <pattern id="f4">quarterly metric revisit skipped</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/weekly-growth-review-rhythm.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>metrics populated with a typed value</item>
-      <item>hypothesis_log_url populated with a typed value</item>
-      <item>decision_template populated with a typed value</item>
-      <item>review_slot populated with a typed value</item>
-      <item>quarterly_revisit_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <pattern id="f1">metrics.length &lt; 5 OR &gt; 7 — violates r1</pattern>
+      <pattern id="f2">hypothesis_log missing OR log skipped &gt;4 weeks — violates r2</pattern>
+      <pattern id="f3">review held with no decision — violates r3</pattern>
+      <pattern id="f4">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "weekly-growth-review-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "metrics": [
+    {
+      "name": "MRR",
+      "type": "nsm",
+      "definition": "monthly recurring revenue"
+    },
+    {
+      "name": "signups",
+      "type": "leading",
+      "definition": "free signups / week"
+    },
+    {
+      "name": "trial\u2192paid",
+      "type": "leading",
+      "definition": "trial conversion %"
+    },
+    {
+      "name": "CAC",
+      "type": "efficiency",
+      "definition": "ad spend / new paid"
+    },
+    {
+      "name": "churn",
+      "type": "health",
+      "definition": "monthly logo churn %"
+    }
+  ],
+  "hypothesis_log_url": "notion://workspace/hypotheses",
+  "decision_template": "what changed | which metric | hypothesis | decision (continue/kill/double/redesign)",
+  "review_slot": {
+    "day_of_week": "Monday",
+    "time": "09:00",
+    "duration_min": 45
+  },
+  "quarterly_revisit_date": "2026-08-15",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "metrics": [
+    {
+      "name": "MRR"
+    }
+  ],
+  "hypothesis_log_url": "",
+  "decision_template": "",
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-weekly-growth-review-rhythm.py">Schema validator (stdlib only).</reference>
 </text>

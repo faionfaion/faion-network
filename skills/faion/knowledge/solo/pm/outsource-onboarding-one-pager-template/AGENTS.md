@@ -4,76 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Outsource Onboarding One Pager Template: codified pm practice that turns the recurring 'role-project-manager/Client onboarding into our delivery cadence (two weeks)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: One-page contractor onboarding template: scope, deliverables, comms cadence, access list, kill-switch — get a hire shipping in 24 hrs.
 content_id: "3da26c50bb1cf5ef"
-tags: [outsource-onboarding-one-pager-template, pm, solo]
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: ["hiring", "contractor", "pm", "solo", "onboarding"]
 ---
-# Outsource Onboarding One Pager Template
+# Outsource Onboarding One-Pager Template
 
 ## Summary
 
-**One-sentence:** Outsource Onboarding One Pager Template: codified pm practice that turns the recurring 'role-project-manager/Client onboarding into our delivery cadence (two weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** One-page contractor onboarding template: scope, deliverables, comms cadence, access list, kill-switch — get a hire shipping in 24 hrs.
 
-**One-paragraph:** Outsource Onboarding One Pager Template addresses the gap identified by the role-project-manager/Client onboarding into our delivery cadence (two weeks) playbook: Every new client deserves a one-pager 'how to work with us' summary. Should be a fill-in template, not freshly written each time. Useful even at solo tier for freelance PMs. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Pins the contractor onboarding artefact: one page, six named sections (scope / deliverables / comms cadence / access list / payment / kill-switch). Output is a versioned spec the contractor signs before first day; same template reused per hire, evolved per learning.
+
+**Ефективно для:**
+
+- Solo founder hiring contractor #1-5 who keeps spending the first week answering 'how do I…' messages. One page that turns 'first day' into 'first deliverable in 24 hrs'.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-project-manager/Client onboarding into our delivery cadence (two weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Onboarding a contractor / freelancer / async hire
+- Hire is part-time (≤30 hrs/week) and remote
+- Engagement length ≥2 weeks
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Full-time employee — needs full HR onboarding instead
+- One-off task <8 hrs total
+- Hire already onboarded in prior engagement
 
 ## Prerequisites
 
-- recent context for the role-project-manager/Client onboarding into our delivery cadence (two weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Signed contractor agreement (with NDA + IP clause) | doc | lawyer-reviewed template |
+| Scope brief (problem, success criteria, constraints) | doc | founder |
+| Tool stack list (repos, design files, channels) | table | stack inventory |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `solo/pm/project-manager/freelancer-personal-crm-minimal` | Peer methodology — onboarded contractor enters the CRM as 'active'. |
+| `solo/pm/indie-hacker-tax-and-legal-essentials` | Peer methodology — contract + NDA pattern lives there. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-outsource-onboarding-one-pager-template` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-outsource-onboarding-one-pager-template` | haiku | Schema check + threshold checks; deterministic. |
+| `review-outsource-onboarding-one-pager-template` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/outsource-onboarding-one-pager-template.json` | JSON schema for the Outsource Onboarding One Pager Template output contract |
-| `templates/outsource-onboarding-one-pager-template.md` | Markdown skeleton with the required fields |
+| `templates/outsource-onboarding-one-pager-template.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/outsource-onboarding-one-pager-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-outsource-onboarding-one-pager-template.py` | Enforce Outsource Onboarding One Pager Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-outsource-onboarding-one-pager-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
-- upstream playbook: `role-project-manager/Client onboarding into our delivery cadence (two weeks)`
+- [[freelancer-personal-crm-minimal]]
+- [[indie-hacker-tax-and-legal-essentials]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

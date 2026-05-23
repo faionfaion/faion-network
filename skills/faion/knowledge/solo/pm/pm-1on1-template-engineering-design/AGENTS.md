@@ -4,68 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Opinionated agenda template for weekly PM ↔ EM, design lead, support lead 1:1s — tuned for product-org reality.
-content_id: "98a14d47b21c71c2"
-tags: [pm-1on1-template-engineering-design, pm, solo]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 30-min biweekly 1:1 template for PM↔eng/design: career / project / craft / blockers / feedback — five named sections, rolling notes log.
+content_id: "f5008548c3973f63"
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: ["1on1", "pm", "engineering", "design", "solo"]
 ---
-
-# PM 1:1 Template for Engineering and Design
+# PM 1:1 Template (Engineering / Design)
 
 ## Summary
 
-**One-sentence:** Opinionated agenda template for weekly PM ↔ EM, design lead, support lead 1:1s — tuned for product-org reality.
+**One-sentence:** 30-min biweekly 1:1 template for PM↔eng/design: career / project / craft / blockers / feedback — five named sections, rolling notes log.
 
-**One-paragraph:** PMs run weekly 1:1s with EM, design lead, support lead. No opinionated agenda template tuned for product-org reality. Output: 1:1 agenda template per partner + action-item flow.
+**One-paragraph:** Pins a 30-min biweekly 1:1 format with eng/design contractors or teammates: five named sections (career / project / craft / blockers / feedback). Output is a per-meeting artefact appended to a rolling log so trends become visible after 3+ meetings.
+
+**Ефективно для:**
+
+- Solo PM or founder with 1-4 eng/design contractors whose 1:1s drift into status updates. Five-section template that makes career + craft show up alongside project blockers.
 
 ## Applies If (ALL must hold)
 
-- PM in product org with ≥1 EM partner + ≥1 design partner
-- weekly 1:1 cadence
-- PM has authority to set agenda
+- Working with ≥1 eng/design contractor or teammate for ≥4 weeks
+- 1:1 cadence exists (weekly / biweekly) OR being established
+- Founder/PM has authority to schedule recurring 30-min slot
 
 ## Skip If (ANY kills it)
 
-- solo PM (no partners to 1:1 with)
-- partner relationship in conflict — needs mediation, not template
-- company already has standardized 1:1 template
+- Engagement <4 weeks (too short for trend)
+- Synchronous full-team standup covers 1:1 ground
+- Contractor explicitly declined 1:1 cadence
 
 ## Prerequisites
 
-- list of standing partners (EM, design lead, support lead, data, marketing)
-- shared docs space for 1:1 notes
-- action-item tracker (project tool)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Calendar block for biweekly slot per teammate | calendar event | calendar |
+| Rolling notes doc per teammate (Notion / Google Doc) | doc | notes store |
+| Last 30 days of project context (PRs, designs, blockers) | log | GitHub / Figma / PM tool |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent skill — provides operating context for this methodology |
-| `pro/pm/pm-agile` | peer methodology — produces inputs or consumes outputs |
-| `pro/product/product-manager` | peer methodology — produces inputs or consumes outputs |
+| `solo/pm/outsource-onboarding-one-pager-template` | Peer methodology — onboarding inputs feed the first 1:1 agenda. |
+| `solo/pm/async-standup-methodology` | Peer methodology — daily standup supplies project-section inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-pm-1on1-template-engineering-design` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-pm-1on1-template-engineering-design` | haiku | Schema check + threshold checks; deterministic. |
+| `review-pm-1on1-template-engineering-design` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/pm-1on1-template-engineering-design.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/pm-1on1-template-engineering-design.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-pm-1on1-template-engineering-design.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
-- peer methodology: `pro/pm/pm-agile`
-- peer methodology: `pro/product/product-manager`
-- peer methodology: `pro/product/discovery-cadence-design`
-- external: https://www.lennyrachitsky.com/p/the-art-of-the-1-on-1; https://www.svpg.com/articles/silicon-valley-product-group-articles/
+- [[outsource-onboarding-one-pager-template]]
+- [[async-standup-methodology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
