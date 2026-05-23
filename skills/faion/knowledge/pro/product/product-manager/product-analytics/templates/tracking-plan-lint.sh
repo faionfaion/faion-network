@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Lint script for naming + ownership compliance.
+# consumes: input from methodology
+# produces: artefact for downstream agent
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: 0 (executes locally)
+set -euo pipefail
+#!/usr/bin/env bash
 # tracking-plan-lint.sh — enforce naming + required fields on a markdown Tracking Plan.
 # Usage: tracking-plan-lint.sh path/to/tracking-plan.md
 # Checks: snake_case, object_action shape, non-empty trigger, non-empty properties.

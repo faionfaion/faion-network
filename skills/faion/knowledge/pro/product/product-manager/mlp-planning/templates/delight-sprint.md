@@ -1,3 +1,9 @@
+<!-- purpose: Single-theme delight sprint plan template. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 ## Delight Sprint: [Focus Area]
 
 ### Scope

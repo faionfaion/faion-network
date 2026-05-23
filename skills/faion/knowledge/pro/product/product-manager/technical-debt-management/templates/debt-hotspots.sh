@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Compute hotspots from churn + bug density.
+# consumes: input from methodology
+# produces: artefact for downstream agent
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: 0 (executes locally)
+set -euo pipefail
+#!/usr/bin/env bash
 # debt-hotspots.sh — find files most likely to be technical debt
 # Usage: ./debt-hotspots.sh [since=6.months.ago] [top=20]
 # Output: TSV table + JSONL file for scanner subagent consumption

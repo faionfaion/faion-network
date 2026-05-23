@@ -3,75 +3,104 @@ slug: release-planning
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured approach to bundling, scheduling, and communicating product releases across cross-functional teams.
-content_id: "68460e3733a2e87f"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cross-team release bundling, scheduling, and communication discipline (release-train cadence, readiness matrix, deprecation comms, change-control artefacts) for paying-customer products.
+content_id: "aba6d574e3881ca2"
+complexity: deep
+produces: spec
+est_tokens: 6700
 tags: [release-planning, release-management, product-coordination, readiness-gate, cross-functional]
 ---
 # Release Planning
 
 ## Summary
 
-**One-sentence:** Structured approach to bundling, scheduling, and communicating product releases across cross-functional teams.
+**One-sentence:** Cross-team release bundling, scheduling, and communication discipline (release-train cadence, readiness matrix, deprecation comms, change-control artefacts) for paying-customer products.
 
-**One-paragraph:** Structured approach to bundling, scheduling, and communicating product releases across cross-functional teams. Defines what ships, when, to whom, and how readiness is verified per function (eng, docs, support, marketing, legal) before deploy. The PM-flavored variant adds a release-readiness matrix (green/yellow/red per function with evidence URLs) on top of basic engineering deploy mechanics — decoupling "code is done" from "release is ready".
+**One-paragraph:** Fixed-cadence release train (weekly/biweekly/monthly), T-7d readiness matrix per function (eng/QA/support/sales/marketing/legal), >=90-day deprecation comms with customer-facing notes, named post-release monitor with rollback triggers. Output: release-plan markdown + readiness matrix + release notes.
+
+**Ефективно для:**
+
+- Multi-team release крізь engineering, support, sales-enablement, marketing, legal.
+- Releases з paying customers, де breaking changes/deprecations присутні.
+- Release calendar slipped двічі поспіль — shrink contents, скоротити cycle.
+- Regulated/contractual deploy windows із customer-facing change-control артефактами.
 
 ## Applies If (ALL must hold)
 
 - Multi-team release crossing engineering, support, sales-enablement, marketing, and legal.
 - Releases with paying customers where breaking changes or deprecations are present.
-- Release calendar has slipped twice in a row (signal: shrink contents, shorten cycle).
+- Release calendar has slipped twice in a row.
 - Regulated or contractual deploy windows require customer-facing change-control artifacts.
-- Pre-launch GTM coordination where sales decks, support macros, and pricing copy must sequence.
 - Release-train cadence reviews where the PM owns whether the train left full or empty.
 
 ## Skip If (ANY kills it)
 
-- Trunk-based / continuous deployment with feature flags at scale — use a launch plan tied to flag percentages instead.
-- Pure infra/refactor with zero customer-visible behavior change.
-- Solo founder shipping to fewer than 50 users — git push + changelog post is sufficient.
-- A/B experiments — use experimentation-design, not a ship date.
-- Hotfixes for live incidents — use the incident-response runbook; release-planning deliberation kills time-to-mitigate.
+- Internal tooling without external customers.
+- Pre-PMF product shipping daily without deprecation surface.
+- One-shot launches — use launch-readiness-review.
+- Single-team product where coordination overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Release calendar | schedule | PM / release ops |
+| Cross-function owner roster | table | org chart |
+| Customer notification list | CRM segment | marketing / CS |
+| Change-control template | doc | compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[launch-readiness-review]] | Provides per-release gate framework the readiness matrix mirrors. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: fixed cadence, readiness matrix, 90-day deprecation, customer-facing notes, post-release monitor | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for release-plan | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: ad-hoc dates, hidden readiness, short-deprecation, commit-log-notes | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: cadence -> matrix -> deprecation comms -> notes -> monitor | 900 |
+| `content/05-examples.xml` | medium | Worked release plan with deprecation + post-release monitor | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on external customers + multi-team + breaking changes | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `readiness-matrix-author` | sonnet | Pull status from owners + assemble matrix. |
+| `release-notes-customer-render` | sonnet | Convert commit log into customer-facing notes. |
+| `post-release-monitor-plan` | haiku | Templated monitor + rollback assignment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/release-plan.md` | Release plan skeleton with cadence + matrix + deprecations. |
+| `templates/release-notes.md` | Customer-facing release notes template. |
+| `templates/release_readiness_lint.py` | Lint script for readiness matrix completeness. |
+| `templates/prompt-manifest-generation.txt` | Prompt template for change-control manifest. |
+| `templates/prompt-readiness-matrix.txt` | Prompt template for matrix synthesis. |
+| `templates/prompt-release-notes.txt` | Prompt template for customer-facing notes. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-release-planning.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[launch-readiness-review]]
+- [[stakeholder-management]]
+- [[product-explainability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

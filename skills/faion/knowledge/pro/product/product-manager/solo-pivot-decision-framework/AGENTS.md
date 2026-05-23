@@ -3,84 +3,101 @@ slug: solo-pivot-decision-framework
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "94baf20aa478bc69"
-summary: Opinionated pivot taxonomy (segment / feature / business-model / tech / channel) with triggers, sunk-cost guardrails, and a hard rule for distinguishing a pivot from quitting.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Opinionated pivot taxonomy (segment / feature / business-model / tech / channel) with quantitative trigger signals, sunk-cost guardrails, and a hard rule for distinguishing pivot from quit for solo SaaS founders.
+content_id: "23a41765dac49322"
+complexity: deep
+produces: decision-record
+est_tokens: 6100
 tags: [pivot, product-market-fit, decision-framework, solo-saas, sunk-cost]
 ---
-
 # Solo Pivot Decision Framework
 
 ## Summary
 
-**One-sentence:** Opinionated pivot taxonomy (segment / feature / business-model / tech / channel) with triggers, sunk-cost guardrails, and a hard rule for distinguishing a pivot from quitting.
+**One-sentence:** Opinionated pivot taxonomy (segment / feature / business-model / tech / channel) with quantitative trigger signals, sunk-cost guardrails, and a hard rule for distinguishing pivot from quit for solo SaaS founders.
 
-**One-paragraph:** Eric Ries listed 10 pivot types in The Lean Startup (2011); subsequent founder writing (Steve Blank, Dan Olsen, Mihail Eric) compressed them into 5 actionable categories for one-person teams. This methodology classifies a failing v1 against those 5 axes, surfaces the empirical triggers that justify a pivot vs continuing to optimise vs sunsetting, and forces a written falsifiable hypothesis ("the new bet works if X by date Y") before any rebuild work begins. Output: pivot-type classification + hypothesis + go/no-go threshold + sunk-cost statement.
+**One-paragraph:** Five pivot categories, quantitative triggers (MRR flat, activation <5%, churn >8%/mo, NPS <0), explicit sunk-cost disclosure, runway feasibility gate (>=8 weeks), 3-pivot rule (quit instead of pivot a fourth time). Output: pivot-decision-record markdown.
+
+**Ефективно для:**
+
+- v1 живий >=90 днів із paying/free users + >=1 failure signal.
+- Operator має >=8 weeks personal runway виконати pivot.
+- Попередній квартал містив >4 години customer-development розмов.
+- Sunk-cost bias loomed — рамка дає quantified триггери і guardrails.
 
 ## Applies If (ALL must hold)
 
-- v1 has been live ≥ 90 days with paying or free users
-- ≥ 1 of the failure signals is true: trailing-30-day MRR flat or down, activation &lt; 5%, churn &gt; 8%/mo, NPS &lt; 0
-- operator has ≥ 8 weeks of personal runway to execute the pivot
-- previous quarter included &gt; 4 hours of customer development conversation
+- v1 has been live >=90 days with paying or free users.
+- >=1 of the failure signals is true: MRR flat/down, activation <5%, churn >8%/mo, NPS <0.
+- Operator has >=8 weeks of personal runway to execute the pivot.
+- Previous quarter included >4 hours of customer development conversation.
+- Sunk-cost continuation pressure is building.
 
 ## Skip If (ANY kills it)
 
-- v1 launched &lt; 90 days ago — too early to call; iterate, don't pivot
-- failure signals could be fixed by a single pricing, copy, or onboarding change — that's an optimisation, not a pivot
-- operator has &lt; 8 weeks runway — pivoting on empty fuel is gambling; sunset and find income
-- operator has not done any customer interviews — no signal to pivot from
+- Pre-launch product with no users (use customer-development).
+- Engagement < 90 days live (give it time).
+- >=2-founder team (use co-founder pivot methodology).
+- Profitable product seeking optimization not pivot.
 
 ## Prerequisites
 
-- list of v1 metrics with trailing 90-day delta (MRR, activation, churn, NPS, signups)
-- 5+ customer interview notes from the trailing 30 days
-- a list of features built (with effort) and their adoption rate
-- written sunk-cost statement: "$X spent, Y months spent, what we LEARNED that survives a pivot"
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trailing 30/60/90d metrics | table | product-analytics |
+| Customer-development log | list | interview notes |
+| Personal runway | weeks remaining | founder |
+| Sunk-cost ledger | list | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager/product-market-fit-hunt` | Provides the leading indicators of PMF; pivot framework consumes those signals |
-| `solo/research/researcher/problem-validation` | Pivot hypotheses must be validated upstream before commit |
-| `pro/marketing/gtm-strategist/positioning-canvas` | A segment pivot triggers a positioning rewrite |
+| [[product-lifecycle]] | Stage classification informs whether the metrics are pivot-warranting. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: taxonomy, falsifiable hypothesis, sunk-cost separation, runway-gate, quit-vs-pivot | ~1000 |
-| `content/02-output-contract.xml` | essential | `PivotDecision` schema with hypothesis, threshold, kill-criterion | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: shiny-object, founder-rationalisation, false-signal, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: pivot taxonomy, quantitative triggers, sunk-cost disclosed, runway gate, 3-pivot quit rule | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for pivot-decision-record | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: vibe-pivot, sunk-cost continuation, runway-less pivot, serial pivot | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: evaluate triggers -> classify type -> disclose sunk -> check runway -> author DR | 900 |
+| `content/05-examples.xml` | medium | Worked DR pivoting on segment trigger after 3 months | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on age + triggers + runway | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `metric_extraction_from_dashboards` | haiku | Mechanical |
-| `pivot_type_classification` | sonnet | Bounded judgment vs taxonomy |
-| `hypothesis_falsification_design` | opus | Needs deep synthesis |
-| `sunk_cost_separation` | sonnet | Pattern-matching cost vs learning |
+| `trigger-evaluate` | sonnet | Match observed metrics to quantitative triggers. |
+| `pivot-type-classify` | sonnet | Map proposed change to one of 5 categories. |
+| `decision-record-author` | opus | Write the DR with sunk-cost disclosure + runway gate + kill rule. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pivot-decision.json` | Output schema |
-| `templates/pivot-hypothesis-canvas.md` | Pre-pivot canvas operator fills |
+| `templates/pivot-decision-record.md` | DR skeleton with type + triggers + sunk-cost + runway. |
+| `templates/pivot-trigger-check.sh` | Check quantitative triggers against metrics. |
+| `templates/runway-gate.yaml` | Runway-feasibility-gate input template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/pivot-readiness-check.py` | Validates prerequisites + runway gate | Before kicking off pivot synthesis |
+| `scripts/validate-solo-pivot-decision-framework.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodologies: `product-market-fit-hunt`, `feature-prioritisation`
-- external: [Eric Ries — The Lean Startup (2011)](http://theleanstartup.com/) · [Steve Blank — Pivot or Persevere](https://steveblank.com/2013/03/04/should-the-startup-pivot-tools-for-the-trade/) · [Dan Olsen — The Lean Product Playbook](https://dan-olsen.com/lpp/)
+- [[product-lifecycle]]
+- [[continuous-discovery-habits]]
+- [[portfolio-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

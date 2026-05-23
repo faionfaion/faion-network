@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Gate script enforcing 90s + outcome-not-feature.
+# consumes: input from methodology
+# produces: artefact for downstream agent
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: 0 (executes locally)
+set -euo pipefail
+#!/usr/bin/env bash
 # feature-narrative-gate.sh — block release if narrative missing required fields or contains banned tokens.
 # Usage: feature-narrative-gate.sh path/to/feature-narrative.json
 # Exit: 0 = valid, 1 = validation failure

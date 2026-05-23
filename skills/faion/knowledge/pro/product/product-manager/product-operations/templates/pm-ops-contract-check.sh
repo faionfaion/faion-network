@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Check that PM artefacts use canonical-store outputs (no parallel).
+# consumes: input from methodology
+# produces: artefact for downstream agent
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: 0 (executes locally)
+set -euo pipefail
+#!/usr/bin/env bash
 # pm-ops-contract-check.sh — refuse PM-side write attempts to system-of-record.
 # Wrap PM agent invocations: if the planned action touches a write surface
 # owned by Product Ops, exit non-zero and instruct the agent to use the

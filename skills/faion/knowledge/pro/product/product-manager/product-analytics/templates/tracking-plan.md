@@ -1,3 +1,9 @@
+<!-- purpose: Tracking-plan skeleton with event table + version field. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 # Tracking Plan: [Product]
 
 <!-- Source of truth for event taxonomy. Runtime catalogs drift toward this file via PR, never the reverse.

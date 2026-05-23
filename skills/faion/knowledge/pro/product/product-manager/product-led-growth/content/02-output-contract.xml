@@ -1,22 +1,156 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="product-led-growth Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Product-Led Growth (PM Angle) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/product-led-growth.json",
+  "type": "object",
+  "required": [
+    "product_id",
+    "aha_moment",
+    "pql_criteria",
+    "activation_cohort_tracked",
+    "expansion_owner",
+    "experiment_throttle"
+  ],
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "aha_moment": {
+      "type": "object",
+      "required": [
+        "event_sequence",
+        "max_minutes_from_signup"
+      ],
+      "properties": {
+        "event_sequence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_minutes_from_signup": {
+          "type": "integer",
+          "maximum": 10,
+          "minimum": 1
+        }
+      }
+    },
+    "pql_criteria": {
+      "type": "object",
+      "required": [
+        "events",
+        "frequency",
+        "account_shape"
+      ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "frequency": {
+          "type": "string"
+        },
+        "account_shape": {
+          "type": "string"
+        }
+      }
+    },
+    "activation_cohort_tracked": {
+      "const": true
+    },
+    "expansion_owner": {
+      "enum": [
+        "pm",
+        "growth-pm",
+        "pmm"
+      ]
+    },
+    "experiment_throttle": {
+      "type": "object",
+      "required": [
+        "max_concurrent_per_step"
+      ],
+      "properties": {
+        "max_concurrent_per_step": {
+          "type": "integer",
+          "maximum": 2,
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "product_id": "acme-api",
+  "aha_moment": {
+    "event_sequence": [
+      "api_key_created",
+      "api_call_succeeded"
+    ],
+    "max_minutes_from_signup": 8
+  },
+  "pql_criteria": {
+    "events": [
+      "api_call_succeeded"
+    ],
+    "frequency": ">=10/week",
+    "account_shape": "company_size > 10"
+  },
+  "activation_cohort_tracked": true,
+  "expansion_owner": "pm",
+  "experiment_throttle": {
+    "max_concurrent_per_step": 2
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "product_id": "p1",
+  "aha_moment": {
+    "event_sequence": [],
+    "max_minutes_from_signup": 30
+  },
+  "pql_criteria": {
+    "events": []
+  },
+  "activation_cohort_tracked": false,
+  "expansion_owner": "sales",
+  "experiment_throttle": {
+    "max_concurrent_per_step": 5
+  }
+}
+]]></code>
+    <note>aha event_sequence empty; max minutes &gt; 10; pql events empty + missing frequency/account_shape; activation_cohort_tracked false; expansion_owner sales; throttle exceeds 2.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>aha_moment.max_minutes_from_signup &gt; 10 (not aha by definition).</item>
+      <item>activation_cohort_tracked = false (signup-cohort tracking forbidden).</item>
+      <item>expansion_owner outside {pm, growth-pm, pmm} (handed to sales).</item>
+      <item>experiment_throttle.max_concurrent_per_step &gt; 2 (stacked experiments confound).</item>
+      <item>pql_criteria.events empty (PQL undefined).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-product-led-growth.py">Validator script enforcing this schema</reference>
 </text>

@@ -1,22 +1,219 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mlp-planning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="MLP Planning Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/mlp-planning.json",
+  "type": "object",
+  "required": [
+    "plan_id",
+    "layer_scores",
+    "delight_backlog",
+    "retention_curve_target",
+    "sprint_plan"
+  ],
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layer_scores": {
+      "type": "object",
+      "required": [
+        "functional",
+        "reliable",
+        "usable",
+        "delightful"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "score",
+          "evidence"
+        ],
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    },
+    "delight_backlog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "theme",
+          "quotes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "string"
+          },
+          "quotes": {
+            "type": "array",
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "retention_curve_target": {
+      "type": "object",
+      "required": [
+        "baseline_d30",
+        "target_d30",
+        "window_weeks"
+      ],
+      "properties": {
+        "baseline_d30": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "target_d30": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "window_weeks": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 16
+        }
+      }
+    },
+    "sprint_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "theme",
+          "duration_days"
+        ],
+        "properties": {
+          "theme": {
+            "type": "string"
+          },
+          "duration_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 14
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "plan_id": "mlp-acme-2026-q2",
+  "layer_scores": {
+    "functional": {
+      "score": 4,
+      "evidence": "core flow completion 92%"
+    },
+    "reliable": {
+      "score": 4,
+      "evidence": "p95 latency 220ms, error 0.3%"
+    },
+    "usable": {
+      "score": 3,
+      "evidence": "SUS 68"
+    },
+    "delightful": {
+      "score": 2,
+      "evidence": "NPS 22; verbatim 'fine, not memorable'"
+    }
+  },
+  "delight_backlog": [
+    {
+      "id": "d-onboarding-confetti",
+      "theme": "onboarding",
+      "quotes": [
+        {
+          "participant_id": "U_3471",
+          "verbatim": "I want to feel like I won when I finish setup."
+        }
+      ]
+    }
+  ],
+  "retention_curve_target": {
+    "baseline_d30": 0.22,
+    "target_d30": 0.38,
+    "window_weeks": 8
+  },
+  "sprint_plan": [
+    {
+      "theme": "onboarding",
+      "duration_days": 10
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "plan_id": "P1",
+  "layer_scores": {
+    "functional": {
+      "score": 2
+    },
+    "delightful": {
+      "score": 5
+    }
+  },
+  "delight_backlog": [
+    {
+      "id": "x",
+      "theme": "polish",
+      "quotes": []
+    }
+  ],
+  "retention_curve_target": {
+    "baseline_d30": 1.5,
+    "target_d30": 0.1,
+    "window_weeks": 100
+  },
+  "sprint_plan": [
+    {
+      "theme": "everything",
+      "duration_days": 60
+    }
+  ]
+}
+]]></code>
+    <note>layer_scores missing 2 of 4 layers; functional&lt;3 with delightful=5 (base broken); quotes empty; baseline_d30 &gt;1; sprint duration &gt;14d.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>layer_scores missing any of the 4 layers (incomplete audit).</item>
+      <item>delightful score &gt;=3 while functional or reliable score &lt;3 (base-before-delight rule).</item>
+      <item>delight_backlog item with empty quotes (designer-opinion).</item>
+      <item>retention_curve_target with baseline_d30 or target_d30 outside [0, 1].</item>
+      <item>sprint duration_days &gt; 14 (unbounded polish).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-mlp-planning.py">Validator script enforcing this schema</reference>
 </text>

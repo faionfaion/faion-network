@@ -1,22 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="technical-debt-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Technical Debt Management Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/technical-debt-management.json",
+  "type": "object",
+  "required": [
+    "register_id",
+    "items",
+    "capacity_contract",
+    "visibility"
+  ],
+  "properties": {
+    "register_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "interest_per_month",
+          "contagion_factor",
+          "paydown_effort_days",
+          "prevention_policy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "design",
+              "code",
+              "test",
+              "infra",
+              "docs",
+              "dependency"
+            ]
+          },
+          "interest_per_month": {
+            "type": "number",
+            "minimum": 0
+          },
+          "contagion_factor": {
+            "type": "number",
+            "minimum": 0
+          },
+          "paydown_effort_days": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "prevention_policy": {
+            "type": "string",
+            "minLength": 10
+          },
+          "impact_score": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "capacity_contract": {
+      "type": "object",
+      "required": [
+        "quarter",
+        "percent_of_sprint",
+        "agreed_by"
+      ],
+      "properties": {
+        "quarter": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-Q[1-4]$"
+        },
+        "percent_of_sprint": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 30
+        },
+        "agreed_by": {
+          "type": "array",
+          "minItems": 2
+        }
+      }
+    },
+    "visibility": {
+      "enum": [
+        "public-to-stakeholders",
+        "engineering-private"
+      ]
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "register_id": "acme-debt-2026q2",
+  "items": [
+    {
+      "id": "d-billing-orm",
+      "type": "code",
+      "interest_per_month": 12.0,
+      "contagion_factor": 1.6,
+      "paydown_effort_days": 8.0,
+      "prevention_policy": "ruff rule ban-raw-sql-in-billing + CI gate",
+      "impact_score": 2.4
+    }
+  ],
+  "capacity_contract": {
+    "quarter": "2026-Q2",
+    "percent_of_sprint": 18,
+    "agreed_by": [
+      "pm-alice",
+      "tech-lead-bob"
+    ]
+  },
+  "visibility": "public-to-stakeholders"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "register_id": "r1",
+  "items": [
+    {
+      "id": "x",
+      "type": "stuff",
+      "interest_per_month": -1,
+      "contagion_factor": -1,
+      "paydown_effort_days": 0,
+      "prevention_policy": "tbd"
+    }
+  ],
+  "capacity_contract": {
+    "quarter": "2026",
+    "percent_of_sprint": 50,
+    "agreed_by": [
+      "pm"
+    ]
+  },
+  "visibility": "secret"
+}
+]]></code>
+    <note>item type not in enum; interest/contagion negative; paydown_effort_days=0; prevention_policy too short; quarter pattern wrong; capacity outside [5,30]; agreed_by needs &gt;=2; visibility enum.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>item type outside the 6-enum (untyped debt).</item>
+      <item>paydown_effort_days &lt;= 0 (division-by-zero on score).</item>
+      <item>prevention_policy shorter than 10 chars (fix-without-prevention).</item>
+      <item>capacity_contract.percent_of_sprint outside [5, 30].</item>
+      <item>visibility = 'engineering-private' (hidden debt rule).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-technical-debt-management.py">Validator script enforcing this schema</reference>
 </text>

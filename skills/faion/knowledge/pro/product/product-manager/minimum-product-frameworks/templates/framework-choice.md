@@ -1,3 +1,9 @@
+<!-- purpose: Decision-record skeleton with signals + scorecard + triggers. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 # Framework Choice — [YYYY-MM-DD]
 
 **Chosen:** [MVP|MLP|MMP|MAC|RAT|MDP|MVA|MFP|SLC]

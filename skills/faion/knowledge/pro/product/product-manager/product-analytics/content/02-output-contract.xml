@@ -1,22 +1,201 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="product-analytics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Product Analytics Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/product-analytics.json",
+  "type": "object",
+  "required": [
+    "plan_version",
+    "events",
+    "metric_tree",
+    "anomaly_rules",
+    "pii_policy"
+  ],
+  "properties": {
+    "plan_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$"
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "properties",
+          "owner",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]+_[a-z][a-z0-9_]+$"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "live",
+              "deprecated",
+              "proposed"
+            ]
+          }
+        }
+      }
+    },
+    "metric_tree": {
+      "type": "object",
+      "required": [
+        "north_star",
+        "inputs"
+      ],
+      "properties": {
+        "north_star": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "causes"
+            ]
+          }
+        }
+      }
+    },
+    "anomaly_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "metric",
+          "threshold"
+        ]
+      }
+    },
+    "pii_policy": {
+      "type": "object",
+      "required": [
+        "redact_at_ingest",
+        "fields"
+      ],
+      "properties": {
+        "redact_at_ingest": {
+          "const": true
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "plan_version": "2.4.0",
+  "events": [
+    {
+      "name": "checkout_started",
+      "properties": {
+        "plan_tier": "string"
+      },
+      "owner": "growth",
+      "status": "live"
+    },
+    {
+      "name": "checkout_completed",
+      "properties": {
+        "order_id": "string"
+      },
+      "owner": "growth",
+      "status": "live"
+    }
+  ],
+  "metric_tree": {
+    "north_star": "weekly_active_paying_users",
+    "inputs": [
+      {
+        "name": "activation_rate",
+        "causes": "wapu"
+      },
+      {
+        "name": "retention_d30",
+        "causes": "wapu"
+      }
+    ]
+  },
+  "anomaly_rules": [
+    {
+      "metric": "activation_rate",
+      "threshold": "wow_delta_abs > 0.03"
+    }
+  ],
+  "pii_policy": {
+    "redact_at_ingest": true,
+    "fields": [
+      "email",
+      "phone",
+      "ip"
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "plan_version": "v1",
+  "events": [
+    {
+      "name": "ButtonClick",
+      "properties": {}
+    }
+  ],
+  "metric_tree": {
+    "north_star": "DAU"
+  },
+  "anomaly_rules": [],
+  "pii_policy": {
+    "redact_at_ingest": false,
+    "fields": []
+  }
+}
+]]></code>
+    <note>plan_version not semver; event name camelCase + missing object_action; missing event owner/status; metric_tree.inputs missing; anomaly_rules empty; PII redact_at_ingest false.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>event name not matching `object_action` snake_case past-tense pattern.</item>
+      <item>metric_tree.inputs fewer than 2 (no causal chain).</item>
+      <item>anomaly_rules empty (soft-judgment anomalies).</item>
+      <item>pii_policy.redact_at_ingest=false (late redaction).</item>
+      <item>event without owner or status (orphan event).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-product-analytics.py">Validator script enforcing this schema</reference>
 </text>

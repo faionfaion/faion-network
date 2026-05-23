@@ -1,3 +1,9 @@
+<!-- purpose: MLP plan skeleton with 4 layer scores + delight backlog + curve target. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 ## MLP Plan: [Product Name]
 
 ### Current State (MVP)

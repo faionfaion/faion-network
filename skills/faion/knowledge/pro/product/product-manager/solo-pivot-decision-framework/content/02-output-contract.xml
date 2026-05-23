@@ -1,59 +1,183 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Solo Pivot Decision — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `PivotDecision`. Must satisfy this contract before returning to operator.</summary>
+<text id="02-output-contract" title="Solo Pivot Decision Framework Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the decision-record artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`pivot_type` — enum {segment, feature, business-model, tech, channel, restart}</item>
-      <item>`hypothesis` — object {`change`, `metric`, `baseline`, `target`, `deadline_days`, `kill_criterion`}</item>
-      <item>`sunk_cost` — object {`money_usd`, `months`, `surviving_learnings` array ≥ 1}</item>
-      <item>`runway_check` — object {`required_weeks`, `available_weeks`, `pass: bool`}</item>
-      <item>`recommended_action` — enum {pivot, optimise, sunset, restart}</item>
-      <item>`evidence_signals` — array of triggering metrics with baseline values</item>
-      <item>`single_axis_check` — object proving only ONE pivot dimension changes</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-pivot-decision-framework.json",
+  "type": "object",
+  "required": [
+    "product_id",
+    "as_of",
+    "triggers",
+    "pivot_type",
+    "sunk_costs",
+    "runway_weeks",
+    "pivot_history"
+  ],
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date"
+    },
+    "triggers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "threshold"
+        ],
+        "properties": {
+          "name": {
+            "enum": [
+              "mrr_trailing_30d",
+              "activation_rate",
+              "monthly_churn",
+              "nps"
+            ]
+          },
+          "value": {
+            "type": "number"
+          },
+          "threshold": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pivot_type": {
+      "enum": [
+        "segment",
+        "feature",
+        "business-model",
+        "tech",
+        "channel"
+      ]
+    },
+    "sunk_costs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "magnitude"
+        ]
+      }
+    },
+    "runway_weeks": {
+      "type": "integer",
+      "minimum": 8
+    },
+    "pivot_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "date",
+          "type",
+          "outcome"
+        ]
+      }
+    },
+    "decision": {
+      "enum": [
+        "pivot",
+        "quit",
+        "persevere"
+      ]
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "product_id": "acme-saas",
+  "as_of": "2026-05-23",
+  "triggers": [
+    {
+      "name": "mrr_trailing_30d",
+      "value": 4200,
+      "threshold": "flat 90 days"
+    },
+    {
+      "name": "monthly_churn",
+      "value": 0.11,
+      "threshold": ">0.08"
+    }
+  ],
+  "pivot_type": "segment",
+  "sunk_costs": [
+    {
+      "item": "9 months engineering",
+      "magnitude": "1.4 FTE-years"
+    },
+    {
+      "item": "audience built on B2B SMB",
+      "magnitude": "3200 newsletter subs"
+    }
+  ],
+  "runway_weeks": 14,
+  "pivot_history": [],
+  "decision": "pivot"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "product_id": "p1",
+  "as_of": "today",
+  "triggers": [],
+  "pivot_type": "everything",
+  "sunk_costs": [],
+  "runway_weeks": 2,
+  "pivot_history": [
+    {
+      "date": "2024-01-01",
+      "type": "segment",
+      "outcome": "failed"
+    },
+    {
+      "date": "2024-05-01",
+      "type": "feature",
+      "outcome": "failed"
+    },
+    {
+      "date": "2024-09-01",
+      "type": "tech",
+      "outcome": "failed"
+    }
+  ],
+  "decision": "pivot"
+}
+]]></code>
+    <note>triggers empty; pivot_type not in enum; sunk_costs empty; runway_weeks &lt;8; 3 prior failed pivots and decision=pivot (must quit).</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>`pivot_type` populated with multi-axis combinations (e.g. ["segment","feature"]).</description>
-      <reason>Violates r1. Multi-axis pivots get relabelled by r5 to "restart" or rejected.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`hypothesis.kill_criterion` field empty or "we'll see".</description>
-      <reason>Violates r2. A pivot without a kill criterion never dies; founder bleeds out.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`sunk_cost.surviving_learnings` array empty.</description>
-      <reason>Violates r3. If no learning survives, this is a restart per r5.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`recommended_action: pivot` AND `runway_check.pass: false`.</description>
-      <reason>Violates r4. Insufficient runway forces sunset regardless of pivot quality.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`evidence_signals` contains aspirations ("I think users would want X") not measured metrics.</description>
-      <reason>Pivots are triggered by data, not founder feelings.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Allowed transformations">
     <list>
-      <item>Round `sunk_cost.money_usd` to nearest $500 for sharing.</item>
-      <item>Express MRR baselines as YoY delta % if absolute is sensitive.</item>
-      <item>Aggregate cohort metrics by month if signal is weekly-noisy.</item>
+      <item>triggers empty (gut-feel pivot).</item>
+      <item>pivot_type outside the 5-enum (untyped pivot).</item>
+      <item>runway_weeks &lt; 8 (runway-less pivot).</item>
+      <item>pivot_history.failed_count &gt;= 3 AND decision == 'pivot' (must quit per 3-pivot rule).</item>
+      <item>sunk_costs empty (sunk-cost not disclosed).</item>
     </list>
   </section>
 
-  <reference path="templates/pivot-decision.json">JSON Schema the output validates against.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Exactly one axis changes (single-axis-check passes).</item>
-      <item>Hypothesis has metric + baseline + target + deadline + kill-criterion.</item>
-      <item>Sunk-cost statement enumerates ≥ 1 surviving learning.</item>
-      <item>Runway gate passes for action `pivot` / `restart`.</item>
-      <item>Recommended action consistent with metric evidence.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-pivot-decision-framework.py">Validator script enforcing this schema</reference>
 </text>

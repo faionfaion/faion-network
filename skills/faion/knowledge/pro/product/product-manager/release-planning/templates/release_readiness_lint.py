@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 """
+purpose: Lint script for readiness matrix completeness.
+consumes: input from methodology
+produces: artefact for downstream agent
+depends-on: content/02-output-contract.xml
+token-budget-impact: 0 (executes locally)
+"""
+
+#!/usr/bin/env python3
+"""
 release_readiness_lint.py — fail CI if any "green" row lacks an evidence link.
 
 Input:  release-readiness.md (table with columns: function, artifact, owner, status, evidence_link)

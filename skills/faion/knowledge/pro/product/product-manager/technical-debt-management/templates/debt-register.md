@@ -1,3 +1,9 @@
+<!-- purpose: Debt register skeleton with type + interest + contagion + effort. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 ## Technical Debt Register: [Product]
 
 ### Summary

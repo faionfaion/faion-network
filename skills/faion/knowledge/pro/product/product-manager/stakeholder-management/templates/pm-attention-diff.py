@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 """
+purpose: Compute PM attention split per stakeholder vs target.
+consumes: input from methodology
+produces: artefact for downstream agent
+depends-on: content/02-output-contract.xml
+token-budget-impact: 0 (executes locally)
+"""
+
+#!/usr/bin/env python3
+"""
 pm-attention-diff.py — flag mismatch between PM time and stakeholder weight.
 Inputs:
   register.md  — PM stakeholder register (table format with Power/Interest columns)

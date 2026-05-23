@@ -3,75 +3,101 @@ slug: product-analytics
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Product analytics is measuring and analyzing user behavior to make better product decisions.
-content_id: "9f27252d25e50bd4"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tracking-plan + funnel/cohort instrumentation discipline (AARRR / North Star) feeding agent-readable BI sources for activation diagnosis, weekly health digests, and experiment readouts.
+content_id: "4abdcd3eb0aebd90"
+complexity: medium
+produces: spec
+est_tokens: 5500
 tags: [product-analytics, tracking-plan, metrics, funnels, cohorts, aarrr, agent-integration]
 ---
 # Product Analytics
 
 ## Summary
 
-**One-sentence:** Product analytics is measuring and analyzing user behavior to make better product decisions.
+**One-sentence:** Tracking-plan + funnel/cohort instrumentation discipline (AARRR / North Star) feeding agent-readable BI sources for activation diagnosis, weekly health digests, and experiment readouts.
 
-**One-paragraph:** Product analytics is measuring and analyzing user behavior to make better product decisions. The key discipline: define which decisions each event will inform before implementing tracking. Freeze the event taxonomy in git (tracking-plan.md as source of truth); runtime catalogs drift toward it via PR, never the other way. Structure analytics as a four-stage agent pipeline: plan → implement → monitor → analyze.
+**One-paragraph:** Versioned tracking plan with snake_case past-tense `object_action` events, a North Star + 2-3 input metrics with causal links, explicit anomaly rules for digests, and PII redaction at ingest. Agents author event specs, run rule-based anomaly scans, and synthesize cross-segment readouts. Output: tracking-plan YAML + per-event spec + weekly health digest.
+
+**Ефективно для:**
+
+- Pre-launch: tracking-plan drafted from spec, day-1 events ship з кодом.
+- Activation diagnosis: drop у funnel + cohort table -> highest-leakage step.
+- Scheduled product-health digest читає BI source і пише markdown із anomalies.
+- Post-experiment readout: merge exposure logs + metric tables, flag Simpson-segment.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch: agent drafts the tracking plan from a feature spec, so day-1 events ship with the code (not tacked on three sprints later).
-- Activation diagnosis: drop in funnel data + cohort table, ask the agent to pinpoint the highest-leakage step and propose two experiments.
-- Weekly product-health digest: scheduled agent reads BI source (BigQuery / Snowflake / Postgres replica), writes a markdown summary with anomalies highlighted.
-- Post-experiment readout: agent merges A/B exposure logs with metric tables, writes the analysis report, flags Simpson's-paradox segments.
-- Tracking-plan audit before a vendor migration (e.g., GA4 → PostHog) — agent diffs the live event catalog against the documented plan.
-- Inbound product question from a stakeholder ("did churn move after price change?") — agent runs a parameterized SQL or Mixpanel JQL and returns chart + caveats.
+- Pre-launch: agent drafts the tracking plan from a feature spec.
+- Activation diagnosis: drop in funnel data + cohort table.
+- Weekly product-health digest: scheduled agent reads BI source, writes markdown summary with anomalies.
+- Post-experiment readout: merge A/B exposure logs with metric tables.
+- Tracking-plan audit before a vendor migration (e.g., GA4 -> PostHog).
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF (less than 100 weekly active users) — sample sizes are too small for funnel/cohort math; talk to users instead, no analytics framework will save you.
-- Causal claims with only observational data — agent will happily call a correlation a cause; if you need causality, gate behind a proper experiment design or quasi-experimental method (DiD, synthetic control), not a dashboard.
-- Exec one-pagers where the audience needs judgment, not numbers — let the agent prep the data, but a human writes the recommendation.
-- High-cardinality PII queries — agents pulling raw user-level data without aggregation/scrubbing is a privacy incident waiting to happen.
-- Replacing a tracking plan review with a one-shot LLM call — naming, taxonomy, and ownership decisions outlive any single feature; commit them via PR, not chat.
+- Pre-MVP with no live events.
+- Product fully measured by external vendor (Stripe revenue) with no in-app behaviour.
+- Compliance lockdown where event collection is legally restricted.
+- Single-page marketing site without behavioural funnel.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec | markdown / Figma | PM |
+| BI source | BigQuery / Snowflake / Postgres replica | data team |
+| North Star + input metrics | documented | leadership / PM |
+| PII inventory | list of fields | security / privacy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[experimentation-at-scale]] | Provides exposure-log conventions for post-experiment readouts. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: versioned tracking-plan, event naming, North Star tree, anomaly rule set, PII redaction at ingest | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for tracking-plan + per-event spec | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: untracked events, naming chaos, vanity metrics, late PII redaction | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: spec -> events -> metric tree -> digest rules -> validate | 800 |
+| `content/05-examples.xml` | medium | Worked tracking plan + weekly health digest | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on event volume + vendor coverage | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `event-spec-author` | sonnet | Draft event spec from feature requirements. |
+| `anomaly-scan` | haiku | Mechanical rule-based anomaly detection. |
+| `post-experiment-readout` | opus | Cross-segment + Simpson-paradox detection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tracking-plan.md` | Tracking-plan skeleton with event table + version field. |
+| `templates/tracking-plan-lint.sh` | Lint script for naming + ownership compliance. |
+| `templates/event-spec.yaml` | Per-event spec template with properties + owner. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-analytics.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[experimentation-at-scale]]
+- [[product-led-growth]]
+- [[feedback-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

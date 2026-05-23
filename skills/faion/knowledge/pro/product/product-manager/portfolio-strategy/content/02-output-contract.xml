@@ -1,22 +1,187 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="portfolio-strategy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Portfolio Strategy (70/20/10) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the decision-record artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/portfolio-strategy.json",
+  "type": "object",
+  "required": [
+    "quarter",
+    "products",
+    "allocation",
+    "kill_triggers",
+    "rebalance_memo_link"
+  ],
+  "properties": {
+    "quarter": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-Q[1-4]$"
+    },
+    "products": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "horizon",
+          "rationale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "horizon": {
+            "enum": [
+              "H1",
+              "H2",
+              "H3"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          },
+          "capacity_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    "allocation": {
+      "type": "object",
+      "required": [
+        "h1_pct",
+        "h2_pct",
+        "h3_pct"
+      ],
+      "properties": {
+        "h1_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "h2_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "h3_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "kill_triggers": {
+      "type": "object",
+      "required": [
+        "H1",
+        "H2",
+        "H3"
+      ],
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    },
+    "rebalance_memo_link": {
+      "type": "string",
+      "minLength": 5
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "quarter": "2026-Q2",
+  "products": [
+    {
+      "id": "p-saas-core",
+      "horizon": "H1",
+      "rationale": "Mature ARR-positive product",
+      "capacity_pct": 65
+    },
+    {
+      "id": "p-mobile",
+      "horizon": "H2",
+      "rationale": "Adjacent segment, 8 months in",
+      "capacity_pct": 22
+    },
+    {
+      "id": "p-ai-copilot",
+      "horizon": "H3",
+      "rationale": "Transformational bet, year 1 of 3",
+      "capacity_pct": 13
+    }
+  ],
+  "allocation": {
+    "h1_pct": 65,
+    "h2_pct": 22,
+    "h3_pct": 13
+  },
+  "kill_triggers": {
+    "H1": [
+      "D30 retention <25% for 2 quarters"
+    ],
+    "H2": [
+      "No PMF signal at 18 months"
+    ],
+    "H3": [
+      "No market signal at 36 months"
+    ]
+  },
+  "rebalance_memo_link": "../portfolio-memo-2026-Q2.md"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "quarter": "2026",
+  "products": [
+    {
+      "id": "p1",
+      "horizon": "X",
+      "rationale": ""
+    }
+  ],
+  "allocation": {
+    "h1_pct": 100,
+    "h2_pct": 0,
+    "h3_pct": 0
+  },
+  "kill_triggers": {
+    "H1": []
+  }
+}
+]]></code>
+    <note>quarter pattern wrong; horizon not in enum; rationale empty; allocation drifts &gt; ±5pp from 70/20/10; kill triggers empty; H2/H3 missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>allocation drift &gt; 5pp from 70/20/10 without explicit rebalance memo justifying.</item>
+      <item>products with untagged horizon (must default to H1 explicitly).</item>
+      <item>kill_triggers missing any of {H1, H2, H3} keys.</item>
+      <item>rationale shorter than 10 chars (no real reasoning).</item>
+      <item>rebalance_memo_link missing when allocation differs from previous quarter.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-portfolio-strategy.py">Validator script enforcing this schema</reference>
 </text>

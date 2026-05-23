@@ -1,59 +1,222 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="OKR Cascade Multi-Squad Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the exact shape of the cascade artifacts. Subagent must satisfy this before returning a quarter-ready bundle.</summary>
+<text id="02-output-contract" title="OKR Cascade for Multi-Squad Product Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="company_okr_set" required_keys="objectives,signed_off_by,quarter_label">
-        <subfield name="objectives" min="1" max="3"/>
-        <subfield name="objectives[].key_results" min="3" max="5"/>
-      </field>
-      <field name="squad_okr_set_per_squad" min="3" max="6">
-        <subfield name="squad_name" type="string"/>
-        <subfield name="mission" type="string" max_words="20"/>
-        <subfield name="objectives" min="1" max="3"/>
-        <subfield name="objectives[].key_results" min="3" max="5"/>
-        <subfield name="objectives[].key_results[].baseline_value" type="number"/>
-        <subfield name="objectives[].key_results[].target_value" type="number"/>
-        <subfield name="objectives[].key_results[].measurement_source" type="string"/>
-      </field>
-      <field name="dependency_graph" format="markdown_adjacency_list">
-        <subfield name="edges[].from_squad" type="string"/>
-        <subfield name="edges[].to_squad" type="string"/>
-        <subfield name="edges[].artifact" type="string"/>
-        <subfield name="edges[].due_week" type="integer" min="1" max="13"/>
-      </field>
-      <field name="checkin_cadence" required_keys="monday_standup_time,friday_vote_deadline"/>
-      <field name="ownership_map" format="company_kr_id -> single_squad_name"/>
-    </required>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/okr-cascade-multi-squad.json",
+  "type": "object",
+  "required": [
+    "quarter",
+    "company_okrs",
+    "squads",
+    "dependency_edges",
+    "checkin_cadence"
+  ],
+  "properties": {
+    "quarter": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-Q[1-4]$"
+    },
+    "company_okrs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "objective",
+          "krs"
+        ]
+      }
+    },
+    "squads": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "objective",
+          "krs",
+          "trace_to_company"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 10
+          },
+          "krs": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "metric",
+                "baseline",
+                "target"
+              ]
+            }
+          },
+          "trace_to_company": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "dependency_edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "producer",
+          "consumer",
+          "deliverable",
+          "by_date"
+        ],
+        "properties": {
+          "producer": {
+            "type": "string"
+          },
+          "consumer": {
+            "type": "string"
+          },
+          "deliverable": {
+            "type": "string"
+          },
+          "by_date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "checkin_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly"
+      ]
+    },
+    "retro": {
+      "type": "object",
+      "properties": {
+        "kr_scores": {
+          "type": "object"
+        },
+        "causes": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">company_okr_set with &gt; 3 objectives OR any objective with &gt; 5 key_results</pattern>
-      <pattern id="f2">ownership_map where a company_kr_id maps to a list / multiple squads</pattern>
-      <pattern id="f3">key_results that read as tasks ("ship feature X", "launch Y") instead of measurable outcomes</pattern>
-      <pattern id="f4">dependency_graph empty OR fewer edges than (squad_count - 1) — almost certainly hidden dependencies</pattern>
-      <pattern id="f5">squad OKR document with no Inbound or Outbound section</pattern>
-      <pattern id="f6">aspirational language without baseline_value and target_value numbers</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "quarter": "2026-Q2",
+  "company_okrs": [
+    {
+      "id": "co-1",
+      "objective": "Activation rate doubles",
+      "krs": [
+        "co-kr-1: D7 activation 25% -> 45%"
+      ]
+    }
+  ],
+  "squads": [
+    {
+      "id": "s-checkout",
+      "objective": "Remove top-3 checkout friction",
+      "krs": [
+        {
+          "id": "s-checkout-kr-1",
+          "metric": "checkout_completion_rate",
+          "baseline": 0.62,
+          "target": 0.78
+        },
+        {
+          "id": "s-checkout-kr-2",
+          "metric": "d7_activation_for_checkout_users",
+          "baseline": 0.21,
+          "target": 0.4
+        },
+        {
+          "id": "s-checkout-kr-3",
+          "metric": "error_rate",
+          "baseline": 0.012,
+          "target": 0.005
+        }
+      ],
+      "trace_to_company": [
+        "co-kr-1"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "producer": "s-identity",
+      "consumer": "s-checkout",
+      "deliverable": "SSO bypass API",
+      "by_date": "2026-05-15"
+    }
+  ],
+  "checkin_cadence": "weekly"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>A company KR may be "split" into 2 squad KRs at different layers (e.g., a leading + lagging pair) provided each has its own measurement source.</transformation>
-      <transformation>Stretch KRs may carry a "stretch" flag with target_value separate from a "commit" target_value; both must be numeric.</transformation>
-      <transformation>Contributor squads may list a company KR in their "supporting" section without being Owner — does not violate single-threaded ownership.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "quarter": "Q2",
+  "company_okrs": [],
+  "squads": [
+    {
+      "id": "s1",
+      "objective": "ok",
+      "krs": [
+        {
+          "id": "k1"
+        }
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "producer": "x"
+    }
+  ],
+  "checkin_cadence": "ad-hoc"
+}
+]]></code>
+    <note>quarter pattern wrong; company_okrs empty; squad objective too short; krs&lt;3; KR missing required keys; dep edge incomplete; cadence not in enum.</note>
+  </example>
 
-    <schema-reference path="templates/squad-okr.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>company set ≤ 3 Os, each ≤ 5 KRs</item>
-      <item>every squad has 1-3 Os, each O has 3-5 KRs with numeric baseline + target</item>
-      <item>ownership_map is a function (one squad per company KR), not a relation</item>
-      <item>dependency_graph edges count ≥ squad_count - 1</item>
-      <item>each dependency edge has from, to, artifact, due_week populated</item>
-      <item>weekly check-in cadence specifies exact times, not "weekly"</item>
-      <item>previous quarter retro is referenced (if not Q1) with date</item>
+      <item>squad with fewer than 3 or more than 5 KRs.</item>
+      <item>squad missing trace_to_company.</item>
+      <item>dependency_edges entry missing any of {producer, consumer, deliverable, by_date}.</item>
+      <item>checkin_cadence outside {weekly, biweekly}.</item>
+      <item>company_okrs empty (no source for cascade).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-okr-cascade-multi-squad.py">Validator script enforcing this schema</reference>
 </text>

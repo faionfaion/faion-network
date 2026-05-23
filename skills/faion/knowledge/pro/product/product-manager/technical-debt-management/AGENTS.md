@@ -3,74 +3,101 @@ slug: technical-debt-management
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A six-step framework for making technical debt visible, quantified, and systematically paid down — covering debt registration, impact scoring (interest × contagion / effort), capacity allocation, and prevention policies.
-content_id: "b187463217f158b6"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Six-step technical-debt discipline (register -> score impact via interest × contagion / effort -> allocate capacity -> pay down -> prevent -> track) shared between PM and engineering with a quarterly capacity contract.
+content_id: "759372ba0be34756"
+complexity: medium
+produces: spec
+est_tokens: 5500
 tags: [technical-debt, product-management, engineering, prioritization, roadmap]
 ---
 # Technical Debt Management
 
 ## Summary
 
-**One-sentence:** A six-step framework for making technical debt visible, quantified, and systematically paid down — covering debt registration, impact scoring (interest × contagion / effort), capacity allocation, and prevention policies.
+**One-sentence:** Six-step technical-debt discipline (register -> score impact via interest × contagion / effort -> allocate capacity -> pay down -> prevent -> track) shared between PM and engineering with a quarterly capacity contract.
 
-**One-paragraph:** A six-step framework for making technical debt visible, quantified, and systematically paid down — covering debt registration, impact scoring (interest × contagion / effort), capacity allocation, and prevention policies. Debt is classified into six types (deliberate, accidental, bit-rot, design, documentation, test) and prioritized against product work using the same backlog cadence.
+**One-paragraph:** Typed debt register (design/code/test/infra/docs/dependency); impact score = (interest_per_month × contagion_factor) / paydown_effort; written quarterly capacity contract (% sprint for debt); prevention policy paired with every paydown; public visibility to non-engineering stakeholders. Output: debt-register YAML + capacity contract memo.
+
+**Ефективно для:**
+
+- Roadmap velocity видимо падає при стабільному headcount.
+- Quarterly planning, де 15-20% capacity резервується на paydown.
+- Post-P0 outage, що ідентифікував debt як root cause.
+- Перед major architectural change (auth rewrite, billing migration).
 
 ## Applies If (ALL must hold)
 
-- Roadmap velocity visibly declining despite stable headcount — need a quantified debt register to defend capacity allocation.
-- Quarterly planning where 15-20% of capacity is reserved for paydown and engineering needs a prioritized list.
+- Roadmap velocity visibly declining despite stable headcount.
+- Quarterly planning where 15-20% capacity is reserved for paydown.
 - Post-P0 outage or regression cluster where the post-mortem identifies debt as root cause.
-- Before a major architectural change (auth rewrite, billing migration) — surface debt on the change surface so it is eliminated, not carried forward.
+- Before a major architectural change (auth rewrite, billing migration).
 - Multi-repo solopreneur portfolio where debt silently compounds in lower-traffic repos.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF prototypes where the entire codebase is deliberate prudent debt by design — track only debt that blocks the next validation experiment.
-- Single-file scripts and one-shot data migrations — registration cost exceeds rewrite cost.
-- When engineering has lost trust in PM prioritization — repair trust first via engineer-driven sprints, then introduce the scoring matrix.
-- Bit-rot dependency upgrades that are fully automatable (Renovate / Dependabot) — automate, do not bureaucratize.
-- Crisis quarters (runway < 6 months, regulator deadline) — freeze the register, ship survival features, resume after.
+- Greenfield product <3 months of code (premature optimization).
+- Throwaway prototype.
+- Team explicitly running tracer-bullet methodology with debt-acceptable-by-design.
+- Capacity contract already in force <=90 days with no trigger event.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Codebase ownership map | table | engineering |
+| Recent incident log | table | SRE / on-call |
+| Sprint capacity baseline | doc | team lead |
+| Roadmap of next quarter | doc | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[release-planning]] | Provides the release cadence the paydown capacity contract slots into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: typed register, interest × contagion / effort score, capacity contract, prevention policy paired, public visibility | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for debt-register + capacity-contract | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: untyped register, effort-only score, soft capacity, fix-without-prevention | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure: inventory -> classify -> score -> contract -> prevent | 800 |
+| `content/05-examples.xml` | medium | Worked debt register with capacity contract + prevention policy | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on code age + velocity trend | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `debt-classify` | haiku | Tag debt items by type. |
+| `impact-score` | sonnet | Compute interest × contagion / effort with cited evidence. |
+| `capacity-contract-author` | sonnet | Draft the quarterly capacity contract memo. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/debt-register.md` | Debt register skeleton with type + interest + contagion + effort. |
+| `templates/debt-prioritization-matrix.md` | Prioritization matrix template. |
+| `templates/debt-hotspots.sh` | Compute hotspots from churn + bug density. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-technical-debt-management.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[release-planning]]
+- [[product-lifecycle]]
+- [[product-operations]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

@@ -3,74 +3,100 @@ slug: minimum-product-frameworks
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A selection matrix for choosing one of nine "minimum product" frameworks — MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC — before the first spec.
-content_id: "dc964a3963bcc535"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Selection matrix that chooses one of nine 'minimum product' frameworks (MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC) by market density × ICP × differentiator BEFORE the first spec.md exists.
+content_id: "fb078766c3e01c0e"
+complexity: medium
+produces: decision-record
+est_tokens: 4900
 tags: [minimum-product, framework-selection, product-strategy, mvp, market-strategy]
 ---
 # Minimum Product Frameworks
 
 ## Summary
 
-**One-sentence:** A selection matrix for choosing one of nine "minimum product" frameworks — MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC — before the first spec.
+**One-sentence:** Selection matrix that chooses one of nine 'minimum product' frameworks (MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC) by market density × ICP × differentiator BEFORE the first spec.md exists.
 
-**One-paragraph:** A selection matrix for choosing one of nine "minimum product" frameworks — MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC — before the first spec.md is written. The matrix maps market condition (blue/red ocean), buyer type (B2B/consumer), differentiator, and technical uncertainty to the right framework. Each choice must be versioned in a framework-choice.md with two explicit exit criteria before scoping begins.
+**One-paragraph:** Forces the team to evaluate all 9 minimum-product frameworks across 3 signal axes (market density blue/red, buyer type, differentiator), record the choice as a decision-record with proof gates + revisit triggers, and avoid default-MVP bias. Output: framework-decision-record markdown + scorecard YAML.
+
+**Ефективно для:**
+
+- Новий продукт або major module — до першого spec.md.
+- Команда reflexively вибирає MVP без перевірки market density чи buyer type.
+- Pivot moment: поточний build програє на retention/conversion.
+- Pre-board memo: justify chosen framework на тлі blue/red ocean і ICP.
 
 ## Applies If (ALL must hold)
 
 - New product or major module — before the first spec.md exists.
-- Team is reflexively saying "let's ship an MVP" without checking market density, buyer type, or differentiator.
+- Team is reflexively saying 'let's ship an MVP' without checking market density, buyer type, or differentiator.
 - Pivot moment: current build is failing on retention or conversion — re-pick the framework before re-scoping.
-- Multiple stakeholders disagree on what "minimum" means — use the matrix as a forcing function.
+- Multiple stakeholders disagree on what 'minimum' means — use the matrix as a forcing function.
 - Pre-investment or pre-board memo: justify the chosen framework against blue/red ocean and ICP positioning.
 
 ## Skip If (ANY kills it)
 
-- Methodology already chosen and validated — go straight to that framework's scoping doc; do not re-litigate.
-- Pure feature work inside a shipped product — use release-planning, feature-prioritization-rice, or MoSCoW instead.
-- Hard-deadline regulated launches where scope is dictated by compliance, not strategy.
-- Tiny fix-it-fast tasks (<1 sprint) — framework choice overhead exceeds value.
-- Internal tools with one stakeholder — pick MFP and move on.
+- Framework already chosen and a DR exists <=90 days old — re-pick is premature.
+- Non-product engagement (consulting / services) — no minimum-product framework applies.
+- Compliance-driven product where regulatory scope defines the build, not market fit.
+- Iteration on a stable product where MVP/MLP boundary is moot.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Market density assessment | blue/red ocean classification | research / GTM |
+| Buyer type | consumer / prosumer / enterprise / dev | GTM / PM |
+| Differentiator hypothesis | price / experience / capability / distribution | PM |
+| Existing DR (if any) | markdown | team archive |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[portfolio-strategy]] | Portfolio horizons constrain which frameworks are admissible. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: DR recorded, 9-framework coverage, differentiator test, revisit triggers, framework-vs-product separation | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for framework-decision-record | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: default-MVP bias, conflated framework/feature, missing triggers, unmeasured differentiator | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure: signals -> matrix -> pick -> proof -> DR | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on existence of DR + product status | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `signal-extract` | sonnet | Read briefs/research to extract market density + buyer + differentiator. |
+| `matrix-score` | haiku | Mechanical scoring across 9 frameworks. |
+| `dr-author` | sonnet | Write the decision record with rationale + triggers. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/framework-choice.md` | Decision-record skeleton with signals + scorecard + triggers. |
+| `templates/pick-framework.sh` | Shell wrapper that runs the matrix-score over the signals YAML. |
+| `templates/scorecard.yaml` | 9-framework scorecard skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-minimum-product-frameworks.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[portfolio-strategy]]
+- [[product-lifecycle]]
+- [[mlp-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

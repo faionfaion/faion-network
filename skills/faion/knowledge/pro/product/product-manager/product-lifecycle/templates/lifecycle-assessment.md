@@ -1,3 +1,9 @@
+<!-- purpose: Lifecycle assessment skeleton. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 ## Lifecycle Assessment: [Product]
 
 ### Current Metrics

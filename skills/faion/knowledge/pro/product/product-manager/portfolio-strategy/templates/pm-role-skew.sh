@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Compute PM-vs-portfolio role split for each product.
+# consumes: input from methodology
+# produces: artefact for downstream agent
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: 0 (executes locally)
+set -euo pipefail
+#!/usr/bin/env bash
 # pm-role-skew.sh — detect single-product vs portfolio PM patterns from allocation CSV.
 # Input CSV columns: pm, product, horizon (H1/H2/H3), eng_cost_usd
 # Usage: ./pm-role-skew.sh pm_allocations.csv

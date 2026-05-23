@@ -3,74 +3,100 @@ slug: product-operations
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When a Product Ops function exists, the PM is a consumer and partner — not its operator.
-content_id: "da83746a670250be"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PM-side RACI contract with an existing Product Ops function: consumes canonical artefacts, hands off scaled-org ceremonies, never duplicates instrumentation Product Ops owns.
+content_id: "489513fbdd9ac9ef"
+complexity: medium
+produces: config
+est_tokens: 4900
 tags: [product-operations, product-manager, raci, governance, hand-off]
 ---
 # Product Operations (PM-side)
 
 ## Summary
 
-**One-sentence:** When a Product Ops function exists, the PM is a consumer and partner — not its operator.
+**One-sentence:** PM-side RACI contract with an existing Product Ops function: consumes canonical artefacts, hands off scaled-org ceremonies, never duplicates instrumentation Product Ops owns.
 
-**One-paragraph:** When a Product Ops function exists, the PM is a consumer and partner — not its operator. PM-side agents are pure readers of the canonical store (Linear/Jira/Productboard rollups) and authors of narrative artifacts (specs, decision memos, discovery memos). Hand-offs are explicit: PM drafts land in a Product Ops queue (PR, Slack thread, Notion draft) where the Product Ops agent applies the write. The PM never bypasses that queue.
+**One-paragraph:** Written RACI per artefact (tracking-plan, OKR cascade, voice-of-customer, launch readiness); PM consumes canonical stores rather than rebuilding them; scaled PM-invented ceremonies hand off to Product Ops; explicit escalation path for disputes. Output: pm-ops-contract markdown + RACI YAML.
+
+**Ефективно для:**
+
+- PM onboarding в org з existing Product Ops функцією.
+- Кілька PM-ів просять inconsistent artefacts — route через Product Ops canonical store.
+- Pre-board prep — consume Product Ops outputs замість re-derive.
+- PM пропонує нову ceremony — hand off до Product Ops для scaling.
 
 ## Applies If (ALL must hold)
 
-- PM onboarding into an org with an existing Product Ops function — needs explicit RACI between own subagents and Product Ops automations.
-- Multiple PMs requesting inconsistent artifacts — route through the Product Ops canonical store.
-- Preparing a board/exec/portfolio review — consume Product Ops outputs instead of re-deriving.
-- PM proposes a new ceremony or template — hand off the converged output to Product Ops to ship org-wide.
+- PM onboarding into an org with an existing Product Ops function — needs explicit RACI.
+- Multiple PMs requesting inconsistent artifacts — route through Product Ops canonical store.
+- Preparing a board/exec/portfolio review — consume Product Ops outputs.
+- PM proposes a new ceremony — hand off to Product Ops to ship org-wide.
 - PM receives a Product Ops insight and needs to convert it into a discovery or kill decision.
 
 ## Skip If (ANY kills it)
 
-- Solopreneur / single-PM team with no Product Ops function — use solo-tier skills directly.
-- Product Ops charter is undefined — drive brainstorm on the charter first.
-- Strategic decisions (pricing, positioning, kill/scale, hiring) — the PM owns these, not Product Ops.
-- Customer-facing comms (release notes, interviews, positioning copy) — PM owns the content.
-- First 30 days of a new product where the workflow is unstable.
+- No Product Ops function exists — use solo product-operations methodology.
+- <=2 PM team where overhead exceeds benefit.
+- Consultancy / services with no recurring product surface.
+- Existing RACI <=90 days old without org change.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product Ops charter | doc | Head of Product Ops |
+| Artefact inventory | list of canonical artefacts | Product Ops |
+| PM cohort | list of PMs | org chart |
+| Escalation path baseline | doc | Head of Product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[stakeholder-management]] | Provides the stakeholder register that informs RACI roles. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: explicit RACI, canonical-store consumption, scaled-ceremony hand-off, no-duplicate instrumentation, named escalation | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for pm-ops-contract | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: parallel store, scaled PM-ceremony, ad-hoc instrumentation, escalation ambiguity | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure: charter -> RACI -> canonical map -> ceremony handoff -> escalation | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on Product Ops presence + PM count | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `raci-author` | sonnet | Draft the RACI from PM + ProductOps charters. |
+| `contract-audit` | haiku | Mechanical check of canonical-store consumption. |
+| `escalation-memo` | sonnet | Write the escalation path with named owners. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pm-ops-contract.md` | PM-ops contract skeleton with RACI + canonical map + escalation. |
+| `templates/pm-ops-contract-check.sh` | Check that PM artefacts use canonical-store outputs (no parallel). |
+| `templates/raci.yaml` | RACI YAML skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-operations.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[stakeholder-management]]
+- [[product-analytics]]
+- [[release-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

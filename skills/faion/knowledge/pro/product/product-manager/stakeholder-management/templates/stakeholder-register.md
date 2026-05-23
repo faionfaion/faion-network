@@ -1,3 +1,9 @@
+<!-- purpose: Register skeleton with 3 axes + cadence + decision rights. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 # Stakeholder Register: [Project/Product]
 
 ## Register Table

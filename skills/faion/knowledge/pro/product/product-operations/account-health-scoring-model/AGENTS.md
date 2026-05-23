@@ -3,12 +3,15 @@ slug: account-health-scoring-model
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f700c890e089bec4"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Green/yellow/red account health score model for micro-agencies with sub-20 retainer clients, built from observable signals not just NPS.
+content_id: "9b22cee820fda910"
+complexity: medium
+produces: rubric
+est_tokens: 3200
 tags: [account-health, retention, customer-success, micro-agency, scoring, qbr]
 ---
 # Account Health Scoring Model (Sub-20 Accounts)
@@ -17,55 +20,61 @@ tags: [account-health, retention, customer-success, micro-agency, scoring, qbr]
 
 **One-sentence:** Green/yellow/red account health score model for micro-agencies with sub-20 retainer clients, built from observable signals not just NPS.
 
-**One-paragraph:** Generic retention metrics (NPS, churn rate, MRR) work at SaaS scale (1000+ customers) but mislead at micro-agency scale (3-20 retainer clients) where each client is statistically unique. Mechanism: score each account on 6 observable signals — (1) retainer utilization variance, (2) decision-maker engagement frequency, (3) scope-creep delta vs. SOW, (4) payment punctuality, (5) referral / advocacy signal, (6) executive sponsor stability. Each signal scores 0/1/2; sum → green (10-12), yellow (5-9), red (0-4). Run weekly; trigger a retention action when score drops 2+ in a week or sits red for 2 consecutive weeks. Primary output: account-health dashboard + escalation triggers.
+**One-paragraph:** Green/yellow/red account health score model for micro-agencies with sub-20 retainer clients, built from observable signals not just NPS. The methodology produces a `rubric` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний rubric, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- you operate a service business with 3-20 active retainer clients
-- you have at least 3 months of history on signals (utilization, invoices, communications)
-- the same person owns "account health" across clients (you, the founder, or one account lead)
-- retention is the priority over net-new growth this quarter
+- Operating context matches the produces shape (`rubric`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- &gt; 20 accounts — sample size for SaaS-style scoring becomes viable, use NPS + cohort analysis instead
-- &lt; 3 accounts — every account is bespoke, scoring overhead exceeds value
-- pre-retainer pipeline (sales lead scoring) — different signals, different rubric
-- one-shot project model — no recurring revenue to retain
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- retainer utilization data per client (hours used, hours bought, by month)
-- communication log (Slack/email cadence per client)
-- invoice payment record (issued date → paid date)
-- SOW scope text per client + a record of scope-creep incidents
-- list of decision-makers and executive sponsors per account
-- prior 3-month history for each signal
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager/quarterly-retainer-review-script` | QBR cadence consumes the health score for slide 2 |
-| `pro/marketing/gtm-strategist/ops-customer-success-metrics` | Source of utilization + engagement signals |
-| `pro/pm/project-manager/agency-pnl-tracker-template` | Provides revenue-side weighting for tier mapping |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 6-signal model, observable not opinion, threshold cutoffs, weekly cadence, escalation triggers | ~900 |
-| `content/02-output-contract.xml` | essential | Per-account score schema, weekly dashboard schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (NPS-only, founder optimism bias, signal staleness, no escalation action, score laundering, sample-size confusion) | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_signal_scoring` | haiku | Deterministic 0/1/2 mapping from numeric thresholds |
-| `weekly_dashboard_rollup` | haiku | Template fill: score per account + trend arrow |
-| `escalation_trigger_synthesis` | sonnet | Cross-signal reasoning: which combination is red flag |
-| `retention_action_recommendation` | opus | Cross-input judgment — recommended action per red account |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the medium procedure. |
+| `synthesize-rubric` | opus | Final cross-input judgment producing the rubric. |
 
 ## Templates
 
@@ -79,11 +88,14 @@ tags: [account-health, retention, customer-success, micro-agency, scoring, qbr]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/compute-account-health.py` | Pull signals from sources, produce per-account score | Weekly (Mondays) |
-| `scripts/detect-escalation-trigger.py` | Flag accounts hitting trigger conditions | After scoring |
+| `scripts/validate-account-health-scoring-model.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/product-operations/`
-- peer methodologies: `quarterly-retainer-review-script`, `agency-pnl-tracker-template`, `retainer-conversion-script`
-- external: [Gainsight Customer Health Scoring](https://www.gainsight.com/guides/customer-health-score/) · [ChurnZero Playbook](https://churnzero.com/blog/customer-health-score/) · [SaaSholic Mid-market CS](https://saastr.com/)
+- parent skill: `skills/faion/knowledge/pro/product/product-operations/`
+- peer methodologies: siblings under the parent skill
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

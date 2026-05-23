@@ -3,86 +3,101 @@ slug: okr-cascade-multi-squad
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "22239c99b0227706"
-summary: Cascades a single company OKR set into 3-6 squad OKR sets with explicit dependency edges, weekly check-in cadence, and post-quarter retro.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cascade a single company OKR set into 3-6 squad OKR sets with explicit cross-squad dependency edges, weekly check-in cadence, and a post-quarter retro that closes the loop.
+content_id: "bb834b589eaafb77"
+complexity: deep
+produces: spec
+est_tokens: 6700
 tags: [okr, product-management, multi-team, cascading, dependencies, quarter-planning]
 ---
 # OKR Cascade for Multi-Squad Product
 
 ## Summary
 
-**One-sentence:** Cascades a single company OKR set into 3-6 squad OKR sets with explicit dependency edges, weekly check-in cadence, and post-quarter retro.
+**One-sentence:** Cascade a single company OKR set into 3-6 squad OKR sets with explicit cross-squad dependency edges, weekly check-in cadence, and a post-quarter retro that closes the loop.
 
-**One-paragraph:** Existing single-team OKR methodology covers the "draft one OKR" step but not the harder coordination problem: how do you take 3 company-level Objectives, decompose them into ~12-18 squad-level KRs spread across 3-6 squads, declare the dependency edges between squads (who blocks whom), and run a weekly-review cadence that catches drift before quarter-end. Mechanism: starts from a finalized company set (max 3 Os, 3-5 KRs each), assigns one accountable squad per company KR (single-threaded ownership per Christina Wodtke), generates squad-level KRs with the "directional KR + measurable KR" pair, builds a directed dependency graph in Markdown, and registers a Monday 30-min cross-squad standup + a Friday async confidence-vote (0.0-1.0 per Wodtke). Primary output: a per-squad OKR doc, a `dependencies.md` adjacency list, and a quarterly retro template.
+**One-paragraph:** Per-squad 1 Objective + 3-5 KRs; explicit dependency-edge graph across squads; weekly confidence check-ins (0-10) with blocker name; cause-tagged retros that feed next-quarter Objectives. Output: cascade graph (YAML) + per-squad OKR docs + weekly check-in log + post-quarter retro.
+
+**Ефективно для:**
+
+- Product у multi-squad org (3-6 squads, shared product surface).
+- Quarterly planning, де команди формулюють незалежні OKRs без dependency awareness.
+- OKR drift: squad-level KRs не складаються в company-level Objective.
+- Promotion-time для Group PM: декілька squads потребують узгоджених планів.
 
 ## Applies If (ALL must hold)
 
-- product team has 3-6 squads with stable membership for the quarter
-- a company-level OKR set already exists and is signed off by founders/leadership
-- previous quarter's OKR scoring (0.0-1.0 per KR) is available for retro baselines
-- product manager owns coordination across squads (not a chapter lead, not a delivery PM)
+- Product spans 3-6 squads sharing a customer surface.
+- Quarterly planning is starting and squad OKRs need cross-team alignment.
+- Previous quarter had cross-squad dependency surprises (Q3 'we needed their API').
+- Squad-level KRs need traceability to company-level Objectives.
+- Promotion to Group PM / Portfolio PM in progress.
 
 ## Skip If (ANY kills it)
 
-- single squad / single-team org — use `okr-setting` (it covers exactly this scope)
-- < 3 squads — dependency graph degenerates to direct conversations; cascading overhead is waste
-- > 8 squads — pyramidal cascade with a portfolio layer needed; use `portfolio-strategy` first
-- Annual / no-quarter cadence — methodology assumes 12-13 week quarter rhythm
-- OKRs are still being drafted at the company level — finish `okr-setting` first
+- Single-squad product — overhead exceeds benefit.
+- Team uses non-OKR framework (V2MOM, MBO) consistently.
+- Quarter < 60 days where cascade overhead exceeds value.
+- Pre-PMF squad where outcome metrics are too unstable for OKRs.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- company OKR document (signed-off Markdown / Notion / Google Doc) with 1-3 Os and 3-5 KRs each
-- squad roster: name, mission statement (one sentence), tech lead, designer, PM partner if any
-- previous quarter retro notes (if Q2+) — used as confidence-vote baseline
-- shared OKR tool decided: spreadsheet, Mooncamp, Quantive, or plain Markdown in repo
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Company OKRs | YAML | exec / Head of Product |
+| Squad roster | list with PM + tech lead per squad | org chart |
+| Last quarter outcomes | scorecard | previous retro |
+| Dependency map seed | best-guess edges | PMs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager/release-planning` | Consumes cascaded KRs to seed release scope per squad |
-| `pro/pm/project-manager/raci-matrix` | Used to disambiguate owner vs contributor squads on shared KRs |
-| `solo/product/product-manager/okr-setting` | Upstream — produces the company-level OKR set this methodology cascades from |
+| [[portfolio-strategy]] | Horizons constrain which Objectives the cascade flows from. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: max-3-Os, single-threaded ownership, dependency edges declared, confidence-vote cadence, retro-before-next | ~900 |
-| `content/02-output-contract.xml` | essential | Squad OKR schema, dependency graph schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (sandbagging, KR-as-task, hidden dependencies, no retro, founder override) | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: 1O-3-5KR, explicit dependency edges, KR-to-company trace, weekly cadence, cause-tagged retro | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for cascade graph + squad OKRs | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: implicit dependencies, KR drift, weekly skipped, retro without cause | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: company-OKR -> per-squad-draft -> dependency-edge -> sign -> cadence | 900 |
+| `content/05-examples.xml` | medium | Worked Q2 cascade with explicit dependency on Identity squad | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on squad count + cadence + framework | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `squad_okr_first_draft_per_squad` | sonnet | Bounded transformation: company KR + squad mission → squad KR draft |
-| `dependency_graph_synthesis` | opus | Cross-squad reasoning, needs to spot transitive blockers |
-| `weekly_checkin_summary` | haiku | Template fill: status + confidence + blockers, low complexity |
-| `quarter_retro_synthesis` | opus | Cross-squad cross-quarter narrative |
+| `cascade-graph-author` | sonnet | Build dependency graph from squad drafts. |
+| `kr-traceability-audit` | haiku | Mechanical trace of squad KR -> company KR. |
+| `retro-synthesis` | opus | Cross-squad pattern across cause-tagged outcomes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/squad-okr.md` | Per-squad OKR doc skeleton (objective + 3-5 KRs + dependencies + check-in log) |
-| `templates/dependencies.md` | Cross-squad dependency graph as Markdown adjacency list |
-| `templates/weekly-checkin.md` | Monday 30-min standup agenda + Friday confidence-vote template |
+| `templates/squad-okr.md` | Per-squad OKR doc with O + 3-5 KRs + dependencies + check-in cadence. |
+| `templates/dependency-graph.yaml` | Cascade graph YAML with {producer, consumer, deliverable, by_date} edges. |
+| `templates/checkin.md` | Weekly check-in template with confidence + blocker. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/check-cascade-coverage.py` | Verify every company KR has exactly one accountable squad | After draft, before publish |
-| `scripts/aggregate-confidence-votes.py` | Roll up squad votes into a portfolio dashboard | Friday end of each week |
+| `scripts/validate-okr-cascade-multi-squad.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodologies: `release-planning`, `portfolio-strategy`, `experimentation-at-scale`
-- external: [Christina Wodtke - Radical Focus](https://eleganthack.com/the-art-of-the-okr/) · [Re:Work OKRs](https://rework.withgoogle.com/guides/set-goals-with-okrs/) · [What Matters - Doerr](https://www.whatmatters.com/)
+- [[portfolio-strategy]]
+- [[stakeholder-management]]
+- [[release-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

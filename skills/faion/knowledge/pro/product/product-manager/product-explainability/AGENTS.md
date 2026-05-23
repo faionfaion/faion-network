@@ -3,76 +3,102 @@ slug: product-explainability
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: PM-specific lens: this methodology is a communication discipline, not a marketing artifact.
-content_id: "821658e3a1f4baf5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PM-side communication discipline producing one canonical feature narrative (problem -> behaviour change -> outcome) and audience-specific renders for execs / sales / support / customers.
+content_id: "a54aa0ba918a2a8e"
+complexity: medium
+produces: spec
+est_tokens: 5500
 tags: [product-explainability, feature-narrative, stakeholder-communication, story-extraction, audience-render]
 ---
 # Product Explainability (PM Angle)
 
 ## Summary
 
-**One-sentence:** PM-specific lens: this methodology is a communication discipline, not a marketing artifact.
+**One-sentence:** PM-side communication discipline producing one canonical feature narrative (problem -> behaviour change -> outcome) and audience-specific renders for execs / sales / support / customers.
 
-**One-paragraph:** PM-specific lens: this methodology is a communication discipline, not a marketing artifact. The PM owns the bridge between what engineering shipped and how non-technical stakeholders understand it. Explainability fails when the PM lets feature lists, demo videos, and release notes substitute for an articulated, repeatable story of purpose → behavior → limit → impact.
+**One-paragraph:** One canonical narrative artefact owned by PM containing {problem, who, behaviour_change, outcome_metric, evidence_link}; derived audience renders never authored independently; 90-second test for brevity + clarity; outcome line is a customer-state change, not a feature-shipped statement. Output: feature-narrative YAML + per-audience renders.
+
+**Ефективно для:**
+
+- Pre-roadmap review: exec питає 'що цей продукт robi?', три PM відповідають по-різному.
+- Pre-launch story prep для sales/support/customer-success без Loom.
+- Board narrative: 6 місяців роботи у 90-секундну відповідь.
+- Cross-team feature-to-impact mapping: який OKR/outcome зрушив.
 
 ## Applies If (ALL must hold)
 
-- Pre-roadmap-review: an exec asks "what does this product actually do?" and three PMs answer with three different framings — you need a single canonical explanation.
-- Pre-launch story prep: enabling sales, support, customer success, and partner teams who must explain the feature without watching a Loom.
-- Board / investor / all-hands narrative: distilling six months of work into a 90-second answer to "what shipped, what changed for users, what's next".
-- Cross-team feature-to-impact mapping: every release should answer "which OKR / customer outcome moved, by how much, because of which capability".
-- Post-mortem on miscommunication: customer expected X, got Y, churned — gap is in the story, not the product.
-- Onboarding a new PM, designer, or engineer: the explainability artifact is the fastest path to shared mental model.
-- Quarterly product review: forcing yourself to re-articulate purpose surfaces drift you cannot see day-to-day.
+- Pre-roadmap-review: an exec asks 'what does this product actually do?' and three PMs answer differently.
+- Pre-launch story prep for sales/support/customer-success.
+- Board / investor / all-hands narrative distilling work into a 90-second answer.
+- Cross-team feature-to-impact mapping.
+- Post-mortem on miscommunication where customer expected X, got Y.
 
 ## Skip If (ANY kills it)
 
-- Inside the engineering loop: explainability framing slows iteration on technical specs; use ADRs and design docs there.
-- For experiment-stage features behind a flag with less than 5% rollout — premature explainability hardens hypotheses you should still be testing.
-- When the org already has rigorous PMM (product marketing) ownership and the PM is duplicating that artifact — collaborate, do not re-author.
-- For deeply technical APIs whose only audience is engineers with the OpenAPI spec; story prose adds noise.
-- Weekly tactical standups — it is a strategy and stakeholder artifact, not a status update.
+- Infra-only release with no customer-visible change.
+- Pre-launch where canonical narrative belongs to GTM, not PM.
+- Pure internal-tool product with no external customer narrative needed.
+- Stage so early no behaviour change yet observable.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Verbatim user quotes | list | continuous-discovery output |
+| Outcome metric | string + baseline | product-analytics |
+| Audience inventory | list {exec, sales, support, customer} | stakeholder-management |
+| Feature spec | markdown | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[continuous-discovery-habits]] | Supplies verbatim quotes grounding the evidence link. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: one canonical, derived renders, evidence link, 90-second test, outcome-not-feature | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for feature-narrative | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: three-versions, independent-renders, evidence-free, feature-as-outcome | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure: extract -> author canonical -> render audiences -> 90s test -> publish | 800 |
+| `content/05-examples.xml` | medium | Worked feature-narrative for a checkout-redesign release | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on customer-visibility + audience count | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `story-extract` | sonnet | Extract narrative from spec/research. |
+| `audience-render` | haiku | Templated per-audience render derived from canonical. |
+| `ninety-second-test` | haiku | Mechanical brevity + clarity check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/feature-narrative.yaml` | Canonical feature-narrative skeleton. |
+| `templates/feature-narrative-gate.sh` | Gate script enforcing 90s + outcome-not-feature. |
+| `templates/prompt-audience-render.txt` | Audience-render prompt template. |
+| `templates/prompt-story-extraction.txt` | Story-extraction prompt template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-explainability.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[continuous-discovery-habits]]
+- [[stakeholder-management]]
+- [[release-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

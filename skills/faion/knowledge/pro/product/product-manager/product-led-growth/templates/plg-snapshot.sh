@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Weekly PLG snapshot script.
+# consumes: input from methodology
+# produces: artefact for downstream agent
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: 0 (executes locally)
+set -euo pipefail
+#!/usr/bin/env bash
 # plg-snapshot.sh — weekly PLG metric snapshot for the PM.
 # Usage: plg-snapshot.sh [yyyy-mm-dd]
 # Reads .aidocs/product_docs/plg-definitions.yml (frozen activation/PQL spec).

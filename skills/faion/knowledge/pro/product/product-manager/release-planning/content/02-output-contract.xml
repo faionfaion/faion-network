@@ -1,22 +1,216 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="release-planning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Release Planning Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/release-planning.json",
+  "type": "object",
+  "required": [
+    "release_id",
+    "cadence",
+    "release_date",
+    "readiness_matrix",
+    "deprecations",
+    "post_release_monitor"
+  ],
+  "properties": {
+    "release_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly"
+      ]
+    },
+    "release_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "readiness_matrix": {
+      "type": "object",
+      "required": [
+        "engineering",
+        "qa",
+        "support",
+        "sales",
+        "marketing",
+        "legal"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "owner",
+          "status"
+        ],
+        "properties": {
+          "owner": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "green",
+              "yellow",
+              "red"
+            ]
+          }
+        }
+      }
+    },
+    "deprecations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "removal_date",
+          "first_announced"
+        ],
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "removal_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "first_announced": {
+            "type": "string",
+            "format": "date"
+          },
+          "customer_notified": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "release_notes_customer_facing": {
+      "type": "boolean"
+    },
+    "post_release_monitor": {
+      "type": "object",
+      "required": [
+        "owner",
+        "window_hours",
+        "rollback_triggers"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "window_hours": {
+          "type": "integer",
+          "minimum": 24
+        },
+        "rollback_triggers": {
+          "type": "array",
+          "minItems": 1
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "release_id": "acme-2026.05.30",
+  "cadence": "biweekly",
+  "release_date": "2026-05-30",
+  "readiness_matrix": {
+    "engineering": {
+      "owner": "o-engineering",
+      "status": "green"
+    },
+    "qa": {
+      "owner": "o-qa",
+      "status": "green"
+    },
+    "support": {
+      "owner": "o-support",
+      "status": "green"
+    },
+    "sales": {
+      "owner": "o-sales",
+      "status": "green"
+    },
+    "marketing": {
+      "owner": "o-marketing",
+      "status": "green"
+    },
+    "legal": {
+      "owner": "o-legal",
+      "status": "green"
+    }
+  },
+  "deprecations": [
+    {
+      "item": "/v1/users endpoint",
+      "removal_date": "2026-08-30",
+      "first_announced": "2026-05-01",
+      "customer_notified": true
+    }
+  ],
+  "release_notes_customer_facing": true,
+  "post_release_monitor": {
+    "owner": "on-call-pm",
+    "window_hours": 24,
+    "rollback_triggers": [
+      "error rate > 1%",
+      "p95 latency > 500ms"
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "release_id": "r1",
+  "cadence": "ad-hoc",
+  "release_date": "soon",
+  "readiness_matrix": {
+    "engineering": {
+      "owner": "x",
+      "status": "green"
+    }
+  },
+  "deprecations": [
+    {
+      "item": "v1",
+      "removal_date": "2026-05-20",
+      "first_announced": "2026-05-01"
+    }
+  ],
+  "release_notes_customer_facing": false,
+  "post_release_monitor": {
+    "owner": "",
+    "window_hours": 0,
+    "rollback_triggers": []
+  }
+}
+]]></code>
+    <note>cadence not in enum; release_date not ISO; readiness_matrix missing 5 of 6 functions; deprecation &lt;90 days; release_notes_customer_facing false; monitor owner empty.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>readiness_matrix missing any of {engineering, qa, support, sales, marketing, legal}.</item>
+      <item>deprecation with (removal_date - first_announced) &lt; 90 days.</item>
+      <item>release_notes_customer_facing = false.</item>
+      <item>post_release_monitor.window_hours &lt; 24.</item>
+      <item>any readiness_matrix entry with status=red AND release_date in the future (red blocks release).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-release-planning.py">Validator script enforcing this schema</reference>
 </text>

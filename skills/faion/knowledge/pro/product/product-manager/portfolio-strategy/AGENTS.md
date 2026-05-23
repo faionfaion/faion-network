@@ -3,74 +3,101 @@ slug: portfolio-strategy
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Allocates product investment across three horizons: 70% Core (H1, known market, 0-12 months), 20% Adjacent (H2, new segments, 12-24 months), 10% Transformational (H3, breakthrough bets, 24-36 months).
-content_id: "ad75f157f75350b1"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Three-horizon investment allocation (70% Core H1, 20% Adjacent H2, 10% Transformational H3) for a PM owning multiple shipped products; rebalances quarterly with explicit kill triggers.
+content_id: "8ecf0b7a0f46f230"
+complexity: medium
+produces: decision-record
+est_tokens: 4900
 tags: [portfolio, horizon, product-allocation, pm-leadership, cross-product]
 ---
 # Portfolio Strategy (70/20/10)
 
 ## Summary
 
-**One-sentence:** Allocates product investment across three horizons: 70% Core (H1, known market, 0-12 months), 20% Adjacent (H2, new segments, 12-24 months), 10% Transformational (H3, breakthrough bets, 24-36 months).
+**One-sentence:** Three-horizon investment allocation (70% Core H1, 20% Adjacent H2, 10% Transformational H3) for a PM owning multiple shipped products; rebalances quarterly with explicit kill triggers.
 
-**One-paragraph:** Allocates product investment across three horizons: 70% Core (H1, known market, 0-12 months), 20% Adjacent (H2, new segments, 12-24 months), 10% Transformational (H3, breakthrough bets, 24-36 months). In economic downturns shift to 80/15/5; in growth periods to 60/25/15. The PM-level focus is separating single-product PM execution from portfolio-PM cross-product trade-offs.
+**One-paragraph:** Tag each product H1/H2/H3 with rationale, enforce 70/20/10 ±5pp allocation, define horizon-appropriate kill triggers (H1 retention/activation, H2 no-PMF in 18mo, H3 no-signal in 36mo), and rebalance via written quarterly memo. Output: portfolio-allocation-record markdown + scorecard YAML.
+
+**Ефективно для:**
+
+- Single PM, який володіє >=2 shipped products із backlog collision.
+- Promotion IC PM -> Group/Portfolio PM: рамка змінюється з feature-level на cross-product investment.
+- Quarterly review: product-OKRs met, але portfolio розбалансовано (all H1, no H3).
+- Handoff line між CPO portfolio strategy і PM-level execution.
 
 ## Applies If (ALL must hold)
 
 - A single PM owns two or more shipped products and backlogs are starting to collide.
-- Promoting an IC PM to Group PM / Portfolio PM: their decision frame must shift from feature-level to cross-product investment.
+- Promoting an IC PM to Group PM / Portfolio PM.
 - Two product squads both have defensible quarterly plans but the org cannot fund both at full speed.
 - Defining the handoff line between portfolio strategy (CPO) and product PM execution.
-- Quarterly review when product-level OKRs are met but the portfolio is unbalanced (all H1, no H3).
+- Quarterly review when product-level OKRs are met but the portfolio is unbalanced.
 
 ## Skip If (ANY kills it)
 
-- Single-product PM with one product line — use feature-prioritization (RICE / WSJF / Kano) instead; no portfolio exists at the PM level.
-- Pure team-topology or hiring decisions — use Team Topologies, not portfolio strategy.
-- Roadmap-internal trade-offs inside one product (feature A vs feature B in the same SKU).
-- Resource arguments that are really about sprint capacity or on-call rotation.
-- Crisis quarter where one product is on fire — defer portfolio review until the fire is out.
+- Single-product team.
+- Pre-PMF where horizon classification is premature.
+- Agency / services where engagements are project-bound, not portfolio-bound.
+- Existing portfolio memo <=90 days old without trigger events.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product inventory | list with status + outcome metrics | PM / Head of Product |
+| Capacity baseline | headcount / cost per product | finance |
+| Last quarter portfolio memo | markdown | previous review |
+| Kill-trigger candidates | list per horizon | team retro |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[product-lifecycle]] | Stage informs horizon classification. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: 3-horizon allocation, per-product tag, kill triggers, quarterly rebalance, portfolio-vs-product roles | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for portfolio-allocation-record | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: all-H1, untagged, no triggers, role confusion | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure: tag -> allocate -> triggers -> memo -> review cadence | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on portfolio existence + lifecycle stage | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `horizon-tag` | sonnet | Tag each product with H1/H2/H3 + rationale. |
+| `allocation-balance-check` | haiku | Compute current vs target ±5pp. |
+| `rebalance-memo` | opus | Write the rebalance memo with kill/expand recommendations. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/portfolio-allocation-record.md` | Portfolio allocation memo skeleton with horizon tags + triggers. |
+| `templates/pm-role-skew.sh` | Compute PM-vs-portfolio role split for each product. |
+| `templates/prompt-portfolio-pm.txt` | Prompt template for the portfolio-PM allocation task. |
+| `templates/prompt-product-pm.txt` | Prompt template for the product-PM consultation step. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-portfolio-strategy.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[product-lifecycle]]
+- [[stakeholder-management]]
+- [[solo-pivot-decision-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.
