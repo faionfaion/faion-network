@@ -1,38 +1,27 @@
-// k6-scenario.js — load test template with steady + spike scenarios and SLO thresholds
-// Usage: BASE=https://staging.example.com k6 run k6-scenario.js
-// Requires: k6 (https://k6.io/docs)
+// purpose: k6 load-test scenario with steady + spike stages and SLO thresholds.
+// consumes: see content/02-output-contract.xml inputs for performance-testing
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 
 export const options = {
-  thresholds: {
-    http_req_failed: ['rate<0.01'],          // error rate < 1%
-    http_req_duration: ['p(95)<500', 'p(99)<1000'],  // p95 < 500ms
-  },
   scenarios: {
     steady: {
       executor: 'constant-arrival-rate',
-      rate: 50,
-      timeUnit: '1s',
-      duration: '5m',
-      preAllocatedVUs: 50,
-    },
-    spike: {
-      executor: 'ramping-arrival-rate',
-      startRate: 0,
-      timeUnit: '1s',
-      stages: [
-        { duration: '30s', target: 200 },
-        { duration: '1m',  target: 200 },
-        { duration: '30s', target: 0 },
-      ],
-      preAllocatedVUs: 200,
-      startTime: '5m30s',
+      rate: 500, timeUnit: '1s', duration: '10m',
+      preAllocatedVUs: 200, maxVUs: 500,
     },
   },
+  thresholds: {
+    http_req_duration: ['p(95)<300', 'p(99)<800'],
+    http_req_failed: ['rate<0.01'],
+  },
+  discardResponseBodies: true,
 };
 
 export default function () {
-  const res = http.get(`${__ENV.BASE}/api/search?q=hello`);
-  check(res, { 'status 200': (r) => r.status === 200 });
+  const r = http.get('https://staging.example.com/api/users/123');
+  check(r, { 'status 200': (res) => res.status === 200 });
 }

@@ -1,42 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rate-limiting Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rate-limiting as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>In-memory (dict-based) rate limiter deployed with more than one replica.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each replica has independent state. A user can hit N replicas sequentially and send N times the configured limit before any single replica records a violation. Always use Redis/Valkey for distributed state.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Per-IP rate limiter behind a CDN using request.client.host for the key.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Behind a CDN, request.client.host is the CDN edge IP. All users share one counter; when any user hits the limit, all users are throttled. Parse X-Forwarded-For with a trusted-proxy list.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>IPv6 per-IP limiting without /64 aggregation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>IPv6 users can rotate IPs within their /64 subnet trivially. Per-address limits allow effectively unlimited requests by rotating through the /64 address space.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Double-limiting: edge (Cloudflare/Kong) AND application-layer limiters on the same route without coordination.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Edge and app limits may have different windows and counts, causing confusing 429s that don't match the documented limits. Designate one canonical layer per route and document it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Token bucket without min(bucket_size, ...) clamp on refill.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without the clamp, long idle periods accumulate unlimited tokens. A user idle for 1 hour against a 100/s bucket can burst 360,000 requests, defeating the bucket size limit entirely.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Agent silently raises a limit because a load test failed.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Limits encode security and cost decisions, not just performance ones. Raising a limit because a load test hit it may open an abuse vector. Human review is required for any limit change on auth and billing endpoints.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Missing integration test for the 429 path.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The happy path is always tested; the 429 path is usually not. Broken Retry-After parsing in clients is a common source of retry storms. Always test the 429 response and its headers in integration tests.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Rate Limiting Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of Rate Limiting. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fixed-window-cliff" severity="high">
+      <symptom>At 14:59:59 attacker burns 100 req; at 15:00:01 burns another 100 - effective 200 in 2 seconds.</symptom>
+      <root-cause source="Fixed-window taxonomy">Fixed_window algorithm chosen for burst-sensitive endpoint.</root-cause>
+      <fix>Switch to sliding_window_counter or token_bucket for auth/payment classes.</fix>
+    </antipattern>
+    <antipattern id="per-ip-nat-block" severity="high">
+      <symptom>Office of 200 employees all blocked together; one user shared egress IP.</symptom>
+      <root-cause source="NAT postmortem">Per-IP key without X-Forwarded-For handling behind LB.</root-cause>
+      <fix>Switch to user_id key; for unauthenticated endpoints use composite (ip + UA fingerprint) with higher limit.</fix>
+    </antipattern>
+    <antipattern id="no-retry-after-thundering" severity="high">
+      <symptom>Clients hit 429 and retry every 100ms; service stays at 100% CPU.</symptom>
+      <root-cause source="Retry-storm retro">429 returned without Retry-After header.</root-cause>
+      <fix>Always emit Retry-After seconds = window remaining; document SDK retry policy.</fix>
+    </antipattern>
+    <antipattern id="healthz-throttled" severity="critical">
+      <symptom>LB removes all pods from rotation; service down.</symptom>
+      <root-cause source="Self-DoS retro">Per-IP limit applied to /healthz; LB IP exceeded budget.</root-cause>
+      <fix>Add /healthz + /metrics to bypass_paths with exact match.</fix>
+    </antipattern>
   </section>
 </text>

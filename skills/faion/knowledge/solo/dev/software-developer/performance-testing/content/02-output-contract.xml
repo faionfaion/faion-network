@@ -1,22 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="performance-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Performance Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/performance-testing.json",
+  "type": "object",
+  "required": [
+    "test_type",
+    "slo",
+    "baseline_sha",
+    "results",
+    "verdict"
+  ],
+  "properties": {
+    "test_type": {
+      "type": "string",
+      "enum": [
+        "load",
+        "stress",
+        "spike",
+        "endurance",
+        "scalability"
+      ]
+    },
+    "slo": {
+      "type": "object",
+      "required": [
+        "p95_ms",
+        "rps",
+        "error_rate_ceiling"
+      ]
+    },
+    "baseline_sha": {
+      "type": "string"
+    },
+    "results": {
+      "type": "object",
+      "required": [
+        "p50_ms",
+        "p95_ms",
+        "p99_ms",
+        "rps",
+        "error_rate"
+      ]
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "regression"
+      ]
+    },
+    "regression_pct": {
+      "type": "number"
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "test_type": "load",
+  "slo": {
+    "p95_ms": 300,
+    "rps": 500,
+    "error_rate_ceiling": 0.01
+  },
+  "baseline_sha": "a3f1c8d",
+  "results": {
+    "p50_ms": 120,
+    "p95_ms": 250,
+    "p99_ms": 480,
+    "rps": 510,
+    "error_rate": 0.003
+  },
+  "verdict": "pass",
+  "regression_pct": -2.5
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "test_type": "load",
+  "slo": {
+    "p95_ms": 300
+  },
+  "results": {
+    "p95_ms": 250
+  },
+  "verdict": "ok"
+}
+]]></code>
+    <note>slo missing rps + error_rate_ceiling; results missing required percentiles; baseline_sha absent; verdict not in enum.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="no-slo-no-verdict">Report shows raw latency numbers; reviewer cannot tell pass/fail.</pattern>
+      <pattern id="apache-bench-tail-lie">Apache Bench p99=50ms, production p99=500ms.</pattern>
+      <pattern id="empty-db-rosy">Staging passes; production fails at first 100 RPS.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-performance-testing.py">Validator script (see scripts/).</reference>
 </text>

@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="nosql-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="NoSQL Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/nosql-patterns.json",
+  "type": "object",
+  "required": ["store_class", "access_patterns", "model", "ttl_policy", "indexes"],
+  "properties": {
+    "store_class": {"type": "string", "enum": ["document", "key_value", "wide_column", "graph"]},
+    "access_patterns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "qps", "latency_ms_p95"]
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["entities", "embed_or_reference"]
+    },
+    "ttl_policy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["prefix", "ttl_seconds"],
+        "properties": {
+          "prefix": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z0-9_-]+(:[a-z0-9_-]+)?$"},
+          "ttl_seconds": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "indexes": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["collection_or_label", "fields"]
+      }
+    },
+    "partition_key": {
+      "type": "object",
+      "properties": {
+        "key": {"type": "string"},
+        "primary_query": {"type": "string"}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "store_class": "document",
+  "access_patterns": [
+    {"name": "get_user_profile_by_id", "qps": 1200, "latency_ms_p95": 30}
+  ],
+  "model": {
+    "entities": ["user", "preferences", "address"],
+    "embed_or_reference": {"preferences": "embed", "address": "embed", "orders": "reference"}
+  },
+  "ttl_policy": [
+    {"prefix": "auth:session", "ttl_seconds": 3600},
+    {"prefix": "cache:user-profile", "ttl_seconds": 600}
+  ],
+  "indexes": [
+    {"collection_or_label": "users", "fields": ["email", "tenant_id"]}
+  ],
+  "partition_key": {"key": "tenant_id", "primary_query": "list user_profile where tenant_id=?"}
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "store_class": "document",
+  "access_patterns": [],
+  "model": {"entities": ["user"]},
+  "ttl_policy": [{"prefix": "user", "ttl_seconds": 0}],
+  "indexes": []
+}
+]]></code>
+    <note>access_patterns empty; embed_or_reference missing; ttl prefix not namespaced and ttl_seconds=0; partition_key absent for wide-column even though store_class was document — still flags r3/r4 violations in linter.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="unbounded-embed">Embed declared on a relationship whose cardinality is unbounded or unknown.</pattern>
+      <pattern id="raw-redis-key">Redis prefix omits `{service}:{entity}:{id}` namespace.</pattern>
+      <pattern id="zero-ttl">`ttl_seconds=0` or missing on any Redis prefix.</pattern>
+      <pattern id="unindexed-predicate">A query predicate in `access_patterns` whose field does not appear in `indexes`.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-nosql-patterns.py">Validator script (see scripts/).</reference>
 </text>

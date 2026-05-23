@@ -3,72 +3,102 @@ slug: nodejs-service-layer
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Controller-Service-Repository pattern for Node.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Layer a Node.js TypeScript service into controller / service / repository with HTTP types confined to controller and persistence to repository.
 content_id: "876064ba4999df8f"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [nodejs, typescript, architecture, layered, service-layer]
 ---
 # Node.js Service Layer
 
 ## Summary
 
-**One-sentence:** Controller-Service-Repository pattern for Node.
+**One-sentence:** Layer a Node.js TypeScript service into controller / service / repository with HTTP types confined to controller and persistence to repository.
 
-**One-paragraph:** Controller-Service-Repository pattern for Node.js/TypeScript backends. Controllers validate input with Zod and map errors to HTTP; services own all business logic and throw typed domain errors; repositories encapsulate ORM/SQL. Each layer has a single responsibility and no cross-layer imports (controller never imports repository).
+**One-paragraph:** Controller-Service-Repository pattern for Node.js TypeScript services: controllers decode requests + encode responses; services hold business logic and orchestration; repositories own ORM/SQL. Controller never imports Prisma/Drizzle/Knex; service never imports Express/Fastify. Dependency injection via constructor + interfaces declared at the consumer side. Output is the layered package set + dependency graph + tests at each layer.
+
+**Ефективно для:**
+
+- Replacing fat-controller Node.js services with reviewable layers.
+- Greenfield TypeScript backends adopting layered architecture.
+- Onboarding engineers to consistent per-feature layout.
+- Adding interface seams to enable unit testing service logic.
 
 ## Applies If (ALL must hold)
 
-- Express, Fastify, NestJS, or Hono services with non-trivial domain logic.
-- Multi-entry backends (HTTP + gRPC + queue consumers) reusing the same service.
-- Projects targeting high unit-test coverage — controller-heavy code resists testing.
-- LLM-driven implementation: three specific shapes (controller/service/repository) reduce free decisions and bugs.
+- Node.js >=20 + TypeScript project.
+- Service has multi-step business logic (>=2 operations per feature).
+- Persistence (Prisma, Drizzle, Knex, raw pg) exists.
+- Tests target service logic directly, not only via HTTP integration.
 
 ## Skip If (ANY kills it)
 
-- Toy CRUD apps where every handler is db.find().lean() — extra layers add ceremony with no payoff.
-- Edge functions / serverless with strict cold-start budgets — DI containers slow boot.
-- Pure proxies / BFFs with no domain logic — route → fetch → respond is enough.
-- Realtime-heavy apps (WebSocket gaming, MQTT) where event handlers don't fit request-response shape.
+- Thin CRUD service where layering adds overhead without payoff.
+- Project follows a different architecture (CQRS, NestJS module conventions).
+- Serverless functions where each function is the layer.
+- Single-file experiment where one module holds everything intentionally.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature inventory: which aggregates need controller/service/repo | table | tech-lead |
+| ORM choice (Prisma / Drizzle / Knex / pg) | ADR | tech-lead |
+| HTTP framework (Express / Fastify / Hono / Koa) | config | platform |
+| Test stack (vitest, jest, supertest) | config | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[monorepo-turborepo]] | Layered packages may live in workspaces. |
+| [[logging-patterns]] | Each layer emits structured logs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules (controller decodes/encodes, service has business logic, repo owns ORM, no HTTP in service, no ORM in controller) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for layered module spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: scaffold → interfaces → repo → service → controller | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `interface_design` | opus | Interface seams between layers. |
+| `controller_authoring` | sonnet | Decode + call service + encode. |
+| `repo_authoring` | sonnet | ORM/SQL + domain-type mapping. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/user-controller.ts` | Controller with decode + service call + encode |
+| `templates/user-service.ts` | Service with business logic + interfaces |
+| `templates/user-repository.ts` | Repository with ORM + domain-type mapping |
+| `templates/errors.ts` | Domain error classes shared across layers |
+| `templates/layer-check.sh` | Static check: no Prisma in controller, no Express in service |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-nodejs-service-layer.py` | Validate layered module spec against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[go-standard-layout]]
+- [[monorepo-turborepo]]
+- [[logging-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps service complexity, persistence presence, and existing architecture to a rule from `01-core-rules.xml`, telling the agent whether to layer or skip for thin/CQRS cases. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

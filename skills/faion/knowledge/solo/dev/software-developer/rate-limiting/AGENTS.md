@@ -3,73 +3,102 @@ slug: rate-limiting
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: API protection via configurable per-key rate limiters (fixed window, sliding window, token bucket) backed by Redis/Valkey, with standard X-RateLimit-* / Retry-After response headers and a 429 JSON error body.
-content_id: "11914d9d761e11c9"
-tags: [rate-limiting, api-security, fastapi, redis, throttling]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Rate-limiting spec: algorithm (token bucket / fixed window / sliding log), key strategy (user / IP / tenant), storage (Redis), 429 response shape with Retry-After, and bypass list for health checks.
+content_id: "76cb591deefecd0b"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [rate-limiting, throttle, redis, token-bucket, leaky-bucket]
 ---
-# Rate Limiting with Redis and Standard Headers
+# Rate Limiting
 
 ## Summary
 
-**One-sentence:** API protection via configurable per-key rate limiters (fixed window, sliding window, token bucket) backed by Redis/Valkey, with standard X-RateLimit-* / Retry-After response headers and a 429 JSON error body.
+**One-sentence:** Rate-limiting spec: algorithm (token bucket / fixed window / sliding log), key strategy (user / IP / tenant), storage (Redis), 429 response shape with Retry-After, and bypass list for health checks.
 
-**One-paragraph:** API protection via configurable per-key rate limiters (fixed window, sliding window, token bucket) backed by Redis/Valkey, with standard X-RateLimit-* / Retry-After response headers and a 429 JSON error body. Every deployment must use Redis — in-memory limiters break at greater than 1 replica. Sliding window or GCRA is the default for user-facing endpoints; fixed window only for low-stakes counters.
+**One-paragraph:** Rate limiting fails when the algorithm is picked by intuition (per-minute counters reset cliffs), when the key is wrong (per-IP behind a NAT throttles a whole office), when the storage is unbounded (Redis OOMs on the limit keys themselves), and when the 429 response lacks Retry-After so clients hammer back instantly. This methodology produces a spec naming algorithm, key, storage backend with TTL, the 429 contract (status + Retry-After + RateLimit-Remaining headers), and a bypass list (health, metrics).
+
+**Ефективно для:**
+
+- API під DDoS / scraping - запровадити перші ліміти.
+- Per-tenant ізоляція - один tenant не повинен валити інших.
+- Login endpoint - захист від brute force.
+- External API quota - дотримуватись upstream обмежень.
+- Fair-use на free тарифі - cap на безкоштовних користувачів.
 
 ## Applies If (ALL must hold)
 
-- Public APIs hit by anonymous or semi-trusted users (sign-up, OTP, search, password-reset).
-- Tiered SaaS where plan = limit (free/plus/pro/enterprise).
-- Expensive endpoints (export, report generation, LLM proxy, image upload).
-- Auth endpoints to mitigate credential stuffing (per-IP + per-account limits).
-- Edge layer protection in front of slow upstreams to shed load.
+- Service exposes an HTTP API with public or multi-tenant traffic.
+- Risk of abuse (scraping, brute force, runaway client) is non-zero.
+- Redis or compatible in-memory store is available.
+- Owner can sign off limit numbers per endpoint class.
 
 ## Skip If (ANY kills it)
 
-- Internal service-to-service traffic with mTLS or service mesh — use authz + circuit breakers instead.
-- Single-user CLI / desktop apps talking to a private backend — limits add no security value.
-- Background workers reading from a queue — backpressure is queue depth, not rate.
-- Quota / billing accounting — those need a metering system (Stripe Meter, OpenMeter), not a rate limiter.
+- Service is internal-only behind authenticated VPN with trusted callers.
+- Throughput SLO does not include fair-use constraints.
+- Throttling at a sidecar (Envoy, nginx) covers the policy entirely.
+- Project is a throwaway prototype with no production users.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Endpoint classification | table of endpoints with class (auth/read/write) | engineering |
+| Limit budget | rps per class signed off by owner | product |
+| Redis instance | host + ACL + maxmemory policy | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[nosql-patterns]] | Redis key namespace + TTL conventions reused for limit keys. |
+| [[api-error-handling]] | 429 response shape inherits Problem+JSON pattern. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: algorithm per class, key strategy, TTL on limit keys, 429+Retry-After, bypass list, fail-mode, burst documented | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step spec: classify, pick algorithm, pick key, wire storage, define 429 | ~900 |
+| `content/05-examples.xml` | essential | Worked example for SaaS multi-tenant API | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-endpoints` | sonnet | Per-endpoint judgement on burst tolerance. |
+| `pick-algorithm` | sonnet | Algorithm vs burst tradeoff per class. |
+| `draft-redis-keys` | haiku | Mechanical naming + TTL. |
+| `audit-bypass-list` | opus | Stakes high; bypassing too much defeats throttle, too little self-DoSes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/rate-limits.yaml` | Rate-limit policy YAML with per-class limits and bypass. |
+| `templates/middleware.py` | Reference middleware sketch: token-bucket via Redis INCR + TTL. |
+| `templates/_smoke-test.json` | Minimum viable rate-limit artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rate-limiting.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[nosql-patterns]]
+- [[api-error-handling]]
+- [[security-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - traffic shape, key candidate, storage available, monitoring paths - onto a rule from `content/01-core-rules.xml`. Use it before wiring limits: it catches fixed-window cliff, per-IP NAT block, and missing health bypass upstream.

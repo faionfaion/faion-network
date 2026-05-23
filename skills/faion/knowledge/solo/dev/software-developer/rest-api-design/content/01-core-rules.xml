@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rest-api-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rest-api-design. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="REST API Design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the REST API Design methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="nouns-not-verbs" testable="true" depth="essential">
+      <statement>URLs MUST use plural nouns (`/users`, `/orders`); verbs in path (`/getUser`, `/doThing`) are forbidden.</statement>
+      <rationale source="RFC 9110; Roy Fielding REST dissertation">Verb-in-URL leaks server method names; nouns let HTTP methods carry the action and survive refactors.</rationale>
+    </rule>
+    <rule id="http-method-semantics" testable="true" depth="essential">
+      <statement>GET = read (safe + idempotent), POST = create (non-idempotent), PUT = full replace (idempotent), PATCH = partial update, DELETE = remove (idempotent); violations forbidden.</statement>
+      <rationale source="RFC 9110">Semantics let caches, retries, and proxies behave correctly; mixing breaks all three.</rationale>
+    </rule>
+    <rule id="status-code-truthful" testable="true" depth="essential">
+      <statement>Response MUST use the correct status: 200 (read/update), 201 (create with body), 204 (no body), 400 (client validation), 401 (auth), 403 (permission), 404 (resource missing), 409 (conflict), 422 (semantic validation), 429 (rate), 500 (server). 200 with error body is forbidden.</statement>
+      <rationale source="RFC 9110">Status codes drive client SDK retry logic + monitoring dashboards; 200-on-error breaks both.</rationale>
+    </rule>
+    <rule id="cursor-pagination-for-large" testable="true" depth="essential">
+      <statement>Collections MUST use cursor (keyset) pagination above 1k rows; offset pagination beyond 1k is rejected.</statement>
+      <rationale source="Stripe API docs; Postgres OFFSET-perf studies">OFFSET scans + discards on every page request; cursor uses an index seek regardless of depth.</rationale>
+    </rule>
+    <rule id="problem-json-errors" testable="true" depth="essential">
+      <statement>Error responses MUST follow RFC 7807 (`application/problem+json`) with `type`, `title`, `status`, `detail`, `instance`; plain strings or ad-hoc shapes are forbidden.</statement>
+      <rationale source="RFC 7807">Problem+JSON lets clients route on `type` URI and surface human-friendly `title` consistently.</rationale>
+    </rule>
+    <rule id="versioning-path-explicit" testable="true" depth="essential">
+      <statement>API path MUST carry an explicit version segment (`/v1/users`); header- or query-based versioning is forbidden unless documented exception.</statement>
+      <rationale source="API-versioning patterns; pragmatic survey">Path versioning is grep-able and cache-friendly; header-only versioning is invisible to load balancers and proxies.</rationale>
+    </rule>
+    <rule id="filtering-via-query-params" testable="true" depth="essential">
+      <statement>Collection filters MUST be expressed via query params (`?status=active`); filters in path or POST bodies for GETs are forbidden.</statement>
+      <rationale source="REST best practice">Query params keep collection URIs cacheable and discoverable; embedded filters break caches and proxies.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>

@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-tokio-async Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-tokio-async. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Rust Tokio Async Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Rust Tokio Async methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="runtime-flavour-explicit" testable="true" depth="essential">
+      <statement>Cargo features MUST declare runtime flavour (`tokio = { version='1', features=['rt-multi-thread', ...] }`) and runtime build MUST configure worker count explicitly; default-runtime builds in production are forbidden.</statement>
+      <rationale source="Tokio docs; runtime-tuning postmortems">Default `multi_thread` chooses worker_count = CPU cores, which may be wrong for the workload; explicit choice surfaces the decision.</rationale>
+    </rule>
+    <rule id="no-blocking-in-async" testable="true" depth="essential">
+      <statement>Async functions MUST NOT call `std::fs`, `std::thread::sleep`, blocking sync mutexes, or CPU loops &gt;1ms; blocking work MUST run inside `tokio::task::spawn_blocking`.</statement>
+      <rationale source="Tokio docs; runtime-stall retros">Blocking calls stall the worker thread, freezing all tasks on it; spawn_blocking moves them to a dedicated blocking pool.</rationale>
+    </rule>
+    <rule id="timeout-on-network-await" testable="true" depth="essential">
+      <statement>Every network `await` MUST be wrapped in `tokio::time::timeout(...)`; bare `await` on a wire I/O future is forbidden.</statement>
+      <rationale source="Tokio docs; upstream-hang retros">Without timeout, a hung upstream blocks the task forever; timeout returns `Err(Elapsed)` and frees the slot.</rationale>
+    </rule>
+    <rule id="bounded-channels" testable="true" depth="essential">
+      <statement>`mpsc::channel(capacity)` MUST use a bounded capacity sized to load; `mpsc::unbounded_channel` is forbidden in production paths.</statement>
+      <rationale source="Tokio sync docs; OOM retros">Unbounded channels accumulate if consumer is slower than producer; bounded back-pressures the producer.</rationale>
+    </rule>
+    <rule id="structured-concurrency" testable="true" depth="essential">
+      <statement>Multi-task fan-out MUST use `JoinSet` or `tokio::select!` with cancel-safe arms; raw `tokio::spawn` with dropped JoinHandle is forbidden.</statement>
+      <rationale source="Tokio docs; cancel-safety blog series">Dropped handles leak tasks silently; JoinSet propagates panics + bounds lifetime; select! arms must be cancel-safe or selection drops in-flight work.</rationale>
+    </rule>
+    <rule id="mutex-not-across-await" testable="true" depth="essential">
+      <statement>`std::sync::Mutex` MUST NOT be held across `.await`; use `tokio::sync::Mutex` for guarded async sections or restructure so the lock drops before await.</statement>
+      <rationale source="Tokio docs; deadlock retros">Holding a sync mutex across await blocks the worker; holding the lock through an async section can deadlock the runtime.</rationale>
+    </rule>
+    <rule id="graceful-shutdown" testable="true" depth="essential">
+      <statement>Service MUST listen for `ctrl_c` (or signal stream) + propagate cancellation via `CancellationToken` or shutdown channel; abrupt drop without cleanup is forbidden.</statement>
+      <rationale source="Tokio shutdown patterns">Without coordinated shutdown, in-flight requests are dropped mid-write; clients see TCP resets and partial data.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>

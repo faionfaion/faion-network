@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rate Limiting Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Step-by-step procedure to apply Rate Limiting end-to-end. Each step lists input, action, output, and an optional decision gate.</summary>
+  <section title="Procedure">
+    <step n="1" name="classify-endpoints">
+      <input>Endpoint list.</input>
+      <action>Group into classes (auth, read, write, admin).</action>
+      <output>classes section.</output>
+      <decision-gate>Reject mixed-class single-limit setups.</decision-gate>
+    </step>
+    <step n="2" name="pick-algorithm">
+      <input>Per-class burst tolerance.</input>
+      <action>Pick algorithm per class with rps + burst.</action>
+      <output>algorithm field per class.</output>
+      <decision-gate>Reject fixed_window on burst-sensitive endpoints.</decision-gate>
+    </step>
+    <step n="3" name="pick-key">
+      <input>Auth model.</input>
+      <action>Pick user_id / tenant_id / api_key for authenticated; ip+UA composite for anonymous.</action>
+      <output>key_strategy.</output>
+      <decision-gate>Reject raw per-IP without NAT analysis.</decision-gate>
+    </step>
+    <step n="4" name="wire-storage">
+      <input>Redis access.</input>
+      <action>Configure backend + TTL matching window; key namespace `ratelimit:{class}:{key}`.</action>
+      <output>storage block.</output>
+      <decision-gate>Reject zero or missing TTL.</decision-gate>
+    </step>
+    <step n="5" name="define-429-and-bypass">
+      <input>Monitoring + SDK contract.</input>
+      <action>Emit Retry-After + RateLimit-* headers; add bypass list for health/metrics.</action>
+      <output>headers + bypass_paths.</output>
+      <decision-gate>Reject bypass via prefix; require exact match.</decision-gate>
+    </step>
+  </section>
+</text>

@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rest-api-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rest-api-design as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using verbs in paths: /getUsers, /createOrder, /api/getUserById/{id}.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Verbs in paths make REST APIs RPC-shaped, breaking HTTP caching, client SDK generation, and gateway routing rules.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="REST API Design Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of REST API Design. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="rpc-disguised-as-rest" severity="high">
+      <symptom>Routes like `/api/getUser`, `/api/doRefund`; codegen produces unnatural client methods.</symptom>
+      <root-cause source="Legacy-API audit">Verbs in URL, methods inverted from semantics.</root-cause>
+      <fix>Rewrite to noun paths; map verbs to HTTP methods; ship via OpenAPI for clean codegen.</fix>
+    </antipattern>
+    <antipattern id="200-on-error" severity="high">
+      <symptom>200 OK with `{error: 'not found'}` body; client SDK does not retry, monitoring dashboards green during outage.</symptom>
+      <root-cause source="Production incident retro">Status code chosen by feel.</root-cause>
+      <fix>Switch to 404/400/422/etc.; clients and observability behave correctly.</fix>
+    </antipattern>
+    <antipattern id="offset-pagination-at-scale" severity="medium">
+      <symptom>Page 500 of /v1/events takes 8 seconds; DB CPU at 90%.</symptom>
+      <root-cause source="Postgres OFFSET retro">OFFSET scans and discards.</root-cause>
+      <fix>Switch to cursor pagination keyed on created_at + id.</fix>
+    </antipattern>
+    <antipattern id="implicit-versioning" severity="medium">
+      <symptom>Breaking change shipped to /api/users; mobile clients crash.</symptom>
+      <root-cause source="Versioning retro">No version path; clients had no way to pin v1.</root-cause>
+      <fix>Introduce /v1; deprecate old path with sunset header; document migration window.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="pwa-development Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for pwa-development as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>LLMs default to CacheFirst everywhere; that breaks freshness for APIs and HTML.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Review per-route strategy. CacheFirst is only appropriate for long-lived assets like images and fonts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agents forget the offline fallback registration in the SW install event, leaving navigations dead offline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always register /offline.html in the SW and use it as the navigateFallback for all navigations.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Service-worker scope errors: registering at /app/sw.js but expecting root scope /.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SW scope is limited to the directory of the SW file; /app/sw.js cannot cache / paths. Place SW at root.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>iOS gotcha: agents test on Chromium and miss Safari quirks (no Background Sync, limited Push, storage caps).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Test explicitly on Safari iOS with DevTools to verify functionality. Do not assume iOS behavior matches Chrome.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Push: agents generate VAPID keys but skip the subscription persistence layer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require an explicit DB schema diff for storing push subscriptions. Push endpoints must be persisted and renewed.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="PWA Development Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of PWA Development. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="missing-icons" severity="high">
+      <symptom>Install prompt never shows on Android; Lighthouse PWA score 30.</symptom>
+      <root-cause source="Lighthouse PWA audit notes">Manifest missing 192/512 icons or maskable variant.</root-cause>
+      <fix>Add both sizes + maskable; rerun audit until installable=true.</fix>
+    </antipattern>
+    <antipattern id="cache-first-shell" severity="critical">
+      <symptom>New deploy ships; users keep seeing 3-week-old build forever.</symptom>
+      <root-cause source="PWA-stale-shell postmortems">SW caches index.html cache-first with no revalidation.</root-cause>
+      <fix>Switch shell to network-first with timeout 3s, fall back to cached shell; or stale-while-revalidate with reload prompt.</fix>
+    </antipattern>
+    <antipattern id="silent-update" severity="high">
+      <symptom>Engineers see new code in incognito; users on installed PWA see old code for weeks.</symptom>
+      <root-cause source="Workbox community postmortems">skipWaiting absent; new SW sleeps until tab close.</root-cause>
+      <fix>Enable skipWaiting + clients.claim; show user-visible 'New version available - reload' prompt.</fix>
+    </antipattern>
+    <antipattern id="blank-offline" severity="medium">
+      <symptom>Offline navigation shows browser default 'no internet' page.</symptom>
+      <root-cause source="Service Worker best practice">No offline.html precached; no NavigationRoute fallback.</root-cause>
+      <fix>Precache /offline.html; register NavigationRoute that returns it on fetch failure.</fix>
+    </antipattern>
   </section>
 </text>

@@ -3,74 +3,101 @@ slug: rust-tokio-async
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Tokio multiplexes thousands of I/O-bound connections on a small thread pool.
-content_id: "3e53b31414fc5017"
-tags: [tokio, async, rust, concurrency, runtime]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tokio async spec: runtime flavour (multi_thread vs current_thread), no blocking calls in async, structured cancellation (JoinSet / select!), bounded channels, timeouts on every await on the wire.
+content_id: "53aec5c28fb4bdc4"
+complexity: medium
+produces: code
+est_tokens: 4800
+tags: [rust, tokio, async, concurrency]
 ---
-# Tokio Async Patterns
+# Rust Tokio Async
 
 ## Summary
 
-**One-sentence:** Tokio multiplexes thousands of I/O-bound connections on a small thread pool.
+**One-sentence:** Tokio async spec: runtime flavour (multi_thread vs current_thread), no blocking calls in async, structured cancellation (JoinSet / select!), bounded channels, timeouts on every await on the wire.
 
-**One-paragraph:** Tokio multiplexes thousands of I/O-bound connections on a small thread pool. CPU-bound work must use spawn_blocking; independent DB calls must use try_join! or JoinSet; every spawn handle must be awaited or dropped. Holding MutexGuard across .await or calling blocking syscalls directly causes cascading stalls.
+**One-paragraph:** Tokio code breaks when blocking calls (std::fs, sync mutex held across .await) stall worker threads, when unbounded channels accumulate until OOM, when JoinHandle is dropped (silent leak), when select! arms are not cancel-safe, and when timeouts are missing on network awaits. This methodology produces a spec: runtime flavour, blocking offload via `spawn_blocking`, JoinSet or select! for structured concurrency, bounded `tokio::sync::mpsc` channels, and `tokio::time::timeout` on every network await.
+
+**Ефективно для:**
+
+- Перший Tokio service - зафіксувати правила до production.
+- Latency spikes - підозра на blocking call всередині async.
+- OOM від unbounded mpsc - перейти на bounded.
+- Race conditions через select! без cancel-safety.
+- Shutdown hangs - JoinHandle dropped silently.
 
 ## Applies If (ALL must hold)
 
-- Rust services multiplexing thousands of network connections (HTTP, gRPC, WebSocket) on a small thread pool
-- Replacing thread-per-request workers with structured concurrency (try_join!, JoinSet, select!)
-- Wrapping CPU-bound work in spawn_blocking to avoid stalling the runtime
-- Implementing fan-out / fan-in pipelines with channels (mpsc, broadcast, watch)
-- Adding cancellation, timeouts, and graceful shutdown to long-running tasks
+- Codebase uses Tokio 1.x runtime.
+- Service does network I/O with measurable concurrency.
+- Build pipeline can enforce clippy + custom lints.
+- Team can refuse PRs that block the runtime.
 
 ## Skip If (ANY kills it)
 
-- Simple CLI that does one thing and exits — std::thread or sync code is shorter and clearer
-- Heavy CPU-bound workloads (ML inference, image transforms) — Rayon / dedicated thread pools are better
-- Embedded / no_std targets — Tokio requires an allocator and OS threads; use embassy instead
-- Very low-latency single-shot RPC where the runtime overhead matters; consider glommio or monoio (thread-per-core) for io_uring workloads
-- Teams new to Rust — async + lifetimes + Send/Sync is the steepest cliff in the language
+- Code is CPU-bound batch work - use rayon instead.
+- Sync Rust app with no async - use blocking std + threads.
+- Single-file experiment that will be deleted.
+- Async runtime is async-std or smol - this methodology is Tokio-specific.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Runtime requirement | multi_thread vs current_thread + worker count | engineering |
+| Blocking inventory | list of blocking calls (fs, ffi, legacy) | engineering |
+| Channel cardinality | expected producer/consumer rates | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[python-async-patterns]] | shared async discipline - bounded fan-out + timeouts. |
+| [[websocket-design]] | downstream consumer of WS handlers built on Tokio. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: runtime flavour explicit, no blocking in async, timeout on network, bounded channels, structured concurrency, mutex not across await, graceful shutdown | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: runtime, blocking offload, channels, timeouts, shutdown | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-blocking` | haiku | Mechanical scan of crate dependencies. |
+| `size-channels` | sonnet | Per-pipeline judgement on capacity. |
+| `rewrite-handler` | sonnet | Translate sync paths to async + spawn_blocking. |
+| `review-cancel-safety` | opus | Stakes high; select! arms must be cancel-safe. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/main.rs` | Tokio service skeleton: multi_thread runtime, JoinSet, timeout, CancellationToken shutdown. |
+| `templates/Cargo.toml` | Cargo manifest snippet declaring Tokio features. |
+| `templates/_smoke-test.json` | Minimum viable tokio-async artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-tokio-async.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[python-async-patterns]]
+- [[websocket-design]]
+- [[rate-limiting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - runtime config, blocking inventory, channel boundedness, timeout coverage - onto a rule from `content/01-core-rules.xml`. Use it before merging Tokio code: it catches blocking-in-async, unbounded mpsc, and missing timeouts upstream.

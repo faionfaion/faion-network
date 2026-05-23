@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Rate Limiting Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="public-or-multitenant">Is the service public-facing OR multi-tenant?</root-question>
+      <branch when="exposure == internal_only">
+        <conclusion ref="skip-this-methodology" verdict="skip; rely on perimeter throttle"/>
+      </branch>
+      <branch when="exposure == public_or_multitenant">
+        <question id="actor-identifiable">Are actors authenticated (user_id / api_key)?</question>
+          <branch when="actors == authenticated">
+            <conclusion ref="key-strategy-documented" verdict="use user_id key; composite for anon paths"/>
+          </branch>
+          <branch when="actors == anonymous_only">
+            <question id="burst-sensitive">Is the endpoint burst-sensitive (auth/payment)?</question>
+              <branch when="burst == sensitive">
+                <conclusion ref="algo-explicit-per-class" verdict="use token_bucket or sliding_window_counter, NOT fixed_window"/>
+              </branch>
+              <branch when="burst == tolerant">
+                <conclusion ref="ttl-on-limit-keys" verdict="fixed_window OK; ensure TTL on counters"/>
+              </branch>
+          </branch>
+      </branch>
+  </decision-tree>
+  <example trace="exposure=public_or_multitenant -&amp;gt; actors=authenticated -&amp;gt; key-strategy-documented.">Worked path from root-question to conclusion.</example>
+</text>

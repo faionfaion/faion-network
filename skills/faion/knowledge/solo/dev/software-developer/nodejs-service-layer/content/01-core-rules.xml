@@ -1,39 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nodejs-service-layer Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nodejs-service-layer. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Node.js Service Layer Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every Node.js Service Layer application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Controllers do exactly four things: validate input (Zod/TypeBox), call one service method, map errors via central ErrorMapper, return DTO. Any logic beyond this belongs in the service.</statement>
-      <rationale source="v1-source">Thin controllers are stateless and trivially testable; fat controllers resist unit testing because they require an HTTP context.</rationale>
+
+    <rule id="r1-controller-decodes-encodes-only" testable="true" depth="essential">
+      <statement>Controller methods decode the request, call service with primitives, encode the response. No branching business logic, no DB calls.</statement>
+      <rationale source="Clean architecture + practitioner experience">Logic in controllers couples it to HTTP transport; pulling it to service makes unit tests trivial.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Services accept and return domain types; they never import Express/Fastify Request or Response, and they throw typed domain errors — not HTTP status codes.</statement>
-      <rationale source="v1-source">Framework-agnostic services can be called from HTTP handlers, gRPC, queue consumers, and CLIs without modification.</rationale>
+
+    <rule id="r2-service-holds-business-logic" testable="true" depth="essential">
+      <statement>Service methods take domain types or primitives, orchestrate repos + external clients, return domain types. Never see HTTP or ORM types.</statement>
+      <rationale source="Clean architecture">Business logic anywhere else duplicates; service is the testable core.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Repositories expose intention-revealing methods (findActiveByUserId) over generic find(filter); they own all ORM/SQL logic and never leak query builders to callers.</statement>
-      <rationale source="v1-source">Generic find(filter) enables callers to compose unindexed filters at runtime, causing silent full-table scans.</rationale>
+
+    <rule id="r3-repo-owns-orm-and-sql" testable="true" depth="essential">
+      <statement>Repository methods own ORM/SQL calls. They take primitives or domain types and return domain types. Never see HTTP types.</statement>
+      <rationale source="Clean architecture">ORM leaking out couples upper layers to schema details; changing the ORM becomes a multi-file change.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Dependencies must only flow downward: Controller → Service → Repository. Cross-layer imports (controller → repository, service → framework) are a hard violation caught by eslint-plugin-boundaries.</statement>
-      <rationale source="v1-source">Upward or cross-layer imports break testability and couple business logic to transport details.</rationale>
+
+    <rule id="r4-no-http-types-in-service" testable="true" depth="essential">
+      <statement>Service files do not import express, fastify, koa, or hono. Lint (depcheck + import-linter) enforces.</statement>
+      <rationale source="Practitioner experience">Imports are the easiest leak vector; lint enforcement is cheap.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Wire dependencies through constructor injection; never use module-level singletons or static service locators in files that need to be unit-tested.</statement>
-      <rationale source="v1-source">Constructor injection makes dependencies explicit and replaceable with mocks in unit tests.</rationale>
+
+    <rule id="r5-no-orm-in-controller" testable="true" depth="essential">
+      <statement>Controllers do not import Prisma client, Drizzle, Knex, or pg. Only services do (indirectly through repo). Lint enforces.</statement>
+      <rationale source="Practitioner experience">ORM in controllers bypasses service layer; fix-on-the-spot temptation is the antipattern.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Define a typed AppError hierarchy (NotFoundError, ConflictError, UnauthorizedError, ValidationError); services throw domain errors, never raw Error or HTTP status codes.</statement>
-      <rationale source="v1-source">Typed domain errors give the central ErrorMapper precise mapping targets; raw errors produce generic 500s and lose observability.</rationale>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Translate domain errors to HTTP responses in a single Express errorHandler middleware; never translate domain errors inside individual controllers.</statement>
-      <rationale source="v1-source">Per-handler translation diverges over time; a central mapper ensures consistent status codes, response shapes, and logging across all endpoints.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Run dependency-cruiser and eslint-plugin-boundaries in CI to block controller→repository and service→framework imports automatically.</statement>
-      <rationale source="v1-source">Human review alone misses import violations in large PRs; automated tools enforce the contract on every change.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

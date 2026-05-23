@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-async-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-async-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling sync I/O (requests.get, time.sleep, psycopg2.connect) inside async def.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Blocks the entire event loop for all concurrent tasks for the full duration of the call.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Calling a coroutine without await: result = fetch_data() instead of result = await fetch_data().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The coroutine is created but never executed; the call silently does nothing and returns a coroutine object.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Fire-and-forget with asyncio.create_task() without storing the reference.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tasks without strong references may be garbage-collected mid-execution; exceptions are silently swallowed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Catching Exception (or bare except) in async code, which includes CancelledError on Python 3.7; swallowing it prevents graceful shutdown.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CancelledError must propagate for TaskGroup and timeout() to cancel correctly. On 3.8+ CancelledError no longer inherits Exception, but agents use old patterns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Creating httpx.AsyncClient() inside a request handler or loop iteration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each instantiation opens a new connection pool; leaks sockets and breaks HTTP/2 keep-alive. App-scoped singleton is required.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Python Async Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of Python Async Patterns. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="requests-on-hot-path" severity="critical">
+      <symptom>FastAPI worker stalls under load; CPU low, latency high.</symptom>
+      <root-cause source="Production stall postmortem">`requests.get(...)` inside async handler blocks the loop.</root-cause>
+      <fix>Replace with httpx async client; add ruff ASYNC rule to lint.</fix>
+    </antipattern>
+    <antipattern id="unbounded-gather" severity="high">
+      <symptom>OOMKilled after 30 minutes of high traffic.</symptom>
+      <root-cause source="OOM retro">`asyncio.gather(*[fetch(x) for x in large_list])` created 10k concurrent sockets.</root-cause>
+      <fix>Wrap in `asyncio.Semaphore(50)` or use TaskGroup with cap; document max_parallel.</fix>
+    </antipattern>
+    <antipattern id="no-timeout-await" severity="high">
+      <symptom>Worker pool exhausted after one upstream hang; service goes 503.</symptom>
+      <root-cause source="Upstream-hang retro">`await client.get(url)` without timeout.</root-cause>
+      <fix>Wrap in `async with asyncio.timeout(3): await ...` or pass `timeout=3.0` on client.</fix>
+    </antipattern>
+    <antipattern id="swallowed-cancellation" severity="medium">
+      <symptom>Shutdown hangs forever; SIGTERM ignored.</symptom>
+      <root-cause source="Cancellation-leak retro">`except Exception:` swallowed asyncio.CancelledError.</root-cause>
+      <fix>Re-raise CancelledError explicitly or use `except Exception as e: if isinstance(e, asyncio.CancelledError): raise`.</fix>
+    </antipattern>
   </section>
 </text>

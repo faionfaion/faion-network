@@ -1,22 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rust-tokio-async Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Rust Tokio Async Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rust-tokio-async.json",
+  "type": "object",
+  "required": [
+    "runtime_flavour",
+    "worker_threads",
+    "blocking_offload",
+    "channel_policy",
+    "timeout_default_ms"
+  ],
+  "properties": {
+    "runtime_flavour": {
+      "type": "string",
+      "enum": [
+        "multi_thread",
+        "current_thread"
+      ]
+    },
+    "worker_threads": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "blocking_offload": {
+      "type": "string",
+      "enum": [
+        "spawn_blocking",
+        "rayon",
+        "none"
+      ]
+    },
+    "channel_policy": {
+      "type": "object",
+      "required": [
+        "bounded",
+        "default_capacity"
+      ]
+    },
+    "timeout_default_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "shutdown_signal": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "runtime_flavour": "multi_thread",
+  "worker_threads": 8,
+  "blocking_offload": "spawn_blocking",
+  "channel_policy": {
+    "bounded": true,
+    "default_capacity": 1024
+  },
+  "timeout_default_ms": 3000,
+  "shutdown_signal": "ctrl_c+CancellationToken"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "runtime_flavour": "default",
+  "worker_threads": 0,
+  "blocking_offload": "inline",
+  "channel_policy": {
+    "bounded": false
+  },
+  "timeout_default_ms": 0
+}
+]]></code>
+    <note>runtime_flavour not in enum; worker_threads&lt;1; blocking_offload=inline forbidden; channel_policy missing default_capacity; timeout_default_ms&lt;1.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="blocking-fs-stall">Latency spikes; one worker thread frozen for 200ms on `std::fs::read`.</pattern>
+      <pattern id="unbounded-mpsc-oom">OOMKilled overnight; metrics show 10M messages queued.</pattern>
+      <pattern id="dropped-joinhandle">spawn'd tasks panic silently; logs show nothing.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-rust-tokio-async.py">Validator script (see scripts/).</reference>
 </text>

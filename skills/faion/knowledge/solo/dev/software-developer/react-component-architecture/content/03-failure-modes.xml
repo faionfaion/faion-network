@@ -1,42 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="react-component-architecture Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for react-component-architecture as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Prop drilling: passing the same prop through 3+ component levels.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deep prop chains couple the intermediate components to data they do not use. Any change to the prop shape requires updates at every level. Use React context or move data to a feature hook.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Giant component: a single component file exceeding 300 lines mixing rendering, data fetching, and business logic.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mega-components cannot be unit-tested in isolation, are hard to review, and accumulate future tech debt. The 250-line cap is the forcing function to split early.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Business logic (validation, API calls, error handling) placed directly inside component functions instead of custom hooks or services.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Business logic in JSX cannot be tested without rendering. Extracting to hooks enables unit tests without a DOM, and makes the component's rendering responsibility clear.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Default exports on components.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Default exports produce ambiguous names on import, break rename-symbol refactoring tools, and prevent barrel files from being reliably tree-shaken.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>LLM adds 'use client' defensively to every component.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Marking a component as client when it has no client-side interactivity prevents RSC optimization and increases bundle size. Audit each generated component for actual client-side dependencies before accepting the directive.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Agent imports from deep paths (src/components/ui/Button/Button) instead of the barrel (src/components/ui/Button).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deep imports couple consumers to the internal file structure. When the internal layout changes, all deep imports break. Enforce barrel imports with an ESLint rule against deep imports inside components/ui/.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Agent adds a new compound subcomponent (Card.Action) but forgets to add the named export to index.ts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The component is accessible via the namespace alias but invisible to the barrel, causing missing exports and tree-shaking failures. Review every compound component addition for index.ts coverage.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="React Component Architecture Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of React Component Architecture. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="business-in-primitive" severity="high">
+      <symptom>`&lt;Button&gt;` imports auth check; every feature touches Button to add a use case.</symptom>
+      <root-cause source="Design-system audits">Business logic crept into primitive.</root-cause>
+      <fix>Extract to feature wrapper `&lt;CheckoutButton&gt;` that composes `&lt;Button&gt;`; primitive stays generic.</fix>
+    </antipattern>
+    <antipattern id="context-as-state-bus" severity="high">
+      <symptom>Updating cart count re-renders the entire app; profiler shows 200 components.</symptom>
+      <root-cause source="Over-context retro">Cart state lives in Context.</root-cause>
+      <fix>Move cart to Zustand store; Context only carries identity (cart id), not contents.</fix>
+    </antipattern>
+    <antipattern id="effect-for-derivation" severity="medium">
+      <symptom>Filter UI flickers; double-render on every keystroke.</symptom>
+      <root-cause source="useEffect misuse retro">useEffect derives filtered list from props.</root-cause>
+      <fix>Derive on render with useMemo only if profiling shows cost.</fix>
+    </antipattern>
+    <antipattern id="blanket-memoisation" severity="medium">
+      <symptom>App slower after wrapping every component in memo + useCallback.</symptom>
+      <root-cause source="Memoisation retro">Memoisation reflex without profiling.</root-cause>
+      <fix>Remove memo from leaf components; keep only where child is memoised AND parent re-renders frequently.</fix>
+    </antipattern>
   </section>
 </text>

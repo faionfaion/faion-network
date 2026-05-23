@@ -3,74 +3,102 @@ slug: pwa-development
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for turning a web app into an installable Progressive Web App with offline capability via Workbox service workers, a compliant Web App Manifest, and a user-driven install/update prompt.
-content_id: "f0d906087eec25c3"
-tags: [pwa, service-worker, offline, web-app, installability]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PWA spec covering manifest fields, service-worker lifecycle, install prompt, update flow, and offline strategy; rejects manifests missing icons or service workers that swallow updates.
+content_id: "22935955a31fe373"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [pwa, service-worker, manifest, offline, install]
 ---
 # PWA Development
 
 ## Summary
 
-**One-sentence:** Methodology for turning a web app into an installable Progressive Web App with offline capability via Workbox service workers, a compliant Web App Manifest, and a user-driven install/update prompt.
+**One-sentence:** PWA spec covering manifest fields, service-worker lifecycle, install prompt, update flow, and offline strategy; rejects manifests missing icons or service workers that swallow updates.
 
-**One-paragraph:** Methodology for turning a web app into an installable Progressive Web App with offline capability via Workbox service workers, a compliant Web App Manifest, and a user-driven install/update prompt. Core rule: default to registerType: 'prompt' — never silent skipWaiting() for app shells with in-flight state; ship a working offline.html from day one.
+**One-paragraph:** PWAs fail in three predictable ways: manifest missing the icon set required for install, service worker that caches index.html with cache-first and never updates, and update flow that leaves users on a stale shell forever. This methodology produces a spec naming manifest fields (name, short_name, icons 192+512, start_url, display, theme_color), service-worker scope, caching strategy per route (stale-while-revalidate / network-first / cache-first with TTL), update strategy (skipWaiting + clients.claim + user-visible reload prompt), and offline page contract.
+
+**Ефективно для:**
+
+- Mobile web app переходить в installable PWA - треба manifest + SW spec.
+- SW кешує index.html і нові деплої не доходять до користувачів - оновити стратегію.
+- Lighthouse PWA audit fail - зафіксувати manifest fields.
+- Offline mode потрібен для core flow - визначити що кешується.
+- Push notifications wired - перевірити що SW lifecycle не блокує оновлень.
 
 ## Applies If (ALL must hold)
 
-- Adding installability and offline support to an existing SPA
-- Mobile-first apps where skipping the App Store gate is valuable
-- Content sites needing fast repeat-visit loads via precaching
-- Apps needing push notifications without a native rewrite
-- Internal tools that must feel native on field devices and survive flaky networks
+- Web app is intended to be installable on mobile or desktop.
+- Offline support is a product requirement (not just nice-to-have).
+- Build pipeline can output a service worker (Workbox, vite-plugin-pwa, etc.).
+- Team can ship a user-visible update prompt and reload flow.
 
 ## Skip If (ANY kills it)
 
-- Background-heavy apps needing native features (Bluetooth LE, geofencing, CallKit)
-- iOS-first products where push and install UX still lag (iOS Web Push only since 16.4)
-- Static marketing sites with low return rate — SW cost outweighs benefit
-- Apps requiring exact filesystem access, USB/HID, or low-level audio — use Capacitor/Tauri
-- Single-session tools (one-time forms) where caching adds risk without payoff
+- Site is purely static marketing with no app behaviour.
+- App lives only inside an iframe of a host app (PWA install blocked).
+- Compliance forbids client-side caching of user data.
+- Push notifications and install are explicitly out of scope.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Icon set | PNG 192/512 + maskable variant | design |
+| Route map | list of routes + freshness budget | engineering |
+| Offline UX brief | what works offline / what is read-only | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[seo-for-spas]] | shared SPA shell concerns; offline page must be indexable when online. |
+| [[caching-strategy]] | server-side cache headers complement SW cache strategy. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: manifest fields, SW scope explicit, shell not cache-first, update prompt, offline page, TTL per route, HTTPS-only | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: manifest, SW scope, cache plan, update flow, offline page | ~900 |
+| `content/05-examples.xml` | essential | Worked example for an installable note-taking PWA | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-manifest` | haiku | Boilerplate JSON with fixed fields. |
+| `design-cache-plan` | sonnet | Per-route judgement on freshness vs offline. |
+| `wire-update-flow` | sonnet | UX detail; user-visible prompt copy. |
+| `audit-with-lighthouse` | haiku | Mechanical run + delta against rules. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/manifest.webmanifest` | manifest.webmanifest skeleton with required fields and maskable icon. |
+| `templates/sw.js` | Service worker skeleton: precache + navigation fallback + skipWaiting + clients.claim. |
+| `templates/_smoke-test.json` | Minimum viable PWA spec artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pwa-development.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[seo-for-spas]]
+- [[caching-strategy]]
+- [[react-component-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - manifest completeness, SW lifecycle, shell strategy, offline support - onto a rule from `content/01-core-rules.xml`. Use it before drafting the SW + manifest: it catches cache-first-on-shell and silent-update failure modes upstream.

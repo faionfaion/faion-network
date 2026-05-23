@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Static check: no Prisma in controller, no Express in service
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 # layer-check.sh — fail CI if controllers depend on repos or services depend on framework.
 # Usage: bash layer-check.sh [src-dir]
 set -euo pipefail

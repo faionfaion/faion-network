@@ -1,37 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nosql-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nosql-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Choosing MongoDB "because microservices" without documenting access patterns first.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Postgres JSONB covers 80% of flexible-schema use cases; premature NoSQL adoption locks into a model that may not match future query needs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Embedding arrays with unbounded growth in MongoDB (e.g., appending every event to a user document).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Documents grow past the 16MB limit; large documents degrade working set, increase index size, and slow full-document updates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Missing indexes on MongoDB fields used in query predicates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unindexed queries cause collection scans; at scale this degrades from milliseconds to minutes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Choosing a Cassandra/DynamoDB partition key without modeling the primary access pattern.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Partition key is immutable at scale; a wrong choice requires a full table copy to fix, causing downtime.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Storing Redis keys without TTL or eviction policy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Keys accumulate until maxmemory is hit; Redis then either evicts randomly or rejects writes, causing application errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Agent uses raw keys in Redis without namespace prefix (user:123 vs {service}:user:123).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Multiple services sharing one Redis instance collide on identical key names, causing cross-service data corruption.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="NoSQL Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real NoSQL deployments. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="microservices-by-default-mongo" severity="high">
+      <symptom>Team picks MongoDB "because microservices" without documenting access patterns; rewrites half the data layer six months later.</symptom>
+      <root-cause source="Internal - Q4 2024 architecture retro">Store-class chosen by trend, not by access pattern.</root-cause>
+      <fix>Default to Postgres + JSONB; only adopt NoSQL when an access pattern in the register explicitly justifies it.</fix>
+    </antipattern>
+    <antipattern id="unbounded-embedded-array" severity="high">
+      <symptom>User document accumulates every event in a `history` array; document exceeds 16MB and writes start failing.</symptom>
+      <root-cause source="MongoDB postmortems">Embed verdict applied to an unbounded relationship.</root-cause>
+      <fix>Reference instead; cap bounded arrays with a documented growth ceiling (e.g. max 50 last_logins).</fix>
+    </antipattern>
+    <antipattern id="redis-no-ttl-meltdown" severity="critical">
+      <symptom>Redis maxmemory hit on Friday night; eviction policy random-evicts session keys; users force-logged-out at scale.</symptom>
+      <root-cause source="Production incident retro">TTL policy never authored; raw keys without expiry.</root-cause>
+      <fix>Author ttl_policy section before launch; pre-commit validator rejects any prefix with `ttl_seconds=0` or missing.</fix>
+    </antipattern>
+    <antipattern id="hot-partition-cassandra" severity="high">
+      <symptom>Single Cassandra node CPU at 100%; rest of cluster idle; writes stall.</symptom>
+      <root-cause source="Cassandra hot-partition postmortems">Partition key = `sensor_id` for a time-series; one heavy sensor concentrates writes.</root-cause>
+      <fix>Switch to `(sensor_id, time_bucket)` partition key; distributes writes across nodes; document the choice in `partition_key.primary_query`.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,47 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nosql-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nosql-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="NoSQL Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the NoSQL Patterns methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Embed child documents when they are always accessed with the parent and the child set is bounded (1:few); reference when the relationship is 1:many or many:many.</statement>
-      <rationale source="v1-source">Embedding avoids joins and keeps reads in one round-trip; unbounded embedded arrays grow the document past the 16MB limit and degrade index performance.</rationale>
+    <rule id="access-pattern-first" testable="true" depth="essential">
+      <statement>Spec MUST start from a documented access-pattern register (primary queries, QPS, latency budget) before declaring entities or collections.</statement>
+      <rationale source="MongoDB schema-design guide; Cassandra data-modelling rules">Entity-first NoSQL designs miss the access patterns that drive partition-key choice and embed-vs-reference verdicts; reshaping later requires a full table copy.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use the bucket pattern for time-series data: group N measurements per document with a summary sub-document; set a TTL index for automatic expiration.</statement>
-      <rationale source="v1-source">One document per measurement creates millions of tiny documents, degrading index performance. Buckets reduce document count by 100-1000x.</rationale>
+    <rule id="bounded-embed-rule" testable="true" depth="essential">
+      <statement>Embed child documents only when the child set is bounded (1:few, &lt; ~100 items); reference for 1:many and many:many.</statement>
+      <rationale source="MongoDB 16MB document limit; index-rebuild perf studies">Unbounded embedded arrays grow the document past the limit, slow updates, and bloat indexes; references keep documents small and updates atomic.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Enable $jsonSchema validation on production MongoDB collections; loose schemas rot and allow bad data to accumulate.</statement>
-      <rationale source="v1-source">Schema validation catches incompatible documents at write-time before they corrupt downstream queries and reports.</rationale>
+    <rule id="ttl-on-every-cache-key" testable="true" depth="essential">
+      <statement>Every Redis prefix MUST carry an explicit TTL policy (`ttl_seconds`); raw keys without TTL or eviction policy are forbidden.</statement>
+      <rationale source="Redis docs - eviction; production incident retros">Keys without TTL accumulate until maxmemory; Redis then evicts randomly or rejects writes, breaking unrelated callers.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Pick Redis data structures by access pattern: String for simple cache; Hash for object fields; List for queues; Set for membership; Sorted Set for leaderboards/rate-limiting; Stream for event sourcing.</statement>
-      <rationale source="v1-source">Using the wrong structure forces workarounds (e.g., serializing JSON into a String when Hash would allow field-level updates) and degrades performance.</rationale>
+    <rule id="namespaced-redis-keys" testable="true" depth="essential">
+      <statement>All Redis keys MUST follow `{service}:{entity}:{id}` namespace; raw keys (e.g. `user:123`) are rejected.</statement>
+      <rationale source="Redis best practice; multi-service collision postmortems">Services sharing a Redis instance collide on identical key names; namespacing eliminates cross-service corruption.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Set TTL on every cache and session key; never store data in Redis without an expiry or explicit eviction strategy.</statement>
-      <rationale source="v1-source">Keys without TTL accumulate until Redis runs out of memory; the server then evicts randomly or stops accepting writes.</rationale>
+    <rule id="partition-key-frozen" testable="true" depth="essential">
+      <statement>For Cassandra / DynamoDB, the partition key MUST be chosen to match the primary access query and documented as immutable; time-series uses `(entity_id, time_bucket)` to avoid hot partitions.</statement>
+      <rationale source="Cassandra data-modelling rules; DynamoDB hot-partition postmortems">Partition keys cannot be changed without a full table copy; a wrong choice locks the team out of scaling.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Prefix all keys with {service}:{entity}:{id} to prevent collisions across services sharing one Redis instance.</statement>
-      <rationale source="v1-source">Agents generate raw keys (user:123) that collide across services; namespacing avoids cross-service data corruption.</rationale>
+    <rule id="mongo-schema-validation" testable="true" depth="essential">
+      <statement>Production MongoDB collections MUST enable `$jsonSchema` validation; un-validated collections rot and accumulate incompatible documents.</statement>
+      <rationale source="MongoDB schema-validation docs; data-quality audits">Loose schemas catch bad writes only after they corrupt downstream queries; write-time validation is cheap and prevents silent drift.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use Redis Streams (XADD/XREADGROUP) instead of Pub/Sub when message durability or consumer groups are required; Pub/Sub is fire-and-forget with no replay.</statement>
-      <rationale source="v1-source">Pub/Sub messages are lost if no subscriber is connected; Streams persist messages and support consumer groups with acknowledgement.</rationale>
+    <rule id="indexes-match-predicates" testable="true" depth="essential">
+      <statement>Every MongoDB / Neo4j field used in a query predicate MUST be indexed; missing indexes are flagged as critical in the spec.</statement>
+      <rationale source="MongoDB explain() benchmarks; Neo4j MATCH-without-index incidents">Unindexed predicates degrade from milliseconds to minutes at modest scale; the spec must enumerate the index list per collection / label.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Design one table per access pattern in Cassandra; partition key selection determines scalability and cannot be changed without a full table copy.</statement>
-      <rationale source="v1-source">Cassandra has no JOINs and no secondary indexes without performance penalty; the partition key must match the primary query pattern exactly.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use (entity_id, time_bucket) as the partition key for time-series data to prevent hot partitions on single-entity keys under high write load.</statement>
-      <rationale source="v1-source">A single partition key (sensor_id alone) concentrates all writes to one node; time-bucketing distributes writes across nodes.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Index every node property used in MATCH predicates; missing indexes cause full graph scans.</statement>
-      <rationale source="v1-source">Neo4j traversal is fast, but initial node lookup without an index requires scanning all nodes of a label.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>

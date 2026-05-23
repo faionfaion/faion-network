@@ -3,74 +3,102 @@ slug: openapi-specification
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: OpenAPI 3.
-content_id: "a1be3e382ce034bf"
-tags: [openapi, rest-api, api-design, specification, documentation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Authoring + CI gates for an OpenAPI 3.1 spec: one canonical bundle, $ref reuse, operationId everywhere, breaking-change gate via oasdiff, generator-spec drift detection.
+content_id: "a7e898f963a6bebd"
+complexity: medium
+produces: spec
+est_tokens: 5400
+tags: [openapi, api-spec, contract-first, spectral, redocly]
 ---
 # OpenAPI Specification
 
 ## Summary
 
-**One-sentence:** OpenAPI 3.
+**One-sentence:** Authoring + CI gates for an OpenAPI 3.1 spec: one canonical bundle, $ref reuse, operationId everywhere, breaking-change gate via oasdiff, generator-spec drift detection.
 
-**One-paragraph:** OpenAPI 3.1 as the single source of truth for HTTP/JSON APIs: one canonical openapi.yaml at repo root, all schemas and error responses under components/ referenced via $ref, mandatory operationId on every operation, and CI gates (Spectral lint + oasdiff breaking-change check) that block merges introducing undocumented or breaking changes.
+**One-paragraph:** OpenAPI documents rot the moment they diverge from server code, generators silently emit unsafe clients when required arrays are missing, and operationIds drift on path renames. This methodology fixes a contract-first authoring loop: one canonical openapi.yaml at repo root + redocly bundle for distribution; every operation carries operationId in kebab/camel; every reusable schema lives under components/* and is referenced via $ref; every response code carries named examples; Spectral + redocly lint on every PR; oasdiff blocks breaking changes; server-generated specs commit a snapshot and CI fails on drift.
+
+**Ефективно для:**
+
+- Перший API контракт - треба зафіксувати форму до імплементації.
+- Server-generated spec (FastAPI / drf-spectacular / NestJS) дрейфує - потрібен gate.
+- Клієнти ламаються на breaking change - треба oasdiff на PR.
+- Кодген видає any замість union - перевірити discriminator.
+- Команда забуває required array - типи стають Partial.
 
 ## Applies If (ALL must hold)
 
-- Designing a new HTTP/JSON API where clients, servers, mocks, tests, and docs must stay in sync.
-- Generating typed clients (TS, Python, Go) instead of hand-writing N SDKs.
-- Contract-first work between FE and BE where one side is agent-built.
-- Documenting an existing API before refactor.
-- Public API surface where SDK generation and developer docs are expected.
+- Project ships an HTTP API consumed by external or internal clients.
+- Spec will be the source of truth for generated clients and mock servers.
+- CI infrastructure exists where linters and diff gates can run.
+- A repository owner can sign off breaking-change overrides.
 
 ## Skip If (ANY kills it)
 
-- Pure internal RPCs between trusted services — use Protobuf/gRPC/tRPC; OpenAPI adds ceremony for no gain.
-- GraphQL APIs — schema is the contract; OpenAPI is irrelevant.
-- Event-driven / pub-sub — use AsyncAPI instead.
-- Tiny one-endpoint webhook receivers — overhead exceeds value.
-- Server-driven UI payloads over a stream, not REST.
+- Project is a throwaway prototype with no API consumers.
+- API surface is GraphQL or gRPC only - use the appropriate schema language.
+- Spec drift is intentional during a refactor (use a feature branch).
+- Team prefers AsyncAPI for event-driven APIs - use that spec instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| API requirements | markdown user stories or specs | product |
+| Auth model | OAuth2 / JWT / API key description | security |
+| Error-shape decision | RFC 7807 problem+json yes/no | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-rest-design]] | consumer of the path/verb shape this spec freezes. |
+| [[api-error-handling]] | consumer of the error schema this spec references. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: single bundle, operationId everywhere, $ref reuse, required array, oasdiff gate, named examples, server-spec drift check | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step contract-first authoring + CI wiring | ~900 |
+| `content/05-examples.xml` | essential | Worked example contract-first vs server-generated | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-operations` | sonnet | Per-endpoint judgement; operationId + request/response shape. |
+| `lift-components` | haiku | Mechanical $ref extraction once duplicates are flagged. |
+| `configure-linters` | haiku | Boilerplate .redocly.yaml + .spectral.yaml. |
+| `review-breaking-diff` | opus | Stakes high; one wrong call breaks every client. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/openapi-skeleton.yaml` | OpenAPI 3.1 skeleton with components reuse + security + named examples. |
+| `templates/spectral.yaml` | Spectral ruleset enforcing required arrays, named examples, security on operations. |
+| `templates/_smoke-test.json` | Minimum viable artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-openapi-specification.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[api-rest-design]]
+- [[api-error-handling]]
+- [[api-documentation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - source authority (hand vs generated), lint status, breaking-diff presence - onto a rule from `content/01-core-rules.xml`. Use it before touching the spec: it decides apply-vs-skip, picks the source-of-truth path, and routes BREAK diffs to human review.

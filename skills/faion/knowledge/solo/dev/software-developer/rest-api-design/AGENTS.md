@@ -3,74 +3,102 @@ slug: rest-api-design
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Resource-oriented HTTP API design conventions: plural noun paths, correct HTTP method semantics, standard status codes, and consistent filter/pagination parameters.
-content_id: "f884a7a52d12de33"
-tags: [rest, api, http, openapi, spectral]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: REST API design spec: resource-oriented URLs, verb semantics (GET/POST/PUT/PATCH/DELETE), correct status codes, cursor pagination, problem+json errors, versioning policy.
+content_id: "3d99dcee170ebbde"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [rest, api-design, resources, http-status, versioning]
 ---
 # REST API Design
 
 ## Summary
 
-**One-sentence:** Resource-oriented HTTP API design conventions: plural noun paths, correct HTTP method semantics, standard status codes, and consistent filter/pagination parameters.
+**One-sentence:** REST API design spec: resource-oriented URLs, verb semantics (GET/POST/PUT/PATCH/DELETE), correct status codes, cursor pagination, problem+json errors, versioning policy.
 
-**One-paragraph:** Resource-oriented HTTP API design conventions: plural noun paths, correct HTTP method semantics, standard status codes, and consistent filter/pagination parameters. Core rule: paths use plural nouns in kebab-case with no verbs (/users, not /getUsers); POST returns 201 + Location header; DELETE returns 204; errors use RFC 7807 application/problem+json.
+**One-paragraph:** REST APIs go bad when verbs leak into URLs (`/getUser`), when 200 OK ships error bodies, when pagination uses offset at scale, when errors are plain strings, and when versioning is implicit. This methodology produces a resource-design spec: noun-only URLs in plural form, verb semantics mapped to HTTP methods, status codes used per RFC 9110, cursor pagination for collections >1k, problem+json error shape, and a versioning policy (path /v1 with deprecation timeline).
+
+**Ефективно для:**
+
+- Перший публічний API - зафіксувати resource model + status codes.
+- Legacy RPC-style API (`/getUser`, `/doThing`) переписується на REST.
+- Pagination ламається на 10k+ rows - перейти на cursor.
+- Error response - plain string; клієнти не можуть розрізнити причини.
+- Breaking change на v1 - спланувати v2 + deprecation.
 
 ## Applies If (ALL must hold)
 
-- Designing a new HTTP API for a web/mobile client or third-party consumer
-- Refactoring RPC-shaped endpoints (/getUsers, /doThing) into resource-oriented routes
-- Reviewing PR diffs for status-code, method-semantic, or naming drift
-- Generating client SDKs or OpenAPI specs that depend on consistent route shapes
-- Onboarding LLM agents that will call the API — predictable verbs/nouns reduce tool-use errors
+- Project exposes an HTTP API consumed by clients.
+- Endpoints are resource-shaped (CRUD over nouns) more than command-shaped.
+- Team can ship and own the API contract over time.
+- OpenAPI spec is feasible (consumers want generated clients).
 
 ## Skip If (ANY kills it)
 
-- Internal RPC between trusted services with strict latency budgets — gRPC fits better
-- Highly relational graph queries with many shapes per page — GraphQL avoids round-trips
-- Server-streamed events (logs, ticks, model output) — SSE/WebSockets/HTTP streaming
-- Pure file transfer pipelines — S3-style presigned URLs beat REST envelopes
-- One-off webhook receivers where shape is dictated by the sender
+- GraphQL or gRPC is the chosen interface.
+- API is event-driven (use AsyncAPI / webhooks methodology).
+- Endpoints are pure RPC commands (no resource model fits).
+- Internal-only one-off endpoint with no consumers.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Resource model | list of nouns + relationships | domain modelling |
+| Auth model | OAuth2 / JWT / API key | security |
+| Versioning policy | path / header / query | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[openapi-specification]] | spec format that captures this design as a machine-readable contract. |
+| [[api-error-handling]] | downstream consumer of the error-shape decision in this spec. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: noun URLs, HTTP method semantics, truthful status codes, cursor pagination, problem+json, path versioning, query-param filters | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: resources, versioning, status codes, pagination, errors | ~900 |
+| `content/05-examples.xml` | essential | Worked example for an e-commerce REST API | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `model-resources` | sonnet | Domain-modelling judgement. |
+| `map-status-codes` | haiku | Mechanical mapping per outcome. |
+| `draft-error-schema` | sonnet | Per-endpoint judgement on type URIs. |
+| `plan-versioning` | opus | Stakes high; sunset timeline affects every consumer. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/resource-skeleton.yaml` | REST resource skeleton with cursor pagination + problem+json errors. |
+| `templates/problem.json` | Problem+JSON example error body. |
+| `templates/_smoke-test.json` | Minimum viable rest-design artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rest-api-design.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[openapi-specification]]
+- [[api-error-handling]]
+- [[api-versioning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - URL shape, status truthfulness, pagination depth, error shape - onto a rule from `content/01-core-rules.xml`. Use it before merging endpoints: it catches verbs-in-URL, 200-on-error, and offset-pagination-at-scale upstream.

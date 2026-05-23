@@ -1,43 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-async-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-async-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Python Async Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Python Async Patterns methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use asyncio.TaskGroup for any set of concurrent coroutines; prefer it over gather for new code on Python 3.11+.</statement>
-      <rationale source="v1-source">TaskGroup propagates cancellation automatically — if one task raises, all siblings are cancelled, preventing zombie tasks that gather leaves running.</rationale>
+    <rule id="no-sync-io-in-async" testable="true" depth="essential">
+      <statement>Async code paths MUST use async drivers (httpx, asyncpg, aioboto3); sync calls (requests, psycopg2, time.sleep) on the hot path are forbidden and flagged by lint.</statement>
+      <rationale source="asyncio docs; production-stall postmortems">A blocking sync call freezes the event loop and stalls all in-flight requests on the worker.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Wrap every external-call fan-out with asyncio.Semaphore; derive the limit from downstream capacity, not an arbitrary number.</statement>
-      <rationale source="v1-source">Unbounded gather over a queue can spawn 100k tasks, consuming all RAM and crushing downstream services.</rationale>
+    <rule id="timeouts-on-network" testable="true" depth="essential">
+      <statement>Every `await` on a network call MUST be wrapped in `asyncio.timeout(...)` (3.11+) or an explicit per-call timeout argument; bare awaits on the wire are forbidden.</statement>
+      <rationale source="asyncio.timeout docs; await-forever postmortems">Without a timeout, a hung upstream blocks the task forever, exhausting worker concurrency.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Pair every await with a timeout using asyncio.timeout() (3.11+) or asyncio.wait_for(); never await without a deadline.</statement>
-      <rationale source="v1-source">Awaiting without a timeout means a stalled downstream silently hangs the event loop task indefinitely.</rationale>
+    <rule id="bounded-fanout" testable="true" depth="essential">
+      <statement>Fan-out parallelism MUST be bounded by `asyncio.Semaphore` or `TaskGroup` with explicit cap; raw `asyncio.gather(*N_unknown)` is forbidden.</statement>
+      <rationale source="asyncio docs; OOM postmortems">Unbounded gather over N=10000 tasks creates 10000 sockets and futures simultaneously, exhausting fd / RAM.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use async generators for paginated data streams to avoid loading all pages into memory.</statement>
-      <rationale source="v1-source">Loading all pages first wastes memory and delays first-item processing; generators yield items as they arrive.</rationale>
+    <rule id="task-group-for-structured" testable="true" depth="essential">
+      <statement>Multi-task fan-out MUST use `asyncio.TaskGroup` (3.11+) for structured concurrency; loose `asyncio.create_task` without retention is forbidden.</statement>
+      <rationale source="PEP 654; asyncio TaskGroup docs">Loose create_task lets exceptions vanish silently and tasks outlive their parent; TaskGroup propagates failures and bounds lifetime.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Create httpx.AsyncClient, DB pools, and Redis clients once at application startup; never instantiate them per request or inside loops.</statement>
-      <rationale source="v1-source">Creating a client per request leaks sockets, breaks HTTP/2 connection reuse, and exhausts file descriptors under load.</rationale>
+    <rule id="cancellation-respected" testable="true" depth="essential">
+      <statement>Exception handlers MUST re-raise `asyncio.CancelledError`; bare `except:` or `except Exception:` that swallows cancellation is forbidden.</statement>
+      <rationale source="asyncio docs; cancellation-leak postmortems">Swallowing CancelledError makes shutdown hang and breaks TaskGroup cleanup.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Implement resource cleanup via async context managers (asynccontextmanager or __aenter__/__aexit__); never rely on garbage collection for async resources.</statement>
-      <rationale source="v1-source">GC does not call async close() methods; connections and file handles leak silently without explicit context management.</rationale>
+    <rule id="sync-offload-explicit" testable="true" depth="essential">
+      <statement>Mandatory sync work (compression, legacy driver) MUST run via `asyncio.to_thread` or a documented executor pool; inline sync calls are forbidden.</statement>
+      <rationale source="asyncio.to_thread docs">Explicit offload makes the boundary visible; inline sync silently re-blocks the loop.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Store all fire-and-forget tasks in a set and register a done callback to remove them; never discard the task reference immediately after create_task().</statement>
-      <rationale source="v1-source">Unreferenced tasks may be garbage-collected before completion; exceptions are silently swallowed.</rationale>
+    <rule id="single-loop-per-process" testable="true" depth="essential">
+      <statement>Each worker process MUST run exactly one event loop; mixing `asyncio.run` calls inside running loops is forbidden.</statement>
+      <rationale source="asyncio.run docs; nested-loop postmortems">Nested loops raise RuntimeError at runtime and indicate a flawed architectural split.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Run CPU-bound operations in loop.run_in_executor(None, fn) for tasks under ~50ms; use ProcessPoolExecutor for longer tasks.</statement>
-      <rationale source="v1-source">A CPU-bound synchronous call inside async def blocks the event loop for all concurrent tasks for its full duration.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Treat CancelledError as control flow: catch only to perform cleanup, then re-raise unconditionally.</statement>
-      <rationale source="v1-source">Swallowing CancelledError prevents TaskGroup and timeout() from completing cancellation, leaving zombie tasks.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
     </rule>
   </section>
 </text>

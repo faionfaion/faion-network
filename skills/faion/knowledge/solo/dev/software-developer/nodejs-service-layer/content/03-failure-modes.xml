@@ -1,37 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nodejs-service-layer Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nodejs-service-layer as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Business logic (hashing passwords, checking duplicates, sending emails) placed directly in Express route handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Route handlers cannot be unit-tested without an HTTP server; logic cannot be reused from queue consumers or CLIs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Service methods importing and calling Prisma/Sequelize/Knex directly instead of through a repository interface.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Direct ORM usage in services couples business logic to the DB layer, preventing mock-based unit tests and storage swaps.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Generic repository method findAll(filter) where callers compose unindexed filter predicates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Runtime-composed filters produce full-table scans that only appear under production load; index coverage cannot be verified statically.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Per-controller try/catch that wraps all errors in res.status(500).json(), swallowing domain error context.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Swallowing domain errors loses error code, stack trace, and structured detail; the central ErrorMapper must handle translation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Zod schema updated without regenerating the inferred TypeScript type (or vice versa), causing runtime/type divergence.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Schema and type out of sync means the compiler approves code that fails at runtime validation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Service class registered as singleton in the DI container while carrying request-scoped state (auth context, tenant ID).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Singleton services with mutable request-scoped fields leak state across concurrent requests.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Node.js Service Layer Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying nodejs-service-layer. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-fat-controller" severity="high">
+      <symptom>Controller has 250 lines including validation, multiple DB calls, conditional rendering.</symptom>
+      <root-cause source="Practitioner experience">Author kept adding 'one more thing' until controller became the whole feature.</root-cause>
+      <fix>Extract into service. Controller reduces to decode + service.x(...) + encode.</fix>
+    </antipattern>
+    <antipattern id="fm-orm-in-controller" severity="high">
+      <symptom>Controller imports PrismaClient and queries directly to bypass service.</symptom>
+      <root-cause source="Practitioner experience">Author wanted 'just a quick query'.</root-cause>
+      <fix>Add repo + service method. Controller goes through service. Add lint rule blocking @prisma/* imports outside repo files.</fix>
+    </antipattern>
+    <antipattern id="fm-http-in-service" severity="high">
+      <symptom>Service imports `express.Request` to read a header from a request object passed by controller.</symptom>
+      <root-cause source="Practitioner experience">Author shortcut value extraction at controller boundary.</root-cause>
+      <fix>Extract values at controller. Service takes primitives. Add depcheck/import-linter rule.</fix>
+    </antipattern>
+    <antipattern id="fm-producer-side-interface" severity="medium">
+      <symptom>Repo declares interface with 30 methods; service uses 4 of them.</symptom>
+      <root-cause source="Practitioner experience">Author wrote interface at repo to 'expose surface'.</root-cause>
+      <fix>Move interfaces to consumer (service) side. Repo exports concrete class; service declares the methods it needs.</fix>
+    </antipattern>
   </section>
 </text>

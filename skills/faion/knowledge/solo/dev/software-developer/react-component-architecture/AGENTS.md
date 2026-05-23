@@ -3,73 +3,102 @@ slug: react-component-architecture
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A directory layout and component design system for React/Next.
-content_id: "cd2901f848c11557"
-tags: [react, architecture, component-design, next.js, typescript]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: React component architecture spec: feature folders, server/client component split, no business logic in primitives, hooks discipline, props vs context decision, memoization rules.
+content_id: "ac7213ed8991e6c4"
+complexity: medium
+produces: spec
+est_tokens: 5100
+tags: [react, components, architecture, hooks, state]
 ---
-# React Component Architecture: Layout, Patterns, and Isolation
+# React Component Architecture
 
 ## Summary
 
-**One-sentence:** A directory layout and component design system for React/Next.
+**One-sentence:** React component architecture spec: feature folders, server/client component split, no business logic in primitives, hooks discipline, props vs context decision, memoization rules.
 
-**One-paragraph:** A directory layout and component design system for React/Next.js projects: shared UI primitives in components/ui/, feature modules in features/<name>/, colocated tests and stories, named exports only, and data fetching confined to feature hooks or RSC. Component files are capped at ~250 lines; beyond that, extract subcomponents or hooks.
+**One-paragraph:** React apps rot when business logic leaks into primitives, when context is used as a global state bus, when useEffect runs business logic, and when components are memoised everywhere by reflex. This methodology produces a component-architecture spec naming feature folder shape, server vs client component boundaries (Next.js app router), primitive vs feature responsibility split, props vs context boundary, hook discipline (no side effects in render, effects only for sync-with-external), and a memoisation policy.
+
+**Ефективно для:**
+
+- Новий React/Next.js проект - зафіксувати feature folders + server/client split.
+- Legacy app з 200+ компонентів - провести audit і split primitive vs feature.
+- Context перетворився в global state bus - провести rectification.
+- Memoization всюди без вимірів - впровадити policy.
+- useEffect для бізнес-логіки - winnerless redesign.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new React/Next.js codebase and you need a defensible directory layout from day one.
-- Refactoring a sprawling components/ folder into feature-modules plus shared UI primitives.
-- Building or extending a design system (Button, Card, Input) where compound and polymorphic patterns matter.
-- Establishing coding standards an LLM agent will follow when generating new components.
-- Migrating from Pages Router to App Router and deciding server vs client component boundaries.
+- Codebase uses React 18+ or Next.js 13+ (app router).
+- Team is shipping components iteratively (not a static site).
+- There is a chosen styling system (Tailwind / CSS modules / vanilla extract).
+- Build pipeline can enforce ESLint rules.
 
 ## Skip If (ANY kills it)
 
-- One-off React prototypes or spikes — full architecture is overhead.
-- Pure logic libraries with no JSX — use module-architecture guidance instead.
-- React Native projects with platform-specific file suffixes — adapt, do not copy.
-- When the project already mandates a different convention (Bulletproof React, Nx generators) — follow that instead.
+- Project is plain HTML + sprinkle of vanilla JS - no React.
+- App is a tiny prototype with <10 components.
+- Team has chosen a different framework (Vue, Svelte, Solid).
+- Migration is in progress and the target architecture is documented elsewhere.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Routing decision | Next.js app router / pages / SPA | engineering |
+| Styling system | Tailwind / CSS modules / vanilla extract | design |
+| State scope map | list of state slices + scope (route / global / feature) | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[shadcn-ui-architecture]] | primitive layer composed from shadcn vendored primitives. |
+| [[tailwind-architecture]] | styling layer this spec assumes is in place. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: feature folder, server/client split, no business in primitives, context boundary, effects discipline, memoisation policy, prop-drilling cap | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step plan: routing, folders, primitives, state, memoisation | ~900 |
+| `content/05-examples.xml` | essential | Worked example for a Next.js multi-tenant SaaS UI | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-routing` | haiku | Closed-set selection. |
+| `design-feature-folders` | sonnet | Per-feature judgement. |
+| `audit-primitive-leakage` | sonnet | Import-graph judgement. |
+| `scope-state` | opus | Stakes high; wrong scope re-renders everything. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/feature-skeleton.tsx` | Feature folder skeleton: components/, hooks/, lib/, index.ts barrel. |
+| `templates/store.ts` | Feature-scoped Zustand store skeleton. |
+| `templates/_smoke-test.json` | Minimum viable architecture artefact for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-react-component-architecture.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[shadcn-ui-architecture]]
+- [[tailwind-architecture]]
+- [[ui-component-library]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs - framework, state shape, primitive leakage, memo pressure - onto a rule from `content/01-core-rules.xml`. Use it before refactoring: it catches context-as-bus and business-in-primitive upstream.
