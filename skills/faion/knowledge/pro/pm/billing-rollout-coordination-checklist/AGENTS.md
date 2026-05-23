@@ -3,77 +3,97 @@ slug: billing-rollout-coordination-checklist
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Billing Rollout Coordination Checklist: codified delivery-management practice that turns the recurring 'role-product-manager/Pricing experiment, hypothesis to result' decision into a repeatable, auditable artefact.
-content_id: "a08611e3205818a4"
-tags: [billing-rollout-coordination-checklist, pm, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a pre-flight checklist for shipping a billing/pricing change — comms, ops, support, legal, finance gates with named owners.
+content_id: "4b3ecf57a17f786b"
+complexity: light
+produces: checklist
+est_tokens: 3100
+tags: [billing-rollout-coordination-checklist, pm, pro, checklist]
 ---
 # Billing Rollout Coordination Checklist
 
 ## Summary
 
-**One-sentence:** Billing Rollout Coordination Checklist: codified delivery-management practice that turns the recurring 'role-product-manager/Pricing experiment, hypothesis to result' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a pre-flight checklist for shipping a billing/pricing change — comms, ops, support, legal, finance gates with named owners.
 
-**One-paragraph:** Billing Rollout Coordination Checklist addresses the gap identified by the role-product-manager/Pricing experiment, hypothesis to result playbook: Pricing changes break billing / finance / legal more than they break product. No cross-functional checklist exists. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Billing Rollout Coordination Checklist addresses the gap identified by the `role-product-manager/Pricing experiment, hypothesis to result` playbook: Pricing experiments require coordinated change in payment provider, comms, support scripts, and finance reconciliation. Without a coordination checklist one of these always lags. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned `checklist` artefact carrying a named accountable owner, input citations, and a review date — downstream agents and human reviewers consume it without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Бінарний checklist, де кожен пункт має owner і `done_by` дату.
+- Sign-off field — артефакт неможливо позначити complete без named approver.
+- Версіонована форма + last_reviewed; redo at next cycle.
+- Контрактний валідатор перевіряє, що всі обов'язкові пункти заповнені.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-product-manager/Pricing experiment, hypothesis to result OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Task is an instance of `role-product-manager/Pricing experiment, hypothesis to result` OR a closely-adjacent variant in the same engagement shape.
+- Operator has all artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent or human reviewer (not discarded after one read).
+- Tier == pro or higher (gating enforced by `tier-manifest.json`).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Team already maintains a working artefact for this gap — update it, do not duplicate.
+- Change being decided is a greenfield prototype with no production users or paying client.
+- Regulatory / compliance context overrides in-methodology guidance — defer to legal.
 
 ## Prerequisites
 
-- recent context for the role-product-manager/Pricing experiment, hypothesis to result task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the `role-product-manager/Pricing experiment, hypothesis to result` task (last 30 days) | Markdown / chat log | engagement notes |
+| Write-access to the artefact store | repo / wiki / decision log | infra |
+| Named accountable owner (handle / email / role) | string | engagement RACI |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| [[project-manager]] | Parent role skill — provides operating context for any PM artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-input-citations | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for `checklist` shape + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom / root-cause / fix | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template-fill of inputs from named sources; bounded transformation. |
+| `synthesize-checklist` | sonnet | Per-instance judgment over bounded inputs to fill the `checklist` shape. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high (regulatory / large €). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/billing-rollout-coordination-checklist.json` | JSON schema for the Billing Rollout Coordination Checklist output contract |
-| `templates/billing-rollout-coordination-checklist.md` | Markdown skeleton with the required fields |
+| `templates/billing-rollout-coordination-checklist.json` | JSON Schema (draft-07) for the Billing Rollout Coordination Checklist output contract |
+| `templates/billing-rollout-coordination-checklist.md` | Markdown skeleton with the required fields for the Billing Rollout Coordination Checklist artefact |
+| `templates/billing-rollout-coordination-checklist.example.json` | Worked filled-in example of a valid Billing Rollout Coordination Checklist artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-billing-rollout-coordination-checklist.py` | Enforce Billing Rollout Coordination Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-billing-rollout-coordination-checklist.py` | Enforce the Billing Rollout Coordination Checklist output contract against the JSON Schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/pm/`
+- [[project-manager]]
+- [[change-request-pricing-rubric]]
+- [[client-status-email-template-agency]]
 - upstream playbook: `role-product-manager/Pricing experiment, hypothesis to result`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, owner named yes/no, decision materiality) to a concrete action, with each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, route to a sibling methodology, or skip entirely.

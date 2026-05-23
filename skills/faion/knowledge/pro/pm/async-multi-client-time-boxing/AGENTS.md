@@ -3,12 +3,15 @@ slug: async-multi-client-time-boxing
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Async Multi Client Time Boxing: codified delivery-management practice that turns the recurring 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway' decision into a repeatable, auditable artefact.
 content_id: "a866d47be9a4d760"
+complexity: medium
+produces: spec
+est_tokens: 4000
 tags: [async-multi-client-time-boxing, pm, pro]
 ---
 # Async Multi Client Time Boxing
@@ -18,6 +21,13 @@ tags: [async-multi-client-time-boxing, pm, pro]
 **One-sentence:** Async Multi Client Time Boxing: codified delivery-management practice that turns the recurring 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway' decision into a repeatable, auditable artefact.
 
 **One-paragraph:** Async Multi Client Time Boxing addresses the gap identified by the p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway playbook: Context-switching across 3-5 active clients is the #4 pain. pro/pm methodology is full Jira/Azure-DevOps PMBOK. None of it addresses one operator running 3-5 micro-projects in parallel: time-block-per-client, weekly status batching, single-tool stack (one repo of notes, one tracker), notification gates. Borderline between pm and personal productivity. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Одного operator з 3-5 паралельних micro-projects.
+- Time-block-per-client + weekly status batching.
+- Single-tool stack: один repo нотаток, один tracker.
+- Notification gates — не Slack-pinged-every-15-min.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +58,10 @@ tags: [async-multi-client-time-boxing, pm, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
 
 ## Task Routing
 
@@ -64,16 +75,21 @@ tags: [async-multi-client-time-boxing, pm, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/async-multi-client-time-boxing.json` | JSON schema for the Async Multi Client Time Boxing output contract |
-| `templates/async-multi-client-time-boxing.md` | Markdown skeleton with the required fields |
+| `templates/async-multi-client-time-boxing.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/async-multi-client-time-boxing.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-async-multi-client-time-boxing.py` | Enforce Async Multi Client Time Boxing output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-async-multi-client-time-boxing.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/pm/`
 - upstream playbook: `p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+

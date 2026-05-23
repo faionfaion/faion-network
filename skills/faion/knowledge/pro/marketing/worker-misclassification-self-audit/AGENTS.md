@@ -3,12 +3,15 @@ slug: worker-misclassification-self-audit
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "b0b3beec9adcc533"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Worker Misclassification Self Audit: produces a versioned, owner-signed artefact that closes the gap 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies'."
+content_id: "b0b3beec9adcc533"
+complexity: deep
+produces: checklist
+est_tokens: 4200
 tags: [worker-misclassification-self-audit, marketing, pro]
 ---
 # Worker Misclassification Self Audit
@@ -18,6 +21,13 @@ tags: [worker-misclassification-self-audit, marketing, pro]
 **One-sentence:** Worker Misclassification Self Audit: produces a versioned, owner-signed artefact that closes the gap 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies'.
 
 **One-paragraph:** Addresses the gap surfaced by 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies': ops-contractor-management mentions misclassification once as a footnote. For a micro-agency that uses long-term contractors, this is existential — IRS/AB-5/UK IR35/EU equivalents can retroactively reclassify a contractor as an employee. A self-audit methodology (behavioral control, financial control, relationship factors per jurisdiction) is needed and missing. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a worker misclassification self audit artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Micro-agency з long-term контракторами (IRS / AB-5 / IR35 / EU).
+- Self-audit по behavioral / financial / relationship factors.
+- Документований owner + версія + remediation deadline.
+- Поточний risk-register для contractor classification.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +58,10 @@ tags: [worker-misclassification-self-audit, marketing, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
 
 ## Task Routing
 
@@ -64,17 +75,22 @@ tags: [worker-misclassification-self-audit, marketing, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/worker-misclassification-self-audit.json` | JSON schema for the Worker Misclassification Self Audit output contract |
-| `templates/worker-misclassification-self-audit.md` | Markdown skeleton with the required fields |
+| `templates/worker-misclassification-self-audit.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/worker-misclassification-self-audit.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-worker-misclassification-self-audit.py` | Enforce Worker Misclassification Self Audit output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-worker-misclassification-self-audit.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/`
 - upstream playbook: `p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies`
 - pro/marketing/p5-micro-agency-founder
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+

@@ -3,12 +3,15 @@ slug: year-in-review-as-marketing
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "06f6f2d232adb7a3"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Year In Review As Marketing: produces a versioned, owner-signed artefact that closes the gap 'p3-technical-freelancer/Year-end tax, legal, and cash-flow close'."
+content_id: "06f6f2d232adb7a3"
+complexity: medium
+produces: report
+est_tokens: 4000
 tags: [year-in-review-as-marketing, marketing, pro]
 ---
 # Year In Review As Marketing
@@ -18,6 +21,13 @@ tags: [year-in-review-as-marketing, marketing, pro]
 **One-sentence:** Year In Review As Marketing: produces a versioned, owner-signed artefact that closes the gap 'p3-technical-freelancer/Year-end tax, legal, and cash-flow close'.
 
 **One-paragraph:** Addresses the gap surfaced by 'p3-technical-freelancer/Year-end tax, legal, and cash-flow close': How to turn the year-end close into a public retrospective that doubles as pipeline content — bridges ops + content marketing for solo operators. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a year in review as marketing artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Year-end close, що подвоюється як pipeline content.
+- Solo operator або мікроагенція без окремого PR team.
+- Bridges ops + content marketing в одному artefact.
+- Versioned outcome review: чи retro справді приніс leads.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +58,10 @@ tags: [year-in-review-as-marketing, marketing, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
 
 ## Task Routing
 
@@ -64,17 +75,22 @@ tags: [year-in-review-as-marketing, marketing, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/year-in-review-as-marketing.json` | JSON schema for the Year In Review As Marketing output contract |
-| `templates/year-in-review-as-marketing.md` | Markdown skeleton with the required fields |
+| `templates/year-in-review-as-marketing.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/year-in-review-as-marketing.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-year-in-review-as-marketing.py` | Enforce Year In Review As Marketing output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-year-in-review-as-marketing.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/`
 - upstream playbook: `p3-technical-freelancer/Year-end tax, legal, and cash-flow close`
 - pro/marketing/p3-technical-freelancer
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+

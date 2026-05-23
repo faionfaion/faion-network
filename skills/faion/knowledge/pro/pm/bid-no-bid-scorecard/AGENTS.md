@@ -3,77 +3,98 @@ slug: bid-no-bid-scorecard
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Bid No Bid Scorecard: codified delivery-management practice that turns the recurring 'p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week)' decision into a repeatable, auditable artefact.
-content_id: "2a0bffe8581563a6"
-tags: [bid-no-bid-scorecard, pm, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a weighted go/no-go score on bidding a fixed-price RFP — margin, fit, compliance, AI-leverage as scored dimensions with explicit threshold.
+content_id: "81ac6af0d2a50367"
+complexity: medium
+produces: rubric
+est_tokens: 3800
+tags: [bid-no-bid-scorecard, pm, pro, rubric]
 ---
 # Bid No Bid Scorecard
 
 ## Summary
 
-**One-sentence:** Bid No Bid Scorecard: codified delivery-management practice that turns the recurring 'p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week)' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a weighted go/no-go score on bidding a fixed-price RFP — margin, fit, compliance, AI-leverage as scored dimensions with explicit threshold.
 
-**One-paragraph:** Bid No Bid Scorecard addresses the gap identified by the p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week) playbook: There is no scoring framework for whether to bid at all — margin, fit, compliance burden, AI-leverage potential. Outsource specialists carry this in their head; it should be a methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Bid No Bid Scorecard addresses the gap identified by the `p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week)` playbook: There is no scoring framework for whether to bid at all — margin, fit, compliance burden, AI-leverage potential. Outsource specialists carry this in their head; it should be a methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned `rubric` artefact carrying a named accountable owner, input citations, and a review date — downstream agents and human reviewers consume it without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Зважений scorecard з явними ваговими коефіцієнтами та порогом pass / fail.
+- Кожен вимір прив'язаний до evidence, а не до vibes — ревью‑friendly.
+- Артефакт несе версію + last_reviewed; стейл flagged on read.
+- Контрактний валідатор перевіряє діапазони + threshold + наявність owner.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Task is an instance of `p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week)` OR a closely-adjacent variant in the same engagement shape.
+- Operator has all artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent or human reviewer (not discarded after one read).
+- Tier == pro or higher (gating enforced by `tier-manifest.json`).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Team already maintains a working artefact for this gap — update it, do not duplicate.
+- Change being decided is a greenfield prototype with no production users or paying client.
+- Regulatory / compliance context overrides in-methodology guidance — defer to legal.
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent context for the `p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week)` task (last 30 days) | Markdown / chat log | engagement notes |
+| Write-access to the artefact store | repo / wiki / decision log | infra |
+| Named accountable owner (handle / email / role) | string | engagement RACI |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| [[project-manager]] | Parent role skill — provides operating context for any PM artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-input-citations | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for `rubric` shape + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate per step | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template-fill of inputs from named sources; bounded transformation. |
+| `synthesize-rubric` | sonnet | Per-instance judgment over bounded inputs to fill the `rubric` shape. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high (regulatory / large €). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/bid-no-bid-scorecard.json` | JSON schema for the Bid No Bid Scorecard output contract |
-| `templates/bid-no-bid-scorecard.md` | Markdown skeleton with the required fields |
+| `templates/bid-no-bid-scorecard.json` | JSON Schema (draft-07) for the Bid No Bid Scorecard output contract |
+| `templates/bid-no-bid-scorecard.md` | Markdown skeleton with the required fields for the Bid No Bid Scorecard artefact |
+| `templates/bid-no-bid-scorecard.example.json` | Worked filled-in example of a valid Bid No Bid Scorecard artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-bid-no-bid-scorecard.py` | Enforce Bid No Bid Scorecard output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-bid-no-bid-scorecard.py` | Enforce the Bid No Bid Scorecard output contract against the JSON Schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/pm/`
+- [[project-manager]]
+- [[change-request-pricing-rubric]]
+- [[client-status-email-template-agency]]
 - upstream playbook: `p4-outsource-specialist/Fixed-price bid discovery + estimation (1 week)`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, owner named yes/no, decision materiality) to a concrete action, with each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, route to a sibling methodology, or skip entirely.

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Bid No Bid Scorecard Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to apply Bid No Bid Scorecard end-to-end. Run sequentially — each step has a decision-gate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="collect-typed-inputs">
+      <input>Engagement notes; named input artefacts per Prerequisites table.</input>
+      <action>Load each input by path / URL. Reject any missing input; do not synthesize from prior knowledge.</action>
+      <output>Typed `inputs_used` list with name + source per row.</output>
+      <decision-gate>If any required input is missing, STOP and surface the gap to the operator.</decision-gate>
+    </step>
+
+    <step n="2" name="check-applies-if">
+      <input>Inputs list from step 1.</input>
+      <action>Verify every `Applies If` clause in AGENTS.md holds. Walk `06-decision-tree.xml` from the root question.</action>
+      <output>Applies / skip decision with the rule-id citation.</output>
+      <decision-gate>If decision == skip, emit a `skip-this-methodology` artefact with the reason and STOP.</decision-gate>
+    </step>
+
+    <step n="3" name="draft-rubric">
+      <input>Inputs list + applies decision.</input>
+      <action>Fill the `rubric` schema from `templates/bid-no-bid-scorecard.json`. Each field must trace to an input by name.</action>
+      <output>Draft artefact conforming to the schema.</output>
+      <decision-gate>If any required field is unsourced, return to step 1 with the gap list.</decision-gate>
+    </step>
+
+    <step n="4" name="self-check-failure-modes">
+      <input>Draft artefact from step 3.</input>
+      <action>Run each antipattern detector from `03-failure-modes.xml`. Apply the prescribed `fix` for any match.</action>
+      <output>Cleaned artefact + per-detector pass log.</output>
+      <decision-gate>If a high-severity antipattern matches, block and revise; do not pass to validator.</decision-gate>
+    </step>
+
+    <step n="5" name="validate-and-publish">
+      <input>Cleaned artefact + schema.</input>
+      <action>Run `scripts/validate-bid-no-bid-scorecard.py --file &lt;path&gt;`. On exit 0, write to the artefact store and surface the `ready for owner review` flag.</action>
+      <output>Stored artefact with version + last_reviewed, plus the review-flag signal.</output>
+      <decision-gate>On validator failure, return the violation list to the subagent and re-iterate from step 3.</decision-gate>
+    </step>
+
+  </section>
+</text>
