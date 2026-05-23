@@ -1,57 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="perf-test-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for perf-test-basics as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Caching every function with @lru_cache after profiling shows "DB calls are slow."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>lru_cache works for pure functions; it breaks for stateful operations (DB calls, time-dependent results, user-specific data). The reflex to add caching without checking purity is the #1 agent gotcha.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Premature optimization: agents will rewrite a function for "perf" without a benchmark.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Refuse to merge without before/after numbers from the same machine.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>"Add caching" reflex: agents wrap everything in @lru_cache — works for pure functions, breaks for stateful ones (DB calls, time-dependent results).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Check purity before caching; profile to verify the function is actually a bottleneck.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Locust spawn-rate: agents set spawn_rate = users and overwhelm the target before the test even starts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force a ramp profile (e.g. 10/s) to warm up gradually.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Agents read pytest-benchmark mean and ignore stddev; force fail criteria on mean ± 2σ of baseline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>High-stddev results are unreliable; always consider statistical variance.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>N+1 detection: agents use the caplog snippet and miss the actual queries because logging is set to INFO.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use the SQLAlchemy event listener fixture instead of log-based detection.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Profiling: agents profile localhost with no network latency and conclude the service is fast.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add a realistic latency simulation (tc qdisc add dev lo root netem delay 20ms).</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Memory: memory_profiler @profile works only on the decorated function; agents miss leaks elsewhere.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use memray run for the whole process instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Agents will load-test prod by accident.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hard-code an env-name allowlist (assert "prod" not in TARGET_URL).</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Threshold drift: agents push the threshold up after every regression to keep CI green.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require a human approver for threshold changes.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Performance Testing Basics Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="average-only" severity="high">
+      <symptom>Dashboard shows avg latency 80ms; users complain of 2-second checkouts.</symptom>
+      <root-cause source="Gil Tene">p99 not tracked.</root-cause>
+      <fix>Track p50/p95/p99 separately; alarm on p99.</fix>
+    </antipattern>
+    <antipattern id="optimise-without-profile" severity="medium">
+      <symptom>Team spent 2 weeks micro-optimising a function that contributes 2% to the trace.</symptom>
+      <root-cause source="Knuth">Skipped profiling.</root-cause>
+      <fix>Always profile first; optimise only the top 3 hotspots.</fix>
+    </antipattern>
+    <antipattern id="no-ci-gate" severity="high">
+      <symptom>p95 doubled over 3 months; nobody noticed.</symptom>
+      <root-cause source="k6 docs">No CI threshold.</root-cause>
+      <fix>Add k6 thresholds or Locust assertions on p95 + p99 + error rate.</fix>
+    </antipattern>
   </section>
 </text>

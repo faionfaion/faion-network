@@ -1,22 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="cd-pipelines Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="CD Pipelines and Deployment Strategies Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator in scripts/validate-cd-pipelines.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/cd-pipelines.json",
+  "type": "object",
+  "title": "CD pipeline config",
+  "required": [
+    "service",
+    "strategy",
+    "stages",
+    "auto_rollback",
+    "dora_emit"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "service": {
+      "type": "string"
+    },
+    "strategy": {
+      "enum": [
+        "rolling",
+        "blue_green",
+        "canary"
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "string"
+      }
+    },
+    "canary_steps": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    "health_check_path": {
+      "type": "string",
+      "pattern": "^/.+"
+    },
+    "auto_rollback": {
+      "type": "boolean",
+      "const": true
+    },
+    "dora_emit": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "strategy": "canary",
+  "stages": [
+    "build",
+    "unit",
+    "integration",
+    "staging",
+    "e2e",
+    "production"
+  ],
+  "canary_steps": [
+    5,
+    25,
+    50,
+    100
+  ],
+  "health_check_path": "/healthz",
+  "auto_rollback": true,
+  "dora_emit": true
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "strategy": "yolo",
+  "stages": [
+    "deploy"
+  ]
+}
+]]></code>
+    <note>Forbidden traits: strategy enum violation; stages minItems=4; auto_rollback must be const true.</note>
+  </example>
+  <reference path="scripts/validate-cd-pipelines.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

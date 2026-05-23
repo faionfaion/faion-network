@@ -1,22 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="perf-test-tools Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Performance Testing Tools: k6 and Locust Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator in scripts/validate-perf-test-tools.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/perf-test-tools.json",
+  "type": "object",
+  "title": "Perf-test tool config",
+  "required": [
+    "tool",
+    "script_path",
+    "base_url_env",
+    "thresholds"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "tool": {
+      "enum": [
+        "k6",
+        "locust"
+      ]
+    },
+    "script_path": {
+      "type": "string",
+      "pattern": "^.+\\.(js|py)$"
+    },
+    "base_url_env": {
+      "type": "string",
+      "pattern": "^[A-Z_]+$"
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "duration",
+          "target"
+        ],
+        "properties": {
+          "duration": {
+            "type": "string"
+          },
+          "target": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "p95_ms",
+        "p99_ms",
+        "error_rate"
+      ],
+      "properties": {
+        "p95_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "p99_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.1
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tool": "k6",
+  "script_path": "perf/k6-load.js",
+  "base_url_env": "BASE_URL",
+  "stages": [
+    {
+      "duration": "30s",
+      "target": 20
+    },
+    {
+      "duration": "60s",
+      "target": 50
+    },
+    {
+      "duration": "30s",
+      "target": 0
+    }
+  ],
+  "thresholds": {
+    "p95_ms": 300,
+    "p99_ms": 500,
+    "error_rate": 0.01
+  }
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tool": "jmeter",
+  "script_path": "load.txt",
+  "thresholds": {
+    "p95_ms": 0
+  }
+}
+]]></code>
+    <note>Forbidden traits: tool enum violation; script_path must end .js or .py; missing base_url_env; thresholds.p95_ms minimum=1.</note>
+  </example>
+  <reference path="scripts/validate-perf-test-tools.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

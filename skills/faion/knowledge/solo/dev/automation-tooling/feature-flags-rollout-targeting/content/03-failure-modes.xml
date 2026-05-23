@@ -1,22 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="feature-flags-rollout-targeting Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for feature-flags-rollout-targeting as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>A/B leakage: a user opens two tabs and sees two variants because the assignment is session-scoped, not user-scoped.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Session-scoped assignment makes analytics treat one user as two. Always key on a stable user identifier (user_id), not session token or cookie.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Global flags without user context: flag applies to all traffic or none.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without user_id, gradual rollout is impossible. The flag becomes a deploy-time toggle, not a progressive delivery tool.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>LaunchDarkly (or any SaaS flag service) outage causes your app outage because is_enabled() blocks on the SDK call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always configure a local in-memory cache on the SDK with a stale-while-revalidate policy. The cached evaluation runs even when the flag service is unreachable.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Feature Flag Rollout and Targeting Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="random-per-request" severity="high">
+      <symptom>User flips between control and treatment between two page navigations.</symptom>
+      <root-cause source="Kohavi et al">Bucketing uses random() per request.</root-cause>
+      <fix>Switch to hash(flag+user_id)%100.</fix>
+    </antipattern>
+    <antipattern id="session-id-bucket" severity="high">
+      <symptom>Returning user sees different variant after logout/login.</symptom>
+      <root-cause source="Internal — A/B attribution audit">Bucketing on session id.</root-cause>
+      <fix>Bucket on account id; fall back to stable device id only.</fix>
+    </antipattern>
+    <antipattern id="ramp-jumps-without-wait" severity="medium">
+      <symptom>Flag jumps 5% → 100% in one step; regression caught only after global blast.</symptom>
+      <root-cause source="LaunchDarkly best practices">Skipped observation window.</root-cause>
+      <fix>Enforce ramp steps + waits; reject ramp scripts without sleep / observation period.</fix>
+    </antipattern>
   </section>
 </text>

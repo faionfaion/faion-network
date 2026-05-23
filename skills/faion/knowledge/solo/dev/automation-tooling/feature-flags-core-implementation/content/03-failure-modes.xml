@@ -1,22 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="feature-flags-core-implementation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for feature-flags-core-implementation as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agents add if flag_enabled("foo") at every call site instead of at a single decision point.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Scattered flag checks multiply branches exponentially. A flag should wrap the outermost decision, not be sprinkled inside helper functions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Generating a flag-eval client with default=True so tests pass locally.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A True default leaks the new feature to 100% of production traffic when the flag is not yet configured in the flag store.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Targeting rules that pass entire user objects to the flag service.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>User objects often contain PII; flag services log evaluation context. Whitelist only the attributes needed for targeting (id, tier, groups).</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Feature Flag Core Implementation Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="scattered-env-reads" severity="high">
+      <symptom>os.getenv('FF_X') littered across 12 files; flip an override → 4 places still read stale value.</symptom>
+      <root-cause source="OpenFeature spec">No single call site.</root-cause>
+      <fix>Centralise via FeatureFlagManager.is_enabled; lint direct ENV reads of FF_*.</fix>
+    </antipattern>
+    <antipattern id="magic-string-flag-name" severity="medium">
+      <symptom>Typo in is_enabled('new_chekout') silently returns False; feature never activates.</symptom>
+      <root-cause source="Pete Hodgson — Feature Toggles">No typed registration.</root-cause>
+      <fix>Register flags via FeatureFlag dataclasses; reject is_enabled with unregistered name in CI.</fix>
+    </antipattern>
+    <antipattern id="unknown-flag-true" severity="high">
+      <symptom>Missing flag returns True; new endpoint behaviour activates for everyone.</symptom>
+      <root-cause source="OpenFeature spec">Misimplemented default.</root-cause>
+      <fix>Default to False for unknown flags; pin a regression test.</fix>
+    </antipattern>
   </section>
 </text>

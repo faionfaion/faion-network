@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="feature-flags-rollout-targeting Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for feature-flags-rollout-targeting. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Feature Flag Rollout and Targeting Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the feature-flags-rollout-targeting methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="deterministic-per-user" testable="true" depth="essential">
+      <statement>Bucketing uses hash(flag_name+user_id)%100. Same user sees consistent variant across requests and sessions.</statement>
+      <rationale source="Kohavi et al — Trustworthy Online Controlled Experiments">Random per-request bucketing flips users in/out mid-flow; non-deterministic bucketing breaks A/B attribution.</rationale>
+    </rule>
+    <rule id="rollout-percent-monotonic-up" testable="true" depth="essential">
+      <statement>Rollout percent moves only upward by default; flipping down is a rollback action, not a ramp step.</statement>
+      <rationale source="LaunchDarkly best practices">Ramping down churns the cohort and re-exposes users to the control variant, contaminating measurement.</rationale>
+    </rule>
+    <rule id="targeting-then-percent" testable="true" depth="essential">
+      <statement>Apply targeting first (country/plan/role); rollout_percent applies only within targeted cohort.</statement>
+      <rationale source="OpenFeature evaluation rules">Percent within a targeted cohort is the only stable semantics; otherwise the actual reach is unknowable.</rationale>
+    </rule>
+    <rule id="stable-user-id" testable="true" depth="essential">
+      <statement>Use a stable user_id (account id, persistent device id). Never use IP or session id for rollout bucketing.</statement>
+      <rationale source="Kohavi et al">Session/IP changes between visits; the user flips variants every session.</rationale>
+    </rule>
+    <rule id="ramp-steps-with-wait" testable="true" depth="essential">
+      <statement>Ramp follows 1% → 5% → 25% → 50% → 100% with at least one observation window between steps.</statement>
+      <rationale source="Booking.com + Statsig ramp playbooks">Each step exposes a larger cohort; observation window catches guardrail regressions before next step.</rationale>
+    </rule>
+    <rule id="fallback-anonymous" testable="true" depth="essential">
+      <statement>For anonymous users (no user_id), either disable the flag or bucket by a stable device id; never default to True.</statement>
+      <rationale source="OpenFeature spec">Anonymous-True silently leaks new behavior to crawlers and scrapers.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the flag is a binary kill-switch, traffic is fully anonymous with no stable id, or a managed SDK already buckets, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Bucketing logic only helps gradual / targeted rollout flags.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

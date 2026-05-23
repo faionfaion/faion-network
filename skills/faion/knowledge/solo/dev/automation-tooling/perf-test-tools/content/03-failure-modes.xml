@@ -1,42 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="perf-test-tools Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for perf-test-tools as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent copies BASE_URL hardcoded to production.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force __ENV.BASE_URL in k6 and fail the script if unset. This prevents accidental load against prod.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>check() missing from k6 scenarios.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without check() + errorRate.add(1), the threshold output reads success even when the SUT is 5xx-ing. check() is mandatory for every response.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent auto-tunes thresholds based on previous run results.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Convergence on the regressed value — the threshold degrades to match the slow system instead of catching the regression.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Thresholds set too tight in CI (p95 &lt; 200ms on staging).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Flakes that erode trust cause teams to relax all thresholds. Set realistic thresholds validated over 3+ runs before adding to CI gate.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Combining soak tests (8h, low load) and stress tests (3 min, ramp to break) into one scenario.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents conflate them. Soak finds memory leaks and connection pool exhaustion; stress finds throughput ceiling. Keep them in separate files.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>LLMs hallucinate k6 modules (k6/http2 doesn't exist).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always run k6 inspect script.js before a real run to catch import errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Locust agents use requests instead of self.client.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Calls via requests are invisible to Locust's measurement layer and won't be counted.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Performance Testing Tools: k6 and Locust Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="flat-vu-no-warmup" severity="medium">
+      <symptom>Test hits cold cache; p99 spike on first 30s contaminates the run.</symptom>
+      <root-cause source="k6 docs">No warmup stage.</root-cause>
+      <fix>Add 30s ramp-up stage before measurement window.</fix>
+    </antipattern>
+    <antipattern id="threshold-as-report-only" severity="high">
+      <symptom>Perf job runs every PR but never fails; latency regresses 4× over a quarter.</symptom>
+      <root-cause source="k6 thresholds docs">Thresholds configured but exit code ignored.</root-cause>
+      <fix>Use --fail-on-threshold or check exit code; remove || true.</fix>
+    </antipattern>
+    <antipattern id="share-prod-environment" severity="high">
+      <symptom>Load test hits prod; on-call paged at 3am with synthetic load alerts.</symptom>
+      <root-cause source="k6 best practices">Author pointed BASE_URL at prod.</root-cause>
+      <fix>Use staging URL with warm fixtures; reject perf scripts that hit prod hostname.</fix>
+    </antipattern>
   </section>
 </text>

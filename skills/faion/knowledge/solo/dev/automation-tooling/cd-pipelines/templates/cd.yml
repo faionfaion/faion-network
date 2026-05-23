@@ -1,0 +1,49 @@
+# __faion_header_v1__
+# purpose: GitHub Actions CD pipeline: build → unit → integration → staging → e2e → production (manual)
+# consumes: see content/02-output-contract.xml
+# produces: config; depends-on: content/01-core-rules.xml#discrete-stages
+# faion_header_json: {"__faion_header__":{"purpose":"GitHub Actions CD pipeline: build \u2192 unit \u2192 integration \u2192 staging \u2192 e2e \u2192 production (manual)","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#discrete-stages","token_budget_impact":"~150 tokens when loaded"}}
+name: cd
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/build.sh
+  unit:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/unit.sh
+  integration:
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/integration.sh
+  staging:
+    needs: integration
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh staging
+  e2e:
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/e2e.sh staging
+  production:
+    needs: e2e
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh production --strategy canary --steps 5,25,50,100
+      - run: ./scripts/dora-emit.sh

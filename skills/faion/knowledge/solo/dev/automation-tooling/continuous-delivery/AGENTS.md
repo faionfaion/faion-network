@@ -4,73 +4,89 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Router file for the CD knowledge cluster.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Router for the CD cluster: triages to cd-basics (principles + prereqs + expand-contract migrations) or cd-pipelines (YAML + strategies + health checks + rollback).
 content_id: "358892d60eb7871d"
+complexity: light
+produces: decision-record
+est_tokens: 3400
 tags: [continuous-delivery, index, router, deployment, dora-metrics]
 ---
 # Continuous Delivery (Index)
 
 ## Summary
 
-**One-sentence:** Router file for the CD knowledge cluster.
+**One-sentence:** Router for the CD cluster: triages to cd-basics (principles + prereqs + expand-contract migrations) or cd-pipelines (YAML + strategies + health checks + rollback).
 
-**One-paragraph:** Router file for the CD knowledge cluster. Dispatches to cd-basics for principles, prerequisites, expand-contract migrations, and phased adoption roadmap; dispatches to cd-pipelines for YAML, deployment strategies (blue-green, canary, rolling), health checks, and monitoring. Reading this index alone is insufficient — always fan out to the correct child after running the triage checklist below.
+**One-paragraph:** Router for the CD cluster: triages to cd-basics (principles + prereqs + expand-contract migrations) or cd-pipelines (YAML + strategies + health checks + rollback). Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Need to decide which CD methodology to load first (principles vs concrete pipeline).
+- Triaging a CD adoption project from cold start.
+- Choosing between deepening principle knowledge or shipping pipeline YAML.
+- Output produces `decision-record` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Trigger: a user prompt mentions "CD", "continuous delivery", "release pipeline", "deployment automation", "DORA metrics", or "blue-green / canary / rolling" without specifying basics vs. pipeline YAML.
-- Trigger: an agent must produce an executive summary of CD using only the Quick Reference and CD vs CI matrix below.
-- Trigger: cross-linking another knowledge base (trunk-based-dev, feature-flags, devops-engineer) into a single CD landing page.
-- Trigger: auditing CD readiness across multiple services and needing a router to fan out per-service to cd-basics or cd-pipelines.
-- Trigger: stakeholder asks "are we doing CD?" — answer requires the matrix here plus a prerequisite check from cd-basics.
+- Need to decide which CD methodology to load first (principles vs concrete pipeline).
+- Triaging a CD adoption project from cold start.
+- Choosing between deepening principle knowledge or shipping pipeline YAML.
 
 ## Skip If (ANY kills it)
 
-- Implementation work — open cd-basics or cd-pipelines directly; do not paraphrase from this index.
-- Continuous Deployment safety nets (canary analysis, SLO-based rollout gates, automated rollback) — covered in cd-pipelines, not here.
-- Team-process change management — Accelerate and The DevOps Handbook are referenced but not unpacked; route to product-operations or pm domains.
-- Branching strategy questions — route to trunk-based-dev-principles / trunk-based-dev-patterns.
-- Feature-flag system design — route to feature-flags methodology.
+- Already know which child you need — load it directly.
+- No CD ambition; classic manual release workflow is the chosen pattern.
+- Stack is batch / one-shot — CD methodology doesn't apply.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| CD adoption stage | principles-needed / pipeline-needed | team |
+| Existing pipeline (if any) | ci.yml or cd.yml | repository |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+none
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-stage` | haiku | Map team state to principles vs pipeline path. |
+| `dispatch-child` | haiku | Emit pointer to cd-basics or cd-pipelines. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/triage_checklist.md` | Triage checklist routing to cd-basics or cd-pipelines |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-continuous-delivery.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[cd-basics]]
+- [[cd-pipelines]]
+- [[feature-flags-types-lifecycle]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all CD prerequisites in place (CI + tests + IaC + flags)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

@@ -4,71 +4,95 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Patterns for backend architecture covering database schema design, ORM query optimization, caching, background jobs, API response shapes, authentication, and structured logging.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Applies backend architecture patterns incrementally: DB schema design, ORM query optimisation, caching, background jobs, API envelopes, auth, structured logging.
 content_id: "a243f4eef28f1591"
-tags: [architecture, database, api, performance, observability]
+complexity: medium
+produces: rubric
+est_tokens: 4300
+tags: [architecture, orm-optimisation, caching, background-jobs, structured-logging]
 ---
 # Dev Methodologies — Architecture
 
 ## Summary
 
-**One-sentence:** Patterns for backend architecture covering database schema design, ORM query optimization, caching, background jobs, API response shapes, authentication, and structured logging.
+**One-sentence:** Applies backend architecture patterns incrementally: DB schema design, ORM query optimisation, caching, background jobs, API envelopes, auth, structured logging.
 
-**One-paragraph:** Patterns for backend architecture covering database schema design, ORM query optimization, caching, background jobs, API response shapes, authentication, and structured logging. Apply patterns incrementally — commit and test after each one.
+**One-paragraph:** Applies backend architecture patterns incrementally: DB schema design, ORM query optimisation, caching, background jobs, API envelopes, auth, structured logging. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Greenfield or expanding backend service that needs an architectural baseline.
+- Refactoring an existing service that lacks consistent envelope/auth/logging patterns.
+- Owner can commit + test after each pattern; incremental adoption is feasible.
+- Output produces `rubric` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Drafting backend architecture for a new service: choosing DB schema layout, ORM access patterns, cache strategy, queue/worker split, auth model.
-- Reviewing an existing service for N+1 queries, missing indexes, blocking I/O, ad-hoc auth, or unstructured logging.
-- Generating migration scripts (Alembic / Django / knex) and verifying they are backward compatible (expand-then-contract for CD).
-- Standardizing API response envelopes across a polyglot codebase.
+- Greenfield or expanding backend service that needs an architectural baseline.
+- Refactoring an existing service that lacks consistent envelope/auth/logging patterns.
+- Owner can commit + test after each pattern; incremental adoption is feasible.
 
 ## Skip If (ANY kills it)
 
-- Frontend / UI architecture — this set is backend-only (DB, API, cache, queue, observability).
-- Greenfield prototyping where the cost of patterns exceeds the value (one-off scripts, throwaway demos).
-- Replacement for a real DBA on high-stakes schema design (sharding, multi-region, ACID-vs-BASE trade-offs).
-- When the hosting platform already prescribes patterns (e.g. Supabase, Firebase) — defer to platform conventions.
+- Pure frontend or batch-only service — backend patterns do not apply.
+- Existing architecture is fine; this would only churn working code.
+- No tests in place — patterns must ride on a test safety net.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ORM and migration tool | Django / SQLAlchemy / Prisma | team |
+| Cache infra | Redis or Memcached | infra |
+| Background job runner | Celery / RQ / SQS / similar | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[practices-backend-languages]] | language-specific patterns sit beneath the architecture |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-existing` | sonnet | Rubric scoring against patterns. |
+| `apply-pattern` | sonnet | Implement one pattern per PR. |
+| `test-after-each` | haiku | Smoke tests on each PR. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/api_envelope.py` | Standard API response envelope: data + meta + errors |
+| `templates/structured_logger.py` | Structured JSON logger with request_id correlation |
+| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-dev-methodologies-architecture.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[logging-patterns]]
+- [[feature-flags-core-implementation]]
+- [[best-practices-2026]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is the service backend AND has tests AND can iterate per pattern?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

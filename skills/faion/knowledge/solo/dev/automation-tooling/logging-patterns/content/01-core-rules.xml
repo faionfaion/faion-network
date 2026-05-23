@@ -1,207 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="logging-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for logging-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Logging Patterns Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the logging-patterns methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>One config file (logging_config.py / logger.ts) imported everywhere; never call getLogger configuration inline.</statement>
-      <rationale source="v1-source">Scattered configuration is hard to audit and audit trail setup, making it impossible to enforce redaction or field presence globally.</rationale>
+    <rule id="json-structured" testable="true" depth="essential">
+      <statement>All application logs are JSON objects with ts + level + event + request_id + fields. No printf-style text in production code.</statement>
+      <rationale source="Elastic Common Schema + 12-factor">Structured logs are queryable by field; text logs require regex archaeology at 3am.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use structlog for structured logging; bind request context (request_id, user_id) via ContextVar so all downstream code logs with correlation IDs without explicit parameter passing.</statement>
-      <rationale source="v1-source">Passing context as function parameters is fragile; ContextVar provides implicit request-scoped data safe for async frameworks.</rationale>
+    <rule id="request-id-correlation" testable="true" depth="essential">
+      <statement>Every log line within a request carries the same request_id (UUID/ULID), injected by middleware on entry.</statement>
+      <rationale source="OpenTelemetry baggage spec">Without correlation, multi-service or multi-worker traces are impossible to reconstruct.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use DEBUG for detailed troubleshooting (dev/staging), INFO for business events and state changes, WARNING for recoverable anomalies, ERROR for actionable failures, and CRITICAL for service-threatening conditions only.</statement>
-      <rationale source="v1-source">Over-logging at ERROR saturates alerting and desensitizes on-call responders; under-logging at INFO hides the breadcrumb trail needed for post-incident analysis.</rationale>
+    <rule id="pii-redaction-at-formatter" testable="true" depth="essential">
+      <statement>PII (email, phone, card-like) is redacted at the formatter layer, not at call sites.</statement>
+      <rationale source="GDPR + CCPA logging guidance">Call-site redaction always misses a path; formatter redaction is centralised and auditable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Add request logging middleware (FastAPI, Flask, Express) that captures request_id, method, path, user_id, duration_ms, and status_code; propagate request_id to response headers.</statement>
-      <rationale source="v1-source">HTTP logging at the framework boundary gives a complete view of request lifecycle and enables correlation across service boundaries.</rationale>
+    <rule id="level-discipline" testable="true" depth="essential">
+      <statement>Levels follow: debug=dev only; info=normal flow; warn=recoverable; error=unhandled; critical=human intervention required.</statement>
+      <rationale source="Python logging docs + SRE Workbook">Without level discipline, dashboards either flood (everything warn) or miss real issues (everything info).</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Define an EventType enum and log business events (user.registered, order.paid, payment.failed) with entity_type, entity_id, and relevant context; never log raw request/response bodies — that leaks PII and costs log storage.</statement>
-      <rationale source="v1-source">Business events provide an audit trail and enable reconstruction of user journeys; raw payloads are searchable only by exact value and contain sensitive data that should be redacted.</rationale>
+    <rule id="perf-fields-on-egress" testable="true" depth="essential">
+      <statement>Request/job egress logs include duration_ms + db_query_count + cache_hit_count.</statement>
+      <rationale source="Internal — perf audit">These three fields catch the majority of latency regressions without enabling a tracer.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Define a redact-list constant (password, secret, token, api_key, ssn, credit_card, authorization) and apply a redaction processor to all log events; never log raw request/response payloads or auth headers.</statement>
-      <rationale source="v1-source">Accidental logging of secrets (API keys, passwords) and PII (SSN, credit cards) creates compliance violations and security risks. Redaction must happen in the formatter, not at call sites, to catch accidental leaks.</rationale>
+    <rule id="log-volume-budget" testable="true" depth="essential">
+      <statement>Each service has a logs-per-second budget. Logging in tight loops without sampling is forbidden.</statement>
+      <rationale source="Loki / Datadog cost docs">Unbounded logging is the silent killer of log sinks and ingest budgets.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use context managers or decorators to log operation duration (database_query, cache_lookup, external_api_call); flag operations exceeding a threshold (100ms for DB, 200ms for API).</statement>
-      <rationale source="v1-source">Performance logging captures real-world latency and enables correlation between slow logs and alerts; threshold-based warnings surface degradation early.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Enforce no print() in production code via ruff T20 rule; agents that add print() for debugging must remove it before committing.</statement>
-      <rationale source="v1-source">print() bypasses the log aggregation stack, lacks structured fields, and clutters stdout in containers where stdout is parsed as structured JSON.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Enforce no console.log in production TypeScript/JavaScript via ESLint no-console rule.</statement>
-      <rationale source="v1-source">console.log sends to stderr, bypassing structured logging, and cannot be filtered, sampled, or redacted at the formatter level.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use event names like user.login.failed, not free-text English. Enables grep + dashboards without regex.</statement>
-      <rationale source="v1-source">Consistent event naming enables dashboard queries and alerting without fragile regex patterns.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Always include request_id, user_id, tenant_id (when applicable) on every log line via context-vars.</statement>
-      <rationale source="v1-source">Context-bound fields enable correlation across logs for the same request without repeating them at every call site.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Redact list as a constant: password|token|secret|authorization|set-cookie|card_number|cvv — apply in formatter, not at call sites.</statement>
-      <rationale source="v1-source">Redaction in the formatter catches accidental leaks at the source; call-site redaction is fragile and incomplete.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Sample DEBUG in prod (1%); never sample ERROR/WARN. Tag environment, service, version on every line — ops will need them.</statement>
-      <rationale source="v1-source">ERROR/WARN sampling loses the events you most need; DEBUG sampling reduces cost while preserving critical information.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Prefer logger.exception (Python) / err field (pino) so stack traces are structured, not stringified.</statement>
-      <rationale source="v1-source">Structured stack traces are searchable and can be parsed by log aggregators; stringified tracebacks are opaque blobs.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>When adopting structured logging, run ruff check . --select T20 and ESLint no-console to find all print/console.log statements and replace with structured logger calls.</statement>
-      <rationale source="v1-source">Print statements bypass structured logging; converting them is a prerequisite for observability.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Agents love f"{user}" format strings — they bypass structured logging. Force logger.info("event", user_id=user.id).</statement>
-      <rationale source="v1-source">Format strings are unsearchable and unstructured; keyword arguments create indexable fields.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Agents log full request/response bodies "for debugging" — costs explode and PII leaks. Set max-payload-size in formatter.</statement>
-      <rationale source="v1-source">Full payloads are high-volume and contain PII; log only relevant summary fields with size limits.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Auth headers in requests.headers get logged when an agent dumps dict(req). Add a header allowlist.</statement>
-      <rationale source="v1-source">Authorization headers are credentials; they must never appear in logs.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Async context loss: agents add asyncio.create_task(work()) without copy_context() — request_id disappears mid-flow.</statement>
-      <rationale source="v1-source">Context variables do not propagate across task boundaries; copy_context() must be used explicitly.</rationale>
-    </rule>
-    <rule id="r20" testable="true" depth="essential">
-      <statement>Multi-line tracebacks break Loki/Vector parsers if not collapsed; an agent's "just print the exception" creates 50 unrelated log entries.</statement>
-      <rationale source="v1-source">Multi-line raw tracebacks confuse log parsers; they must be structured as a single log entry.</rationale>
-    </rule>
-    <rule id="r21" testable="true" depth="essential">
-      <statement>Logger config drift between dev/prod (text vs JSON) means dev logs look different and devs don't trust prod format.</statement>
-      <rationale source="v1-source">Config must be identical; use feature flags to switch format if needed, not environment-specific config.</rationale>
-    </rule>
-    <rule id="r22" testable="true" depth="essential">
-      <statement>Python logging is global mutable state — multiple dictConfig calls clobber each other; agents iterating on configs hit this.</statement>
-      <rationale source="v1-source">Only initialize logging once at startup; changes to config must happen before any logger is created.</rationale>
-    </rule>
-    <rule id="r23" testable="true" depth="essential">
-      <statement>structlog contextvars lost across asyncio.create_task boundaries unless explicitly propagated.</statement>
-      <rationale source="v1-source">Async task creation does not copy context; must use copy_context() to preserve context-bound fields.</rationale>
-    </rule>
-    <rule id="r24" testable="true" depth="essential">
-      <statement>Sampling sensitive log lines for cost reasons drops the one line you needed during an incident.</statement>
-      <rationale source="v1-source">Never sample ERROR/WARN; sample DEBUG only in production.</rationale>
-    </rule>
-    <rule id="r25" testable="true" depth="essential">
-      <statement>Forwarders (Vector, Fluent Bit) parse-fail on multi-line tracebacks unless multiline.parser is configured.</statement>
-      <rationale source="v1-source">Structured exception handling prevents parse failures; agents must use logger.exception, not string concatenation.</rationale>
-    </rule>
-    <rule id="r26" testable="true" depth="essential">
-      <statement>Log-volume cost in Datadog/New Relic balloons silently; one DEBUG-in-prod incident costs $5k.</statement>
-      <rationale source="v1-source">Set strict log-level guards and per-logger filtering to prevent cost surprises.</rationale>
-    </rule>
-    <rule id="r27" testable="true" depth="essential">
-      <statement>For large-scale observability, use a managed log aggregator: Datadog Logs (fast but expensive), Grafana Loki (label-based, cheap), Better Stack (solo-friendly), Axiom (AI-friendly queries), or AWS CloudWatch Logs Insights (for AWS workloads).</statement>
-      <rationale source="v1-source">Self-hosted solutions (Elastic, OpenSearch) require significant ops burden; managed services are worth the cost for uptime and reliability.</rationale>
-    </rule>
-    <rule id="r28" testable="true" depth="essential">
-      <statement>For log analysis from the command line, use jq (slice JSON), lnav (TUI navigator), gron (make JSON greppable), humanlog (pretty-print), pino-pretty (Node formatter).</statement>
-      <rationale source="v1-source">CLI tools enable rapid incident investigation without logging into the SaaS portal.</rationale>
-    </rule>
-    <rule id="r29" testable="true" depth="essential">
-      <statement>For shipping logs at scale (Kubernetes), use Vector (high-perf, Wasm-scriptable), Fluent Bit (lightweight, K8s-native), or OpenTelemetry Logs API (future-proof).</statement>
-      <rationale source="v1-source">These handle high log volume, backpressure, and retries better than raw file tailing.</rationale>
-    </rule>
-    <rule id="r30" testable="true" depth="essential">
-      <statement>For incident timeline reconstruction, query logs by request_id across all services; emit a chronological table of timestamp, service, level, event, context_keys; highlight ERROR/WARN and the 3 INFO events preceding them.</statement>
-      <rationale source="v1-source">Structured request IDs enable end-to-end request tracing without manual log correlation.</rationale>
-    </rule>
-    <rule id="r31" testable="true" depth="essential">
-      <statement>Use service tags (environment, service_name, version, region, instance_id) on every log entry so filtering by deployment is possible during triage.</statement>
-      <rationale source="v1-source">Missing metadata makes it impossible to correlate logs with deployment versions or regional outages.</rationale>
-    </rule>
-    <rule id="r32" testable="true" depth="essential">
-      <statement>Compliance domains needing audit trails must log who did what, when, with what payload hash. Include actor (user_id or service), action (verb), object (entity), timestamp, and a hash of the request/response.</statement>
-      <rationale source="v1-source">Audit logs are the evidence trail for compliance audits; weak logging undermines regulatory compliance.</rationale>
-    </rule>
-    <rule id="r33" testable="true" depth="essential">
-      <statement>Store audit logs in an append-only format with integrity checks (signed checksums); never allow deletion or modification after the fact.</statement>
-      <rationale source="v1-source">Audit logs are evidence; modifiability or deletability makes them inadmissible in audits.</rationale>
-    </rule>
-    <rule id="r34" testable="true" depth="essential">
-      <statement>For hot loops (&gt;1M iterations/sec), metrics (counters, histograms) are more efficient than individual log entries. Sample high-volume logs sparingly (DEBUG at 1%, never ERROR/WARN).</statement>
-      <rationale source="v1-source">Logging every iteration balloons I/O and cost; metrics aggregation is more efficient for performance-critical paths.</rationale>
-    </rule>
-    <rule id="r35" testable="true" depth="essential">
-      <statement>Set log level per logger to prevent uncontrolled verbosity. Root logger at INFO, app-specific at DEBUG only when needed.</statement>
-      <rationale source="v1-source">DEBUG logging everywhere costs significant I/O and storage; granular control prevents runaway costs.</rationale>
-    </rule>
-    <rule id="r36" testable="true" depth="essential">
-      <statement>Combine logs and metrics: logs answer "what happened", metrics answer "how much/often/where". Use both, not one or the other.</statement>
-      <rationale source="v1-source">Logs provide event-level detail; metrics provide aggregated visibility. Together they give complete observability.</rationale>
-    </rule>
-    <rule id="r37" testable="true" depth="essential">
-      <statement>faion-sdd-executor-agent enforces the "no print" gate via ruff check . --select T20 and ESLint no-console.</statement>
-      <rationale source="v1-source">Quality gates ensure logging compliance before code reaches production.</rationale>
-    </rule>
-    <rule id="r38" testable="true" depth="essential">
-      <statement>A password-scrubber-agent scans logs/code for accidental secret prints before commit. Rejects commits with hardcoded API keys, passwords, or tokens in log statements or config.</statement>
-      <rationale source="v1-source">Automated scrubbing prevents accidental secrets from leaking into logs.</rationale>
-    </rule>
-    <rule id="r39" testable="true" depth="essential">
-      <statement>Use snake_case for all log field names. Standard fields: event (verb), actor (user_id or service), object (entity_id), latency_ms (duration), correlation_id (request trace), source (module name), environment (prod/staging/dev).</statement>
-      <rationale source="v1-source">Consistent field names make dashboards, queries, and alerting rules reusable across the codebase.</rationale>
-    </rule>
-    <rule id="r40" testable="true" depth="essential">
-      <statement>Never nest the same field at different depths. If request_id appears in logs, it must always be at the top level, not nested inside a context object.</statement>
-      <rationale source="v1-source">Inconsistent nesting breaks log aggregator queries and makes correlation difficult.</rationale>
-    </rule>
-    <rule id="r41" testable="true" depth="essential">
-      <statement>Use jq for JSON log slicing: jq '.[] | select(.level=="ERROR")' logs.json. Use lnav for interactive TUI navigation. Use gron to make JSON greppable: gron logs.json | grep request_id.</statement>
-      <rationale source="v1-source">CLI tools enable rapid incident investigation without the SaaS portal.</rationale>
-    </rule>
-    <rule id="r42" testable="true" depth="essential">
-      <statement>humanlog (Go) and pino-pretty (Node) pretty-print JSON logs during development. Set JSON_LOG=false env var in dev to switch to human-readable format.</statement>
-      <rationale source="v1-source">Human-readable format aids development debugging; JSON format is required for production forwarding.</rationale>
-    </rule>
-    <rule id="r43" testable="true" depth="essential">
-      <statement>DEBUG: Detailed troubleshooting information (variable values, loop iterations, method entry/exit). Use in dev/staging only; never in production steady-state. Examples: "Processing item 42", "Cache hit for key X", "Step 3 of migration completed".</statement>
-      <rationale source="v1-source">DEBUG is verbose and high-volume; production deployment should have DEBUG disabled or sampled at 1%.</rationale>
-    </rule>
-    <rule id="r44" testable="true" depth="essential">
-      <statement>INFO: Business events and expected state transitions (user registered, order created, payment succeeded). INFO is the expected log level in production; every INFO message should answer "what important thing just happened".</statement>
-      <rationale source="v1-source">INFO logs are the audit trail; they should be useful post-incident without being noisy.</rationale>
-    </rule>
-    <rule id="r45" testable="true" depth="essential">
-      <statement>WARNING: Unexpected but non-critical conditions (deprecated API usage, rate limit approaching, slow query detected). Warnings should trigger investigation but not automated page.</statement>
-      <rationale source="v1-source">Warnings are signals to humans that something needs attention; over-warning desensitizes responders.</rationale>
-    </rule>
-    <rule id="r46" testable="true" depth="essential">
-      <statement>ERROR: A failure that disrupted a specific request or operation (payment failed, database connection lost, validation error on user input). ERROR should include context (user_id, order_id, error_code) and be actionable by an engineer.</statement>
-      <rationale source="v1-source">ERRORs are the primary alerting signal; they should be specific enough to guide investigation.</rationale>
-    </rule>
-    <rule id="r47" testable="true" depth="essential">
-      <statement>CRITICAL: System-level failures that prevent the service from operating (out of disk space, database unreachable, inability to start, data corruption detected). CRITICAL is reserved for issues that require immediate remediation.</statement>
-      <rationale source="v1-source">CRITICAL should be rare; every CRITICAL event is a page to on-call.</rationale>
-    </rule>
-    <rule id="r48" testable="true" depth="essential">
-      <statement>In asyncio, context variables (request_id, user_id) are NOT automatically propagated across task boundaries. Use asyncio.create_task(coro) only with copy_context() wrapping, else context is lost.</statement>
-      <rationale source="v1-source">Async task creation is a boundary; context must be explicitly copied.</rationale>
-    </rule>
-    <rule id="r49" testable="true" depth="essential">
-      <statement>In FastAPI, always set context vars in the middleware BEFORE calling call_next(request). Setting them AFTER the response will miss logs from the request handler.</statement>
-      <rationale source="v1-source">Middleware order and timing is critical for context propagation.</rationale>
-    </rule>
-    <rule id="r50" testable="true" depth="essential">
-      <statement>In Node.js with AsyncLocalStorage, the same applies: create the store at module level, set it in middleware before invoking the request handler, and propagate it across async task boundaries explicitly.</statement>
-      <rationale source="v1-source">JS async context is not inherited; it must be explicitly threaded through promises and async functions.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>One-shot script, existing structured logs, or no sink — skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Logging baseline pays back only with production runtime + a sink to query.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

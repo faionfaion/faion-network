@@ -4,73 +4,96 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Extract user-facing strings to ICU MessageFormat keys, format dates/numbers/currency through locale-aware APIs (Intl/Babel), use logical CSS properties for RTL support, and validate key drift in CI.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Extracts user-facing strings to ICU MessageFormat keys, formats dates/numbers/currency via Intl/Babel, uses logical CSS properties for RTL, and validates key drift in CI.
 content_id: "66f987770d3b9b55"
-tags: [i18n, localization, rtl, icu-messageformat, multi-locale]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [i18n, icu-messageformat, rtl, locale-aware-formatting, key-drift]
 ---
 # Internationalization (i18n)
 
 ## Summary
 
-**One-sentence:** Extract user-facing strings to ICU MessageFormat keys, format dates/numbers/currency through locale-aware APIs (Intl/Babel), use logical CSS properties for RTL support, and validate key drift in CI.
+**One-sentence:** Extracts user-facing strings to ICU MessageFormat keys, formats dates/numbers/currency via Intl/Babel, uses logical CSS properties for RTL, and validates key drift in CI.
 
-**One-paragraph:** Extract user-facing strings to ICU MessageFormat keys, format dates/numbers/currency through locale-aware APIs (Intl/Babel), use logical CSS properties for RTL support, and validate key drift in CI. Sync with a Translation Management System (TMS) like Lokalise or Crowdin for team translation workflows.
+**One-paragraph:** Extracts user-facing strings to ICU MessageFormat keys, formats dates/numbers/currency via Intl/Babel, uses logical CSS properties for RTL, and validates key drift in CI. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Product ships to ≥2 locales OR plans to within the next 2 quarters.
+- Codebase mixes hardcoded English strings with user-facing surfaces.
+- Right-to-left support (Arabic, Hebrew) is on the roadmap.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Externalizing hardcoded strings in an existing single-locale codebase (Python/FastAPI, Django, React/Next, Vue, mobile).
-- Adding a second/third locale (especially RTL) and needing to scan layouts for physical CSS properties, fixed widths, hardcoded date/number formats.
-- Generating ICU MessageFormat plural/select rules for a target locale (Slavic/Arabic plurals are agent-trap territory).
-- Extracting messages, syncing with a TMS (Lokalise/Crowdin/Phrase/Tolgee), and merging back into the repo.
-- Bootstrapping pybabel, i18next, react-intl, or next-intl configuration end-to-end.
+- Product ships to ≥2 locales OR plans to within the next 2 quarters.
+- Codebase mixes hardcoded English strings with user-facing surfaces.
+- Right-to-left support (Arabic, Hebrew) is on the roadmap.
 
 ## Skip If (ANY kills it)
 
-- True one-locale-forever apps (internal admin tools, regulated single-market products) — the i18n tax outweighs the value.
-- For copywriting/localization quality. Agents extract and wire keys; native human translators decide tone, register, dialect.
-- For legal/medical/financial copy in regulated markets — those need certified translators, not LLM output.
-- For RTL bidirectional text rendering bugs in libraries — agents can flag them but fixing requires Unicode BIDI expertise.
-- When the project uses a proprietary framework with no public message-extraction tooling.
+- Single locale forever (verified by product) — overhead does not pay back.
+- Static brochure site with no dynamic strings.
+- All user content is user-generated; only chrome strings need translation and they are <20 strings.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Locale list | list of BCP-47 tags | product |
+| ICU library | react-intl / FormatJS / Babel + ICU | team |
+| CI runner | GitHub Actions | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[best-practices-2026]] | TS/Python strict baseline supports the i18n setup |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `string-extraction` | sonnet | Detect hardcoded strings and replace with t('key'). |
+| `rtl-audit` | sonnet | Replace physical CSS properties with logical ones. |
+| `key-drift-check` | haiku | Mechanical missing-key detection in CI. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/locale_en.json` | Base English locale file: ICU MessageFormat keys |
+| `templates/key_drift_check.py` | CI check: every key in en.json exists in all locales |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-internationalization.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[best-practices-2026]]
+- [[practices-frontend-components]]
+- [[feature-flags-rollout-targeting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Will the product ship to ≥2 locales OR include RTL within 2 quarters?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

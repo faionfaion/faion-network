@@ -1,111 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="internationalization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for internationalization. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Internationalization (i18n) Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the internationalization methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use stable dotted keys (feature.surface.intent) for all user-facing strings; never auto-generate hash keys or use the EN string as the key.</statement>
-      <rationale source="v1-source">Stable keys survive copy edits; hash keys change when content changes, invalidating all translations. String-as-key forces re-translation on wording tweaks.</rationale>
+    <rule id="icu-messageformat" testable="true" depth="essential">
+      <statement>All translatable strings use ICU MessageFormat keys via t('key', {vars}). Concatenated strings are forbidden.</statement>
+      <rationale source="ICU + FormatJS docs">Plural and gender rules differ per locale; ICU is the only correct way to express them.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use ICU MessageFormat for all plurals and gender/select — never gettext-style ngettext for new code; emit all CLDR-required plural categories for the target locale.</statement>
-      <rationale source="v1-source">EN has only one/other; Ukrainian requires one/few/many/other; Arabic requires zero/one/two/few/many/other. Missing categories produce wrong strings for specific numbers.</rationale>
+    <rule id="locale-aware-formatting" testable="true" depth="essential">
+      <statement>Dates / numbers / currency formatted via Intl.DateTimeFormat / NumberFormat / Babel format_currency. No manual string concatenation.</statement>
+      <rationale source="Intl spec + Babel docs">Manual formatting breaks the moment locale changes (decimal separator, currency placement).</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use pybabel extract to pull strings into messages.pot; compile to binary .mo files before deployment — gettext only reads compiled catalogues.</statement>
-      <rationale source="v1-source">Shipping uncompiled .po files means the translation layer silently falls back to EN; the compile step must be part of the build, not manual.</rationale>
+    <rule id="logical-css-for-rtl" testable="true" depth="essential">
+      <statement>CSS uses logical properties (margin-inline-start, padding-block-end). Physical properties (margin-left, padding-top) are linted-forbidden on layout components.</statement>
+      <rationale source="MDN CSS Logical Properties">Logical properties flip automatically in RTL contexts; physical ones break Arabic and Hebrew layouts.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Detect locale from request in priority order: query param, Accept-Language header, user preference; store in a ContextVar so all downstream code reads the correct locale without passing it explicitly.</statement>
-      <rationale source="v1-source">Passing locale as a function parameter through every layer is fragile and verbose; ContextVar provides an implicit request-scoped locale that is safe for async frameworks.</rationale>
+    <rule id="key-drift-ci" testable="true" depth="essential">
+      <statement>CI runs a key-drift check: every key in the base locale (en.json) must exist in every other locale. Missing keys fail CI.</statement>
+      <rationale source="Crowdin + Phrase i18n CI">Drift produces silent fallbacks to en, leading to mixed-language UIs.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Always format dates, numbers, and currencies through Intl.DateTimeFormat / Intl.NumberFormat (JS) or babel.dates / babel.numbers (Python) — never via string concatenation or manual separator insertion.</statement>
-      <rationale source="v1-source">Decimal separators differ (1,000 US vs 1.000 DE vs 1 000 FR vs ١٬٠٠٠ AR); calendar systems differ (Gregorian vs Hijri). Manual formatting produces wrong output for non-EN locales.</rationale>
+    <rule id="no-hardcoded-strings-pr-rule" testable="true" depth="essential">
+      <statement>PRs introducing hardcoded user-facing English strings are rejected; all must go through t().</statement>
+      <rationale source="Internal — i18n audit">Once a hardcoded string ships, it is invisible to translators; rejection is cheaper than archeology.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use logical CSS properties (margin-inline-start, padding-block, text-align: start, border-inline-start) instead of physical properties (margin-left, padding-top, text-align: left) in all new UI components.</statement>
-      <rationale source="v1-source">Physical properties do not flip for RTL languages; logical properties automatically map to the correct physical direction based on writing-mode and dir attributes.</rationale>
+    <rule id="fallback-locale-explicit" testable="true" depth="essential">
+      <statement>Fallback locale chain is explicit: tag→language root→en. Document the chain.</statement>
+      <rationale source="ICU locale lookup spec">Implicit fallback chains produce surprising mixed-language UIs in edge cases.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Set dir="rtl" at the root element for RTL locales; use dir="ltr" on code blocks, phone numbers, and other LTR-only content within RTL pages.</statement>
-      <rationale source="v1-source">Without dir="ltr" on code blocks, browsers apply RTL text layout to code, mangling indentation and operator reading order.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Treat the EN catalogue as the source of truth; push only EN to the TMS and pull only translations back — never allow the TMS to overwrite EN entries.</statement>
-      <rationale source="v1-source">Bidirectional sync can clobber human-reviewed EN copy with TMS auto-suggestions. One-directional push preserves EN as the authoritative source.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Fail the build if any locale's key set differs from EN; check that ICU placeholder names match exactly across all locales.</statement>
-      <rationale source="v1-source">A missing key silently falls back to EN; a renamed placeholder ({userName} vs {ім'яКористувача}) produces a broken string with the literal placeholder name visible.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Provide a description or @context comment for every ambiguous string; include a screenshot or UI description — "Open" as a verb and "Open" as an adjective translate differently in most languages.</statement>
-      <rationale source="v1-source">Context-free strings cause polysemy errors. For "Open" in Japanese, the wrong word choice is over 50% likely without UI context.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Run pseudo-localization (replace characters with accented variants like Hello → Ḫèĺĺō) during development to surface unwrapped strings, fixed widths, and RTL bleeds before real translation.</statement>
-      <rationale source="v1-source">Pseudo-localization catches i18n gaps cheaply in dev; real translation is expensive and slow. Finding a hardcoded string in pseudo-locale review costs minutes; finding it post-launch costs weeks.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>LLM translation quality is non-uniform: strong on EN/ES/DE/FR/UK, weak on low-resource locales (Hausa, Tagalog, Khmer).</statement>
-      <rationale source="v1-source">For low-resource locales, professional human translation is essential; LLM output is unreliable.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Plural rules: LLMs often emit only one/other and miss few/many/two for Slavic, Arabic, Welsh.</statement>
-      <rationale source="v1-source">CLDR plural categories must be verified against official rules; LLMs hallucinate category completeness.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Context loss: same EN string ("Open") reused as verb and adjective will be mistranslated without screenshots / @context comments.</statement>
-      <rationale source="v1-source">Polysemy requires context; isolated strings produce wrong translations 50%+ of the time.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Concatenation refactors: agents may turn "Hello " + name into f"Hello {name}" instead of an ICU template — they must use {name} placeholders inside the message string.</statement>
-      <rationale source="v1-source">String interpolation at the call site prevents translators from reordering words for grammar; ICU templates allow word order changes.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>RTL: agents tend to flip layouts globally instead of relying on logical CSS properties; can break LTR rendering.</statement>
-      <rationale source="v1-source">Logical CSS handles bidirectional automatically; manual flips break LTR content like code blocks.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Date/number formatting: agents fall back to toLocaleString() without specifying calendar, numbering system, or hourCycle.</statement>
-      <rationale source="v1-source">Explicit Intl options ensure consistent formatting across browsers and prevent ambiguous dates.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Key collisions across modules when no namespace convention exists.</statement>
-      <rationale source="v1-source">Dotted keys (feature.surface.intent) prevent collisions and enable modular key management.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Two-pass agent workflow: pass 1 extracts and externalizes strings; pass 2 validates plural categories, placeholder matching, and Intl usage.</statement>
-      <rationale source="v1-source">Separation of concerns reduces risk; each pass can be reviewed and tested independently.</rationale>
-    </rule>
-    <rule id="r20" testable="true" depth="essential">
-      <statement>Use ICU MessageFormat from day one — gettext-style _n cannot express gender/select cleanly.</statement>
-      <rationale source="v1-source">ICU is strictly more expressive; starting with it avoids costly migration later.</rationale>
-    </rule>
-    <rule id="r21" testable="true" depth="essential">
-      <statement>Stable dotted keys (feature.surface.intent) survive copy edits; auto-generated hash keys do not.</statement>
-      <rationale source="v1-source">Copy changes invalidate hash-based keys; stable keys preserve translation investment.</rationale>
-    </rule>
-    <rule id="r22" testable="true" depth="essential">
-      <statement>Reserve 30-50% layout headroom — DE/RU/UK strings expand significantly vs EN.</statement>
-      <rationale source="v1-source">Fixed widths break on expansion; flexbox with headroom prevents truncation.</rationale>
-    </rule>
-    <rule id="r23" testable="true" depth="essential">
-      <statement>Use logical CSS properties (margin-inline-start, padding-block) and dir="auto" on neutral content; gate manual overrides behind [dir="rtl"].</statement>
-      <rationale source="v1-source">Logical properties are future-proof; manual overrides are fragile and hard to test.</rationale>
-    </rule>
-    <rule id="r24" testable="true" depth="essential">
-      <statement>Format dates/numbers/currency through Intl (JS) or Babel (Python), never manual string concat — locale-specific separators differ.</statement>
-      <rationale source="v1-source">Intl handles all formatting edge cases; manual concatenation is error-prone.</rationale>
-    </rule>
-    <rule id="r25" testable="true" depth="essential">
-      <statement>Treat the EN catalogue as source of truth, version it in Git, and make the TMS a one-way sync target except for translations.</statement>
-      <rationale source="v1-source">EN is the reference; TMS is a delivery channel. One-way sync prevents confusion and clobbering.</rationale>
-    </rule>
-    <rule id="r26" testable="true" depth="essential">
-      <statement>Validate on every PR: every key in EN exists in every shipped locale; ICU placeholders match across locales.</statement>
-      <rationale source="v1-source">Build-time validation catches drift before users see broken strings.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Single-locale forever, static brochure, or &lt;20 chrome strings — skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">i18n overhead requires ongoing translation pipeline that small surfaces cannot justify.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

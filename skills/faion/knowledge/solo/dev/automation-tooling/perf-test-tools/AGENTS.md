@@ -4,73 +4,96 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Load and stress testing using k6 (JavaScript, single binary) and Locust (Python, web UI), with CI/CD performance gates that block PRs introducing latency regressions.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Implements k6 (JS, single binary) and Locust (Python, web UI) load tests with CI/CD perf gates that fail PRs on >10% p95 regression.
 content_id: "4632371c5cd50312"
-tags: [performance-testing, load-testing, k6, locust, ci-gates, threshold-monitoring]
+complexity: deep
+produces: code
+est_tokens: 4300
+tags: [performance-testing, k6, locust, ci-gates, thresholds]
 ---
 # Performance Testing Tools: k6 and Locust
 
 ## Summary
 
-**One-sentence:** Load and stress testing using k6 (JavaScript, single binary) and Locust (Python, web UI), with CI/CD performance gates that block PRs introducing latency regressions.
+**One-sentence:** Implements k6 (JS, single binary) and Locust (Python, web UI) load tests with CI/CD perf gates that fail PRs on >10% p95 regression.
 
-**One-paragraph:** Load and stress testing using k6 (JavaScript, single binary) and Locust (Python, web UI), with CI/CD performance gates that block PRs introducing latency regressions. The concrete rule: run a 30-second smoke at 5 VUs before any real test — if smoke fails, fix the script, not the system under test.
+**One-paragraph:** Implements k6 (JS, single binary) and Locust (Python, web UI) load tests with CI/CD perf gates that fail PRs on >10% p95 regression. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- perf-test-basics output (baselines + tool choice) in hand.
+- Team chose k6 (JS scripts, single binary) or Locust (Python, web UI for distributed runs).
+- Want CI to fail PRs that regress latency above the configured threshold.
+- Output produces `code` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Establishing a baseline load test for a new HTTP API before first production rollout.
-- Adding CI perf gates that block PRs introducing more than 10% latency regression.
-- Capacity planning: finding the knee by ramping VUs at increasing targets.
-- Reproducing a production incident with a scripted realistic scenario.
-- Comparing two implementations (rewrite, ORM swap) under identical synthetic load.
+- perf-test-basics output (baselines + tool choice) in hand.
+- Team chose k6 (JS scripts, single binary) or Locust (Python, web UI for distributed runs).
+- Want CI to fail PRs that regress latency above the configured threshold.
 
 ## Skip If (ANY kills it)
 
-- Functional bugs — perf tools don't surface logic errors, just timing/throughput.
-- Frontend UX perf — use Lighthouse, WebPageTest, Playwright tracing instead.
-- Pre-MVP products with no defined SLOs — you'll measure noise.
-- Single-shot benchmarks of pure functions — use pytest-benchmark / vitest bench.
-- Tests against shared staging environments — results are unreproducible due to neighbour load.
+- perf-test-basics output missing — define baselines first.
+- Workload requires browser automation (use Playwright + Lighthouse instead).
+- Need realistic browser timings (use WebPageTest, not k6/Locust).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| baselines.json | from perf-test-basics | perf-test-basics output |
+| CI runner | GitHub Actions | infra |
+| Test environment | staging URL + warm fixtures | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[perf-test-basics]] | baselines + SLO upstream of tooling |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-k6-script` | sonnet | VU + duration + threshold setup. |
+| `scaffold-locust-script` | sonnet | User class + tasks. |
+| `ci-gate` | haiku | Action step calling k6 / locust + exit on threshold breach. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/k6-load.js` | k6 load test with thresholds + stages |
+| `templates/locustfile.py` | Locust user class with weighted tasks + threshold check |
+| `templates/ci-perf-gate.yml` | GitHub Actions step: run k6 with thresholds and fail PR on regression |
+| `templates/_smoke-test.js` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-perf-test-tools.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[perf-test-basics]]
+- [[dev-methodologies-architecture]]
+- [[cd-pipelines]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are baselines defined AND is staging available AND is BASE_URL not prod?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

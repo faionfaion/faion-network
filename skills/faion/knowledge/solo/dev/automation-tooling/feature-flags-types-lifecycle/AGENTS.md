@@ -4,74 +4,95 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Feature flags (feature toggles) allow you to modify system behavior without deploying new code.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Classifies every flag as release / experiment / ops / permission and assigns lifecycle window: release ≤30d, experiment 1-4w, ops indefinite, permission indefinite with audit.
 content_id: "230a9879ed6eebcc"
-tags: [feature-flags, progressive-rollout, trunk-based-dev, technical-debt, lifecycle]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [feature-flags, lifecycle, release-flag, experiment-flag, ops-flag]
 ---
 # Feature Flag Types and Lifecycle
 
 ## Summary
 
-**One-sentence:** Feature flags (feature toggles) allow you to modify system behavior without deploying new code.
+**One-sentence:** Classifies every flag as release / experiment / ops / permission and assigns lifecycle window: release ≤30d, experiment 1-4w, ops indefinite, permission indefinite with audit.
 
-**One-paragraph:** Feature flags (feature toggles) allow you to modify system behavior without deploying new code. Each flag has a category (release, experiment, ops, permission, kill-switch) that determines its expected lifespan, ownership, and cleanup obligation. Treating all flags identically causes flag debt — the single largest source of maintenance burden in toggle systems.
+**One-paragraph:** Classifies every flag as release / experiment / ops / permission and assigns lifecycle window: release ≤30d, experiment 1-4w, ops indefinite, permission indefinite with audit. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Onboarding a new flag and need to decide its kind + retirement plan.
+- Auditing existing flags to classify and identify cleanup candidates.
+- Drafting flag policy for the team.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Trunk-based development: hide incomplete features in production so main is always shippable.
-- Progressive feature rollouts (1% to 10% to 50% to 100%) with automatic rollback on error-rate spike.
-- A/B experiments where the experiment platform reads the same flag store as the app.
-- Kill switches for risky integrations (third-party payments, AI calls) that can be flipped without redeploy.
-- Per-tenant features (premium tier, beta access) with attribute-based targeting.
-- Operational circuit breakers and maintenance-mode toggles.
+- Onboarding a new flag and need to decide its kind + retirement plan.
+- Auditing existing flags to classify and identify cleanup candidates.
+- Drafting flag policy for the team.
 
 ## Skip If (ANY kills it)
 
-- One-line config that never changes — env vars suffice; flags add unnecessary indirection.
-- Database schema changes — flags cannot gate ALTER TABLE migrations safely.
-- Permanent business rules that belong in domain logic, not toggles.
-- Pre-production prototypes where the flag infrastructure complexity outweighs the value.
-- Time-critical hot paths where even 1ms of flag-evaluation latency matters — compile out or cache.
+- No flags in use yet — start with feature-flags-core-implementation.
+- Trivial single-flag project — taxonomy is overkill.
+- Managed service auto-classifies and you trust its labels.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing flag list (if any) | flags.json or service export | team |
+| Owner table | user-to-flag ownership | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[feature-flags-core-implementation]] | registration + manager upstream |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-flag` | sonnet | Map flag to kind via interview. |
+| `draft-retirement-plan` | sonnet | Per-kind window + cleanup criteria. |
+| `policy-document` | sonnet | Team-facing policy doc. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/flag_classification.json` | Per-flag classification + retirement plan |
+| `templates/policy.md` | Team flag policy: per-kind window + retirement criteria |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-feature-flags-types-lifecycle.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[feature-flags-core-implementation]]
+- [[feature-flags-services-testing]]
+- [[feature-flags-rollout-targeting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is the flag a temporary rollout, an experiment, an operational switch, or an entitlement?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

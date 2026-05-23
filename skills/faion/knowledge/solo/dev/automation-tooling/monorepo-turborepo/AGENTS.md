@@ -4,72 +4,96 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Wires a pnpm + Turborepo monorepo: apps/ + packages/ workspaces, shared tsconfig + eslint, turbo.json task graph with remote cache, CI matrix per package.
 content_id: "5c20a5f49e87d519"
-tags: [monorepo, turborepo, pnpm, build-orchestration, typescript]
+complexity: deep
+produces: config
+est_tokens: 4300
+tags: [monorepo, turborepo, pnpm, build-orchestration, remote-cache]
 ---
 # Monorepo Setup with Turborepo
 
 ## Summary
 
-**One-sentence:** Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos.
+**One-sentence:** Wires a pnpm + Turborepo monorepo: apps/ + packages/ workspaces, shared tsconfig + eslint, turbo.json task graph with remote cache, CI matrix per package.
 
-**One-paragraph:** Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos. Structure code as apps/ and packages/ under pnpm workspaces, declare task dependencies in turbo.json tasks field (v2), and let Turborepo cache and parallelize builds. Internal deps use workspace:*; shared config lives in packages/config.
+**One-paragraph:** Wires a pnpm + Turborepo monorepo: apps/ + packages/ workspaces, shared tsconfig + eslint, turbo.json task graph with remote cache, CI matrix per package. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- ≥2 deployable surfaces (web + mobile, web + admin, app + marketing) sharing types or UI.
+- Team needs incremental build + remote cache to keep CI under 10 minutes.
+- Single language family (TypeScript) across packages.
+- Output produces `config` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a JS/TS monorepo from scratch with multiple apps and shared packages.
-- Migrating several npm repos into a single workspace to reduce duplication and improve shared code reuse.
-- Adding remote caching to an existing Turborepo or multi-package repo to speed up CI pipelines.
-- Standardizing tsconfig, eslint, and prettier across packages via packages/config.
-- CI builds taking longer than 2 minutes because unchanged packages rebuild unnecessarily.
+- ≥2 deployable surfaces (web + mobile, web + admin, app + marketing) sharing types or UI.
+- Team needs incremental build + remote cache to keep CI under 10 minutes.
+- Single language family (TypeScript) across packages.
 
 ## Skip If (ANY kills it)
 
-- Polyglot monorepos that are not JS-dominant (Python + Go + JS) — use Bazel, Pants, or Nx with custom executors instead.
-- Tiny single-app projects with only one apps/web — Turborepo overhead is not justified; pnpm workspaces alone suffice.
-- Serverless-first projects where each function deploys independently and shared code is minimal — workspace symlinks complicate deployment bundlers.
-- Teams without a remote cache strategy — local-only caching gives less than 50% of the benefit; remote cache is mandatory for ROI.
+- Single deployable surface — monorepo adds tooling cost with no payoff.
+- Polyglot monorepo (TS + Python + Go) — use Nx or Bazel, not Turborepo.
+- Team has zero ops bandwidth to operate remote cache + per-package CI.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| pnpm 9+ | package manager | team |
+| TypeScript 5+ | shared baseline | team |
+| Turborepo CLI | turbo binary or npx | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[best-practices-2026]] | ts-strict baseline applies inside every package |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-workspace` | sonnet | Create apps/ + packages/ + pnpm-workspace.yaml + turbo.json. |
+| `shared-config` | sonnet | Extract tsconfig.base.json + eslint preset. |
+| `ci-matrix` | haiku | Matrix generation per package. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/turbo.json` | Turborepo task graph: build / lint / test with cache |
+| `templates/pnpm-workspace.yaml` | pnpm workspace declaration |
+| `templates/tsconfig.base.json` | Shared TypeScript base config (strict) |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-monorepo-turborepo.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[best-practices-2026]]
+- [[practices-js-ts-stack]]
+- [[practices-frontend-components]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are there ≥2 deployable surfaces AND is the stack TypeScript-only AND has ops bandwidth?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

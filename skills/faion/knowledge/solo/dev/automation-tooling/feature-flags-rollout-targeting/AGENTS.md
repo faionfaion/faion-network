@@ -4,70 +4,96 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Gradual rollouts require deterministic per-user assignment: the same user must consistently see the same variant.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Deterministic per-user bucketing for gradual rollouts: hash(flag+user) %100 < rollout_percent; per-attribute targeting (country, plan, role) sits on top.
 content_id: "dd66d4dd48a46293"
-tags: [feature-flags, rollout, targeting, a-b-testing, progressive-delivery]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [feature-flags, rollout, targeting, hash-bucketing, progressive-delivery]
 ---
 # Feature Flag Rollout and Targeting
 
 ## Summary
 
-**One-sentence:** Gradual rollouts require deterministic per-user assignment: the same user must consistently see the same variant.
+**One-sentence:** Deterministic per-user bucketing for gradual rollouts: hash(flag+user) %100 < rollout_percent; per-attribute targeting (country, plan, role) sits on top.
 
-**One-paragraph:** Gradual rollouts require deterministic per-user assignment: the same user must consistently see the same variant. The canonical approach combines MD5 hash bucketing for percentage rollout with an explicit allowlist (user IDs) and group membership (beta_testers, employees) evaluated in priority order. Couple rollout percentage changes to error-rate alerts to enable automatic rollback.
+**One-paragraph:** Deterministic per-user bucketing for gradual rollouts: hash(flag+user) %100 < rollout_percent; per-attribute targeting (country, plan, role) sits on top. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Need gradual rollout of a flag from 0% to 100% with reproducible per-user state.
+- Need targeted exposure (beta cohort, country, plan, role) before global rollout.
+- Flag manager is already in place (see feature-flags-core-implementation).
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Gradual feature rollouts where you want 1% → 10% → 50% → 100% progression with monitoring at each step.
-- Beta programs where specific employees or opted-in users always see the new feature before general availability.
-- A/B experiments where each user must consistently see the same variant for the experiment to be statistically valid.
-- Group-based feature access: beta_testers, employees, premium_tier — evaluated before the percentage bucket.
+- Need gradual rollout of a flag from 0% to 100% with reproducible per-user state.
+- Need targeted exposure (beta cohort, country, plan, role) before global rollout.
+- Flag manager is already in place (see feature-flags-core-implementation).
 
 ## Skip If (ANY kills it)
 
-- Anonymous traffic where no stable user_id exists — you cannot maintain consistent assignment without a persistent identifier.
-- Features that must be either fully on or fully off for all users simultaneously — use a simple boolean flag instead.
-- High-volume paths where hash computation is too expensive — pre-evaluate at session start and cache in the request context.
+- Flag is operational kill-switch only — gradual rollout has no value, just on/off.
+- Anonymous traffic with no stable identifier — hash bucketing has nothing to anchor on.
+- Managed flag SDK already provides bucketing — use it.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| FeatureFlagManager | Python class | feature-flags-core-implementation |
+| Stable user id source | auth context or session id | auth |
+| Targeting attribute table | country/plan/role per user | user store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[feature-flags-core-implementation]] | manager + flag registry sits beneath rollout logic |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `bucketing-impl` | sonnet | Hash + percent gate. |
+| `targeting-rules` | sonnet | Per-attribute matching. |
+| `ramp-runner` | haiku | Script that ramps the percent value. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/rollout.py` | Deterministic per-user bucketing with rollout_percent + targeting attrs |
+| `templates/ramp.sh` | Ramp helper: bump rollout_percent in steps, wait for guardrails between |
+| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-feature-flags-rollout-targeting.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[feature-flags-core-implementation]]
+- [[feature-flags-types-lifecycle]]
+- [[ab-testing-basics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is this flag a gradual/targeted rollout AND is there a stable user id?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

@@ -1,79 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="perf-test-tools Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for perf-test-tools. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Performance Testing Tools: k6 and Locust Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the perf-test-tools methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always run a 30-second smoke test at 5 VUs before any real load test. If smoke fails, fix the script before touching the system under test.</statement>
-      <rationale source="v1-source">Agents that skip smoke tests waste 30 minutes of real load runs on a broken script. Smoke at 5 VUs confirms authentication works, scenarios parse, and all HTTP routes respond — the minimum correctness check.</rationale>
+    <rule id="tool-by-team-language" testable="true" depth="essential">
+      <statement>Pick k6 for JS/TS teams (single binary, JS scripts). Pick Locust for Python teams (web UI, distributed runs).</statement>
+      <rationale source="k6 + Locust docs">Tool match to language reduces context switching and on-call cost.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>In k6, always export raw JSON (--out json=results.json) for trend analysis; HTML reports are throwaway. Pin tool version in CI (grafana/k6:0.50.0) — minor versions change metric names.</statement>
-      <rationale source="v1-source">JSON output enables diffing runs across commits. Unpinned versions produce metric name mismatches that silently break threshold checks.</rationale>
+    <rule id="thresholds-as-ci-gate" testable="true" depth="essential">
+      <statement>k6/Locust thresholds (p95, p99, error_rate) are the CI gate. Non-zero exit means PR fails.</statement>
+      <rationale source="k6 thresholds docs">Without exit-on-threshold, perf jobs run as 'reports'; nobody reads reports.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>k6 is JavaScript but does not support Node.js APIs. Do not import fs, axios, or node built-ins — they don't exist in k6's runtime.</statement>
-      <rationale source="v1-source">Agents hallucinate k6 module names (k6/http2 doesn't exist). Run k6 inspect script.js before any real run to catch import errors.</rationale>
+    <rule id="stages-not-fixed-vu" testable="true" depth="essential">
+      <statement>Load tests use ramped stages (warmup, plateau, drain), not a flat VU count.</statement>
+      <rationale source="k6 + JMeter stage patterns">Flat VU misses warmup behavior; ramped stages reveal cold-start regressions.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use standard threshold pattern: http_req_duration p(95) &lt; 500ms, http_req_failed rate &lt; 1%, custom errorRate &lt; 5%.</statement>
-      <rationale source="v1-source">These thresholds should be validated over 3+ baseline runs before adding to CI gate. Too-tight thresholds cause flakes that erode trust.</rationale>
+    <rule id="single-source-baselines" testable="true" depth="essential">
+      <statement>Both k6 and Locust scripts read thresholds from baselines.json — one source of truth.</statement>
+      <rationale source="Internal — perf audit">Threshold drift between tool config and baseline file causes false positives.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use standard stage pattern: 2m ramp to 50 VUs, 5m hold, 2m ramp to 100 VUs, 5m hold, 2m ramp down.</statement>
-      <rationale source="v1-source">Staged ramps warm up the system gradually and reveal capacity at different load levels.</rationale>
+    <rule id="isolated-staging" testable="true" depth="essential">
+      <statement>Perf runs hit an isolated staging environment with warm fixtures, not shared prod.</statement>
+      <rationale source="k6 best practices">Shared environments poison the measurement and risk DoS on prod.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>In Locust, always use self.client for HTTP calls — never use the requests library directly. Calls via requests are invisible to Locust's measurement layer.</statement>
-      <rationale source="v1-source">Invisible requests produce false-negative results: the scenario runs but Locust shows no requests in the dashboard or output.</rationale>
+    <rule id="publish-html-report" testable="true" depth="essential">
+      <statement>Every perf run publishes an HTML report artifact to CI for human investigation.</statement>
+      <rationale source="k6 + Locust report docs">Exit code says pass/fail; the HTML report says why.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Run headless: locust -f locustfile.py --headless -u 100 -r 10 -t 5m</statement>
-      <rationale source="v1-source">Headless mode is appropriate for CI; web UI is for interactive exploration.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use @task(N) weight to model realistic user behavior (browse 10x more than checkout 1x).</statement>
-      <rationale source="v1-source">Weighted tasks produce realistic request distributions that match production traffic patterns.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Always include realistic think time in scenarios: sleep(random(1, 4)) in k6, between(1, 5) in Locust. Without think time, you benchmark the load generator, not the SUT.</statement>
-      <rationale source="v1-source">Real users don't fire requests as fast as possible. Scenarios without think time produce artificially high request rates that break before revealing actual capacity limits.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Always smoke-test the generated script first. Agents that go straight to 1000 VUs waste cloud spend when the scenario is broken.</statement>
-      <rationale source="v1-source">A broken scenario at 1000 VUs costs real money and time. A smoke at 5 VUs costs 30 seconds.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Review the generated scenario weights and stage shape before running any test lasting more than 5 minutes. Cloud spend accumulates quickly at 100+ VUs.</statement>
-      <rationale source="v1-source">An agent that starts a 30-minute k6 cloud run with wrong weights or wrong target URL burns budget and produces useless data. The 30-second review before the run is the cheapest gate.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Keep soak tests (8h, low load) and stress tests (3 min, ramp to break) in separate files. Never combine into one scenario.</statement>
-      <rationale source="v1-source">Agents conflate them. Soak finds memory leaks and connection pool exhaustion; stress finds throughput ceiling. They require different VU counts, durations, and thresholds.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Run a 30-second smoke at 5 VUs before any real test. If smoke fails, fix the script — not the SUT.</statement>
-      <rationale source="v1-source">Smoke testing is the minimal correctness check and prevents wasted time on broken scenarios.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Always export raw JSON (--out json=) for diffing across runs; HTML reports are throwaway.</statement>
-      <rationale source="v1-source">JSON enables regression detection and trend analysis. HTML reports are used once and discarded.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Use realistic think time and keep-alive on; without them you're benchmarking the load generator.</statement>
-      <rationale source="v1-source">Real users have think time between requests; connection pooling is standard in production.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Separate "soak" (8h, low load) from "stress" (3 min, ramp to break) into distinct files; agents conflate them.</statement>
-      <rationale source="v1-source">Soak and stress test different failure modes and require different configurations.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Tag runs with git SHA + scenario name in metric labels — required for trend analysis.</statement>
-      <rationale source="v1-source">Trend analysis requires identifying which commit produced which results.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Pin tool versions in CI (grafana/k6:0.50.0) — k6 minor versions change metric names.</statement>
-      <rationale source="v1-source">Version drift causes silent metric name mismatches that break threshold checks.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If baselines missing, browser timings needed, or staging unavailable — skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">k6/Locust pay back only when baselines + staging + CI hook exist.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

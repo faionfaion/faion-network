@@ -4,72 +4,96 @@ tier: solo
 group: dev
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured JSON logging with request tracking, PII redaction, and performance visibility.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Adopts structured JSON logging with request_id correlation, PII redaction at the formatter layer, and performance fields (duration_ms, db_queries).
 content_id: "1554d307ae7110f6"
-tags: [logging, structured-logging, observability, monitoring, json]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [logging, structured-logging, json, observability, pii-redaction]
 ---
 # Logging Patterns
 
 ## Summary
 
-**One-sentence:** Structured JSON logging with request tracking, PII redaction, and performance visibility.
+**One-sentence:** Adopts structured JSON logging with request_id correlation, PII redaction at the formatter layer, and performance fields (duration_ms, db_queries).
 
-**One-paragraph:** Structured JSON logging with request tracking, PII redaction, and performance visibility.
+**One-paragraph:** Adopts structured JSON logging with request_id correlation, PII redaction at the formatter layer, and performance fields (duration_ms, db_queries). Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Service emits text logs that grep poorly at 3am.
+- Need to correlate a single request across multiple services or workers.
+- Compliance requires PII redaction at the log layer.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Standing up a new service that will hit production: structured JSON from day one.
-- Migrating from print() / console.log to a real logger before observability rollout.
-- Adding correlation IDs to a multi-service flow so a single trace can be reconstructed.
-- Compliance domains needing audit trails (who did what, when, with what payload hash).
-- Debugging async/concurrent code where order of execution is non-trivial.
+- Service emits text logs that grep poorly at 3am.
+- Need to correlate a single request across multiple services or workers.
+- Compliance requires PII redaction at the log layer.
 
 ## Skip If (ANY kills it)
 
-- One-off CLI scripts where stderr/stdout suffices.
-- Hot loops (>1M iterations/sec) — even structured logging is too slow; use sampling or metrics counters.
-- Replacing tracing — logs answer "what happened", traces answer "how long and where". Use both.
-- High-PII contexts without scrubbing infra in place — better to not log than to leak.
+- Service is a one-shot script with no production runtime.
+- Logs already structured and queried successfully via existing dashboards.
+- No log sink in place — pick a sink first (Loki, CloudWatch, Datadog).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Logging library | Python logging / pino / winston | team |
+| Log sink | Loki / CloudWatch / Elastic / Datadog | infra |
+| Request middleware | ASGI/Express/Django middleware for request_id injection | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[dev-methodologies-architecture]] | architecture rubric pairs with logging baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-logger` | sonnet | JSON formatter + request_id context. |
+| `redaction-rules` | sonnet | PII redaction patterns. |
+| `audit-printf` | haiku | Grep for printf-style logs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/structured_logger.py` | Python structured JSON logger with request_id context |
+| `templates/redaction.py` | PII redaction patterns: email, phone, credit-card-like |
+| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-logging-patterns.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[dev-methodologies-architecture]]
+- [[best-practices-2026]]
+- [[feature-flags-services-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is the service production-runtime AND does it have a log sink configured?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
