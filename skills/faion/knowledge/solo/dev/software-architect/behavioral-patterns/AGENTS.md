@@ -81,6 +81,11 @@ tags: [design-patterns, behavioral, gof, refactoring, architecture]
 | File | Purpose |
 |------|---------|
 | `templates/pattern-selection.md` | Behavioural pattern selection record. |
+| `templates/chain-py.py` | Chain of Responsibility Python skeleton with fluent `set_next` chaining. |
+| `templates/command-py.py` | Command pattern Python skeleton with invoker + undo/redo stack. |
+| `templates/observer-py.py` | Observer pattern Python skeleton: subject + subscribe/unsubscribe + notify. |
+| `templates/state-py.py` | State pattern Python skeleton: context delegates behaviour to current state. |
+| `templates/strategy-py.py` | Strategy pattern Python skeleton: interchangeable algorithm objects. |
 
 ## Scripts
 

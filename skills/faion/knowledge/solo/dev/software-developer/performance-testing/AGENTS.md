@@ -93,6 +93,7 @@ tags: [performance, load-testing, k6, slo, benchmarking]
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-performance-testing.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
+| `scripts/perf-gate.py` | Compare a current k6 summary vs baseline and fail when a tracked metric regresses beyond tolerance. | In CI after a load run, before merge; supports `--self-test`. |
 
 ## Related
 

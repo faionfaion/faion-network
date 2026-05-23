@@ -81,6 +81,12 @@ tags: [data-modeling, database-design, schema-design, normalization, paradigm-se
 | File | Purpose |
 |------|---------|
 | `templates/schema-3-pass.md` | Three-pass schema spec: conceptual + logical + physical. |
+| `templates/pg-standard-table.sql` | PostgreSQL standard 3NF table skeleton with PK + audit columns + indexes. |
+| `templates/pg-junction-table.sql` | PostgreSQL many-to-many junction table with composite PK + FK cascade rules. |
+| `templates/mongo-schema.js` | MongoDB collection schema with `$jsonSchema` validator + indexes. |
+| `templates/cassandra-table.cql` | Cassandra/ScyllaDB wide-row table: one-table-per-query + partition + clustering keys. |
+| `templates/data-vault-hub.sql` | Data Vault 2.0 hub table skeleton with business-key + load-date + record-source. |
+| `templates/scd-type2.sql` | Slowly-Changing-Dimension Type 2 table with effective_from/effective_to + current flag. |
 
 ## Scripts
 

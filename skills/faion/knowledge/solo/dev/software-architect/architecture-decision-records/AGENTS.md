@@ -80,6 +80,7 @@ tags: [adr, architecture, decision-records, documentation, governance]
 |------|---------|
 | `templates/adr-nygard.md` | Nygard-format ADR template (Title, Status, Context, Decision, Consequences). |
 | `templates/adr-madr.md` | MADR-format ADR template (with Considered Options and Pros/Cons of the Decision). |
+| `templates/adr-lint.sh` | CI lint script — filename/status/sections/superseded-ref checks across `docs/adr/`. |
 
 ## Scripts
 

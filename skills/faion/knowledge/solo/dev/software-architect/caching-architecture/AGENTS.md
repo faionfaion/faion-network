@@ -81,6 +81,9 @@ tags: [caching, redis, performance, architecture, scalability]
 | File | Purpose |
 |------|---------|
 | `templates/caching-policy.md` | Per-data-class caching policy with pattern + TTL + invalidation rule. |
+| `templates/redis-config.conf` | Production Redis standalone config: maxmemory + eviction policy + bind + auth. |
+| `templates/cache-service.py` | Python cache-service skeleton: get-or-set + stampede protection + tag invalidation. |
+| `templates/django-cache-settings.py` | Django `CACHES` settings block wired to Redis with per-view + low-level patterns. |
 
 ## Scripts
 
