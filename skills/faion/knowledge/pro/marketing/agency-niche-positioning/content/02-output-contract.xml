@@ -1,42 +1,199 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Niche Positioning Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Agency Niche Positioning output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Agency Niche Positioning Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="niche_statement" type="string" required="true">single sentence: '&lt;service&gt; for &lt;vertical-buyer&gt; who &lt;use-case&gt;'</field>
-      <field name="vertical_evidence" type="list" required="true">≥3 closed projects in the vertical with revenue + outcome</field>
-      <field name="refusal_rubric" type="object" required="true">industries_out, project_shapes_out, budget_floor</field>
-      <field name="portfolio_rewrite_plan" type="list" required="true">ordered list of pages/case studies to rewrite, archive, or remove</field>
-      <field name="review_date" type="date" required="true">90 days from publish; triggers r5 review</field>
-      <field name="owner" type="string" required="true">single named accountable founder handle</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">niche_statement uses 'full-service' or 'we also do' phrasing</pattern>
-      <pattern id="f2">vertical_evidence is empty AND niche is aspirational</pattern>
-      <pattern id="f3">refusal_rubric only defines budget floor (industries_out also required)</pattern>
-      <pattern id="f4">portfolio_rewrite_plan leaves &gt;5 off-niche case studies on homepage</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/agency-niche-positioning.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>niche_statement populated with a typed value</item>
-      <item>vertical_evidence populated with a typed value</item>
-      <item>refusal_rubric populated with a typed value</item>
-      <item>portfolio_rewrite_plan populated with a typed value</item>
-      <item>review_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-niche-positioning.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "decision_class",
+    "alternatives_rejected"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_class": {
+      "enum": [
+        "one-way-door",
+        "two-way-door"
+      ]
+    },
+    "alternatives_rejected": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "why_rejected"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "why_rejected": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "agency-niche-positioning",
+  "title": "Agency Niche Positioning",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "decision_class": "two-way-door",
+  "alternatives_rejected": [
+    {
+      "option": "do-nothing",
+      "why_rejected": "misses compliance window"
+    },
+    {
+      "option": "alternative-vendor",
+      "why_rejected": "contract terms incompatible"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-agency-niche-positioning.py">Validator script</reference>
 </text>

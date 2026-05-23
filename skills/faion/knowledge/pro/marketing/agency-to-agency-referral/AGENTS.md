@@ -3,69 +3,97 @@ slug: agency-to-agency-referral
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cultivates referral relationships with other agencies (capacity overflow, out-of-niche, conflict-of-interest) as the highest-conversion lead source for a micro-agency.
-content_id: "460fd4f81a89deb3"
-tags: [agency-to-agency-referral, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Codifies inbound + outbound peer-agency referral relationships (capacity overflow, out-of-niche, conflict-of-interest) \u2014 the highest-conversion lead source for a micro-agency, made repeatable with named partners, kick-back terms, and a review cadence."
+content_id: "49f723349f5f5512"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [agency, referral, partnership, biz-dev, marketing]
 ---
-
-# Agency-to-Agency Referral Program
+# Agency-to-Agency Referral
 
 ## Summary
 
-**One-sentence:** Cultivates referral relationships with other agencies (capacity overflow, out-of-niche, conflict-of-interest) as the highest-conversion lead source for a micro-agency.
+**One-sentence:** Codifies inbound + outbound peer-agency referral relationships (capacity overflow, out-of-niche, conflict-of-interest) — the highest-conversion lead source for a micro-agency, made repeatable with named partners, kick-back terms, and a review cadence.
 
-**One-paragraph:** ops-partnership-strategy treats partnerships as channel deals. Reality: 30-60% of pipeline for a micro-agency can come from other agencies. Mechanism: build a ranked roster of 8-20 peers; quarterly outreach cadence; explicit anti-poach in MSA. Output: roster + economics policy + anti-poach clause.
+**One-paragraph:** Codifies inbound + outbound peer-agency referral relationships (capacity overflow, out-of-niche, conflict-of-interest) — the highest-conversion lead source for a micro-agency, made repeatable with named partners, kick-back terms, and a review cadence. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- agency size 1-15 people, founder-led
-- niche is defined or being defined
-- founder has ≥5 industry peer relationships
-- spare capacity OR explicit out-of-niche refusal rubric
+- Agency has a stable niche and gets ≥ 1 out-of-niche request per month worth referring.
+- Founder has 5+ hours/month to invest in maintaining peer-agency relationships.
+- Cash-flow can support 10-20% kick-back terms on first-engagement referrals.
 
 ## Skip If (ANY kills it)
 
-- agency in stealth — referrals require visibility
-- agency competes on price undercutting — peers won't refer at a discount
-- founder unwilling to maintain a personal CRM / quarterly cadence
+- Pre-niche agency — peers cannot route reliably to you without a clear positioning.
+- Solo freelancer with no referral capacity to give back — relationship will not be symmetric.
+- Cash-flow cannot fund a kick-back program — start with no-payment-just-relationship and revisit.
+
+**Ефективно для:**
+
+- Мікро-агенція з достатньою niche-фокусом щоб мати out-of-niche запити що варто перенаправляти.
+- Команди в нішових категоріях (legaltech, fintech) — peers мають overflow для перенаправлення.
+- Засновники що хочуть стабільне 30-50% inbound від referral (не від cold outreach).
+- Маленькі агенції що готові віддавати 10-20% kick-back від першого контракту peer-agency.
 
 ## Prerequisites
 
-- list of ≥15 candidate peer agencies with founder contact
-- MSA template editable for anti-poach clause
-- tracking sheet with 'referrals_sent' and 'referrals_received' columns
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent skill — provides operating context for this methodology |
-| `pro/marketing/freelance-referral-program-design` | peer methodology — produces inputs or consumes outputs |
-| `ops-partnership-strategy` | peer methodology — produces inputs or consumes outputs |
+| `pro/marketing/marketing-manager` | Parent role context — agency operating discipline. |
+| `solo/marketing/content-marketer` | Adjacent role context — content + portfolio surface. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-agency-to-agency-referral.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `pro/marketing/freelance-referral-program-design`
-- peer methodology: `ops-partnership-strategy`
-- external: https://www.hubspot.com/agency-resources/agency-referral-network (industry overview)
+- [[agency-niche-positioning]]
+- [[agency-case-study-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

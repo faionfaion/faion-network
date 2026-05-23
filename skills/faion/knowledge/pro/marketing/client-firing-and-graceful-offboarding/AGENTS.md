@@ -3,80 +3,97 @@ slug: client-firing-and-graceful-offboarding
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Client Firing And Graceful Offboarding: codified marketing practice that turns the recurring 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway' decision into a repeatable, auditable artefact.
-content_id: "c42b3848648085ec"
-tags: [client-firing-and-graceful-offboarding, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Criteria for firing a toxic client, structured offboarding sequence (notice, transition window, handoff docs, post-mortem) and contract-clean-exit terms \u2014 a versioned spec the founder can run without re-deriving the rationale."
+content_id: "8e0aa624557a8d11"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [agency, client-management, offboarding, marketing]
 ---
-# Client Firing And Graceful Offboarding
+# Client Firing and Graceful Offboarding
 
 ## Summary
 
-**One-sentence:** Client Firing And Graceful Offboarding: codified marketing practice that turns the recurring 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway' decision into a repeatable, auditable artefact.
+**One-sentence:** Criteria for firing a toxic client, structured offboarding sequence (notice, transition window, handoff docs, post-mortem) and contract-clean-exit terms — a versioned spec the founder can run without re-deriving the rationale.
 
-**One-paragraph:** Client Firing And Graceful Offboarding addresses the gap surfaced by 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway'. Freelancers carry bad clients for years out of revenue fear. No methodology for: deciding when a client is net-negative, drafting the breakup email, transitioning artifacts, recovering reputation if amicable, handling the no-reply-and-bill-anyway tail. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Criteria for firing a toxic client, structured offboarding sequence (notice, transition window, handoff docs, post-mortem) and contract-clean-exit terms — a versioned spec the founder can run without re-deriving the rationale. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Client relationship has > 3 documented friction events in 90 days (scope creep, abuse, payment delays).
+- Founder has named handoff alternatives (referral partner or self-service docs) for the client.
+- Contract permits termination on agreed notice (typically 30-60 days).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Friction is one-off / situational — schedule a difficult conversation first.
+- No contract clause permits termination at desired timeline — defer to legal counsel first.
+- Single-client agency where firing means closure — see business-pivot methodology instead.
+
+**Ефективно для:**
+
+- Засновники-фрилансери що масштабуються в SaaS і змушені скорочувати client work.
+- Мікро-агенції з 1-2 токсичними клієнтами що з'їдають 50%+ часу.
+- Команди що йдуть в нову нішу і треба погасити out-of-niche legacy retainers.
+- Аудит-ready середовища з вимогою structured offboarding evidence.
 
 ## Prerequisites
 
-- recent context for the 'p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| `pro/marketing/marketing-manager` | Parent role context — agency operating discipline. |
+| `solo/marketing/content-marketer` | Adjacent role context — content + portfolio surface. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/client-firing-and-graceful-offboarding.json` | JSON schema for the Client Firing And Graceful Offboarding output contract |
-| `templates/client-firing-and-graceful-offboarding.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-client-firing-and-graceful-offboarding.py` | Enforce Client Firing And Graceful Offboarding output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-client-firing-and-graceful-offboarding.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- upstream playbook: `p3-technical-freelancer/Freelancer-to-SaaS transition without losing the runway`
-- methodology family: `pro/marketing/` (gap-p2 batch, F-059-063)
+- [[agency-niche-positioning]]
+- [[agency-case-study-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

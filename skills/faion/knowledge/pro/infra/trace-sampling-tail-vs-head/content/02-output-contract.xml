@@ -1,39 +1,197 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Trace Sampling Tail Vs Head Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Trace Sampling Tail Vs Head output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Trace Sampling: Tail vs Head Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. The stdlib validator enforces required keys, per-field constraints, and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/trace-sampling-tail-vs-head.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/trace-sampling-tail-vs-head.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trace-sampling-tail-vs-head.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "produced_at",
+    "evidence",
+    "version",
+    "last_reviewed",
+    "decision",
+    "rationale",
+    "options_considered"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 3
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "in-review",
+        "active",
+        "deprecated"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 3
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 10
+    },
+    "options_considered": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "verdict"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "chosen",
+              "rejected",
+              "deferred"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "trace-sampling-tail-vs-head",
+  "title": "Trace Sampling: Tail vs Head",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z",
+  "evidence": [
+    {
+      "claim": "baseline captured",
+      "link": "https://wiki.example.com/baseline"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "status": "active",
+  "decision": "Option A",
+  "rationale": "Option A best fits the constraints declared in inputs.",
+  "options_considered": [
+    {
+      "name": "Option A",
+      "verdict": "chosen",
+      "reason": "fits constraint set"
+    },
+    {
+      "name": "Option B",
+      "verdict": "rejected",
+      "reason": "exceeds cost budget"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "team"
+}
+]]></code>
+    <note>Required fields missing. Slug is upper-case (must match ^[a-z][a-z0-9-]+$). Owner is a string, not the required {name, role} object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>owner = team handle, channel handle, or empty string</description>
+      <reason>Anonymous artefacts rot; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>evidence array empty while non-empty conclusions are present</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+    <antipattern>
+      <description>last_reviewed older than the published staleness window (default 90 days)</description>
+      <reason>Stale artefacts drift from operating reality; treat as suspect on read.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-trace-sampling-tail-vs-head.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

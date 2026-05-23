@@ -3,78 +3,98 @@ slug: trace-sampling-tail-vs-head
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "12f9aa95cc852769"
-summary: "Trace Sampling Tail Vs Head: produces a versioned, owner-signed artefact that closes the gap 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend'."
-tags: [trace-sampling-tail-vs-head, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Trace sampling decision record: picks between head-based and tail-based sampling per service shape with retention budget, error-bias rule, and replay path for hot-debugging.
+content_id: "a74f4404bf42b34c"
+complexity: medium
+produces: decision-record
+est_tokens: 4500
+tags: [infra, pro, tracing, sampling, observability]
 ---
-# Trace Sampling Tail Vs Head
+# Trace Sampling: Tail vs Head
 
 ## Summary
 
-**One-sentence:** Trace Sampling Tail Vs Head: produces a versioned, owner-signed artefact that closes the gap 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend'.
+**One-sentence:** Trace sampling decision record: picks between head-based and tail-based sampling per service shape with retention budget, error-bias rule, and replay path for hot-debugging.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend': Tail-based sampling via OTel Collector is the only thing that makes traces affordable at scale; no current methodology covers it. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a trace sampling tail vs head artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Trace Sampling: Tail vs Head pins the discipline that turns trace sampling from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The team operates the system the methodology targets (`trace-sampling-tail-vs-head` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working trace sampling tail vs head artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де trace sampling жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- recent context for the 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/infra` | parent domain group — provides operating context for Trace Sampling Tail Vs Head |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/trace-sampling-tail-vs-head.json` | JSON schema for the Trace Sampling Tail Vs Head output contract |
-| `templates/trace-sampling-tail-vs-head.md` | Markdown skeleton with the required fields |
+| `templates/trace-sampling-tail-vs-head.md` | Working skeleton for the `trace-sampling-tail-vs-head` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-trace-sampling-tail-vs-head.py` | Enforce Trace Sampling Tail Vs Head output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-trace-sampling-tail-vs-head.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/`
-- upstream playbook: `role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend`
-- pro/infra/role-devops-engineer
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
