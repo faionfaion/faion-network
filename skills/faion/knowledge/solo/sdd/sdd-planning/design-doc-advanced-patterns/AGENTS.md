@@ -4,73 +4,99 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Extends a base design document with six advanced sections: component hierarchy (frontend), dependency table (new packages and external services), security mitigations table, performance considerations table, test pyramid strategy, and migration/rollback plan.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Apply advanced design-doc patterns (sequence diagrams, capacity sketches, failure-mode tables, migration playbooks) on top of the standard structure when the change is high-stakes or cross-system.
 content_id: "87ed0297953bfd51"
-tags: [design-doc, architecture, advanced-patterns, security, performance]
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: ["design-doc", "advanced", "sequence-diagram", "capacity", "migration", "threat-model"]
 ---
-# Design Document Advanced Patterns
+# Design Doc Advanced Patterns
 
 ## Summary
 
-**One-sentence:** Extends a base design document with six advanced sections: component hierarchy (frontend), dependency table (new packages and external services), security mitigations table, performance considerations table, test pyramid strategy, and migration/rollback plan.
+**One-sentence:** Apply advanced design-doc patterns (sequence diagrams, capacity sketches, failure-mode tables, migration playbooks) on top of the standard structure when the change is high-stakes or cross-system.
 
-**One-paragraph:** Extends a base design document with six advanced sections: component hierarchy (frontend), dependency table (new packages and external services), security mitigations table, performance considerations table, test pyramid strategy, and migration/rollback plan. Each section traces back to FR-X or NFR-X items from the spec. Performance targets must come from spec NFRs. Security mitigations must reference AD-X decisions.
+**One-paragraph:** A vanilla design doc covers most features. Advanced patterns kick in for cross-system changes, hot-path performance work, security boundaries, and irreversible migrations. This methodology layers four optional blocks — sequence diagram, capacity model, failure-mode table, migration playbook — onto the base design-doc-structure, with explicit triggers for when each block is mandatory rather than optional.
+
+**Ефективно для:**
+
+- Engineers writing a design doc for a multi-service change that touches a critical path.
+- Security-relevant changes (auth, key handling) that need a documented threat model.
+- Performance work where capacity must be modelled before implementation.
+- Irreversible migrations (schema, data, deploy topology) that need a rollback playbook.
 
 ## Applies If (ALL must hold)
 
-- Feature has a frontend component with more than 2 nesting levels in the component hierarchy.
-- Security attack surface requires explicit mitigation table (auth, XSS, CSRF, injection).
-- New external dependencies or third-party services are introduced.
-- Performance targets are specified in NFRs and must be traced to design decisions.
-- Feature involves database schema changes or backward compatibility concerns.
-- Full test pyramid (unit + integration + E2E) must be planned at design time.
+- Base design doc (design-doc-structure) already exists in draft.
+- The change is cross-system, hot-path, security-relevant, or a migration.
+- Reviewers will require evidence beyond prose (numbers, diagrams, tables).
+- Stakes warrant the extra pages — rollback or outage cost is non-trivial.
 
 ## Skip If (ANY kills it)
 
-- Pure backend feature with no UI. Skip the component hierarchy section entirely.
-- Greenfield project with no existing patterns. Establish base design patterns first; advanced patterns assume known constraints.
-- Spike output. Advanced patterns assume known NFRs; spikes produce NFRs, not consume them.
-- Security section would be identical to a recently completed feature. Reference the prior design.md instead of duplicating.
+- Single-service in-process change — base structure is enough.
+- Cold-path internal tool — capacity model would be ceremony.
+- Reversible config tweak — migration playbook is overkill.
+- Prototype with no production deploy planned.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Base design doc draft | markdown | design-doc-structure output |
+| Latency / throughput SLO | rubric | Ops runbook |
+| Threat model template | markdown | Security baseline |
+| Rollback budget | number (minutes) | Ops constraint |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/design-doc-structure` | Base layout this methodology extends. |
+| `solo/sdd/sdd-planning/architecture-decision-records` | Cross-system decisions referenced by these patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `sequence-diagram-block` | sonnet | Per-system reasoning about message flow. |
+| `capacity-model` | opus | Multi-variable arithmetic + assumption gathering. |
+| `failure-mode-table` | sonnet | Per-component judgement on failure surfaces. |
+| `migration-playbook` | opus | End-to-end rollback design across services. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/design-doc-advanced-patterns.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/design-doc-advanced-patterns.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-design-doc-advanced-patterns.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[design-doc-structure]]
+- [[architecture-decision-records]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

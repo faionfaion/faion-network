@@ -4,70 +4,97 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every task assigned to an agent must fit within a 100k token context budget.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cap any single implementation-plan task at ~100k tokens of estimated agent work so the executor can finish in one session without compaction loss.
 content_id: "63939344596b5260"
-tags: [implementation-plan, token-budget, task-decomposition, context-management, task-splitting]
+complexity: medium
+produces: rubric
+est_tokens: 3600
+tags: ["impl-plan", "token-budget", "100k-rule", "sdd", "agent-budget"]
 ---
-# Implementation Plan: 100k Token Rule
+# Impl Plan 100k Rule
 
 ## Summary
 
-**One-sentence:** Every task assigned to an agent must fit within a 100k token context budget.
+**One-sentence:** Cap any single implementation-plan task at ~100k tokens of estimated agent work so the executor can finish in one session without compaction loss.
 
-**One-paragraph:** Every task assigned to an agent must fit within a 100k token context budget. The budget has fixed overhead (agent prompt ~8k, project context ~12k, task file ~3k, buffer ~15k) plus variable codebase reading. Tasks exceeding 80k tokens must be split before any TASK file is written. Three splitting strategies: by component, by layer, by dependency wave.
+**One-paragraph:** Tasks that exceed the agent context budget get partially executed and compacted away, losing context the next session needs. This methodology pins a 100k-token cap per TASK_*.md: estimate inputs + likely tool calls + output budget, split tasks that exceed it. The cap aligns with Sonnet/Opus working set; deep-research tasks at 200k+ still split. Estimates are stored in the front-matter; the impl-plan validator rejects any task with no estimate or one over 100k.
+
+**Ефективно для:**
+
+- Solo founder running long-horizon SDD batches where session limits matter.
+- Agent pool orchestrator scheduling tasks against a token budget.
+- Refactor projects where one 'simple' task secretly touches 30 files.
+- Teams using 1M-context models but want predictable session cost.
 
 ## Applies If (ALL must hold)
 
-- Before assigning any task to faion-sdd-executor-agent — validate context budget fits.
-- When decomposing a large design into tasks and unsure whether to split or combine.
-- Auditing an existing implementation plan where tasks seem to exceed context window.
-- Estimating total project token cost before committing to an implementation approach.
+- Tasks are executed by an LLM-driven agent (Claude Code, Aider, similar).
+- Sessions have a token cap (context window or quota).
+- Impl-plan exists in TASK_*.md form with front-matter.
+- Estimates can be computed from inputs + output budget.
 
 ## Skip If (ANY kills it)
 
-- Micro-tasks under 5k tokens — budget calculation overhead is not worth it.
-- Reading-only research passes — context budget still applies but failure mode is less severe.
-- Attempting to skip the rule for Claude 200k context — focus degrades at high utilization even within window limits.
+- Tasks are executed by humans only — no token budget.
+- Single-shot agent run with no budget concern (e.g. local prototype).
+- Discovery / spike where the output is the learning, not the artefact.
+- Pre-impl-plan — no tasks defined yet.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| TASK_*.md files | markdown | impl-plan-task-format |
+| Token-estimate formula | rubric | Internal |
+| Input artefact list | list | TASK front-matter |
+| Output budget per task | integer | TASK front-matter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/impl-plan-task-format` | TASK file shape that carries the estimate. |
+| `solo/sdd/sdd-planning/impl-plan-components` | Component-level decomposition that feeds the estimate. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `estimate-task` | haiku | Mechanical token arithmetic from inputs. |
+| `split-oversized` | sonnet | Decompose oversized task into 2+ sub-tasks. |
+| `audit-plan` | opus | Multi-task synthesis across an impl-plan. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/impl-plan-100k-rule.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/impl-plan-100k-rule.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-impl-plan-100k-rule.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[impl-plan-task-format]]
+- [[impl-plan-components]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

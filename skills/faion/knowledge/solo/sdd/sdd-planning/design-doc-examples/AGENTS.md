@@ -4,71 +4,97 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Concrete, worked design document examples for user authentication and related features.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Provide reusable worked design-doc examples (single-service, cross-service, migration, hot-path) that a writer copies and adapts rather than starts from a blank page.
 content_id: "e171665d0cc27a17"
-tags: [design, architecture-decision, examples, authentication, sdd]
+complexity: light
+produces: report
+est_tokens: 3500
+tags: ["design-doc", "examples", "templates", "worked-examples", "starter"]
 ---
-# Design Document Examples
+# Design Doc Examples
 
 ## Summary
 
-**One-sentence:** Concrete, worked design document examples for user authentication and related features.
+**One-sentence:** Provide reusable worked design-doc examples (single-service, cross-service, migration, hot-path) that a writer copies and adapts rather than starts from a blank page.
 
-**One-paragraph:** Concrete, worked design document examples for user authentication and related features. Provides a reference AD (Architecture Decision) format with FR traceability tables, file change tables, and component breakdowns that agents use as few-shot structural references when generating or reviewing design.md files.
+**One-paragraph:** Most design-doc quality issues stem from blank-page paralysis. This methodology ships four canonical worked examples — single-service feature, cross-service refactor, data migration, hot-path performance work — each fully filled in with realistic content. Writers pick the closest match, copy the file, and edit; reviewers compare against the example. The examples are versioned so updates to the underlying design-doc-structure flow into all four at once.
+
+**Ефективно для:**
+
+- Engineer writing their first design doc on a new team — needs a worked example to anchor scope and depth.
+- Reviewer who wants a baseline to compare against during async review.
+- Solo agent generating a draft doc from spec + design-doc-structure — examples ground tone and detail level.
+- Migration projects where the example saves an hour of structuring.
 
 ## Applies If (ALL must hold)
 
-- Generating a new design.md for a user-identity or auth-related feature — inject the auth example as few-shot context.
-- Reviewing a generated design.md for structural gaps — compare AD format, FR coverage, and file table against the example.
-- Onboarding a new design-writing agent that needs a calibration reference before its first real feature.
-- Teaching the AD alternatives-and-rejection pattern when an agent produces shallow "alternatives" sections.
+- Design-doc-structure methodology is in use as the canonical layout.
+- The current design problem fits one of the four example archetypes.
+- Writer can copy + adapt rather than build from scratch.
+- Examples are versioned alongside the structure spec.
 
 ## Skip If (ANY kills it)
 
-- Copying example task names, file paths, or technology choices (JWT, bcrypt cost 12) into a real project without checking the constitution — examples encode defaults, not decisions.
-- Frontend component hierarchy examples (RegisterForm props) in backend-only or non-React projects.
-- Treating example file structures as required layouts rather than illustrative patterns.
-- Running examples through automated tooling that expects live code — they are documentation artifacts, not executable code.
+- Design problem is unique enough that no example archetype fits.
+- Writer prefers blank-page authoring for style reasons.
+- Doc is for an external audience (vendor RFP) where examples are too internal.
+- Pre-discovery — no design problem yet to instantiate.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| design-doc-structure spec | markdown | design-doc-structure output |
+| Four worked examples | markdown | templates/ directory |
+| Archetype selector | decision tree | This methodology |
+| Spec.md + ADRs | markdown | Spec + ADR methodology outputs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/design-doc-structure` | Layout the examples instantiate. |
+| `solo/sdd/sdd-planning/design-doc-writing-process` | Writing flow the examples illustrate. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-archetype` | haiku | Match input description to one of four archetypes. |
+| `adapt-example` | sonnet | Substitute names, schemas, and metrics from the real spec. |
+| `compare-and-feedback` | sonnet | Reviewer task — compare draft against example. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/design-doc-examples.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/design-doc-examples.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-design-doc-examples.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[design-doc-structure]]
+- [[design-doc-writing-process]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

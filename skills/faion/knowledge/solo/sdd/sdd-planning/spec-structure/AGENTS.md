@@ -4,71 +4,98 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Full spec structure v2.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pin the canonical spec layout (problem, users, goals, non-goals, requirements, AC, open questions) so every spec fits one page and reviewers know exactly where to look.
 content_id: "17fa97cfdc42e380"
-tags: [sdd, specification, structure, quality-gates, requirements]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["spec", "structure", "layout", "template", "sdd"]
 ---
-# Specification Structure
+# Spec Structure
 
 ## Summary
 
-**One-sentence:** Full spec structure v2.
+**One-sentence:** Pin the canonical spec layout (problem, users, goals, non-goals, requirements, AC, open questions) so every spec fits one page and reviewers know exactly where to look.
 
-**One-paragraph:** Full spec structure v2.0 for features with 3+ user personas or 8+ functional requirements. The spec answers WHAT and WHY — never HOW. Mandatory sections: Overview, Problem Statement, User Personas, User Stories, Functional Requirements (FR-X with SMART criteria and MoSCoW priority), Non-Functional Requirements, Acceptance Criteria (Given-When-Then), Out of Scope, Assumptions, Dependencies. Typical size: 500–1200 tokens.
+**One-paragraph:** Specs that wander across layouts waste reviewer cycles. This methodology pins the seven-section canonical layout — problem, users, goals, non-goals, requirements, acceptance criteria, open questions — and caps the core at one page. Sections may be marked N/A with a one-line justification but never omitted. The structure is enforced by a validator so downstream agents (design.md drafter, impl-plan generator) can parse the spec without LLM intervention.
+
+**Ефективно для:**
+
+- Solo founder writing spec for engineering handoff; one-page cap forces clarity.
+- Reviewer scanning multiple specs per week; predictable layout cuts scan time.
+- Agent generating design.md from spec; predictable layout enables parsing.
+- Onboarding new collaborators to the spec convention.
 
 ## Applies If (ALL must hold)
 
-- Features with 3+ user personas or 8+ functional requirements
-- Features requiring formal stakeholder sign-off where completeness is auditable
-- Complex integrations where NFRs (performance, security, scalability) must be contracted before design begins
-- When the spec feeds into a multi-agent executor pipeline and full FR/AC traceability is required
+- Spec is part of the SDD flow.
+- Reviewers need predictable layout to scan efficiently.
+- Downstream agents will consume the spec.
+- Spec lives in version control.
 
 ## Skip If (ANY kills it)
 
-- MVP features under 5 FRs — use spec-examples-basic condensed format instead
-- Internal tooling or developer-only features where user persona sections add no value
-- Features on a known pattern (nth CRUD endpoint) where all structural decisions are inherited
-- When spec or design doc is still in draft; writing full spec too early wastes tokens when requirements shift
+- Trivial 1-line config change — no spec needed.
+- Spike or research task — different format applies.
+- External vendor RFP — different format.
+- Free-form discovery doc — pre-spec.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| templates/spec.md | markdown | This methodology |
+| Discovery output | markdown | Discovery methodology |
+| User persona doc | markdown | Persona doc |
+| AC rubric | rubric | ac-quality-rubric |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/spec-requirements` | Numbering format this layout hosts. |
+| `solo/sdd/sdd-planning/spec-example-ecommerce-cart` | Canonical worked example. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-spec` | sonnet | Section-by-section reasoning from discovery. |
+| `lint-structure` | haiku | Section-presence check. |
+| `review-spec` | opus | Cross-section coherence audit. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec-structure.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/spec-structure.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spec-structure.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[spec-requirements]]
+- [[spec-example-ecommerce-cart]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
