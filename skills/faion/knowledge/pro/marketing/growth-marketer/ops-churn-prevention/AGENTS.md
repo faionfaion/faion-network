@@ -3,73 +3,96 @@ slug: ops-churn-prevention
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Churn prevention is an operational playbook for reducing involuntary and voluntary cancellations through three phases: early intervention (re-engagement before the user decides to leave), save offers (at the cancellation flow), and win-back campaigns (after churn).
-content_id: "1b4e918e8d16b451"
-tags: [churn, retention, lifecycle-marketing, saas, customer-retention]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Three-phase churn-prevention playbook (early intervention / save offer / win-back) with reason-segmented actions and a stop-loss review trigger.
+content_id: "607fd251e1b2712e"
+complexity: deep
+produces: playbook-step
+est_tokens: 4200
+tags: [churn, retention, lifecycle-marketing, saas, save-offer]
 ---
 # Churn Prevention
 
 ## Summary
 
-**One-sentence:** Churn prevention is an operational playbook for reducing involuntary and voluntary cancellations through three phases: early intervention (re-engagement before the user decides to leave), save offers (at the cancellation flow), and win-back campaigns (after churn).
+**One-sentence:** Three-phase churn-prevention playbook (early intervention / save offer / win-back) with reason-segmented actions and a stop-loss review trigger.
 
-**One-paragraph:** Churn prevention is an operational playbook for reducing involuntary and voluntary cancellations through three phases: early intervention (re-engagement before the user decides to leave), save offers (at the cancellation flow), and win-back campaigns (after churn). Each phase uses tiered actions matched to churn-reason segment, not a generic discount. Agent role: score health, draft segmented copy, stage campaigns — humans approve send.
+**One-paragraph:** Three-phase churn-prevention playbook (early intervention / save offer / win-back) with reason-segmented actions and a stop-loss review trigger. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- SaaS з визначеним baseline churn rate що готова інвестувати в reduction.
+- Team має lifecycle-marketing tooling (Customer.io, Iterable, Braze, або equivalent).
+- CS / Support data доступна для root-cause кодування cancellation reasons.
+- Перед запуском великих save offers або win-back кампаній.
 
 ## Applies If (ALL must hold)
 
-- Monthly churn is at or above 3% on a paid SaaS or subscription product.
-- Churn analysis (ops-churn-basics) is done: root causes segmented by reason (price / value / feature gap / involuntary).
-- Engagement events (login, feature use) and payment events are tracked and accessible.
-- A lifecycle email tool (Customer.io, Intercom, Braze) is owned and writable.
-- Cancellation flow is in your product (you can ship a save-offer page, dunning UI).
+- ops-churn-basics уже виконано — baseline measured + cohort/plan segmented.
+- Cancellation reason codes збираються (>= 5 codes, >= 100 cancels coded).
+- Lifecycle-marketing tool здатний на segmented sends + drip cycles.
 
 ## Skip If (ANY kills it)
 
-- B2C apps with no recurring revenue and no contact channel — there is nobody to save.
-- Pre-product-market-fit: churn is a symptom of weak value, not weak retention ops.
-- Enterprise contracts with manual renewal — handled by AE/CS humans, not this playbook.
-- Free tier with zero LTV — saving free users wastes intervention budget.
+- Baseline churn не виміряний — спершу run ops-churn-basics.
+- Cancellation reasons не кодуються — спершу запровадь reason capture.
+- Discount-only страtegy без segment differentiation — це продаж знижок, не prevention.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/playbook-step-skeleton.md` | Churn Prevention skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Churn Prevention. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-churn-prevention.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
+- [[ops-churn-basics]]
+- [[retention-strategies]]
+- [[retention-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

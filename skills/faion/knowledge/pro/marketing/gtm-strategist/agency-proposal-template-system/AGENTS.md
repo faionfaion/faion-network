@@ -3,89 +3,97 @@ slug: agency-proposal-template-system
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "d8cf907dc3763950"
-summary: Tiered (good / better / best) anchored-pricing proposal template system for micro-agency founders converting inbound leads to signed retainers in 4-6 weeks.
-tags: [proposal, agency, sales, tiered-pricing, sow, micro-agency, anchored-pricing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tiered (Good / Better / Best) anchored-pricing proposal template — sent within 48h of discovery, fixed scope per tier, 6-month minimum, designed to anchor on the middle tier.
+content_id: "058163a6c3b3fe6f"
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: [proposal, agency, sales, tiered-pricing, sow, anchored-pricing]
 ---
 # Agency Tiered-Proposal Template System
 
 ## Summary
 
-**One-sentence:** Tiered (good / better / best) anchored-pricing proposal template system for micro-agency founders converting inbound leads to signed retainers in 4-6 weeks.
+**One-sentence:** Tiered (Good / Better / Best) anchored-pricing proposal template — sent within 48h of discovery, fixed scope per tier, 6-month minimum, designed to anchor on the middle tier.
 
-**One-paragraph:** Existing statement-of-work playbook covers SOW structure but not the proposal-as-conversion-tool pattern that agency founders use. Mechanism: every inbound lead receives a single document with 3 packages — Good (entry, lower margin), Better (the target, anchored by the others), Best (stretch, signals capability ceiling). Each package has fixed scope, fixed monthly fee, fixed deliverables, and a 6-month minimum commitment. Proposal sent within 48h of discovery call. Sales cycle 4-6 weeks: discovery → proposal → 2 clarification touchpoints → signature. Primary output: a proposal doc per lead + a signed retainer.
+**One-paragraph:** Tiered (Good / Better / Best) anchored-pricing proposal template — sent within 48h of discovery, fixed scope per tier, 6-month minimum, designed to anchor on the middle tier. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- Мікро-агенції що конвертують inbound leads у signed retainers (4-6 тижневий цикл).
+- Founders що відмовляються від custom-proposal-per-lead — це template system replacement.
+- Якщо single-price proposals — close-rate < 25%, перейти на 3-tier.
+- Перед щоквартальним sales-retrospective щоб тюнити anchoring.
 
 ## Applies If (ALL must hold)
 
-- micro-agency / consultancy doing inbound or referral lead flow
-- proposing retainers in the $3k-$25k/month range (mid-market service)
-- proposal length 3-6 pages — long enough to articulate value, short enough to read in 15 min
-- you can decide pricing without a committee (you ARE the committee)
-- inbound leads have done at least one discovery call
+- Agency / studio робить retainer / project-fee work з 4+ delivered engagements.
+- Founder особисто handles proposal stage (or one named SDR).
+- Average deal size > $3k/mo — нижче tiered pricing overhead не окуповується.
 
 ## Skip If (ANY kills it)
 
-- one-shot project proposals — different shape, use a project SOW template
-- enterprise procurement with required RFP format — use the client's template, not yours
-- pre-discovery cold outreach — proposal without discovery is hope, not strategy
-- you don't have a baseline rate / hourly — proposal needs underlying math you can defend
-- product / SaaS sales — use SaaS pricing pages, not proposal docs
+- Productized fixed-SKU без custom scope — single-price краще.
+- Hourly billing only — це pricing problem, не proposal system.
+- Enterprise > $50k/mo — потрібен MSA + custom SOW, не 3-tier template.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- discovery call notes (problem, success criteria, decision-maker, budget hint, timeline)
-- your baseline rate per role + capacity availability
-- 3 case study / outcome references that match the lead's domain
-- a contract template ready to attach to the chosen tier
-- a 48-hour proposal-send commitment in your sales workflow
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/gtm-strategist/retainer-conversion-script` | Adjacent motion when converting existing project clients |
-| `pro/pm/project-manager/agency-pnl-tracker-template` | Source of margin floors used to set tier pricing |
-| `pro/product/product-operations/account-health-scoring-model` | Post-sale operating model the proposal points to |
+| `pro/marketing/gtm-strategist` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 3 tiers always, anchor tier wins, fixed scope per tier, 48h send, 6-month minimum | ~900 |
-| `content/02-output-contract.xml` | essential | Proposal doc schema, tier-comparison table schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (custom-everything, vague deliverables, à la carte erosion, discount-before-ask, missing exit ramp, proposal as feature dump) | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `tier_pricing_calc_from_discovery` | sonnet | Translate discovery notes + your rates into 3 anchored prices |
-| `scope_per_tier_first_draft` | sonnet | Concrete deliverable list per package |
-| `outcome_framing_synthesis` | opus | Lead's stated problem → outcome language across all 3 tiers |
-| `proposal_letter_close` | sonnet | Personal closing paragraph referencing discovery specifics |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/proposal-doc.md` | Full proposal template (problem / approach / 3 tiers / case studies / process / pricing / close) |
-| `templates/tier-comparison-table.md` | The 3-tier comparison page with anchored pricing |
-| `templates/discovery-to-proposal-checklist.md` | Steps from call → 48h send |
-| `templates/proposal-cover-email.md` | Email that delivers the proposal with framing |
+| `templates/spec-skeleton.md` | Agency Tiered-Proposal Template System skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Agency Tiered-Proposal Template System. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/proposal-build-from-discovery.py` | Use discovery notes + rate sheet to bootstrap 3 tiers | Within 24h of discovery |
-| `scripts/sanity-check-tier-math.py` | Verify each tier's price clears margin floor | Before sending |
+| `scripts/validate-agency-proposal-template-system.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
-- peer methodologies: `retainer-conversion-script`, `agency-pnl-tracker-template`, `growth-gtm-strategy`
-- external: [Blair Enns - Win Without Pitching Manifesto](https://www.winwithoutpitching.com/) · [Jonathan Stark - Pricing Creativity](https://jonathanstark.com/) · [Mike Monteiro - Design Is a Job](https://abookapart.com/products/design-is-a-job)
+- [[from-hourly-to-fixed-transition]]
+- [[agency-niche-positioning]]
+- [[agency-discovery-call-scorecard]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

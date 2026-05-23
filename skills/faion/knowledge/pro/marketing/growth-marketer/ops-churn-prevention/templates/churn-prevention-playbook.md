@@ -1,3 +1,9 @@
+<!-- purpose: ops-churn-prevention — churn prevention playbook -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact aligned with content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Churn Prevention Playbook
 
 ## Early Warning Triggers

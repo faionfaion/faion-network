@@ -3,72 +3,97 @@ slug: ops-churn-basics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Churn measurement is the prerequisite for retention intervention.
-content_id: "3a420558d0a72c4b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Computes a baseline churn-measurement report with customer churn rate, MRR churn rate, NRR, and segment breakdowns — gate for any retention intervention.
+content_id: "2cb88b8c282360b4"
+complexity: medium
+produces: report
+est_tokens: 4200
 tags: [churn, retention, saas-metrics, measurement, health-score]
 ---
 # Churn Basics
 
 ## Summary
 
-**One-sentence:** Churn measurement is the prerequisite for retention intervention.
+**One-sentence:** Computes a baseline churn-measurement report with customer churn rate, MRR churn rate, NRR, and segment breakdowns — gate for any retention intervention.
 
-**One-paragraph:** Churn measurement is the prerequisite for retention intervention. Three metrics reported together: customer churn rate, MRR churn rate, Net Revenue Retention (NRR). Voluntary and involuntary churn tracked separately. Health score provides leading indicators before cancel.
+**One-paragraph:** Computes a baseline churn-measurement report with customer churn rate, MRR churn rate, NRR, and segment breakdowns — gate for any retention intervention. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- SaaS / subscription бізнеси що шукають baseline churn rate перед prevention work.
+- Quarterly board prep що вимагає customer churn + MRR churn + NRR + segment breakdown.
+- Діагностика чи pain — acquisition mix, нові-cohort onboarding, чи aging cohort decay.
+- Перед запуском cohort-basics, ops-churn-prevention або health-score алертів.
 
 ## Applies If (ALL must hold)
 
-- Subscription/usage-based business needing a baseline churn rate before prevention work.
-- Quarterly review or board prep requiring customer churn, MRR churn, NRR, and segment breakdowns.
-- Diagnosing whether retention pain is acquisition-mix, new-cohort onboarding, or aging-cohort decay.
-- Precursor to ops-churn-prevention and cohort-basics.
+- Subscription / usage-based бізнес що потребує baseline churn rate.
+- Mature data: ≥ 3 повні місячні cohorts з ≥ 30 customers each.
+- Ownership: визначений власник звіту з доступом до billing + product DB.
 
 ## Skip If (ANY kills it)
 
-- One-off transactional businesses without subscriptions — measure repeat-purchase rate instead.
-- Free B2C with no revenue — focus on retention curves directly.
-- Pre-revenue products — churn is meaningless until cohort sizes stabilize.
-- Annual-only contracts with fewer than 2 renewal cycles — sample too small for a stable rate.
+- Pre-revenue або < 3 повних місяців даних — sample too small.
+- Один-time transactional бізнес без subscription — використовуй repeat-purchase rate.
+- Annual-only contracts з < 2 renewal cycles.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/report-skeleton.md` | Churn Basics skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Churn Basics. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-churn-basics.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
+- [[ops-churn-prevention]]
+- [[cohort-basics]]
+- [[retention-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

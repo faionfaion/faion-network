@@ -1,3 +1,9 @@
+-- purpose: ops-churn-basics — monthly churn
+-- consumes: see content/02-output-contract.xml inputs
+-- produces: artefact aligned with content/02-output-contract.xml
+-- depends-on: content/01-core-rules.xml
+-- token-budget-impact: ~200-1000 tokens when loaded as context
+
 -- monthly_churn.sql — voluntary vs involuntary customer + MRR churn
 -- Input: subscription_state_daily(status, customer_id, mrr, d)
 --        subscriptions(canceled_at, customer_id, mrr, cancel_reason)

@@ -1,3 +1,9 @@
+-- purpose: ops-churn-prevention — health score
+-- consumes: see content/02-output-contract.xml inputs
+-- produces: artefact aligned with content/02-output-contract.xml
+-- depends-on: content/01-core-rules.xml
+-- token-budget-impact: ~200-1000 tokens when loaded as context
+
 -- health-score.sql — weekly user health snapshot
 -- Each component capped at 25; total range 0-100
 -- Retrain thresholds monthly or after major product changes

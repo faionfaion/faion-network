@@ -1,75 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="SERP Alert Rules — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules every SERP alerting setup must satisfy. Skipping any one produces either alarm fatigue or the dreaded six-day-late discovery of a traffic collapse.</summary>
+<text id="01-core-rules" title="SERP Movement Alert Rules Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules every application of `SERP Movement Alert Rules` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-four-signal-coverage" testable="true" depth="essential">
-      <statement>Alerting MUST evaluate four signals nightly: (a) impressions week-over-week delta for tracked queries, (b) position delta for tracked queries, (c) AI Overview presence/absence on tracked queries, (d) CTR delta on stable impressions. Missing any signal leaves a blind spot.</statement>
-      <rationale source="Search Console API documentation; post-2024 SERP feature literature">Impressions catch broad visibility changes. Position catches algorithm hits per query. AI Overview catches the new dominant feature shift. CTR catches snippet / title changes. A monitor that only watches impressions misses the AI Overview that just appeared on the head query.</rationale>
+    <rule id="impressions-wow-30pct-alert" testable="true" depth="essential">
+      <statement>Trigger alert when week-over-week impressions for a keyword (or query group) drop &gt;= 30%. Compare against 4-week rolling average to filter noise.</statement>
+      <rationale source="GSC alerting practice; Search Engine Land 2024">30% WoW drop is outside normal seasonal noise; comparable to a manual penalty or core update hit. Smaller thresholds produce too many false positives.</rationale>
     </rule>
 
-    <rule id="r2-sustained-window" testable="true" depth="essential">
-      <statement>An alert fires only if the threshold is breached for ≥2 consecutive days (or ≥7 days for weekly seasonality). Single-day spikes do not fire — they often reflect Google data-pipeline noise.</statement>
-      <rationale source="Search Console data-pipeline behaviour; rank-tracker SLA variability">Search Console reporting lags 1-3 days and sometimes back-fills. A single-day -25% drop is often a partial-data artefact that resolves the next day. The sustained-window rule eliminates the most common false positive.</rationale>
+    <rule id="position-delta-3-rank-alert" testable="true" depth="essential">
+      <statement>Trigger alert when a tracked keyword&apos;s average position degrades by &gt;= 3 ranks in a 7-day window. Rank-tracker daily data; smoothing via 7-day average.</statement>
+      <rationale source="Ahrefs / Semrush alert config docs">3-rank drop on a top-10 keyword is loss of 50%+ click share. Smaller drops are within normal SERP volatility; bigger thresholds miss early signal.</rationale>
     </rule>
 
-    <rule id="r3-ai-overview-first-class" testable="true" depth="essential">
-      <statement>AI Overview presence on a tracked query is its own alert class (not folded into position) AND its appearance/disappearance triggers an investigation regardless of whether traffic changed yet.</statement>
-      <rationale source="post-2024 SERP feature observations; AI Overview adoption literature">AI Overviews change CTR before they change impressions and may compress positions silently. The alert must fire on the structural change, not wait for downstream traffic damage.</rationale>
+    <rule id="ai-overview-appearance-alert" testable="true" depth="essential">
+      <statement>Trigger alert any time an AI Overview (SGE / AIO) starts appearing on a tracked keyword&apos;s SERP. Detection via rank-tracker SERP feature flag or scraping.</statement>
+      <rationale source="Google SGE rollout monitoring 2024">AI Overview typically halves click-through for the first organic result. Late detection = weeks of CTR collapse before team notices.</rationale>
     </rule>
 
-    <rule id="r4-query-priority-weighting" testable="true" depth="essential">
-      <statement>Tracked queries are tagged by priority band (head = revenue-driving, body = supporting, long-tail = exploration). Alerts on head queries route to immediate-review; body to daily digest; long-tail to weekly summary.</statement>
-      <rationale source="80/20 SEO impact distribution; field experience">Treating every query equally produces digest sprawl. Head queries deserve interruption; long-tail movement is informational. The priority band is the difference between a usable inbox and an ignored one.</rationale>
+    <rule id="ctr-collapse-50pct-alert" testable="true" depth="essential">
+      <statement>Trigger alert when CTR for a query drops &gt; 50% relative to its 4-week rolling average AND impressions stable. Filters out genuine traffic drops.</statement>
+      <rationale source="GSC analyst playbooks">Stable impressions + collapsing CTR means SERP layout changed (AI Overview, featured snippet steal, ad block expansion). Different fix than ranking drop.</rationale>
     </rule>
 
-    <rule id="r5-no-weekend-pages" testable="true" depth="essential">
-      <statement>Alerts fire only Mon-Fri 09:00-19:00 operator local time unless the affected query is critical (head + revenue path). Saturday-night SERP volatility is real but rarely actionable in real time.</statement>
-      <rationale source="alerting-philosophy; sustainable-pace marketing operations">A Saturday alert on a long-tail query is noise. The operator cannot publish content fixes over the weekend in most agencies. Hard quiet-hours protect attention; the Monday digest covers the gap.</rationale>
+    <rule id="48-hour-review-sla" testable="true" depth="essential">
+      <statement>Every alert MUST have a documented 48-hour review SLA with a named owner. Alerts without owner are ignored within weeks.</statement>
+      <rationale source="Internal SRE alerting discipline applied to SEO">Unowned alerts = noise. Named owner + SLA forces triage decision: real → investigate, noise → adjust threshold.</rationale>
     </rule>
 
-  </section>
-
-  <section title="Default thresholds">
-    <list>
-      <item><b>impressions_wow_drop</b>: head queries -20%, body -30%, long-tail -50%</item>
-      <item><b>position_drop</b>: head -3, body -5, long-tail -8</item>
-      <item><b>ai_overview_appeared</b>: any tracked query — always fires</item>
-      <item><b>ai_overview_disappeared</b>: any tracked query — always fires</item>
-      <item><b>ctr_drop_on_stable_impressions</b>: -30% over 7 days, impressions ±10%</item>
-    </list>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="AI Overview appearance triggers an investigation">
-      <code lang="text"><![CDATA[
-Tuesday 03:00 — nightly pull. Query "best CRM for freelancers" (head, priority 1)
-    has new AI Overview snippet citing 3 competitors, not us.
-Tuesday 09:00 — alert fires; investigation log opened.
-Tuesday 11:00 — content team identifies our page lacks the structured comparison
-    section the AI Overview pulls from. Update drafted.
-Wednesday — update published.
-Friday — AI Overview now cites us; CTR partially recovers.
-      ]]></code>
-      <note>r3 (AI Overview as first-class signal), r4 (head priority), r5 (work hours). Caught within 6 hours of the SERP change.</note>
-    </example>
-
-    <example type="bad" title="The weekly-review-only failure">
-      <code lang="text"><![CDATA[
-Monday weekly review: impressions down 32% from previous week.
-Investigation: AI Overview appeared Thursday last week and has been
-showing competitors for 5 days. By the time the fix ships, recovery
-takes 3 weeks instead of 1.
-      ]]></code>
-      <note>r1, r3 violated. Weekly review is too slow for AI Overview shifts.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in Applies If fail OR any item in Skip If triggers, do not run this methodology. Document the skip rationale in the artefact&apos;s parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

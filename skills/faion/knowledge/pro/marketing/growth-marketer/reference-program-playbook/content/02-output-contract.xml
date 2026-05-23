@@ -1,55 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Reference Program — Output Schema" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the structure of `references.yaml` and the per-asset record. Sales ops and the reference router both consume this file.</summary>
+<text id="02-output-contract" title="Reference Program Playbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="reference_id" format="slug-or-uuid"/>
-      <field name="client_company" type="string"/>
-      <field name="contact_name" type="string"/>
-      <field name="contact_role" type="string"/>
-      <field name="archetype" required_keys="industry,headcount_band,decision_maker_role,deal_shape"/>
-      <field name="outcome_class" type="string" example="cost-reduction|revenue-acceleration|risk-mitigation|tech-modernisation"/>
-      <field name="assets" type="list" min_entries="1"
-             item_required_keys="type,permitted_uses,consent_date,expires_on"/>
-      <field name="fatigue" required_keys="last_used_date,uses_this_quarter"/>
-      <field name="freshness" required_keys="status,last_health_check"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">asset.permitted_uses contains paid_ads or PR_release without consent_date within the last 12 months</pattern>
-      <pattern id="f2">fatigue.uses_this_quarter &gt; 2 — block any new deployment</pattern>
-      <pattern id="f3">reference deployed cross-archetype (industry or headcount mismatch) without explicit override note</pattern>
-      <pattern id="f4">reference reused after client churn without renewed consent (client status != active AND last asset use after churn date)</pattern>
-      <pattern id="f5">asset.type == "logo" appears on the website with consent_date older than 12 months</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Renew consent extends `expires_on` by 12 months; record the renewal event in the audit log.</transformation>
-      <transformation>Aggregate multiple peer calls under one reference_id; each call counts toward fatigue.</transformation>
-      <transformation>Demote a reference from "active" to "rest" when fatigue reaches the cap; auto-restore at the next quarter.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/references.schema.yaml"/>
-  </output-contract>
-
-  <section title="Sales-cycle deployment rules">
-    <list>
-      <item><b>Discovery</b>: do not deploy a named reference; share aggregated outcome stats only.</item>
-      <item><b>Proposal</b>: 1-2 case studies matched to archetype; no peer call yet.</item>
-      <item><b>Late-stage / champion building</b>: 1 peer call, matched by archetype, prepped with the brief in `templates/peer-call-brief.md`.</item>
-      <item><b>Procurement</b>: 1 quote in proposal, never a logo on slide 1 without consent for procurement context.</item>
-      <item><b>Post-sale onboarding</b>: invite the new client to peer-call cohort; this is how the next reference is grown.</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/reference-program-playbook.json",
+  "type": "object",
+  "required": [
+    "playbook_version",
+    "reference_tiers",
+    "case_studies",
+    "ask_triggers",
+    "intro_protocol",
+    "owner",
+    "produced_at"
+  ],
+  "additionalProperties": true
+}
+]]></code>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Every active reference has consent_date within 12 months</item>
-      <item>Every active reference has fatigue.uses_this_quarter ≤ 2</item>
-      <item>Every active reference is tagged with all four archetype keys</item>
-      <item>Every asset has a permitted_uses list — no implicit assumptions</item>
-      <item>Expired assets are flagged and removed from website / decks</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "playbook_version": "2026-Q2",
+  "reference_tiers": [
+    {
+      "tier": 1,
+      "client": "Acme Co",
+      "permissions": [
+        "named",
+        "case_study",
+        "peer_call"
+      ]
+    },
+    {
+      "tier": 2,
+      "client": "Beta Inc",
+      "permissions": [
+        "named",
+        "case_study"
+      ]
+    },
+    {
+      "tier": 3,
+      "client": "Gamma Ltd",
+      "permissions": [
+        "anonymous_case_study"
+      ]
+    }
+  ],
+  "case_studies": [
+    {
+      "client": "Acme Co",
+      "outcome_metric": "+34% MQL"
+    }
+  ],
+  "ask_triggers": [
+    "peak_satisfaction_event",
+    "public_win",
+    "renewal_signed"
+  ],
+  "intro_protocol": "double_opt_in",
+  "owner": {
+    "name": "Olha Riznyk",
+    "role": "founder"
+  },
+  "produced_at": "2026-05-23T12:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "reference_tiers": "tier1",
+  "intro_protocol": "single_step"
+}
+]]></code>
+    <note>Required fields missing or values out of allowed range. Validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence / inputs array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
   </section>
+
+  <reference path="scripts/validate-reference-program-playbook.py">Validator script</reference>
 </text>

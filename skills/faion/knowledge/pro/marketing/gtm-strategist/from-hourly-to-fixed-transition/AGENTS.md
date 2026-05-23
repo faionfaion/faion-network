@@ -3,89 +3,97 @@ slug: from-hourly-to-fixed-transition
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: A framework for moving an active book of business off hourly billing to fixed-price or productized engagements without revenue collapse.
-content_id: "2a9444c76250d19d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 12-week three-phase transition off hourly billing: convert highest-margin client first, hold 2-3 overlap clients, productize one SKU, single-round re-price, 6-8 week cash bridge.
+content_id: "0fc19fe7bbd006ab"
+complexity: deep
+produces: spec
+est_tokens: 4200
 tags: [pricing, freelance, productized, transition, retainer, cash-flow]
 ---
 # From Hourly to Fixed-Price Transition
 
 ## Summary
 
-**One-sentence:** A framework for moving an active book of business off hourly billing to fixed-price or productized engagements without revenue collapse.
+**One-sentence:** 12-week three-phase transition off hourly billing: convert highest-margin client first, hold 2-3 overlap clients, productize one SKU, single-round re-price, 6-8 week cash bridge.
 
-**One-paragraph:** Defines the sequence in which a freelancer or small studio replaces hourly engagements with fixed-price ones — starting with the highest-margin existing client, running a controlled 2-3 client overlap window, productizing the first repeatable scope into a fixed offer, and re-pricing remaining hourly clients in a single round. Mechanism: a 12-week three-phase rollout (Audit → Pilot → Convert) gated on per-client gross-margin calculations and a "cash bridge" buffer covering 6-8 weeks of trough revenue. Primary output: a transition plan with per-client decisions (convert / sunset / retain hourly), a productized SKU spec, and a documented cash bridge.
+**One-paragraph:** 12-week three-phase transition off hourly billing: convert highest-margin client first, hold 2-3 overlap clients, productize one SKU, single-round re-price, 6-8 week cash bridge. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- Freelancers / studios що шукають escape з hourly trap без revenue collapse.
+- Перед запуском productized SKU — це pre-work плану.
+- Якщо effective hourly < $150 і ставка stuck, transition окуповується.
+- При зростанні до 5+ clients — hourly admin overhead починає вбивати margin.
 
 ## Applies If (ALL must hold)
 
-- operator currently bills ≥ 60% of revenue hourly
-- operator has ≥ 3 active clients OR ≥ 4 quarters of stable hourly work
-- monthly hourly revenue ≥ $3,000 (transition overhead exceeds value below this)
-- operator has detected at least 2 repeatable scopes across past engagements
-- operator has 6 weeks of personal runway OR a cash buffer ≥ 1.5× monthly burn
+- Active book >= 3 paying hourly clients з документованими hours per client.
+- Founder здатний особисто провести цикл re-pricing conversations.
+- Savings + credit + signed pipeline складають >= 6 weeks of monthly burn (cash bridge).
 
 ## Skip If (ANY kills it)
 
-- operator has &lt; 2 clients — too narrow to absorb a single sunset
-- already 100% fixed-price — transition is over; use pricing-experiments instead
-- operator's work is genuinely non-repeatable (one-off forensics, novel R&D)
-- runway &lt; 4 weeks — cannot afford pilot trough; needs immediate cash, not transition
-- existing clients on enforceable hourly contracts with &gt; 6 months left
+- Cash bridge < 6 weeks — transition collapses pre-finish; fix bridge first.
+- < 3 paying clients — занадто мало data для productize one repeatable scope.
+- Already 80%+ fixed-price — це formalisation problem, не transition.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- per-client revenue + delivered-hours table for last 4 quarters
-- per-client gross-margin estimate (revenue minus operator-time at desired effective hourly)
-- catalog of past engagements with scope similarity tags
-- statement of operator's target effective hourly rate (anchor for fixed pricing)
-- written 6-8 week cash bridge (savings, line of credit, or new-client pipeline)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/gtm-strategist/hourly-rate-floor-calculation` | Effective-hourly anchor for fixed-price math |
-| `solo/marketing/gtm-strategist/ops-pricing-strategy` | Productized SKU shape and tier ladder |
-| `pro/research/researcher/competitor-analysis` | Reality-check on market-rate ceiling for the productized SKU |
+| `pro/marketing/gtm-strategist` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: margin-first selection, overlap window, productize one scope, single re-price round, cash bridge | ~1000 |
-| `content/02-output-contract.xml` | essential | Transition plan schema, productized SKU spec, cash bridge requirements | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (sunset cascade, premature productizing, scope creep on fixed, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `client_margin_table_compute` | haiku | Pure arithmetic over revenue / hours data |
-| `productize_scope_synthesis` | opus | Cross-engagement pattern recognition; high consequence |
-| `cash_bridge_stress_test` | sonnet | Bounded scenario math with discrete cases |
-| `client_communication_draft` | sonnet | Re-pricing message templates with operator tone |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/transition-plan.md` | Per-client decision sheet with margin + action |
-| `templates/productized-sku-spec.md` | Fixed-scope offer with deliverables + exclusions |
-| `templates/repricing-email.md` | Client message for hourly-to-fixed conversion |
-| `templates/cash-bridge-worksheet.md` | 8-week trough projection |
+| `templates/spec-skeleton.md` | From Hourly to Fixed-Price Transition skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in From Hourly to Fixed-Price Transition. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/margin-analyzer.py` | Compute per-client gross margin at target effective rate | Audit phase |
-| `scripts/transition-risk-scorer.py` | Score sunset-vs-convert risk per client | Pilot phase |
+| `scripts/validate-from-hourly-to-fixed-transition.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
-- peer methodology: `hourly-rate-floor-calculation`, `ops-pricing-strategy`
-- external: [Productize Yourself (Brennan Dunn)](https://doubleyourfreelancingrate.com/) · [Hourly Billing Is Nuts (Jonathan Stark)](https://jonathanstark.com/htbo)
+- [[agency-proposal-template-system]]
+- [[agency-pricing-tiers]]
+- [[agency-niche-positioning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
