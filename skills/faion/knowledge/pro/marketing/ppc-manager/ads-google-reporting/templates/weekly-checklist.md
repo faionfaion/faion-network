@@ -1,46 +1,28 @@
-# Google Ads Weekly Optimization Checklist
+<!-- purpose: 30-minute weekly optimization checklist. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-## Week of [Date]
+# Weekly Google Ads Checklist (30 min)
 
-### Performance Summary
+## Spend pacing (2 min)
+- [ ] Spend vs budget per campaign
+- [ ] Disapproved ads
 
-| Metric | This Week | Last Week | Change | Target |
-|--------|-----------|-----------|--------|--------|
-| Spend | $X | $X | +X% | $X |
-| Conversions | X | X | +X% | X |
-| CPA | $X | $X | -X% | $X |
-| ROAS | X:1 | X:1 | +X% | X:1 |
-| Impression Share | X% | X% | +X% | X% |
+## Performance (10 min)
+- [ ] CPA vs target
+- [ ] QS distribution
+- [ ] IS gap
 
-### Campaign Performance
+## Search Terms (10 min)
+- [ ] Filter cost > $5
+- [ ] Add negatives
+- [ ] Promote winners
 
-| Campaign | Spend | Conv | CPA | vs. Target | IS | Action |
-|----------|-------|------|-----|-----------|-----|--------|
-| [Name] | $X | X | $X | +X% | X% | [action] |
+## Bids (5 min)
+- [ ] Device modifiers
+- [ ] Location modifiers
 
-### Search Terms Actions
-
-- Negatives added: [list terms]
-- Keywords promoted: [list terms]
-- Total irrelevant terms blocked: [N]
-
-### Quality Score Review
-
-- Campaigns with QS < 5: [list]
-- QS trends (up/down/stable): [summary]
-
-### Optimization Actions Taken
-
-- [ ] [Action 1 — e.g., added 12 negative keywords]
-- [ ] [Action 2 — e.g., paused keyword X (0 conv, $45 spend)]
-- [ ] [Action 3 — e.g., increased bid on device: desktop +15%]
-
-### Issues Identified
-
-1. [Issue + action taken]
-2. [Issue + action taken]
-
-### Next Week Focus
-
-1. [Priority 1]
-2. [Priority 2]
+## Plan next week (3 min)
+- [ ] Top 3 actions

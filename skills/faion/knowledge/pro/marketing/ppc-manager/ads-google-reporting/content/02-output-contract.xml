@@ -1,22 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ads-google-reporting Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Google Ads Reporting and Optimization Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by ads-google-reporting. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ads-google-reporting.json",
+  "type": "object",
+  "required": [
+    "period",
+    "metrics",
+    "campaigns",
+    "search_terms",
+    "actions"
+  ],
+  "properties": {
+    "period": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "spend",
+        "conversions",
+        "cpa",
+        "roas",
+        "impression_share"
+      ]
+    },
+    "campaigns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "spend",
+          "cpa",
+          "status"
+        ]
+      }
+    },
+    "search_terms": {
+      "type": "object",
+      "required": [
+        "high_cost_non_converting",
+        "negatives_added"
+      ]
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "priority",
+          "lever",
+          "rationale",
+          "owner"
+        ]
+      }
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "period": {
+    "start": "2026-05-12",
+    "end": "2026-05-18"
+  },
+  "metrics": {
+    "spend": 4250.0,
+    "conversions": 73,
+    "cpa": 58.22,
+    "roas": 4.1,
+    "impression_share": 0.71
+  },
+  "campaigns": [
+    {
+      "name": "brand-search",
+      "spend": 1200.0,
+      "cpa": 25.1,
+      "status": "ok"
+    }
+  ],
+  "search_terms": {
+    "high_cost_non_converting": 4,
+    "negatives_added": [
+      "free trial"
+    ]
+  },
+  "actions": [
+    {
+      "priority": 1,
+      "lever": "add_negatives",
+      "rationale": "$120 spend on 4 irrelevant queries",
+      "owner": "ops"
+    }
+  ]
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "period": {
+    "start": "2026-05-12"
+  },
+  "metrics": {
+    "spend": 4250
+  },
+  "campaigns": [],
+  "actions": []
+}
+    ]]></code>
+    <note>Missing period.end, search_terms; empty campaigns + actions.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-vanity-only" severity="medium">
+      <description>Output ships clicks/impressions without paired conversion-tied metric.</description>
+      <reason>Violates conversion-not-vanity rule.</reason>
+    </antipattern>
+    <antipattern id="f-aggregate-only" severity="medium">
+      <description>Output ships campaign aggregates without any segment breakdown.</description>
+      <reason>Violates segment-before-judging rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-ads-google-reporting.py">Validator script enforcing this schema</reference>
 </text>

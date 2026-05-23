@@ -1,22 +1,155 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ads-linkedin-ads Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="LinkedIn Ads Campaign Strategy Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by ads-linkedin-ads. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ads-linkedin-ads.json",
+  "type": "object",
+  "required": [
+    "objective",
+    "audience",
+    "formats",
+    "bid_strategy",
+    "budget",
+    "creative_brief",
+    "kpi"
+  ],
+  "properties": {
+    "objective": {
+      "enum": [
+        "brand_awareness",
+        "website_visits",
+        "engagement",
+        "video_views",
+        "lead_generation",
+        "website_conversions"
+      ]
+    },
+    "audience": {
+      "type": "object",
+      "required": [
+        "matched_accounts",
+        "icp_filters",
+        "exclusions"
+      ]
+    },
+    "formats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "single_image",
+          "video",
+          "document",
+          "carousel",
+          "lead_form",
+          "conversation",
+          "message",
+          "text"
+        ]
+      }
+    },
+    "bid_strategy": {
+      "enum": [
+        "max_delivery",
+        "cost_cap",
+        "manual_cpc",
+        "target_cost"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "daily",
+        "currency"
+      ]
+    },
+    "creative_brief": {
+      "type": "object",
+      "required": [
+        "hook",
+        "value_prop",
+        "cta"
+      ]
+    },
+    "kpi": {
+      "type": "object",
+      "required": [
+        "target_cost_per_mql",
+        "target_mql_to_sql"
+      ]
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "objective": "lead_generation",
+  "audience": {
+    "matched_accounts": "acme_top500",
+    "icp_filters": {
+      "seniority": [
+        "director",
+        "vp"
+      ],
+      "function": [
+        "engineering"
+      ],
+      "company_size": "201-1000"
+    },
+    "exclusions": [
+      "competitors_list",
+      "current_customers"
+    ]
+  },
+  "formats": [
+    "single_image",
+    "lead_form"
+  ],
+  "bid_strategy": "cost_cap",
+  "budget": {
+    "daily": 200,
+    "currency": "USD"
+  },
+  "creative_brief": {
+    "hook": "Ship 2 weeks faster",
+    "value_prop": "Faion-CLI cuts SDD planning to minutes",
+    "cta": "Get the playbook"
+  },
+  "kpi": {
+    "target_cost_per_mql": 80,
+    "target_mql_to_sql": 0.25
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "objective": "website_visits",
+  "formats": [],
+  "budget": {
+    "daily": 200
+  },
+  "creative_brief": {},
+  "kpi": {}
+}
+    ]]></code>
+    <note>Missing audience, bid_strategy, budget.currency, creative_brief fields and kpi fields; empty formats array.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-no-account-list" severity="medium">
+      <description>Plan ships broad targeting with no matched account list.</description>
+      <reason>Violates account-list-first rule.</reason>
+    </antipattern>
+    <antipattern id="f-cpl-only-kpi" severity="medium">
+      <description>KPI block only carries cost_per_lead, no cost_per_mql / mql_to_sql.</description>
+      <reason>Violates lead-quality-not-volume rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-ads-linkedin-ads.py">Validator script enforcing this schema</reference>
 </text>

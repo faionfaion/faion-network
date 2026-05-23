@@ -1,22 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ads-twitter-ads Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="X / Twitter Ads Strategy Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by ads-twitter-ads. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ads-twitter-ads.json",
+  "type": "object",
+  "required": [
+    "objective",
+    "audience",
+    "bid_strategy",
+    "brand_safety",
+    "kpi"
+  ],
+  "properties": {
+    "objective": {
+      "enum": [
+        "reach",
+        "engagements",
+        "video_views",
+        "website_clicks",
+        "followers",
+        "app_installs"
+      ]
+    },
+    "audience": {
+      "type": "object",
+      "required": [
+        "mode",
+        "size_estimate"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "follower_lal",
+            "keyword",
+            "conversation",
+            "interest"
+          ]
+        }
+      }
+    },
+    "bid_strategy": {
+      "enum": [
+        "max_bid",
+        "autobid",
+        "target_cost"
+      ]
+    },
+    "brand_safety": {
+      "type": "object",
+      "required": [
+        "category_exclusions"
+      ],
+      "properties": {
+        "category_exclusions": {
+          "type": "array",
+          "minItems": 1
+        }
+      }
+    },
+    "kpi": {
+      "type": "object",
+      "required": [
+        "target_cpc",
+        "viewability_floor_pct"
+      ]
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "objective": "website_clicks",
+  "audience": {
+    "mode": "follower_lal",
+    "size_estimate": 320000
+  },
+  "bid_strategy": "autobid",
+  "brand_safety": {
+    "category_exclusions": [
+      "politics",
+      "hate",
+      "sensitive_news"
+    ]
+  },
+  "kpi": {
+    "target_cpc": 0.85,
+    "viewability_floor_pct": 50
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "objective": "reach",
+  "audience": {
+    "mode": "interest",
+    "size_estimate": 5000000
+  },
+  "brand_safety": {
+    "category_exclusions": []
+  },
+  "kpi": {}
+}
+    ]]></code>
+    <note>Interest mode + no exclusions + missing bid_strategy + kpi.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-interest-only" severity="medium">
+      <description>audience.mode == 'interest' without LAL or keyword tier.</description>
+      <reason>Violates follower-lal-or-keyword rule.</reason>
+    </antipattern>
+    <antipattern id="f-no-safety" severity="medium">
+      <description>brand_safety.category_exclusions empty.</description>
+      <reason>Violates brand-safety-exclusions rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-ads-twitter-ads.py">Validator script enforcing this schema</reference>
 </text>

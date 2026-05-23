@@ -3,73 +3,99 @@ slug: ads-twitter-ads
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Twitter/X advertising for tech and niche audiences: choose the right objective (Website Traffic or Conversions for most campaigns), target via follower lookalikes and keyword conversations, write native-looking copy in hook/value/CTA format, set realistic CPM/CPC budgets, and refresh creatives every two weeks.
-content_id: "3811bb41edc4ab61"
-tags: [twitter-x-ads, paid-social, niche-targeting, tech-marketing, follower-lookalikes]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an X/Twitter campaign spec: objective + audience (follower-LAL, keyword, conversation, interest), promoted-tweet format, bid strategy, with brand-safety + viewability guards.
+content_id: "31822c789464c9d6"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [x-ads, twitter-ads, social-ads, promoted-tweet, brand-safety]
 ---
-# Twitter/X Ads
+# X / Twitter Ads Strategy
 
 ## Summary
 
-**One-sentence:** Twitter/X advertising for tech and niche audiences: choose the right objective (Website Traffic or Conversions for most campaigns), target via follower lookalikes and keyword conversations, write native-looking copy in hook/value/CTA format, set realistic CPM/CPC budgets, and refresh creatives every two weeks.
+**One-sentence:** Produces an X/Twitter campaign spec: objective + audience (follower-LAL, keyword, conversation, interest), promoted-tweet format, bid strategy, with brand-safety + viewability guards.
 
-**One-paragraph:** Twitter/X advertising for tech and niche audiences: choose the right objective (Website Traffic or Conversions for most campaigns), target via follower lookalikes and keyword conversations, write native-looking copy in hook/value/CTA format, set realistic CPM/CPC budgets, and refresh creatives every two weeks. The core rule is: use follower lookalike targeting against specific @accounts rather than broad interest categories — Twitter's interest graph is less precise than Meta's, but follower overlap is a strong intent signal.
+**One-paragraph:** X/Twitter is a niche acquisition channel after 2023 platform changes. Methodology gates spend on audience-fit (B2B + tech + crypto + media verticals), forces brand-safety controls, and pins the promoted-tweet format with a max-2-emoji policy. Output is a campaign spec covering objective, audience (follower-LAL, keyword, conversation, interest), bid strategy, and reporting cadence.
+
+**Ефективно для:**
+
+- B2B / tech / crypto / media — де X audience fit платить.
+- Follower-Lookalike або keyword targeting на active threads.
+- Brand-safety controls + viewability >50% guard.
+- Promoted-tweet з max-2-emoji policy.
 
 ## Applies If (ALL must hold)
 
-- Reaching tech-savvy, developer, or founder audiences not efficiently reachable via Meta or LinkedIn
-- Promoting content (newsletters, reports, tools) to engaged niche communities
-- Real-time event or launch campaigns tied to trending topics
-- Building follower base for an organic Twitter/X strategy
-- Retargeting website visitors via Twitter pixel tailored audiences
+- B2B / tech / crypto / media product where X audience fits.
+- Follower-Lookalike or keyword targeting on active threads.
+- Brand-safety-aware buying with explicit content-category exclusions.
+- Engagement / clicks / followers objective with measurable funnel.
 
 ## Skip If (ANY kills it)
 
-- E-commerce with broad consumer targeting — Meta's audience graph is far superior for consumer products
-- B2B with job-title targeting requirements — use LinkedIn Ads for role-based targeting
-- Video-first awareness campaigns — YouTube/Meta Reels provide better video completion rates and lower CPV
-- Campaigns requiring detailed conversion optimization — Twitter's algorithm has less conversion data than Meta or Google
+- Mass-consumer / non-tech vertical — X audience does not match.
+- Daily budget < $50 — auction floor wastes signal.
+- No brand-safety category exclusion list — content-adjacency risk.
+- Performance-only KPI (CPA) on cold X — channel rarely beats Meta on direct response.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| X Ads account access | OAuth | platform owner |
+| Brand-safety category exclusion list | JSON | brand |
+| Audience hypothesis | doc | GTM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Pixel events for X conversion API. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for ads-twitter-ads | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audience-mode` | sonnet | Choose LAL vs keyword vs conversation per ICP. |
+| `brand-safety-list` | haiku | Apply standard exclusion list. |
+| `tweet-copy` | sonnet | Hook + CTA + ≤2 emoji. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/campaign-spec.md` | X campaign spec Markdown skeleton. |
+| `templates/brand-safety-exclusions.json` | Standard brand-safety category exclusion list. |
+| `templates/campaign-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ads-twitter-ads.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-targeting]]
+- [[ads-linkedin-ads]]
+- [[ads-conversion-tracking]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

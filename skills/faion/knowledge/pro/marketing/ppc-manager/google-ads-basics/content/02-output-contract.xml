@@ -1,22 +1,158 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="google-ads-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Google Ads Account Foundations Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by google-ads-basics. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/google-ads-basics.json",
+  "type": "object",
+  "required": [
+    "campaign_types",
+    "ad_groups",
+    "conversion_tracking",
+    "extensions",
+    "billing"
+  ],
+  "properties": {
+    "campaign_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "search",
+          "display",
+          "video",
+          "shopping",
+          "performance_max",
+          "discovery"
+        ]
+      }
+    },
+    "ad_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "theme",
+          "keyword_count"
+        ],
+        "properties": {
+          "keyword_count": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 30
+          }
+        }
+      }
+    },
+    "conversion_tracking": {
+      "type": "object",
+      "required": [
+        "events_defined",
+        "ga4_imported"
+      ]
+    },
+    "extensions": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "enum": [
+          "sitelinks",
+          "callouts",
+          "structured_snippets",
+          "call",
+          "location",
+          "lead_form",
+          "image",
+          "promotion"
+        ]
+      }
+    },
+    "billing": {
+      "type": "object",
+      "required": [
+        "payment_method_verified",
+        "roles"
+      ]
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "campaign_types": [
+    "search",
+    "shopping"
+  ],
+  "ad_groups": [
+    {
+      "name": "brand-search",
+      "theme": "brand",
+      "keyword_count": 12
+    },
+    {
+      "name": "generic-saas",
+      "theme": "saas-tools",
+      "keyword_count": 18
+    }
+  ],
+  "conversion_tracking": {
+    "events_defined": [
+      "Purchase",
+      "SignUp"
+    ],
+    "ga4_imported": true
+  },
+  "extensions": [
+    "sitelinks",
+    "callouts",
+    "structured_snippets"
+  ],
+  "billing": {
+    "payment_method_verified": true,
+    "roles": [
+      "admin",
+      "manager"
+    ]
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "campaign_types": [
+    "performance_max"
+  ],
+  "ad_groups": [
+    {
+      "name": "g1",
+      "theme": "x",
+      "keyword_count": 1
+    }
+  ],
+  "extensions": [
+    "sitelinks"
+  ],
+  "billing": {}
+}
+    ]]></code>
+    <note>PMax alone with no qualifier; SKAG-style ad group (1 keyword); only 1 extension; missing conversion_tracking + billing fields.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-pmax-alone-no-data" severity="medium">
+      <description>campaign_types == ['performance_max'] AND no conversion history.</description>
+      <reason>Violates campaign-type-match-intent rule.</reason>
+    </antipattern>
+    <antipattern id="f-skag" severity="medium">
+      <description>ad_groups[i].keyword_count &lt; 5.</description>
+      <reason>Violates one-group-one-theme rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-google-ads-basics.py">Validator script enforcing this schema</reference>
 </text>

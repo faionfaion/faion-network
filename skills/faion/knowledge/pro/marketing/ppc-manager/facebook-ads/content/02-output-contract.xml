@@ -1,22 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="facebook-ads Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Facebook Ads Playbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by facebook-ads. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/facebook-ads.json",
+  "type": "object",
+  "required": [
+    "account_warmup",
+    "placements",
+    "learning_phase",
+    "aem_configured",
+    "page_quality"
+  ],
+  "properties": {
+    "account_warmup": {
+      "type": "object",
+      "required": [
+        "start_pct",
+        "ramp_pct_per_3d"
+      ],
+      "properties": {
+        "start_pct": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 50
+        },
+        "ramp_pct_per_3d": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 50
+        }
+      }
+    },
+    "placements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "feed",
+          "reels",
+          "marketplace",
+          "stories",
+          "in-stream",
+          "audience_network"
+        ]
+      }
+    },
+    "learning_phase": {
+      "type": "object",
+      "required": [
+        "weekly_conv_forecast",
+        "ramp_days"
+      ]
+    },
+    "aem_configured": {
+      "type": "boolean",
+      "const": true
+    },
+    "page_quality": {
+      "enum": [
+        "standard",
+        "above_standard"
+      ]
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "account_warmup": {
+    "start_pct": 50,
+    "ramp_pct_per_3d": 25
+  },
+  "placements": [
+    "feed",
+    "reels",
+    "marketplace"
+  ],
+  "learning_phase": {
+    "weekly_conv_forecast": 80,
+    "ramp_days": 14
+  },
+  "aem_configured": true,
+  "page_quality": "standard"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "account_warmup": {
+    "start_pct": 100
+  },
+  "placements": [
+    "audience_network"
+  ],
+  "aem_configured": false,
+  "page_quality": "below_standard"
+}
+    ]]></code>
+    <note>Warmup start_pct out of range; missing ramp; only Audience Network; AEM not configured; page quality not in enum.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-an-only" severity="medium">
+      <description>placements == ['audience_network'] alone.</description>
+      <reason>Violates fb-native-placements rule.</reason>
+    </antipattern>
+    <antipattern id="f-no-aem" severity="medium">
+      <description>aem_configured != true.</description>
+      <reason>Violates verified-domain rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-facebook-ads.py">Validator script enforcing this schema</reference>
 </text>

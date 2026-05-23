@@ -3,71 +3,101 @@ slug: ads-meta-reporting
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured analyze-decide-act cycle for Meta Ads: set up custom column presets (CPM, CTR, CPC, CVR, CPA, ROAS), run weekly breakdowns by age/placement/device, and diagnose performance issues by mapping symptoms (high CPA, low CTR, high frequency) to root causes (creative fatigue, audience fatigue, landing page failure).
-content_id: "44b6aa8880385d87"
-tags: [meta-ads, reporting, performance-analysis, diagnostics, cpa-optimization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Meta weekly report + action queue: column preset (CPM/CTR/CPC/CVR/CPA/ROAS), breakdowns by age/placement/device, symptom→root-cause map (creative fatigue / audience fatigue / LP fail).
+content_id: "93127f142dfb3bcd"
+complexity: medium
+produces: report
+est_tokens: 4400
+tags: [meta-ads, reporting, diagnostics, cpa, fatigue]
 ---
-# Meta Ads Reporting & Analysis
+# Meta Ads Reporting and Diagnosis
 
 ## Summary
 
-**One-sentence:** Structured analyze-decide-act cycle for Meta Ads: set up custom column presets (CPM, CTR, CPC, CVR, CPA, ROAS), run weekly breakdowns by age/placement/device, and diagnose performance issues by mapping symptoms (high CPA, low CTR, high frequency) to root causes (creative fatigue, audience fatigue, landing page failure).
+**One-sentence:** Generates a Meta weekly report + action queue: column preset (CPM/CTR/CPC/CVR/CPA/ROAS), breakdowns by age/placement/device, symptom→root-cause map (creative fatigue / audience fatigue / LP fail).
 
-**One-paragraph:** Structured analyze-decide-act cycle for Meta Ads: set up custom column presets (CPM, CTR, CPC, CVR, CPA, ROAS), run weekly breakdowns by age/placement/device, and diagnose performance issues by mapping symptoms (high CPA, low CTR, high frequency) to root causes (creative fatigue, audience fatigue, landing page failure). Every report must produce a list of concrete actions.
+**One-paragraph:** Structured analyze-decide-act cycle for Meta Ads. Pull column preset (CPM, CTR, CPC, CVR, CPA, ROAS, Frequency), run breakdowns by age, placement, device, country. Map each symptom (high CPA, low CTR, high frequency, low ROAS) to a root cause (creative fatigue, audience saturation, landing-page drop-off, attribution shift) and a concrete lever. Every report must end in a ranked action queue.
+
+**Ефективно для:**
+
+- Тижневий performance review активних Meta-кампейнів.
+- CPA spike або CTR drop — діагностика через breakdown.
+- Frequency >2.5 — anti-fatigue rotation.
+- Stakeholder summary з actionable рекомендаціями.
 
 ## Applies If (ALL must hold)
 
-- Weekly performance review for any active Meta campaign.
-- Diagnosing a CPA spike or CTR decline.
-- Presenting results to stakeholders (executive summary, creative analysis).
+- Weekly performance review for any active Meta campaign with ≥50 conv/wk.
+- Diagnosing a CPA spike, CTR decline, or frequency creep.
+- Stakeholder report covering executive summary + creative + audience.
 - Deciding which campaigns to scale, hold, or pause.
 
 ## Skip If (ANY kills it)
 
-- Daily micro-optimization — too noisy; check spend pacing and errors daily, but full analysis weekly.
-- Campaigns in learning phase (less than 50 conversions in the optimization window) — data is not representative.
-- Attribution decisions that require cross-platform modeling — use dedicated attribution tools, not Meta-only data.
+- Daily micro-optimization — too noisy; weekly cadence only.
+- Campaigns still in learning phase (<50 conv/wk) — data not representative.
+- Cross-platform attribution decisions — use a dedicated MMM/attribution tool.
+- Brand-only awareness campaigns with no conversion event — different KPI set.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Ads Manager + CAPI | OAuth + dashboard | platform owner |
+| KPI target table | JSON | stakeholder |
+| Last 30-day creative + audience inventory | CSV | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-meta-campaign-setup` | Campaign structure / naming convention required to interpret report rows. |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Pixel + CAPI events define what CPA / ROAS measure. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for ads-meta-reporting | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pull-and-breakdown` | haiku | Mechanical data assembly. |
+| `diagnose-symptoms` | sonnet | Map symptom→root-cause requires judgement. |
+| `prioritize-actions` | sonnet | Rank top-5 by expected impact × owner availability. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/weekly-report.md` | Meta weekly report Markdown skeleton with column preset + breakdowns + actions. |
+| `templates/breakdown-checklist.md` | Breakdown checklist for the weekly cadence. |
+| `templates/report-artefact.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ads-meta-reporting.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-campaign-setup]]
+- [[ads-meta-creative]]
+- [[ads-meta-targeting]]
+- [[ads-conversion-tracking]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

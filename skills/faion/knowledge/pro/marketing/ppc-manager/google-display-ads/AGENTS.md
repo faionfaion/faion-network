@@ -3,73 +3,100 @@ slug: google-display-ads
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Python patterns for creating DISPLAY_NETWORK campaigns, adding contextual (keyword/placement) and audience targeting to ad groups, building responsive display ads with required asset sets (1-5 headlines, long headline, 1-5 descriptions, 1-15 images), and querying placement-level performance reports.
-content_id: "9d55132b6d2430ab"
-tags: [google-ads, display, campaigns, responsive-ads, api]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Display campaign spec: audience layering (in-market + affinity + custom + remarketing), placement controls (exclude apps, low-quality sites), creative set (responsive + native + image).
+content_id: "77dc5189848f7593"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [google-display, display-network, remarketing, awareness, placements]
 ---
-# Google Display Ads — Campaign Setup, Targeting, Responsive Ads
+# Google Display Network Strategy
 
 ## Summary
 
-**One-sentence:** Python patterns for creating DISPLAY_NETWORK campaigns, adding contextual (keyword/placement) and audience targeting to ad groups, building responsive display ads with required asset sets (1-5 headlines, long headline, 1-5 descriptions, 1-15 images), and querying placement-level performance reports.
+**One-sentence:** Produces a Display campaign spec: audience layering (in-market + affinity + custom + remarketing), placement controls (exclude apps, low-quality sites), creative set (responsive + native + image).
 
-**One-paragraph:** Python patterns for creating DISPLAY_NETWORK campaigns, adding contextual (keyword/placement) and audience targeting to ad groups, building responsive display ads with required asset sets (1-5 headlines, long headline, 1-5 descriptions, 1-15 images), and querying placement-level performance reports.
+**One-paragraph:** Display Network is awareness/upper-funnel; conversion expectations must be calibrated. Methodology forces audience layering (in-market + affinity + custom + remarketing), heavy placement exclusions (mobile apps unless intentional; low-quality sites via topic+placement exclusion lists), and a responsive + native + image creative set with frequency caps.
+
+**Ефективно для:**
+
+- Awareness / upper-funnel — Display Network для top-of-funnel reach.
+- Audience layering: in-market + affinity + custom intent + remarketing.
+- Heavy placement exclusions (mobile apps, low-quality sites).
+- Frequency caps + custom audiences для CPA <$50 ceiling.
 
 ## Applies If (ALL must hold)
 
-- Creating banner ad campaigns across Google Display Network (GDN)
-- Adding remarketing audiences or contextual keyword targeting to display ad groups
-- Uploading image assets and assembling responsive display ads (RDA)
-- Reporting on which placements are driving impressions and conversions
-- Migrating legacy image ads to RDAs (Google sunsets uploaded display ads in favour of RDA)
+- Awareness / upper-funnel campaign that paired Search cannot fill.
+- Remarketing layer over an existing Search account.
+- Custom-intent audience experiments at low CPC.
+- Brand-safety project demanding placement audit.
 
 ## Skip If (ANY kills it)
 
-- Search text ads — use google-search-ads methodology instead
-- Performance Max campaigns — use google-pmax methodology instead
-- Shopping product listing ads — use google-shopping-ads methodology instead
-- YouTube-only video campaigns — use google-video-ads methodology instead
+- Direct-response campaigns expecting Search-level CPA — wrong channel.
+- <$1k/mo budget — Display needs reach floor.
+- No remarketing list ≥1000 — half the leverage gone.
+- No creative inventory beyond text — responsive ads alone perform poorly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Account foundation | report | google-ads-basics |
+| Audience inventory | lists | ads-google-keywords + remarketing |
+| Creative inventory (banner + native + responsive) | library | creative |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/google-ads-basics` | Foundation must be in place. |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Conversion events required to judge channel. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for google-display-ads | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audience-layering` | sonnet | Per-stage audience tier selection. |
+| `exclusion-list` | haiku | Apply the standard exclusion list. |
+| `creative-coverage` | haiku | Coverage across 3 formats. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/display-spec.md` | Display campaign spec Markdown skeleton. |
+| `templates/placement-exclusions.csv` | Standard placement exclusion list seed. |
+| `templates/display-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-google-display-ads.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[google-ads-basics]]
+- [[google-ads-optimization]]
+- [[ads-retargeting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

@@ -3,72 +3,101 @@ slug: ads-meta-targeting
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Three-tier audience strategy for Meta Ads: Core (interest/demographic/behavior) for cold traffic, Custom (pixel + email + engagement) for warm traffic, and Lookalike (1%, 2-3%, 5-10% of a quality source) for scaling.
-content_id: "2c3a5dda065951f9"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a 3-tier Meta audience spec: Core (interest/demo/behavior), Custom (pixel + email + engagement), Lookalike (1% / 2-3% / 5-10%); exclusion audiences + Advantage+ gate.
+content_id: "60f67302bd15970f"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [meta-ads, targeting, audiences, lookalike, custom-audiences]
 ---
-# Meta Targeting & Audiences
+# Meta Audience Targeting (3-Tier)
 
 ## Summary
 
-**One-sentence:** Three-tier audience strategy for Meta Ads: Core (interest/demographic/behavior) for cold traffic, Custom (pixel + email + engagement) for warm traffic, and Lookalike (1%, 2-3%, 5-10% of a quality source) for scaling.
+**One-sentence:** Produces a 3-tier Meta audience spec: Core (interest/demo/behavior), Custom (pixel + email + engagement), Lookalike (1% / 2-3% / 5-10%); exclusion audiences + Advantage+ gate.
 
-**One-paragraph:** Three-tier audience strategy for Meta Ads: Core (interest/demographic/behavior) for cold traffic, Custom (pixel + email + engagement) for warm traffic, and Lookalike (1%, 2-3%, 5-10% of a quality source) for scaling. Build exclusion audiences (purchasers, subscribers) before launching any campaign. Use Advantage+ only for large budgets with broad-appeal products; manual targeting for niche or small budgets.
+**One-paragraph:** Three-tier audience strategy for Meta. Core for cold traffic, Custom for warm, Lookalike for scaling. Exclusions (purchasers + subscribers) MUST be set before any campaign launches. Advantage+ is allowed only for broad-appeal products with budget ≥ $100/day; below that, manual targeting wins. Output is an audience spec covering each tier with size guards + match-quality checks.
+
+**Ефективно для:**
+
+- Setup аудиторій перед launch Meta-кампанії.
+- Scaling Core → Lookalike коли є ≥1000 quality source.
+- Retargeting на pixel behavior (cart, pricing, checkout).
+- A/B Core vs LAL vs retarget — який tier дає nижчий CPA.
 
 ## Applies If (ALL must hold)
 
 - Setting up audiences before launching any Meta campaign.
-- Scaling a campaign by expanding from Core/Interest to Lookalike.
-- Building retargeting audiences by pixel behavior (pricing page, cart, checkout).
-- Testing which audience type produces the lowest CPA (Core vs LAL vs retarget).
+- Scaling: expanding Core into Lookalike on the back of a quality source ≥1000.
+- Retargeting by pixel behavior (pricing page, cart, checkout).
+- A/B comparing audience-tier CPA (Core vs LAL vs retargeting).
 
 ## Skip If (ANY kills it)
 
-- Audience size below 500K for Core/Interest — ad delivery is constrained and CPM spikes.
-- Lookalike with a source smaller than 1,000 people — match quality is poor; build up the source first.
-- Advantage+ when the product is niche or the budget is small — Meta's AI needs scale to work.
-- When pixel is not installed and verified — Custom and Lookalike audiences won't populate correctly.
+- Core/Interest audience under 500K — delivery throttled, CPM spike.
+- Lookalike source under 1000 people — match quality poor; grow source first.
+- Advantage+ on niche product or small budget — Meta AI needs scale.
+- Pixel not installed or verified — Custom/LAL won't populate correctly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pixel + CAPI live | dashboard verification | ads-conversion-tracking |
+| ICP definition | JSON | GTM |
+| CRM purchaser / subscriber lists | CSV / hashed emails | RevOps |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Pixel events seed Custom + Lookalike audiences. |
+| `pro/marketing/ppc-manager/ads-meta-campaign-setup` | Audience plan feeds the ad-set layer in campaign setup. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for ads-meta-targeting | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `size-core` | haiku | Mechanical: interest filter set → size estimate from Meta. |
+| `pick-lal-pct` | sonnet | Source size + scale goal → 1% / 2-3% / 5-10%. |
+| `exclusions-derivation` | haiku | CRM lists + pixel events to exclusions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/audience-spec.md` | Three-tier audience spec Markdown skeleton. |
+| `templates/exclusions-checklist.md` | Exclusion audiences checklist before launch. |
+| `templates/audience-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ads-meta-targeting.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-campaign-setup]]
+- [[ads-meta-creative]]
+- [[ads-retargeting]]
+- [[meta-audience-targeting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

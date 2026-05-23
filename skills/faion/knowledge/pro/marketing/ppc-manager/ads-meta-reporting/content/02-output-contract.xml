@@ -1,22 +1,156 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ads-meta-reporting Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Meta Ads Reporting and Diagnosis Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by ads-meta-reporting. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ads-meta-reporting.json",
+  "type": "object",
+  "required": [
+    "period",
+    "metrics",
+    "breakdowns",
+    "diagnoses",
+    "actions"
+  ],
+  "properties": {
+    "period": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "spend",
+        "cpm",
+        "ctr",
+        "cpc",
+        "cvr",
+        "cpa",
+        "roas",
+        "frequency"
+      ]
+    },
+    "breakdowns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "dimension",
+          "rows"
+        ]
+      }
+    },
+    "diagnoses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "symptom",
+          "root_cause",
+          "evidence"
+        ]
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "priority",
+          "lever",
+          "expected_impact",
+          "owner"
+        ]
+      }
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "period": {
+    "start": "2026-05-16",
+    "end": "2026-05-22"
+  },
+  "metrics": {
+    "spend": 5200,
+    "cpm": 18.4,
+    "ctr": 0.014,
+    "cpc": 1.32,
+    "cvr": 0.041,
+    "cpa": 32.1,
+    "roas": 3.6,
+    "frequency": 2.7
+  },
+  "breakdowns": [
+    {
+      "dimension": "placement",
+      "rows": [
+        {
+          "placement": "reels",
+          "cpa": 22.0
+        },
+        {
+          "placement": "feed",
+          "cpa": 41.0
+        }
+      ]
+    }
+  ],
+  "diagnoses": [
+    {
+      "symptom": "frequency_2.7",
+      "root_cause": "creative_fatigue",
+      "evidence": "CTR -28% wk/wk; frequency from 1.9 to 2.7"
+    }
+  ],
+  "actions": [
+    {
+      "priority": 1,
+      "lever": "rotate_creative_bottom2",
+      "expected_impact": "CPA -15%",
+      "owner": "creative"
+    }
+  ]
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "period": {
+    "start": "2026-05-16"
+  },
+  "metrics": {
+    "spend": 5200
+  },
+  "breakdowns": [],
+  "diagnoses": [],
+  "actions": []
+}
+    ]]></code>
+    <note>Missing period.end, most metrics, breakdowns / diagnoses / actions empty.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-no-breakdown" severity="medium">
+      <description>breakdowns array empty.</description>
+      <reason>Violates weekly-breakdown rule.</reason>
+    </antipattern>
+    <antipattern id="f-action-without-owner" severity="medium">
+      <description>actions item missing owner or expected_impact.</description>
+      <reason>Violates action-quantified rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-ads-meta-reporting.py">Validator script enforcing this schema</reference>
 </text>

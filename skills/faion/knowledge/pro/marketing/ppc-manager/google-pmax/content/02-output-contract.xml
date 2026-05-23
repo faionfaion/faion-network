@@ -1,22 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="google-pmax Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Google Performance Max Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by google-pmax. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/google-pmax.json",
+  "type": "object",
+  "required": [
+    "monthly_conversions",
+    "asset_groups",
+    "audience_signals",
+    "brand_negatives",
+    "value_priority"
+  ],
+  "properties": {
+    "monthly_conversions": {
+      "type": "integer",
+      "minimum": 30
+    },
+    "asset_groups": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "theme"
+        ]
+      }
+    },
+    "audience_signals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "custom_segment",
+          "customer_match",
+          "remarketing",
+          "similar_audience",
+          "interest"
+        ]
+      }
+    },
+    "brand_negatives": {
+      "type": "array",
+      "minItems": 1
+    },
+    "value_priority": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "event",
+          "value"
+        ]
+      }
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "monthly_conversions": 95,
+  "asset_groups": [
+    {
+      "name": "ag-saas-tools",
+      "theme": "saas-tools"
+    },
+    {
+      "name": "ag-developers",
+      "theme": "developer-audience"
+    },
+    {
+      "name": "ag-enterprise",
+      "theme": "enterprise-tier"
+    }
+  ],
+  "audience_signals": [
+    "customer_match",
+    "remarketing"
+  ],
+  "brand_negatives": [
+    "faion",
+    "faion-network"
+  ],
+  "value_priority": [
+    {
+      "event": "Purchase",
+      "value": 1.0
+    },
+    {
+      "event": "Lead",
+      "value": 0.3
+    }
+  ]
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "monthly_conversions": 12,
+  "asset_groups": [
+    {
+      "name": "ag",
+      "theme": "x"
+    }
+  ],
+  "audience_signals": [],
+  "brand_negatives": [],
+  "value_priority": []
+}
+    ]]></code>
+    <note>Conversions below 30 floor; single asset group; missing signals + brand negatives + value priority.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-below-floor" severity="medium">
+      <description>monthly_conversions &lt; 30.</description>
+      <reason>Violates pmax-30-conv-floor rule.</reason>
+    </antipattern>
+    <antipattern id="f-no-brand-neg" severity="medium">
+      <description>brand_negatives empty.</description>
+      <reason>Violates brand-bidding-negatives rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-google-pmax.py">Validator script enforcing this schema</reference>
 </text>

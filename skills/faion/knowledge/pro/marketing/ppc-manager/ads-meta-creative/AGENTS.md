@@ -3,71 +3,99 @@ slug: ads-meta-creative
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: AIDA-driven creative production for Meta Ads: stop the scroll with a strong visual hook (faces, before/after, bold contrast), write benefit-led copy with a tested hook formula (question/claim/curiosity/social-proof/direct), produce both 1:1 and 9:16 format variants, and test creatives systematically by isolating one variable at a time.
-content_id: "0fa1836800440a8c"
-tags: [meta, creative, copywriting, ad-design, testing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Meta creative brief + variant matrix: hook ≤3s, value-prop ≤8 words, CTA verb-led, native-feed-format, 3-5 variants per ad set rotated weekly to fight fatigue.
+content_id: "7d03bea05b05b963"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [meta-ads, creative, hook, ugc, video]
 ---
-# Meta Creative Best Practices
+# Meta Ads Creative Strategy
 
 ## Summary
 
-**One-sentence:** AIDA-driven creative production for Meta Ads: stop the scroll with a strong visual hook (faces, before/after, bold contrast), write benefit-led copy with a tested hook formula (question/claim/curiosity/social-proof/direct), produce both 1:1 and 9:16 format variants, and test creatives systematically by isolating one variable at a time.
+**One-sentence:** Produces a Meta creative brief + variant matrix: hook ≤3s, value-prop ≤8 words, CTA verb-led, native-feed-format, 3-5 variants per ad set rotated weekly to fight fatigue.
 
-**One-paragraph:** AIDA-driven creative production for Meta Ads: stop the scroll with a strong visual hook (faces, before/after, bold contrast), write benefit-led copy with a tested hook formula (question/claim/curiosity/social-proof/direct), produce both 1:1 and 9:16 format variants, and test creatives systematically by isolating one variable at a time. Refresh every 2-4 weeks when CTR declines or frequency exceeds 3.
+**One-paragraph:** Meta auction rewards thumb-stop in the first 3 seconds and punishes ads that look like ads. This methodology codifies the hook → value-prop → CTA structure, mandates native-feed format (1:1 / 4:5 / 9:16), and enforces creative-rotation cadence so frequency caps + creative fatigue don't tank CPM. Output is a creative brief + variant matrix (3-5 per ad set) and a refresh schedule.
+
+**Ефективно для:**
+
+- Ad-set creative brief з 3-5 варіантів на тиждень/ротацію.
+- Frequency >2.5 і CTR падає — антифатига cycle.
+- Production budget для UGC / video-hook тестів.
+- Native-feed formats (1:1, 4:5, 9:16) на Reels/Stories/Feed.
 
 ## Applies If (ALL must hold)
 
-- Briefing or producing new Meta ad creatives (image, video, carousel)
-- Setting up a creative testing structure with multiple hook/visual variants
-- Diagnosing low CTR or high CPA when audience and budget are not the constraint
-- Planning a creative refresh after fatigue signals appear
+- Active Meta campaign needing a creative brief for production.
+- Frequency >2.5 or CTR dropping week-over-week.
+- Launching 3-5 creative variants per ad set for matrix testing.
+- Production budget available for at least UGC + static + video formats.
 
 ## Skip If (ANY kills it)
 
-- When budget is under $20-50 per creative — not enough signal to judge performance
-- When the offer or value proposition is still unclear — creative cannot rescue a confusing product
-- For Google Display or Search creative — specs and conventions differ significantly
+- Less than 3 creative variants planned — no matrix, single-point failure on creative fatigue.
+- No production budget for native-feed format — landscape stock crops will fail.
+- Awareness-only campaign with no conversion event — different brief structure (brand methodology).
+- Existing ads with frequency ≤1.5 and CTR healthy — no need to refresh yet.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Audience + funnel stage | spec | ads-meta-campaign-setup |
+| Past-performance creative dataset | JSON / dashboard | Ads Manager |
+| Brand assets + voice guide | PDF / Figma | brand owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-meta-campaign-setup` | Creative brief consumes the audience + funnel stage chosen there. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for ads-meta-creative | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `hook-drafts` | sonnet | Creative judgement on pattern-interrupt language. |
+| `format-mapping` | haiku | Mechanical: funnel stage → native format set. |
+| `variant-matrix` | sonnet | Diversify hooks while preserving value-prop. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/creative-brief.md` | Meta creative brief Markdown skeleton. |
+| `templates/variant-matrix.csv` | Variant matrix CSV header for production hand-off. |
+| `templates/creative-brief.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ads-meta-creative.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-campaign-setup]]
+- [[ads-meta-targeting]]
+- [[ads-meta-reporting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

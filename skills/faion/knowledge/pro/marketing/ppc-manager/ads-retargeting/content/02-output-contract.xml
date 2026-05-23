@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ads-retargeting Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Retargeting / Remarketing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by ads-retargeting. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ads-retargeting.json",
+  "type": "object",
+  "required": [
+    "segments",
+    "spend_share_pct",
+    "exclusions"
+  ],
+  "properties": {
+    "segments": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "intent_depth",
+          "frequency_cap_wk",
+          "message_stage"
+        ]
+      }
+    },
+    "spend_share_pct": {
+      "type": "number",
+      "minimum": 20,
+      "maximum": 30
+    },
+    "exclusions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "segments": [
+    {
+      "name": "visitors_30d",
+      "intent_depth": 1,
+      "frequency_cap_wk": 3,
+      "message_stage": "reminder"
+    },
+    {
+      "name": "product_viewers_30d",
+      "intent_depth": 3,
+      "frequency_cap_wk": 5,
+      "message_stage": "benefits"
+    },
+    {
+      "name": "cart_abandoners_7d",
+      "intent_depth": 5,
+      "frequency_cap_wk": 7,
+      "message_stage": "urgency"
+    }
+  ],
+  "spend_share_pct": 25,
+  "exclusions": [
+    "purchasers_90d"
+  ]
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "segments": [
+    {
+      "name": "all",
+      "intent_depth": 1
+    }
+  ],
+  "spend_share_pct": 50,
+  "exclusions": []
+}
+    ]]></code>
+    <note>Single segment; spend share 50% &gt; 30 cap; exclusions empty; missing frequency_cap_wk + message_stage.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-single-segment" severity="medium">
+      <description>segments array length &lt; 3.</description>
+      <reason>Violates segment-by-intent-depth rule.</reason>
+    </antipattern>
+    <antipattern id="f-spend-out-of-band" severity="medium">
+      <description>spend_share_pct outside [20, 30].</description>
+      <reason>Violates spend-share-20-30 rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-ads-retargeting.py">Validator script enforcing this schema</reference>
 </text>

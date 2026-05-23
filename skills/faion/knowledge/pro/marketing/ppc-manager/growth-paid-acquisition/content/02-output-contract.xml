@@ -1,22 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="growth-paid-acquisition Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Paid Acquisition Growth Strategy Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by growth-paid-acquisition. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/growth-paid-acquisition.json",
+  "type": "object",
+  "required": [
+    "unit_economics",
+    "channel_mix",
+    "scaling_plan",
+    "stop_loss"
+  ],
+  "properties": {
+    "unit_economics": {
+      "type": "object",
+      "required": [
+        "ltv",
+        "gross_margin_pct",
+        "payback_months",
+        "cac_ceiling"
+      ]
+    },
+    "channel_mix": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "channel",
+          "fit_rationale",
+          "weekly_budget"
+        ]
+      }
+    },
+    "scaling_plan": {
+      "type": "object",
+      "required": [
+        "weekly_ramp_pct",
+        "stability_days"
+      ],
+      "properties": {
+        "weekly_ramp_pct": {
+          "type": "integer",
+          "maximum": 20
+        },
+        "stability_days": {
+          "type": "integer",
+          "minimum": 14
+        }
+      }
+    },
+    "stop_loss": {
+      "type": "object",
+      "required": [
+        "cac_breach_pct",
+        "auto_pause_days"
+      ]
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "unit_economics": {
+    "ltv": 2400,
+    "gross_margin_pct": 0.7,
+    "payback_months": 6,
+    "cac_ceiling": 280
+  },
+  "channel_mix": [
+    {
+      "channel": "meta",
+      "fit_rationale": "B2C / SMB on FB+IG",
+      "weekly_budget": 1500
+    },
+    {
+      "channel": "google_search",
+      "fit_rationale": "high-intent demand capture",
+      "weekly_budget": 1000
+    }
+  ],
+  "scaling_plan": {
+    "weekly_ramp_pct": 20,
+    "stability_days": 14
+  },
+  "stop_loss": {
+    "cac_breach_pct": 30,
+    "auto_pause_days": 14
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "unit_economics": {
+    "ltv": 2400
+  },
+  "channel_mix": [],
+  "scaling_plan": {
+    "weekly_ramp_pct": 50
+  },
+  "stop_loss": {}
+}
+    ]]></code>
+    <note>Missing margin / payback / CAC ceiling; empty channel mix; ramp 50% &gt; 20% cap; missing stop_loss fields.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-no-ceiling" severity="medium">
+      <description>unit_economics.cac_ceiling missing.</description>
+      <reason>Violates cac-ceiling-from-ltv rule.</reason>
+    </antipattern>
+    <antipattern id="f-fast-ramp" severity="medium">
+      <description>scaling_plan.weekly_ramp_pct &gt; 20.</description>
+      <reason>Violates scaling-cadence-20pct rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-growth-paid-acquisition.py">Validator script enforcing this schema</reference>
 </text>

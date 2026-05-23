@@ -1,22 +1,131 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="google-shopping-ads Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Google Shopping Ads Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by google-shopping-ads. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/google-shopping-ads.json",
+  "type": "object",
+  "required": [
+    "feed_health_pct",
+    "priority_tiers",
+    "product_groups",
+    "negative_keywords",
+    "roas_targets"
+  ],
+  "properties": {
+    "feed_health_pct": {
+      "type": "number",
+      "minimum": 80,
+      "maximum": 100
+    },
+    "priority_tiers": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "enum": [
+          "high",
+          "medium",
+          "low",
+          "clearance"
+        ]
+      }
+    },
+    "product_groups": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "partition_by"
+        ]
+      }
+    },
+    "negative_keywords": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "roas_targets": {
+      "type": "object",
+      "required": [
+        "high"
+      ],
+      "properties": {
+        "high": {
+          "type": "number",
+          "minimum": 4
+        }
+      }
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feed_health_pct": 92,
+  "priority_tiers": [
+    "high",
+    "medium",
+    "clearance"
+  ],
+  "product_groups": [
+    {
+      "name": "high-margin",
+      "partition_by": "margin>30%"
+    },
+    {
+      "name": "clearance",
+      "partition_by": "tag=clearance"
+    }
+  ],
+  "negative_keywords": [
+    "free",
+    "used",
+    "torrent",
+    "jobs"
+  ],
+  "roas_targets": {
+    "high": 4.5,
+    "medium": 2.8,
+    "clearance": 1.6
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feed_health_pct": 60,
+  "priority_tiers": [
+    "high"
+  ],
+  "product_groups": [
+    {
+      "name": "all"
+    }
+  ],
+  "negative_keywords": [],
+  "roas_targets": {}
+}
+    ]]></code>
+    <note>Feed health below 80; single tier; single 'all' product group; no negatives; missing roas target.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-bad-feed" severity="medium">
+      <description>feed_health_pct &lt; 80.</description>
+      <reason>Violates feed-health-80 rule.</reason>
+    </antipattern>
+    <antipattern id="f-single-tier" severity="medium">
+      <description>priority_tiers length &lt; 2.</description>
+      <reason>Violates priority-tier-split rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-google-shopping-ads.py">Validator script enforcing this schema</reference>
 </text>

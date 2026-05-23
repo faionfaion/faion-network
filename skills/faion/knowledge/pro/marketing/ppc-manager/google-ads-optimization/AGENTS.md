@@ -3,73 +3,102 @@ slug: google-ads-optimization
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Google Ads API patterns for bidding strategy management, conversion action setup, offline conversion upload, and GA4 integration: create portfolio bidding strategies (Target CPA, Target ROAS), apply them to campaigns, set device bid adjustments, define conversion actions with counting and attribution, upload offline conversions via gclid, and query imported GA4 conversion data.
-content_id: "e763268ab06ba55a"
-tags: [google-ads, bidding, conversions, ga4, api]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Google Ads weekly + monthly optimization plan: bidding-strategy gate, negative-keyword rhythm, quality-score remediation, budget reallocation by ROAS bucket.
+content_id: "f879f2ed0772ba7e"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [google-ads, optimization, bidding, negative-keywords, quality-score]
 ---
-# Google Ads Optimization — Bidding, Conversions, GA4
+# Google Ads Optimization Cycle
 
 ## Summary
 
-**One-sentence:** Google Ads API patterns for bidding strategy management, conversion action setup, offline conversion upload, and GA4 integration: create portfolio bidding strategies (Target CPA, Target ROAS), apply them to campaigns, set device bid adjustments, define conversion actions with counting and attribution, upload offline conversions via gclid, and query imported GA4 conversion data.
+**One-sentence:** Produces a Google Ads weekly + monthly optimization plan: bidding-strategy gate, negative-keyword rhythm, quality-score remediation, budget reallocation by ROAS bucket.
 
-**One-paragraph:** Google Ads API patterns for bidding strategy management, conversion action setup, offline conversion upload, and GA4 integration: create portfolio bidding strategies (Target CPA, Target ROAS), apply them to campaigns, set device bid adjustments, define conversion actions with counting and attribution, upload offline conversions via gclid, and query imported GA4 conversion data. The core rule is: let automated bidding accumulate at least 30 conversions per campaign before switching from Maximize Conversions to Target CPA — insufficient conversion data causes erratic bidding.
+**One-paragraph:** Disciplined optimization loop: pick bidding strategy by conversion-history bucket (<30 conv → manual CPC, 30-100 → maximize-conversions, ≥100 → target-CPA / target-ROAS), run weekly negative-keyword sweep + quality-score remediation, monthly bid + budget rebalance across campaigns by ROAS bucket. Every change is logged + tested against learning-phase rule.
+
+**Ефективно для:**
+
+- Account з ≥30 days history + ≥30 conversions/month.
+- Стабільний баланс daily change ≤25% + monthly major lift.
+- Negative-keyword sweep weekly + QS remediation cycle.
+- Budget rebalance по ROAS buckets monthly.
 
 ## Applies If (ALL must hold)
 
-- Configuring bidding strategies for existing Google Ads campaigns via Python client
-- Creating or updating conversion actions (WEBSITE, APP, UPLOAD types)
-- Uploading offline conversions from CRM data matched by gclid
-- Querying per-campaign conversion volume and value split by conversion action
-- Setting device-level bid adjustments on campaigns
+- Existing account with ≥30 days history and stable conversion volume.
+- Cycle planning: weekly + monthly optimization rhythm.
+- Quality Score remediation for keywords stuck below 5.
+- Budget rebalance across campaigns by ROAS bucket.
 
 ## Skip If (ANY kills it)
 
-- Initial campaign/ad group/keyword creation — use google-ads-campaign-setup methodology instead
-- Ad copy and responsive search ad authoring — use google-ads-creative methodology
-- Cross-channel budget allocation — use budget-optimization methodology
-- GA4 property administration or event schema design — this covers only the Ads API side
+- Accounts under 30 days — variance dominates; wait.
+- <10 conv / month — manual CPC only; no smart bidding strategy works.
+- Active learning-phase changes within the past 14 days — let signal settle first.
+- Awareness-only campaigns — different KPI bucket.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Account audit + history | report | google-ads-basics |
+| KPI target table | JSON | stakeholder |
+| Conversion event taxonomy | schema | ads-conversion-tracking |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/google-ads-basics` | Foundation must be in place. |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Conversion signal feeds smart bidding. |
+| `pro/marketing/ppc-manager/google-ads-reporting` | Reporting feeds the diagnosis loop. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for google-ads-optimization | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `bidding-decision` | sonnet | Bucket choice + ROAS target. |
+| `negative-sweep` | haiku | Mechanical cost-descending triage. |
+| `budget-rebalance` | sonnet | Quartile-based reallocation with overrides. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/optimization-plan.md` | Monthly optimization plan Markdown skeleton. |
+| `templates/change-log.csv` | Change-log CSV header. |
+| `templates/optimization-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-google-ads-optimization.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[google-ads-basics]]
+- [[google-ads-reporting]]
+- [[ads-conversion-tracking]]
+- [[ads-budget-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

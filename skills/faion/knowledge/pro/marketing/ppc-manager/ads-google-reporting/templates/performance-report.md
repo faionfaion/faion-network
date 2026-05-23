@@ -1,48 +1,38 @@
+<!-- purpose: Monthly performance report Markdown skeleton. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
+
 # Google Ads Performance Report: [Date Range]
 
 ## Summary
 
-| Metric | This Period | Last Period | YoY | Change |
-|--------|-------------|-------------|-----|--------|
+| Metric | This | Last | YoY | Change |
+|--------|------|------|-----|--------|
 | Spend | $X | $X | $X | +X% |
-| Clicks | X | X | X | +X% |
-| Conversions | X | X | X | +X% |
 | CPA | $X | $X | $X | -X% |
 | ROAS | X:1 | X:1 | X:1 | +X% |
-| Impression Share | X% | X% | X% | +X% |
+| IS | X% | X% | X% | +X% |
 
 ## Campaign Performance
 
-| Campaign | Spend | CTR | Conv | CPA | IS | QS Avg | Status |
-|----------|-------|-----|------|-----|-----|-------|--------|
-| [Name] | $X | X% | X | $X | X% | X | [ok/alert] |
+| Campaign | Spend | Conv | CPA | IS | QS Avg | Status |
+|----------|-------|------|-----|----|-------|--------|
+| [name] | $X | X | $X | X% | X | ok/alert |
 
-## Top Keywords
+## Segments
 
-| Keyword | Clicks | Conv | CPA | QS | Match |
-|---------|--------|------|-----|-----|-------|
-| [word] | X | X | $X | X | exact |
+| Device | Spend | Conv | CPA | vs avg |
+|--------|-------|------|-----|--------|
+| desktop | $X | X | $X | -X% |
+| mobile | $X | X | $X | +X% |
 
-## Segments: Device Breakdown
+## Search Terms
 
-| Device | Spend | Conv | CPA | vs. Avg |
-|--------|-------|------|-----|---------|
-| Desktop | $X | X | $X | -X% |
-| Mobile | $X | X | $X | +X% |
-| Tablet | $X | X | $X | +X% |
-
-## Search Terms Summary
-
-- Total spend through "(other)": $X (X% of total)
-- High-cost non-converting terms found: [N]
+- High-cost non-converting: N
 - Negatives added: [list]
 
-## Issues and Actions
+## Actions
 
-1. [Issue + action taken]
-2. [Issue + action taken]
-
-## Recommendations
-
-1. [Recommendation with expected impact]
-2. [Recommendation with expected impact]
+1. [priority + lever + owner + expected impact]

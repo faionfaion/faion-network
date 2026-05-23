@@ -3,71 +3,103 @@ slug: growth-paid-acquisition
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A test-and-scale framework for profitable paid advertising: calculate LTV:CAC before spending, start with one channel, run 3-5 audience and creative variations with $20-50 per ad before judging, kill ads with CTR below 0.
-content_id: "4bc0e92df4344c2d"
-tags: [paid-acquisition, growth, ltv-cac, cpa-optimization, test-and-scale]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a paid-acquisition growth plan: CAC/LTV math, channel-mix gate, payback-window target, scaling cadence + decision gates per channel.
+content_id: "2a378c6eebe566e2"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [growth, paid-acquisition, cac, ltv, scaling]
 ---
-# Paid Acquisition: Unit Economics and Test-and-Scale Framework
+# Paid Acquisition Growth Strategy
 
 ## Summary
 
-**One-sentence:** A test-and-scale framework for profitable paid advertising: calculate LTV:CAC before spending, start with one channel, run 3-5 audience and creative variations with $20-50 per ad before judging, kill ads with CTR below 0.
+**One-sentence:** Produces a paid-acquisition growth plan: CAC/LTV math, channel-mix gate, payback-window target, scaling cadence + decision gates per channel.
 
-**One-paragraph:** A test-and-scale framework for profitable paid advertising: calculate LTV:CAC before spending, start with one channel, run 3-5 audience and creative variations with $20-50 per ad before judging, kill ads with CTR below 0.5% after 1,000 impressions, and scale only when CPA stays below target for 3+ consecutive days.
+**One-paragraph:** Multi-channel paid acquisition strategy gated on unit economics. Methodology computes CAC ceiling from LTV × target payback, picks initial channel mix per audience-fit (Meta + Google for B2C; LinkedIn + Google for B2B; X for niche tech), defines per-channel scaling cadence (+20%/wk while CAC stable), and gates further spend on CAC < ceiling + 14-day stable performance.
+
+**Ефективно для:**
+
+- Unit economics defined: LTV, gross margin, payback window.
+- Channel-mix decision: Meta+Google для B2C, LinkedIn+Google для B2B.
+- Scaling cadence: +20%/wk while CAC stable.
+- Gate на CAC < ceiling + 14-day stable performance.
 
 ## Applies If (ALL must hold)
 
-- Launching the first paid acquisition campaign for a product
-- Choosing which ad platform to start on (Google, Meta, LinkedIn, TikTok)
-- Building a weekly optimization routine for an active campaign
-- Diagnosing why an existing campaign is unprofitable
+- Product with defined LTV + gross margin + payback target.
+- Pre-launch / launch growth planning across 2+ channels.
+- Scaling existing campaigns past current spend bucket.
+- Investor / board reporting on paid growth efficiency.
 
 ## Skip If (ANY kills it)
 
-- Product does not yet have measurable LTV — fix pricing/retention first
-- No conversion tracking installed — set up pixels and events before spending
-- Organic channels not yet tested — paid amplifies a working message; it does not create one
+- No LTV / margin data — cannot compute CAC ceiling; gather data first.
+- Single-channel campaigns with no scaling pressure — channel methodology fits better.
+- Brand-only spend (no acquisition KPI) — different brief.
+- Spend < $5k/mo total — overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Unit economics | JSON / sheet | finance |
+| Audience-channel fit hypothesis | doc | GTM |
+| Tracking + attribution stack | report | ads-attribution-models |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Conversion + value priority drive CAC measurement. |
+| `pro/marketing/ppc-manager/ads-attribution-models` | Attribution choice determines what CAC means. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for growth-paid-acquisition | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `cac-ceiling` | haiku | Mechanical LTV × margin × payback share. |
+| `channel-mix` | sonnet | Audience-fit × budget allocation. |
+| `stop-loss-policy` | haiku | Apply standard 30% / 14-day rule. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-plan.md` | Paid acquisition growth plan Markdown skeleton. |
+| `templates/unit-economics.csv` | Unit economics CSV header. |
+| `templates/growth-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-paid-acquisition.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-conversion-tracking]]
+- [[ads-attribution-models]]
+- [[ads-budget-optimization]]
+- [[ads-linkedin-ads]]
+- [[facebook-ads]]
+- [[google-ads-basics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

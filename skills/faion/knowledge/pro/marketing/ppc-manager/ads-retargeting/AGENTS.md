@@ -3,72 +3,101 @@ slug: ads-retargeting
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Full-funnel retargeting strategy: segment past visitors by intent (all visitors → blog readers → product viewers → pricing viewers → cart abandoners), tailor ad messaging to each segment's stage, apply frequency caps to prevent fatigue, and always exclude recent converters from acquisition campaigns.
-content_id: "e4e64d144e990c36"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a funnel-stage retargeting plan: segment by intent (visitors → blog → product → pricing → cart), per-segment message + frequency caps + exclusion rules; 20-30% of total ad spend.
+content_id: "074e1b4cf8a47527"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [retargeting, remarketing, funnel, audiences, conversion-optimization]
 ---
-# Retargeting
+# Retargeting / Remarketing
 
 ## Summary
 
-**One-sentence:** Full-funnel retargeting strategy: segment past visitors by intent (all visitors → blog readers → product viewers → pricing viewers → cart abandoners), tailor ad messaging to each segment's stage, apply frequency caps to prevent fatigue, and always exclude recent converters from acquisition campaigns.
+**One-sentence:** Produces a funnel-stage retargeting plan: segment by intent (visitors → blog → product → pricing → cart), per-segment message + frequency caps + exclusion rules; 20-30% of total ad spend.
 
-**One-paragraph:** Full-funnel retargeting strategy: segment past visitors by intent (all visitors → blog readers → product viewers → pricing viewers → cart abandoners), tailor ad messaging to each segment's stage, apply frequency caps to prevent fatigue, and always exclude recent converters from acquisition campaigns. Retargeting should be 20-30% of total ad spend and delivers 40-70% lower CPA versus cold prospecting.
+**One-paragraph:** Full-funnel retargeting. Segment past visitors by intent depth (all visitors → blog readers → product viewers → pricing viewers → cart abandoners), tailor message per stage, apply frequency caps to prevent fatigue, exclude recent converters from acquisition campaigns. Retargeting should be 20-30% of total spend and typically delivers 40-70% lower CPA vs cold prospecting.
+
+**Ефективно для:**
+
+- Pixel installed, ≥1000 site visitors / month — стандартний retargeting source.
+- Post-prospecting funnel: recover non-converters within 7-30 днів.
+- Sequential ad sequences: reminder → benefits → social proof → urgency.
+- Upsell / cross-sell на past purchasers з exclusion на recent buyers.
 
 ## Applies If (ALL must hold)
 
-- Any campaign where a pixel is installed and website audience segments are large enough (1,000+).
-- After launching prospecting campaigns to recover non-converters.
-- Building sequential ad sequences (reminder → benefits → social proof → urgency).
-- Upselling or cross-selling to past purchasers.
+- Pixel installed + website segments ≥1000 each.
+- Post-prospecting funnel where non-converters need recovery.
+- Sequential ad sequences (reminder → benefits → social proof → urgency).
+- Upsell / cross-sell to past purchasers with exclusion of recent buyers.
 
 ## Skip If (ANY kills it)
 
-- Before the pixel is installed and events are verified — audiences won't populate.
-- Audience size under 1,000 — Meta/Google will throttle delivery; build up traffic first.
-- When ad fatigue is already high (frequency >5 and CTR declining) — pause and refresh creative.
-- For purely brand-awareness campaigns with no conversion goal — retargeting requires a defined conversion event.
+- Pixel not installed / not verified — audiences won't populate.
+- Any retarget audience under 1000 — delivery throttled.
+- Frequency already >5 with CTR declining — pause and refresh creative first.
+- Brand-awareness only campaigns with no defined conversion event.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pixel + CAPI live | dashboard | ads-conversion-tracking |
+| Pixel event taxonomy | schema doc | ads-conversion-tracking |
+| Creative inventory per funnel stage | CSV | ads-meta-creative |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-conversion-tracking` | Pixel events seed every retargeting segment. |
+| `pro/marketing/ppc-manager/ads-meta-creative` | Per-stage creative supplies the message variants. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for ads-retargeting | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `intent-ladder` | sonnet | Map pixel events → intent depth + stage. |
+| `frequency-matrix` | haiku | Mechanical per-tier cap assignment. |
+| `exclusion-policy` | haiku | Pixel.Purchase + CRM → exclusion list. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/retargeting-plan.md` | Retargeting plan Markdown skeleton with the 5-tier ladder. |
+| `templates/frequency-matrix.csv` | Per-stage frequency cap matrix. |
+| `templates/retargeting-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ads-retargeting.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-targeting]]
+- [[ads-conversion-tracking]]
+- [[ads-attribution-models]]
+- [[meta-audience-targeting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

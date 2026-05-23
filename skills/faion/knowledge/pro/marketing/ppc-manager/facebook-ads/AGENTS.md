@@ -3,75 +3,101 @@ slug: facebook-ads
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Meta Marketing API v20+ campaign hierarchy: objectives, CBO, bid strategies, creative upload flow, status lifecycle, and budget in cents not dollars.
-content_id: "89ab54159e7a72c3"
-tags: [facebook-ads, meta-ads, api-integration, campaign-management, creative-upload]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Facebook-specific campaign spec: feed + Reels + Marketplace placement mix, account-warmup plan for new ad accounts, learning-phase budget envelope.
+content_id: "5c4a1d9dd6d3801d"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [facebook-ads, feed, reels, marketplace, learning-phase]
 ---
-# Facebook Ads API
+# Facebook Ads Playbook
 
 ## Summary
 
-**One-sentence:** Meta Marketing API v20+ campaign hierarchy: objectives, CBO, bid strategies, creative upload flow, status lifecycle, and budget in cents not dollars.
+**One-sentence:** Produces a Facebook-specific campaign spec: feed + Reels + Marketplace placement mix, account-warmup plan for new ad accounts, learning-phase budget envelope.
 
-**One-paragraph:** Meta Marketing API v20+ campaign hierarchy: objectives, CBO, bid strategies, creative upload flow, status lifecycle, and budget in cents not dollars.
+**One-paragraph:** Facebook (feed + Reels + Marketplace) is still the dominant Meta surface for B2C and small B2B. This methodology forces account-warmup discipline (avoid hard launches that flag the account), pins the placement mix to native Facebook surfaces (no off-platform Audience Network unless data proves otherwise), and ties learning-phase budget to ≥50 conv/wk per ad set.
+
+**Ефективно для:**
+
+- B2C або small B2B з main audience на FB feed/Reels.
+- New ad accounts — warmup ramp до full budget.
+- FB-specific placement mix (feed + Reels + Marketplace).
+- Learning-phase budget envelope ≥50 conv/wk на ad set.
 
 ## Applies If (ALL must hold)
 
-- Creating or managing Facebook/Instagram ad campaigns via the Meta Marketing API
-- Implementing CBO (Campaign Budget Optimization) or ad set-level budgets
-- Building image, video, or dynamic creative programmatically
-- Setting up retargeting funnels with audience-based targeting
+- B2C product or small B2B with main audience on FB feed / Reels.
+- New ad account that requires warmup ramp.
+- Facebook-specific placement strategy (feed + Reels + Marketplace).
+- Learning-phase budget planning ≥50 conv/wk per ad set.
 
 ## Skip If (ANY kills it)
 
-- Instagram-specific placement optimization — refer to instagram-ads methodology
-- Audience research and lookalike creation — use meta-audience-targeting methodology
-- Attribution modeling — use ads-attribution-models methodology
-- Active learning phase (first 50 conversions per ad set) — automated bid/budget tweaks reset learning and burn money
-- Tiny budgets under $30/day per ad set — Meta has minimum-spend signal floors and API adds operational risk
-- Special Ad Categories (housing, employment, credit, social issues) without explicit category flag
-- One-off creative judgement calls (which hero image wins) — humans still beat agents on visual taste
+- Audience primarily on Instagram only — use instagram-ads methodology.
+- B2B with LTV ≥ $5k Director-up — LinkedIn beats FB.
+- Existing account with stable delivery — skip warmup ramp.
+- Audience Network preferred — only with ≥30 days CPM/CPA data justifying it.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Facebook Page + verified domain | dashboard | platform owner |
+| Pixel + CAPI live | dashboard | ads-conversion-tracking |
+| Creative inventory native to FB | library | creative |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-meta-campaign-setup` | Generic Meta campaign rules apply on top. |
+| `pro/marketing/ppc-manager/ads-meta-creative` | Native-feed creative supplies FB-format variants. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for facebook-ads | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `warmup-schedule` | haiku | Mechanical ramp curve. |
+| `placement-choice` | sonnet | Per-audience native placement set. |
+| `aem-event-ranking` | sonnet | Rank 8 events by business value. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/fb-launch-plan.md` | Facebook launch plan Markdown skeleton. |
+| `templates/warmup-schedule.csv` | Warmup schedule CSV (days, % of target budget). |
+| `templates/fb-launch-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-facebook-ads.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-campaign-setup]]
+- [[ads-meta-creative]]
+- [[ads-meta-reporting]]
+- [[instagram-ads]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

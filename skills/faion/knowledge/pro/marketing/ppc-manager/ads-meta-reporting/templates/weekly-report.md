@@ -1,34 +1,35 @@
-# Meta Ads Weekly Report: [Date Range]
+<!-- purpose: Meta weekly report Markdown skeleton with column preset + breakdowns + actions. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-## Summary
+# Meta Weekly Report: [date range]
 
-| Metric | This Week | Last Week | Target | Status |
-|--------|-----------|-----------|--------|--------|
-| Total Spend | $X | $X | $X | On/Over/Under |
-| Conversions | X | X | X | On/Over/Under |
-| CPA | $X | $X | $X | On/Over/Under |
-| ROAS | X:1 | X:1 | X:1 | On/Over/Under |
+## Headline
+| Metric | This | Last | vs target | Δ |
+|--------|------|------|-----------|----|
+| Spend | $X | $X | $X | +X% |
+| CPA | $X | $X | $X | -X% |
+| ROAS | X | X | X | +X% |
+| Frequency | X | X | <2.5 | +X% |
 
-## Campaign Performance
+## Breakdowns
+### By placement
+| Placement | Spend | CPA | vs avg |
+|-----------|-------|-----|--------|
+| reels | $X | $X | -X% |
+| feed | $X | $X | +X% |
 
-| Campaign | Spend | Conv | CPA | ROAS | Action |
-|----------|-------|------|-----|------|--------|
-| [Name] | $X | X | $X | X:1 | Scale / Hold / Test / Pause |
+### By age / device / country
+(rinse and repeat)
 
-## Top Performing Ads
+## Diagnoses
+| Symptom | Root cause | Evidence |
+|---------|------------|----------|
+| Frequency 2.7 | creative_fatigue | CTR -28% wk/wk |
 
-| Ad | CTR | Conv | CPA | Status |
-|----|-----|------|-----|--------|
-| [Name] | X% | X | $X | Winner / Monitor |
-
-## Insights
-
-- **What worked:** [Details]
-- **What did not work:** [Details]
-- **Root cause diagnosis:** [CTR issue / CVR issue / CPM issue / Frequency issue]
-
-## Actions for Next Week
-
-- [ ] [Action 1 — campaign/ad set/creative to change]
-- [ ] [Action 2]
-- [ ] [Action 3]
+## Actions (top 5)
+| # | Lever | Expected impact | Owner |
+|---|-------|------------------|-------|
+| 1 | rotate_creative_bottom2 | CPA -15% | creative |

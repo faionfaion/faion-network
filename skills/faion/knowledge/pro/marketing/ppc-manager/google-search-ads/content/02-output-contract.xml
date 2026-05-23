@@ -1,22 +1,134 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="google-search-ads Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Google Search Ads Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by google-search-ads. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/google-search-ads.json",
+  "type": "object",
+  "required": [
+    "ad_groups",
+    "match_type_mix",
+    "extensions",
+    "qs_gate"
+  ],
+  "properties": {
+    "ad_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "intent",
+          "keyword_count",
+          "rsa_count"
+        ],
+        "properties": {
+          "keyword_count": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 20
+          },
+          "rsa_count": {
+            "type": "integer",
+            "minimum": 3
+          }
+        }
+      }
+    },
+    "match_type_mix": {
+      "type": "object",
+      "required": [
+        "broad_with_smart_bidding",
+        "phrase",
+        "exact"
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "required": [
+        "sitelinks_count",
+        "callouts_count",
+        "structured_snippets"
+      ]
+    },
+    "qs_gate": {
+      "type": "object",
+      "required": [
+        "min_qs",
+        "remediation_days"
+      ]
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "ad_groups": [
+    {
+      "name": "brand-search",
+      "intent": "branded",
+      "keyword_count": 12,
+      "rsa_count": 3
+    }
+  ],
+  "match_type_mix": {
+    "broad_with_smart_bidding": true,
+    "phrase": true,
+    "exact": true
+  },
+  "extensions": {
+    "sitelinks_count": 4,
+    "callouts_count": 4,
+    "structured_snippets": [
+      "features"
+    ]
+  },
+  "qs_gate": {
+    "min_qs": 7,
+    "remediation_days": 7
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "ad_groups": [
+    {
+      "name": "mixed",
+      "intent": "many",
+      "keyword_count": 3,
+      "rsa_count": 1
+    }
+  ],
+  "match_type_mix": {
+    "broad_with_smart_bidding": false,
+    "phrase": false,
+    "exact": false
+  },
+  "extensions": {
+    "sitelinks_count": 0,
+    "callouts_count": 0
+  },
+  "qs_gate": {}
+}
+    ]]></code>
+    <note>Mixed intent; too few keywords; only 1 RSA; no match types; no extensions; missing QS gate.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-skag" severity="medium">
+      <description>any ad_group with keyword_count &lt; 5.</description>
+      <reason>Violates one-intent-one-group rule.</reason>
+    </antipattern>
+    <antipattern id="f-one-rsa" severity="medium">
+      <description>any ad_group with rsa_count &lt; 3.</description>
+      <reason>Violates three-rsa-per-group rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-google-search-ads.py">Validator script enforcing this schema</reference>
 </text>
