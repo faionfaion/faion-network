@@ -1,52 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="php-eloquent Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for php-eloquent as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Eloquent ORM Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Laravel + Eloquent codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Repository added for all aggregates "for consistency" but bypassed 50% of the time via Model::query() directly.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Partial adoption is the worst outcome: the team gets ceremony without the swap-out benefit, and two patterns coexist. Either commit fully (no Model::query() outside the repo) or skip the repository entirely.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>$user-&gt;postss returns null without raising — magic relation typos pass static analysis.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Run php artisan ide-helper:models -W after every model change to generate _ide_helper_models.php; Larastan needs it to catch property typos.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>-&gt;with(['posts.comments.author', 'roles.permissions']) added "to be safe".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Nested eager loading can load the entire object graph. Cap nesting depth at 2 in code review.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Column added to migration without updating $fillable; User::create($validated) silently drops the field.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mass assignment guard ($fillable) must be updated alongside every new column; agents frequently forget the $fillable update.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>unique('email') added on a soft-deleted model without a partial index.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Re-creating a previously soft-deleted user fails. Use unique('email')-&gt;whereNull('deleted_at') (Postgres) or restore-on-conflict logic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Tests run on sqlite but app ships to MySQL/Postgres.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>JSON_EXTRACT, full-text, and case-sensitivity differ. Force the test suite onto the production DB engine in CI.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Factory state explosion — agents create per-test factories instead of factory states.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Standardize UserFactory::admin(), UserFactory::withPosts(int $n) and document.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Repository over-abstraction — agents wrap Eloquent in a repo, then bypass it 50% of the time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Either commit fully (no Model::query() outside repo) or skip the pattern.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Policy bypass via find — agents forget $this-&gt;authorize in show/update endpoints; multi-tenant data leaks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Default to findOrFail in the policy itself, not the controller.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="guarded-empty-mass-assignment" severity="high">
+      <symptom>Endpoint `POST /users` accepts `is_admin=1` and persists it; attacker self-promotes.</symptom>
+      <root-cause source="Laravel docs — Mass Assignment">Model declared `protected $guarded = [];` (no allow-list).</root-cause>
+      <fix>Switch to `protected $fillable = [...]` with the exact list of mass-assignable columns. Add a feature test verifying `is_admin` is dropped from input.</fix>
+    </antipattern>
+
+    <antipattern id="mixed-accessor-apis" severity="medium">
+      <symptom>Accessor returns the wrong value depending on Laravel minor version; behaviour swings between calls.</symptom>
+      <root-cause source="Laravel docs — Attributes">Model defines both `getFullNameAttribute()` and `protected function fullName(): Attribute = ...`; resolution precedence is undefined.</root-cause>
+      <fix>Pick `Attribute::make()`; delete the legacy `getXAttribute()` overrides. Standardise across all models.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-load-in-controller" severity="high">
+      <symptom>List endpoint executes 200 queries for 200 rows; APM trace shows one extra `SELECT` per row.</symptom>
+      <root-cause source="Laravel docs — Preventing N+1">Controller iterates collection and reads `$user-&gt;organization-&gt;name`; eager-load not done at the repository boundary.</root-cause>
+      <fix>Move eager-load to the repository (`-&gt;with('organization')-&gt;get()`). Enable `Model::preventLazyLoading(! app()-&gt;isProduction())` in `AppServiceProvider`.</fix>
+    </antipattern>
+
+    <antipattern id="single-write-orphan" severity="high">
+      <symptom>User record exists in `users` but no rows in `user_roles`; the role attach failed but the user creation already committed.</symptom>
+      <root-cause source="Laravel docs — Transactions">Multi-write path not wrapped in `DB::transaction`.</root-cause>
+      <fix>Wrap the create + attach sequence in `DB::transaction(fn() =&gt; ...)`. Dispatch downstream side effects via `DB::afterCommit`.</fix>
+    </antipattern>
+
+    <antipattern id="missing-index-on-where" severity="medium">
+      <symptom>`SELECT * FROM events WHERE customer_id = ?` triggers a full table scan; query latency P99 grows linearly with row count.</symptom>
+      <root-cause source="Postgres / MySQL index docs">Foreign-key / filter column lacks an index in the migration.</root-cause>
+      <fix>Add `$table-&gt;index('customer_id')` in the migration. Audit `where` / `orderBy` columns weekly with `pg_stat_statements`.</fix>
+    </antipattern>
+
   </section>
 </text>

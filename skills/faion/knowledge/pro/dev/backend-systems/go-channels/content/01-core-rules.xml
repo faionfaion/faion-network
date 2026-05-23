@@ -1,87 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="go-channels Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-channels. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Go Channels and Pipeline Patterns Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Go Channels and Pipeline Patterns application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Channels are first-class values. Pass them as parameters to functions so the function signature makes ownership explicit.</statement>
-      <rationale source="v1-source">Explicit parameter passing makes it clear which goroutine owns the channel and who is responsible for closing it.</rationale>
+
+    <rule id="r-sender-closes" testable="true" depth="essential">
+      <statement>Only the sender MUST close a channel — never the receiver; never close twice.</statement>
+      <rationale source="Effective Go + Go memory model">Rule rooted in source: Effective Go + Go memory model. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Close channels from sender side only. Receivers detect closure; attempting to close a receive-only channel is a compile error.</statement>
-      <rationale source="v1-source">This prevents panic on send-to-closed-channel. The compiler enforces this rule if you use directional channel types.</rationale>
+
+    <rule id="r-directional-channels" testable="true" depth="essential">
+      <statement>Function signatures MUST type-narrow to `&lt;-chan T` (receive) or `chan&lt;- T` (send) at boundaries.</statement>
+      <rationale source="Go style guide">Rule rooted in source: Go style guide. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use buffered channels to decouple sender from receiver only when you can name a backpressure policy. Default to unbuffered.</statement>
-      <rationale source="v1-source">Buffered channels mask backpressure; once full they block silently and the upstream stage stalls. Unbuffered channels force synchronous handoff and immediately expose bottlenecks.</rationale>
+
+    <rule id="r-select-with-context" testable="true" depth="essential">
+      <statement>Every blocking receive in a long-running goroutine MUST be in a `select` with `&lt;-ctx.Done()`.</statement>
+      <rationale source="Go blog 'pipelines and cancellation'">Rule rooted in source: Go blog 'pipelines and cancellation'. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use select for multiplexing multiple channel operations, timeouts, and cancellation. Remember that select chooses a ready case pseudo-randomly if multiple are ready. Do not assume priority order.</statement>
-      <rationale source="v1-source">Pseudo-random selection prevents starvation and makes code resilient to ordering assumptions. Agents that assume priority order write fragile code.</rationale>
+
+    <rule id="r-buffered-only-with-reason" testable="true" depth="essential">
+      <statement>Unbuffered is the default; buffered channels require a documented reason (rate-smoothing, drop policy).</statement>
+      <rationale source="Effective Go">Rule rooted in source: Effective Go. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use context.Done() for cancellation in every goroutine that may block on channel operations. Always include a case for context.Done() in select statements.</statement>
-      <rationale source="v1-source">Context propagates cancellation signals gracefully and prevents goroutine leaks when the consumer disappears.</rationale>
+
+    <rule id="r-range-on-channel" testable="true" depth="essential">
+      <statement>Consumers MUST `range` over a channel; do not handcraft `for { v, ok := &lt;-ch }` unless needed.</statement>
+      <rationale source="Effective Go">Rule rooted in source: Effective Go. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Pipeline stages MUST have identical structure: accept context, accept input channel (receive-only), return output channel (send-only), spawn exactly one goroutine, defer close(output), loop over input with select on context.Done().</statement>
-      <rationale source="v1-source">This uniform structure prevents goroutine leaks and makes the ownership model obvious to readers and reviewers.</rationale>
+
+    <rule id="r-race-detector-gate" testable="true" depth="essential">
+      <statement>PRs MUST pass `go test -race ./...`; merging without is forbidden.</statement>
+      <rationale source="Go testing docs">Rule rooted in source: Go testing docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Fan-out functions MUST return a slice of output channels, one per worker, all receiving from the same input. Fan-in functions MUST use sync.WaitGroup to track worker completion and close the merged output only after all workers have exited.</statement>
-      <rationale source="v1-source">This prevents the common bug of closing the output channel before the last worker has finished sending. WaitGroup ensures we wait for all workers before closing.</rationale>
+
+    <rule id="r-goroutine-leak-gate" testable="true" depth="essential">
+      <statement>Tests for pipelines MUST use `goleak.VerifyNone(t)` to catch leaks.</statement>
+      <rationale source="goleak docs">Rule rooted in source: goleak docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use time.NewTimer and reuse it in loops instead of time.After inside long-running select statements. time.After leaks until the timer fires.</statement>
-      <rationale source="v1-source">Each time.After call allocates a timer that doesn't fire until the timeout expires, accumulating garbage in the timer heap. Reusing a timer prevents leaks.</rationale>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Every test that spawns goroutines MUST call defer goleak.VerifyNone(t) at the top. Every channel-heavy test MUST run with go test -race -count=10 to surface flaky concurrency bugs.</statement>
-      <rationale source="v1-source">The race detector finds data races at runtime. Running with -count=10 reruns the test 10 times to surface timing-dependent bugs. Goleak ensures no goroutines are leaked at test cleanup.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>LLMs default to make(chan T) (unbuffered) but then write ch &lt;- x outside any goroutine — instant deadlock. Force select or buffered with rationale.</statement>
-      <rationale source="v1-source">Unbuffered channels require both sender and receiver to be ready simultaneously. If you send outside a goroutine, the receiver must also be running, or the send deadlocks.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Do not use select { case &lt;-done: ... default: ... } to poll without blocking. Reject busy-wait loops in review where real work happens in default.</statement>
-      <rationale source="v1-source">Busy-wait loops burn CPU. Either block on a timer or a real channel operation.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Do not mix sync.Mutex and channels in the same data structure to be safe. Pick one concurrency model per data structure.</statement>
-      <rationale source="v1-source">The resulting code is both slow and harder to reason about.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Nil channel in select blocks forever (intentional pattern, but easy to introduce by accident). Flag any var ch chan T declaration without a make.</statement>
-      <rationale source="v1-source">A nil channel on the receive side of select will never fire, causing the select to block. This is sometimes intentional (used to disable a branch), but usually accidental.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Any new long-lived goroutine (lifetime greater than or equal to request) needs explicit reviewer approval naming the owner, the cancellation source, and the metric/log emitted on exit.</statement>
-      <rationale source="v1-source">Long-lived goroutines are easy to leak. Explicit approval ensures the lifecycle is well-defined.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Phase 1: Requirements and Technology Assessment. Document current implementation if it exists. Identify pain points and limitations. Measure baseline metrics. List technical debt. Gather stakeholder requirements. Set performance targets. Define quality attributes. Establish testing requirements. Document constraints. Identify risks and mitigations. Evaluate tool options: Go runtime, context package. Consider team expertise. Review infrastructure compatibility. Assess maintenance burden. Calculate total cost of ownership.</statement>
-      <rationale source="v1-source">Before writing code, understand what you are solving and what constraints exist. This prevents building the wrong solution.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Phase 2: Design. Define overall structure. Identify components and boundaries. Plan data flow. Design error handling strategy. Document key decisions. Define public APIs. Design data models. Plan configuration management. Create integration points. Document contracts. Identify security requirements. Plan authentication/authorization. Review data protection needs. Plan audit logging. Document threat model.</statement>
-      <rationale source="v1-source">Architecture and design decisions should be explicit and documented. Design reviews catch issues before implementation.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Phase 3: Implementation. Initialize project structure. Configure development environment. Set up CI/CD pipeline. Configure linting and formatting. Initialize testing framework. Implement main functionality. Add error handling. Implement logging. Add metrics and monitoring. Write documentation. Integrate with existing systems. Implement adapters and bridges. Add feature flags. Configure deployment. Plan rollout strategy.</statement>
-      <rationale source="v1-source">Follow a systematic implementation process. Each step builds on the previous one.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Phase 4: Testing. Write unit tests with greater than 80% coverage. Test edge cases. Test error scenarios. Mock external dependencies. Verify assertions. Test component interactions. Verify data persistence. Test external integrations. Validate configuration. Test deployment process. Benchmark critical paths. Load test under realistic traffic. Test scaling behavior. Identify bottlenecks. Optimize hot paths.</statement>
-      <rationale source="v1-source">Testing is not optional for concurrent code. Race-condition bugs are hard to find in production.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Phase 5: Deployment. Review code changes. Run full test suite. Update documentation. Prepare rollback plan. Schedule deployment window. Deploy to staging. Smoke test staging. Deploy to production (canary or blue-green). Monitor metrics during rollout. Verify functionality. Monitor error rates. Check performance metrics. Gather user feedback. Document lessons learned. Plan follow-up improvements.</statement>
-      <rationale source="v1-source">Deployment is not the end; careful rollout and monitoring ensure stability.</rationale>
-    </rule>
-    <rule id="r20" testable="true" depth="essential">
-      <statement>Phase 6: Monitoring and Maintenance. Set up logging. Configure metrics collection. Enable distributed tracing. Create dashboards. Set up alerts. Monitor for issues. Address bug reports. Update dependencies. Refactor as needed. Optimize performance. Maintain code documentation. Update runbooks. Document operational procedures. Create troubleshooting guides. Share knowledge with team.</statement>
-      <rationale source="v1-source">Production systems require ongoing care. Monitoring catches problems early; documentation prevents knowledge loss.</rationale>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

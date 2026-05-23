@@ -1,3 +1,8 @@
+# purpose: Legacy template for the database-design methodology.
+# consumes: inputs declared in database-design/AGENTS.md prerequisites.
+# produces: working code/config aligned with content/01-core-rules.xml.
+# depends-on: content/02-output-contract.xml schema for output shape.
+# token-budget-impact: ~600 tokens when loaded as reference.
 """Add user_preferences table
 
 Revision ID: a1b2c3d4e5f6

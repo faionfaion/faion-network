@@ -1,39 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="error-handling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for error-handling. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Error Handling (RFC 7807 Problem Details) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Error Handling (RFC 7807 Problem Details) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every 4xx and 5xx response must carry: type (URI identifying the error class), title (short human label, stable per type), status (integer matching HTTP status), detail (per-request human description), instance (request path), traceId (correlation ID from the tracing SDK).</statement>
-      <rationale source="v1-source">Consistent fields let clients, gateways, and monitoring tools parse errors without ad-hoc string matching. traceId is the critical field for correlating client-reported errors with server traces.</rationale>
+
+    <rule id="r-envelope-required-fields" testable="true" depth="essential">
+      <statement>Every 4xx / 5xx response MUST carry `type`, `title`, `status`, `detail`, `instance`.</statement>
+      <rationale source="RFC 7807 + RFC 9457">Rule rooted in source: RFC 7807 + RFC 9457. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Define ProblemDetail and FieldError as reusable OpenAPI components. Reference them in every 4xx and 5xx response of every operation. Use application/problem+json as the Content-Type, not application/json.</statement>
-      <rationale source="v1-source">A $ref keeps the schema in one place. Using application/problem+json lets proxies, gateways, and clients distinguish error responses from normal ones by Content-Type alone.</rationale>
+
+    <rule id="r-type-is-stable-uri" testable="true" depth="essential">
+      <statement>`type` is a stable URI (e.g. `https://api.example.com/errors/insufficient-funds`), not a free-form code.</statement>
+      <rationale source="RFC 7807">Rule rooted in source: RFC 7807. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Define error codes as stable machine-readable slugs (snake_case, versioned per type URI). Codes must be stable across releases — renames break clients silently.</statement>
-      <rationale source="v1-source">Clients branch on codes, not on HTTP status alone (e.g., conflict vs duplicate-key vs optimistic-lock all return 409 but need distinct codes). Stable slugs let clients ship independent of server release cycles.</rationale>
+
+    <rule id="r-trace-id-required" testable="true" depth="essential">
+      <statement>Every envelope MUST include `traceId` matching the observability span.</statement>
+      <rationale source="OpenTelemetry trace-context">Rule rooted in source: OpenTelemetry trace-context. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Register three exception handlers: one for ValidationError, one for HTTPException, one for bare Exception (catch-all). Never omit the catch-all — unhandled exceptions must also return ProblemDetail with traceId so support can find the trace.</statement>
-      <rationale source="v1-source">Missing the catch-all breaks the error contract: the client receives a 500 with an HTML or empty body instead of ProblemDetail, and the traceId is lost.</rationale>
+
+    <rule id="r-single-mapper" testable="true" depth="essential">
+      <statement>ONE global exception handler MUST map every error type to the envelope; no per-route ad-hoc shapes.</statement>
+      <rationale source="Reviews + maintainability">Rule rooted in source: Reviews + maintainability. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Set traceId from the active tracing SDK context (OpenTelemetry trace_id, Datadog dd.trace_id), not from uuid.uuid4(). The traceId in the body must match the trace ID in server logs.</statement>
-      <rationale source="v1-source">A freshly generated UUID in the response body never matches any log entry. The OTel trace_id does — it links the client error report directly to the server span.</rationale>
+
+    <rule id="r-validation-array" testable="true" depth="essential">
+      <statement>Field-level validation errors MUST go in a structured `errors[]` array, not in `detail` prose.</statement>
+      <rationale source="RFC 7807 + ProblemDetails examples">Rule rooted in source: RFC 7807 + ProblemDetails examples. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Never put exception messages, stack traces, SQL queries, connection strings, file paths, or internal hostnames in the detail or errors[] fields. Scrub all user-supplied data of newlines and control characters to prevent log injection.</statement>
-      <rationale source="v1-source">Error detail is part of the API response — it reaches browsers, mobile apps, and third-party integrations. DSN strings, table names, and stack frames are confidential and create attack surface.</rationale>
+
+    <rule id="r-status-matches-class" testable="true" depth="essential">
+      <statement>`status` field MUST equal the HTTP status code on the response line.</statement>
+      <rationale source="RFC 7807">Rule rooted in source: RFC 7807. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Reference ProblemDetail in BOTH 4xx AND 5xx responses for every OpenAPI operation. Run spectral or check_problem_refs.py in CI to enforce this.</statement>
-      <rationale source="v1-source">Agents add ProblemDetail to 4xx but forget 5xx. 500 responses without a ProblemDetail body break client SDK code-gen that expects a uniform error shape.</rationale>
+
+    <rule id="r-never-leak-stack" testable="true" depth="essential">
+      <statement>Stack traces MUST NOT appear in `detail` or `instance`; log them server-side only.</statement>
+      <rationale source="OWASP API security top 10">Rule rooted in source: OWASP API security top 10. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Pin type URIs to a versioned path (/errors/v1/validation-error). Never rename or delete a type URI after it ships — that breaks clients who branch on the string.</statement>
-      <rationale source="v1-source">RFC 7807 type is a stable identifier, not a display string. Clients may hardcode it in switch/match statements. Version the path so renames introduce a new URI rather than breaking the old one.</rationale>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

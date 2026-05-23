@@ -1,37 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ruby-rails Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ruby-rails as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Rails 7+ Backend Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Rails 7+ codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Controllers call User.create(params) directly instead of using a service object.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The methodology mandates service objects. Reject this in review. Controllers are HTTP handlers, not business logic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agents emit before_save callbacks that mutate state in surprising ways and break tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Callbacks run in unpredictable order. Prefer explicit service-layer logic with one public #call method. Use callbacks only for invariants.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Sidekiq retry counts and dead: true flags are mistyped. The agent must read sidekiq.yml and existing job classes to align with team conventions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Missing retry configuration causes message loss. Inconsistent retry policies across jobs are hard to debug.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>params.permit(...) is often forgotten or too permissive. Controllers pass raw params; services do not enforce allowlist.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CI must enforce strong parameters. Mass assignment attacks otherwise possible on any field the service writes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>N+1 queries proliferate in serializers and views. Bullet catches them in dev/test only if enabled.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agent must enable Bullet before generating views/serializers. N+1 is invisible until load testing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Rails 7's encrypted attributes need bin/rails db:encryption:init first. Agents skip this and produce migrations that crash in CI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Encrypted attributes require setup. Review migrations before applying to non-dev environments.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="deliver-later-inside-transaction" severity="high">
+      <symptom>User receives welcome email; backend rolled the user creation back; user record is missing.</symptom>
+      <root-cause source="Rails guides — Transactions">`UserMailer.with(...).welcome.deliver_later` fired inside `ActiveRecord::Base.transaction`; the job enqueued before commit.</root-cause>
+      <fix>Move dispatch to `after_create_commit` callback OR chain a follow-on Sidekiq job after the transaction returns success.</fix>
+    </antipattern>
+
+    <antipattern id="service-result-shape-drift" severity="medium">
+      <symptom>Controllers handle three different result shapes (`ok:/value:`, `success:/data:`, `ok?/payload`); a refactor breaks one path silently.</symptom>
+      <root-cause source="Internal — service-shape retro 2026-Q1">Each service file defined its own `ServiceResult`-like class.</root-cause>
+      <fix>Lock a single canonical `ServiceResult` class. Add a CI grep that fails on additional `class ServiceResult` definitions.</fix>
+    </antipattern>
+
+    <antipattern id="ar-object-in-sidekiq-args" severity="high">
+      <symptom>Job runs against stale record; user sees an old email subject; logs show `User#cached_email` mismatch.</symptom>
+      <root-cause source="Sidekiq best practices">Job declared `perform(user)` and was called with `UserMailer.deliver_later(user)`; YAML serialised the object at dispatch.</root-cause>
+      <fix>Change `perform(user_id)`; load fresh record inside `perform`. Use `User.find(user_id)` to surface 404 if the row vanished.</fix>
+    </antipattern>
+
+    <antipattern id="params-leak-to-service" severity="high">
+      <symptom>Service mass-assigns `is_admin=1` because the controller passed raw `params`.</symptom>
+      <root-cause source="Rails guides — Strong Parameters">Author skipped `params.require(...).permit(...)` and handed the raw params hash to the service.</root-cause>
+      <fix>Restore Strong Params at the controller; pass only `permitted` hash to the service. Add a request spec that asserts protected attrs are dropped.</fix>
+    </antipattern>
+
+    <antipattern id="destructive-migration-no-review" severity="high">
+      <symptom>Production deploy drops a column that the previous release still wrote to; immediate outage.</symptom>
+      <root-cause source="Rails guides — Active Record Migrations">Migration contained `remove_column :users, :legacy_id` and shipped without a manual review.</root-cause>
+      <fix>Gate `remove_column` / `rename_column` PRs on a `MIGRATION-REVIEW.md` checklist; require an approver signed off explicitly in the PR description.</fix>
+    </antipattern>
+
   </section>
 </text>

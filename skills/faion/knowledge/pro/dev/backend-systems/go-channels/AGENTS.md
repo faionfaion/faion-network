@@ -1,75 +1,102 @@
 ---
 slug: go-channels
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Channels are Go's primary mechanism for communication between goroutines.
-content_id: "f799e5de6fa2d005"
-tags: [go, concurrency, channels, pipelines, goroutines]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a channel topology spec: directional channels, sender-closes rule, select-with-context, buffered-vs-unbuffered choice, pipeline stages with done-channel, race-detector gate."
+content_id: "1cb311bbf7bccc9d"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [go, channels, concurrency, pipelines, select]
 ---
+
 # Go Channels and Pipeline Patterns
 
 ## Summary
 
-**One-sentence:** Channels are Go's primary mechanism for communication between goroutines.
+**One-sentence:** Produces a channel topology spec: directional channels, sender-closes rule, select-with-context, buffered-vs-unbuffered choice, pipeline stages with done-channel, race-detector gate.
 
-**One-paragraph:** Channels are Go's primary mechanism for communication between goroutines. Use channels to build data pipelines, coordinate multiple goroutines, distribute work to parallel workers, merge results, and manage event-driven systems. Always use context for cancellation, close channels from the sender side, and test with race detector to prevent deadlocks and data races.
+**Ефективно для:**
+
+- Multi-stage data pipelines (read → transform → emit).
+- Fan-out parallel workers with merged results.
+- Event-driven producers / consumers within one process.
+- Cancellable streams driven by context.
+
+**One-paragraph:** Channels are Go's primary mechanism for communication between goroutines. Use channels to build data pipelines, coordinate multiple goroutines, distribute work to parallel workers, merge results, and manage event-driven systems. Always use `context` for cancellation, close channels from the sender side, and test under `-race` to prevent deadlocks and data races.
 
 ## Applies If (ALL must hold)
 
-- Data pipeline processing where output of one stage feeds input of the next.
-- Event-driven systems where goroutines react to events from multiple sources.
-- Coordinating multiple goroutines without shared memory mutation.
-- Building producer-consumer patterns and pub-sub systems.
-- Multiplexing I/O sources (network, timers, done signals) in a single goroutine.
+- Multiple goroutines need to exchange values.
+- Cancellation must propagate via context.
+- Race detector + goleak available in CI.
+- Pipeline stages each have a defined boundary.
 
 ## Skip If (ANY kills it)
 
-- Shared mutable state with random access. Use sync.Mutex or sync.Map instead; channels are not a database.
-- Single-producer/single-consumer with predictable order. A slice plus for loop is simpler and faster.
-- Cross-process communication. Use a real queue (Kafka/RabbitMQ/NATS); channels die with the process.
-- Replacing function calls with goroutines plus channels just to feel async. You add scheduling cost, lose stack traces, and gain race-condition risk.
+- Single-producer single-consumer — a simple function call is enough.
+- Shared state mutation — use sync primitives, not channels.
+- Heavy CPU-bound work — channels add overhead; pin to GOMAXPROCS workers.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Pipeline stage list | design doc | team |
+| Cancellation policy (context, deadline) | ADR | tech lead |
+| CI runs `go test -race` | CI config | SRE |
+| goleak / race report sink | test infra | SRE |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-goroutines]]` | goroutine semantics |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-pipeline-topology` | sonnet | Stages + channel types from spec. |
+| `annotate-cancellation` | haiku | Wires ctx into selects. |
+| `audit-leak-and-race` | sonnet | Runs goleak / race reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/go-channels.json` | JSON Schema for the Go Channels and Pipeline Patterns output contract |
+| `templates/go-channels.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a go-channels record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-channels.py` | Enforce the Go Channels and Pipeline Patterns output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[go-goroutines]]
+- [[go-concurrency-patterns]]
+- [[go-backend]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

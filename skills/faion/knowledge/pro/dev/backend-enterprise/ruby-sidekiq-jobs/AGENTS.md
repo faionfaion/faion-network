@@ -1,74 +1,102 @@
 ---
 slug: ruby-sidekiq-jobs
 tier: pro
-group: dev
+group: backend-enterprise
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Durable async job processing for Rails using Sidekiq + Redis.
-content_id: "33266403dd680be0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a Sidekiq job spec: idempotent `perform`, IDs not records, explicit retry/dead settings, custom backoff for transient errors, RecordNotFound handling, thin job class delegating to a service."
+content_id: "1e281ceec7531fdb"
+complexity: medium
+produces: spec
+est_tokens: 4300
 tags: [ruby, sidekiq, background-jobs, async, redis]
 ---
-# Sidekiq Background Jobs
+
+# Sidekiq Background Jobs for Rails
 
 ## Summary
 
-**One-sentence:** Durable async job processing for Rails using Sidekiq + Redis.
+**One-sentence:** Produces a Sidekiq job spec: idempotent `perform`, IDs not records, explicit retry/dead settings, custom backoff for transient errors, RecordNotFound handling, thin job class delegating to a service.
 
-**One-paragraph:** Durable async job processing for Rails using Sidekiq + Redis. Every job must be idempotent (at-least-once delivery), accept IDs not ActiveRecord objects, declare explicit sidekiq_options retry: N, dead: true, implement custom sidekiq_retry_in for known transient errors, and handle ActiveRecord::RecordNotFound gracefully. Keep job classes thin — perform delegates to a service object for unit testability.
+**Ефективно для:**
+
+- Rails apps offloading email / webhooks / file uploads to background.
+- Workloads needing at-least-once durability backed by Redis.
+- Per-queue concurrency tuning (default / critical / mailers).
+- LLM agents generating job classes from service signatures.
+
+**One-paragraph:** Durable async job processing for Rails with Sidekiq + Redis. Jobs MUST be idempotent (at-least-once delivery), accept IDs not ActiveRecord objects, declare `sidekiq_options retry: N, dead: true`, implement `sidekiq_retry_in` for transient errors, and handle `ActiveRecord::RecordNotFound` gracefully. Job classes stay thin and delegate to a service object so business logic is unit-testable.
 
 ## Applies If (ALL must hold)
 
-- Rails app needing durable async work: emails, webhooks, file processing, third-party API fan-out.
-- Bulk processing with find_each chunking and per-chunk jobs.
-- Reliable retry/backoff for flaky external integrations (payment gateways, email providers).
-- Cron-like scheduling via sidekiq-cron or sidekiq-scheduler.
+- Rails app with Sidekiq + Redis already wired (or scoped to be added).
+- Async work requires durability beyond in-process `Thread.new`.
+- Jobs need typed retries and dead-letter handling.
+- Production has a monitored Sidekiq Web UI or equivalent dashboard.
 
 ## Skip If (ANY kills it)
 
-- Sub-second latency between action and effect — Sidekiq pickup latency is 50-500ms even idle.
-- Cross-language consumers — Sidekiq conventions are Ruby-specific even though payload is JSON.
-- Strict global ordering — Sidekiq is parallel; use a single-thread queue or Kafka with partition keys.
-- Exactly-once semantics — Sidekiq is at-least-once; design for idempotency or use sidekiq-unique-jobs carefully.
+- Sub-second fire-and-forget (use `ActiveJob` inline or a goroutine in Go).
+- Cron-only scheduled work — use `sidekiq-cron` separately, not bare jobs.
+- Single-process apps with no Redis — use `delayed_job` or `good_job`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Sidekiq Gemfile + config | Gemfile + config/sidekiq.yml | team |
+| Redis URL + concurrency budget | ENV | SRE |
+| Queue taxonomy (default / critical / mailers) | decision doc | tech lead |
+| Service object the job delegates to | Ruby class | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[ruby-rails]]` | host framework conventions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-job-class` | haiku | Mechanical template fill from service signature. |
+| `review-idempotency` | sonnet | Judgement: which side effects need uniqueness guards. |
+| `tune-retry-budget` | sonnet | Maps error taxonomy to retry / dead settings. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ruby-sidekiq-jobs.json` | JSON Schema for the Sidekiq Background Jobs for Rails output contract |
+| `templates/ruby-sidekiq-jobs.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a ruby-sidekiq-jobs record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ruby-sidekiq-jobs.py` | Enforce the Sidekiq Background Jobs for Rails output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-enterprise/`
+- [[ruby-rails-patterns]]
+- [[ruby-activerecord]]
+- [[ruby-rspec-testing]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

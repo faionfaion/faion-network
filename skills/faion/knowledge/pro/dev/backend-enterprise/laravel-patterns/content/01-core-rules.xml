@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="laravel-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for laravel-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Laravel Enterprise Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the enterprise Laravel 10/11 patterns. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="validated-not-all" testable="true" depth="essential">
+      <statement>Controllers MUST consume `$request-&gt;validated()` from a FormRequest. `$request-&gt;all()`, `$request-&gt;input()` for protected fields, and `Model::create($request-&gt;all())` are forbidden.</statement>
+      <rationale source="Laravel docs — Form Request Validation">`all()` lets a client inject any field (`is_admin`, `password_hash`); the FormRequest contract is the only source of trusted input.</rationale>
     </rule>
+
+    <rule id="db-transaction-for-multistep-writes" testable="true" depth="essential">
+      <statement>Multi-step writes MUST be wrapped in `DB::transaction(fn() =&gt; ...)`. Side effects (mail, queue dispatch) MUST run after commit via `DB::afterCommit`.</statement>
+      <rationale source="Laravel docs — Transactions">Without a transaction, a partial failure leaves the database inconsistent; mail inside the transaction sends even when the row rolls back.</rationale>
+    </rule>
+
+    <rule id="eager-load-with-relations" testable="true" depth="essential">
+      <statement>Any iteration over an Eloquent collection that touches a relation MUST eager-load that relation via `-&gt;with(...)`. `Model::preventLazyLoading()` MUST be enabled in non-prod environments.</statement>
+      <rationale source="Laravel docs — Preventing N+1">N+1 is the most common Laravel perf bug; `preventLazyLoading` fails loudly in dev so it never ships.</rationale>
+    </rule>
+
+    <rule id="api-resource-explicit-fields" testable="true" depth="essential">
+      <statement>API Resources MUST list every attribute explicitly. `$this-&gt;toArray()`, `$this-&gt;all()`, and spread (`...$this-&gt;attributes`) are forbidden.</statement>
+      <rationale source="Internal — field-leak audit 2026-Q1">Implicit lists leak `password`, `remember_token`, soft-delete columns when the model grows new fields.</rationale>
+    </rule>
+
+    <rule id="shouldbeunique-on-jobs" testable="true" depth="essential">
+      <statement>Queue jobs that mutate external state MUST implement `ShouldBeUnique` and declare a `uniqueId()` based on the work payload. Idempotency MUST be testable.</statement>
+      <rationale source="Laravel docs — Unique Jobs">Workers retry on failure; non-idempotent jobs double-charge customers, send duplicate emails, or corrupt rows.</rationale>
+    </rule>
+
+    <rule id="constructor-injection-not-app" testable="true" depth="essential">
+      <statement>Services / Actions MUST receive dependencies via constructor injection. `app(Service::class)` and `resolve(Service::class)` are forbidden outside container bindings and tests.</statement>
+      <rationale source="Laravel docs — Service Container">Container resolution inside code bypasses autowiring and prevents mocks in tests.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,4 +1,9 @@
 <?php
+// purpose: thin controller skeleton (validate → service → Resource)
+// consumes: Service interface, FormRequest classes, Resource classes
+// produces: controller conforming to thin-controller-no-eloquent + jsonresource-from-controller-only
+// depends-on: content/01-core-rules.xml rules thin-controller-no-eloquent, jsonresource-from-controller-only
+// token-budget-impact: ~350 tokens when loaded as context
 // Thin controller skeleton — Route → FormRequest → Service → Resource
 // Replace: User, UserService, StoreUserRequest, UpdateUserRequest, UserResource, UserCollection
 

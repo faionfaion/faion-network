@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Rails Patterns Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-existing-paradigm">Is the codebase already on Trailblazer / Interactor / Dry::Transaction?</root-question>
+
+    <branch when="existing_paradigm != none">
+      <conclusion ref="single-serviceresult" verdict="skip-this-methodology — stick to existing paradigm; mixing two service abstractions is worse than one"/>
+    </branch>
+
+    <branch when="existing_paradigm == none">
+      <question id="q-service-result">Has the codebase a single canonical ServiceResult class?</question>
+      <branch when="single_service_result == false">
+        <conclusion ref="single-serviceresult" verdict="introduce canonical ServiceResult + CI guard before extracting more services"/>
+      </branch>
+      <branch when="single_service_result == true">
+        <question id="q-pundit">Is Pundit verify_authorized enabled in ApplicationController?</question>
+        <branch when="pundit_enforced == false">
+          <conclusion ref="pundit-verify-authorized" verdict="enable verify_authorized + verify_policy_scoped; backfill authorize on every controller action"/>
+        </branch>
+        <branch when="pundit_enforced == true">
+          <question id="q-side-effect">Mail / webhook / index update touched?</question>
+          <branch when="has_side_effect == true">
+            <conclusion ref="side-effects-after-commit" verdict="move dispatch to after_commit / outbox / chained Sidekiq; never mid-transaction"/>
+          </branch>
+          <branch when="has_side_effect == false">
+            <conclusion ref="ci-gates-bullet-brakeman-audit" verdict="apply remaining rules — Bullet + Brakeman + bundler-audit in CI"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="invoice-create-service">
+    existing_paradigm=none → single_service_result=true → pundit_enforced=true → has_side_effect=true → side-effects-after-commit → move InvoiceMailer.deliver_later into after_create_commit callback.
+  </example>
+</text>

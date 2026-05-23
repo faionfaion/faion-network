@@ -1,27 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="laravel-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for laravel-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Laravel Enterprise Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Laravel 10/11 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>$users = User::all(); foreach ($users as $u) { echo $u-&gt;organization-&gt;name; }</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>N+1: one SELECT per user to load organization. Use User::with('organization')-&gt;get() instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>$model-&gt;fill($request-&gt;all()) or Model::create($request-&gt;all()).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mass assignment with all() sends every request field to the model, including non-fillable fields an attacker may inject. Always use $request-&gt;validated().</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mail::to($user)-&gt;send(new WelcomeMail($user)) inside a DB::transaction block.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mail sends before the transaction commits. If the transaction rolls back, the user record does not exist but the email is already delivered. Use deliver_later after the transaction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Resolving services via app(Service::class) instead of constructor injection.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>app() bypasses the container's autowiring and breaks testability — the test cannot substitute a mock via the constructor.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="request-all-mass-assignment" severity="high">
+      <symptom>Attacker self-promotes by POSTing `is_admin=1`; row is updated; audit log shows nothing unusual.</symptom>
+      <root-cause source="Laravel docs — Mass Assignment">Controller called `Model::create($request-&gt;all())` instead of `$request-&gt;validated()`.</root-cause>
+      <fix>Switch to `$request-&gt;validated()`; declare explicit FormRequest rules; add a feature test asserting protected fields are dropped from input.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-one-foreach" severity="high">
+      <symptom>List endpoint executes one SELECT per row; query log shows `SELECT * FROM organizations WHERE id = ?` repeated 200 times.</symptom>
+      <root-cause source="Laravel Eloquent docs">Iteration over a collection touched a lazy relation without eager-loading.</root-cause>
+      <fix>Eager-load via `Model::with('organization')-&gt;get()`. Enable `Model::preventLazyLoading(! app()-&gt;isProduction())` in `AppServiceProvider` to fail loudly in dev.</fix>
+    </antipattern>
+
+    <antipattern id="mail-inside-transaction" severity="high">
+      <symptom>User receives a "Welcome" email; backend rolled the user creation back due to a downstream failure; user is now missing.</symptom>
+      <root-cause source="Laravel docs — Transactions">`Mail::to(...)-&gt;send(...)` ran inside the `DB::transaction` block before commit.</root-cause>
+      <fix>Move dispatch to `DB::afterCommit(fn() =&gt; ...)` or use `Mail::to(...)-&gt;queue(...)` so the email is enqueued only on commit.</fix>
+    </antipattern>
+
+    <antipattern id="container-resolution-not-injection" severity="medium">
+      <symptom>Unit test cannot replace the real `PaymentGateway` with a fake; the SUT calls `app(PaymentGateway::class)` directly.</symptom>
+      <root-cause source="Laravel docs — Service Container">Author resolved the service via `app(...)` instead of receiving it in the constructor.</root-cause>
+      <fix>Switch to constructor injection; have the container autowire. Reserve `app(...)` for binding setup and rare runtime overrides.</fix>
+    </antipattern>
+
+    <antipattern id="queue-job-not-idempotent" severity="high">
+      <symptom>Queue worker retries on transient failure; customer is double-charged.</symptom>
+      <root-cause source="Laravel docs — Unique Jobs">Job does not implement `ShouldBeUnique`; retries dispatch the same work.</root-cause>
+      <fix>Implement `ShouldBeUnique`; define `uniqueId()` (e.g. invoice id + state machine version); add a feature test that retries twice and verifies one external charge.</fix>
+    </antipattern>
+
   </section>
 </text>

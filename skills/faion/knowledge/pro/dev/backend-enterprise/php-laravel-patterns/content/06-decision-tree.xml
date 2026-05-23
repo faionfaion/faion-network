@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Laravel Layered Architecture Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-project-shape">Project shape?</root-question>
+
+    <branch when="shape == prototype_or_admin_tooling">
+      <conclusion ref="thin-controller-no-eloquent" verdict="skip-this-methodology — keep Eloquent in controller; abstraction tax not justified"/>
+    </branch>
+
+    <branch when="shape == ddd_bounded_contexts">
+      <conclusion ref="thin-controller-no-eloquent" verdict="skip-this-methodology — use Symfony + hexagonal layout; Laravel patterns fight DDD aggregates"/>
+    </branch>
+
+    <branch when="shape == growing_service_or_api">
+      <question id="q-layer-violation">Any controller contains Eloquent query or business logic?</question>
+      <branch when="controller_violation == true">
+        <conclusion ref="thin-controller-no-eloquent" verdict="extract logic into Service; controller only validates + delegates + wraps in Resource"/>
+      </branch>
+      <branch when="controller_violation == false">
+        <question id="q-repository-need">Is there a real abstraction need (multi-source, no-DB testing, query encapsulation)?</question>
+        <branch when="real_repository_need == true">
+          <conclusion ref="repository-only-when-needed" verdict="add Repository + ADR; keep interface only if a second impl exists"/>
+        </branch>
+        <branch when="real_repository_need == false">
+          <conclusion ref="db-transaction-closure" verdict="apply remaining rules — DB::transaction closure + validated() + JsonResource boundary"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="billing-api">
+    shape=growing_service_or_api → controller_violation=true → thin-controller-no-eloquent → extract `InvoiceService::create(CreateInvoiceDTO $dto)` before adding any new endpoint.
+  </example>
+</text>

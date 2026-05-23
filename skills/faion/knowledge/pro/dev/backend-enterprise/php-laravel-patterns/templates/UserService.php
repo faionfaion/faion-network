@@ -1,4 +1,9 @@
 <?php
+// purpose: Service skeleton — constructor injection + DB::transaction + DTO/primitive inputs
+// consumes: model + repository (optional)
+// produces: service conforming to service-no-request-globals + db-transaction-closure
+// depends-on: content/01-core-rules.xml rules service-no-request-globals, db-transaction-closure
+// token-budget-impact: ~400 tokens when loaded as context
 // Service layer skeleton — no request(), no JsonResponse, no Eloquent in controller
 // Replace: User, UserRepository
 

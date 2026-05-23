@@ -1,23 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="caching-http-headers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for caching-http-headers. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="HTTP Caching Headers (Cache-Control, ETag, Vary, CDN) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every HTTP Caching Headers (Cache-Control, ETag, Vary, CDN) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Public API responses MUST use Cache-Control: public, max-age=N, stale-while-revalidate=M where N is the freshness TTL in seconds and M is the background-revalidation window. Private user-specific responses MUST use Cache-Control: private, max-age=0, must-revalidate. Responses that must never be cached MUST use Cache-Control: no-store.</statement>
-      <rationale source="v1-source">Omitting Cache-Control leaves the decision to heuristic caching rules in browsers and CDNs, which vary by implementation and produce unpredictable behavior. Explicit headers make the intent auditable and the behavior deterministic across all intermediaries.</rationale>
+
+    <rule id="r-explicit-cache-control" testable="true" depth="essential">
+      <statement>Every response MUST set `Cache-Control` explicitly — never rely on framework defaults.</statement>
+      <rationale source="RFC 9111 + CDN best-practice docs">Rule rooted in source: RFC 9111 + CDN best-practice docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>ETag values MUST be generated from a deterministic hash of the response content (MD5 or SHA-256 of the serialized body). Weak ETags (W/"...") MUST be used when byte-for-byte identity is not required; strong ETags require exact byte equality. Servers MUST respond with 304 when If-None-Match matches the current ETag.</statement>
-      <rationale source="v1-source">ETags based on modification timestamps are unreliable when multiple servers or processes handle requests (clock skew, timestamp granularity). Content hashes are deterministic across servers and correct for conditional request handling regardless of deployment topology.</rationale>
+
+    <rule id="r-s-maxage-vs-max-age" testable="true" depth="essential">
+      <statement>Use `s-maxage` for CDN, `max-age` for browser; treat them as independent dials.</statement>
+      <rationale source="Fastly / Cloudflare docs">Rule rooted in source: Fastly / Cloudflare docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Any response whose content depends on a request header MUST include that header name in Vary. At minimum: responses with content-negotiation compression MUST set Vary: Accept-Encoding. Responses with per-language content MUST set Vary: Accept-Language. Responses with authentication MUST NOT set Vary: Authorization — use private instead to prevent shared-cache pollution.</statement>
-      <rationale source="v1-source">Missing Vary on a compressed response causes CDN to serve compressed content to clients that cannot decompress it. Vary: Authorization creates one cache entry per auth token — effectively no caching. The correct approach for authenticated content is Cache-Control: private.</rationale>
+
+    <rule id="r-etag-strong-vs-weak" testable="true" depth="essential">
+      <statement>Use strong `ETag` for byte-identical caches; weak `ETag` (`W/`) when only the semantic body matches.</statement>
+      <rationale source="RFC 9110">Rule rooted in source: RFC 9110. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>CDN-cached API responses MUST include a Surrogate-Key (Fastly) or Cache-Tag (Cloudflare) header with the entity type and ID so that point-in-time purges can be issued by entity rather than requiring a full cache flush. The purge API call MUST be wired into the write path immediately after the database write.</statement>
-      <rationale source="v1-source">Without tag-based CDN purge, the only option after a data change is to wait for TTL expiry (serves stale data) or flush the entire CDN cache (serves zero cached data, origin takes full traffic). Tag-based purge is selective and instantaneous.</rationale>
+
+    <rule id="r-vary-on-auth-lang" testable="true" depth="essential">
+      <statement>Set `Vary: Authorization, Accept-Language` whenever response varies by either; missing Vary causes cache poisoning.</statement>
+      <rationale source="OWASP cache-poisoning advisory">Rule rooted in source: OWASP cache-poisoning advisory. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-private-no-store" testable="true" depth="essential">
+      <statement>PII / auth-bearing responses MUST set `Cache-Control: private, no-store` — never `public`.</statement>
+      <rationale source="PCI-DSS + GDPR storage guidance">Rule rooted in source: PCI-DSS + GDPR storage guidance. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-stale-while-revalidate" testable="true" depth="essential">
+      <statement>Pair `s-maxage` with `stale-while-revalidate` for high-read endpoints to absorb origin blips.</statement>
+      <rationale source="RFC 5861">Rule rooted in source: RFC 5861. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-surrogate-key-invalidation" testable="true" depth="essential">
+      <statement>Tag responses with `Surrogate-Key` (Fastly) / `Cache-Tag` (Cloudflare) per entity; purge by tag on write.</statement>
+      <rationale source="Fastly + Cloudflare docs">Rule rooted in source: Fastly + Cloudflare docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

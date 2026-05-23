@@ -1,3 +1,8 @@
+# purpose: Legacy template for the ruby-rspec-testing methodology.
+# consumes: inputs declared in ruby-rspec-testing/AGENTS.md prerequisites.
+# produces: working code/config aligned with content/01-core-rules.xml.
+# depends-on: content/02-output-contract.xml schema for output shape.
+# token-budget-impact: ~600 tokens when loaded as reference.
 # RSpec service spec skeleton
 # Replace: Users::CreateService, :params factory hash, result shape
 

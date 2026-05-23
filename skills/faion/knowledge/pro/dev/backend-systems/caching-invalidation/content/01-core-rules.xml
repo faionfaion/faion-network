@@ -1,23 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="caching-invalidation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for caching-invalidation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every Redis key set by application code MUST use setex / SET EX / EXPIRE. SET without TTL is forbidden. TTL values MUST include ±10–20% random jitter to prevent synchronized expiry stampedes.</statement>
-      <rationale source="v1-source">A key without TTL is permanent stale data. Synchronized TTLs cause synchronized cache misses which cause synchronized origin load spikes (thundering herd). Jitter distributes expiry across time.</rationale>
+
+    <rule id="r-ttl-always-floor" testable="true" depth="essential">
+      <statement>Every cache key MUST have a TTL — even when other strategies apply.</statement>
+      <rationale source="Caching field manuals">Rule rooted in source: Caching field manuals. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>For every entity with event-based cache invalidation, a write-path audit table MUST exist mapping (file:line, table/collection, mutated_columns) to (expected cache keys to delete). A reviewer agent MUST reject PRs where any write path has an empty invalidation list.</statement>
-      <rationale source="v1-source">LLMs implement cache-aside reads but routinely forget to wire cache.delete() into update/delete RPCs. The write-path audit table makes the invariant machine-checkable rather than relying on human review to catch gaps.</rationale>
+
+    <rule id="r-event-based-when-slo-tight" testable="true" depth="essential">
+      <statement>When staleness SLO &lt; TTL, an event-based purge MUST exist on the relevant write path.</statement>
+      <rationale source="Cache consistency reviews">Rule rooted in source: Cache consistency reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Tag SET keys MUST be given a TTL equal to the longest TTL of any key they reference. When a tagged key expires, it MUST be removed from its tag sets — either eagerly in the expiry hook or lazily by checking key existence before use.</statement>
-      <rationale source="v1-source">Tag SETs without TTL become permanent sets of stale key names as the actual cached keys expire. Memory usage grows indefinitely. Setting tag TTL to the longest member TTL ensures the tag set is at most as long-lived as its longest member.</rationale>
+
+    <rule id="r-tag-groups-via-sets" testable="true" depth="essential">
+      <statement>Tag-based invalidation MUST use Redis SETs of keys (`SADD tag:user:42 cache:user:42:profile`).</statement>
+      <rationale source="Redis docs + tag-based caching pattern catalogue">Rule rooted in source: Redis docs + tag-based caching pattern catalogue. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Cache keys for versioned entities MUST follow the pattern {entity}:v{version}:{id} where version comes from a Redis counter. Version MUST be incremented atomically via INCR before any new writes use the new schema. Old versioned keys MUST have TTL set so orphaned keys do not accumulate.</statement>
-      <rationale source="v1-source">Without version in the key, a deploy that changes the cached data shape produces deserialization errors or silently corrupt cached values. INCR atomicity prevents race conditions between multiple processes reading the new version before the counter is stable.</rationale>
+
+    <rule id="r-version-prefix-on-schema" testable="true" depth="essential">
+      <statement>Schema or computation changes MUST bump a version prefix (`v2:user:42`) instead of relying on TTL.</statement>
+      <rationale source="Stripe / GitHub eng blogs on schema migration">Rule rooted in source: Stripe / GitHub eng blogs on schema migration. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-idempotent-purge" testable="true" depth="essential">
+      <statement>Purge operations MUST be idempotent — retries on flaky bus MUST NOT cause wrong invalidations.</statement>
+      <rationale source="Distributed-systems best-practice">Rule rooted in source: Distributed-systems best-practice. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-monitor-staleness" testable="true" depth="essential">
+      <statement>A `cache_staleness_seconds` SLO MUST be emitted per entity; alert when over budget.</statement>
+      <rationale source="SRE workbook">Rule rooted in source: SRE workbook. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-never-cache-on-write" testable="true" depth="essential">
+      <statement>Writes MUST NOT populate caches — that is the cache-write-patterns concern, not invalidation.</statement>
+      <rationale source="Layering reviews">Rule rooted in source: Layering reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

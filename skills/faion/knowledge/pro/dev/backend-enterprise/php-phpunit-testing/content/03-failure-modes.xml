@@ -1,62 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="php-phpunit-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for php-phpunit-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Laravel PHPUnit / Pest Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Laravel test suites. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>assertJsonStructure(['data' =&gt; ['email', 'name']]) used instead of assertJsonPath for value verification.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>assertJsonStructure confirms keys exist but passes when values are null, 0, or wrong types. It provides almost no behavioral signal. Use assertJsonPath('data.email', $expected) to verify the actual value.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Calling Mail::fake(), Queue::fake(), or Event::fake() after the action under test.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fakes intercept calls only from the moment they are set. If the action runs first, the real implementation fires and the fake captures nothing. The assertion then passes on an empty fake — a silent false positive.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using RefreshDatabase in a Unit test: trait drops and re-migrates the schema for every test method, making fast logic tests 100x slower.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unit tests should not touch the database. Use Mockery to mock repositories. Reserve RefreshDatabase for Feature tests that exercise the HTTP + DB path together.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Mixing Pest function syntax (it(), describe()) and PHPUnit class syntax in the same file.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pest and PHPUnit parsers are separate; mixing syntax within one file causes parse errors or unexpected test discovery. Pick one syntax per project and enforce via code review.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Missing RefreshDatabase on Feature tests that write to the DB, causing state pollution across test methods run in random order.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>PHPUnit randomizes method execution order by default when executionOrder="random" is set. A test that depends on clean state fails intermittently when another test has left records behind.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Mail::fake() on a mail that is dispatched via a queued job: the fake captures sync sends only; the queued job runs asynchronously and the assertion sees nothing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>For queued mail, assert the job was pushed (Queue::assertPushed) or use Notification::fake() if the mail goes via a Notification channel. Mail::fake() only intercepts direct Mail::send() calls.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>RefreshDatabase is per-test reset — slow on large schemas. DatabaseTransactions is faster but breaks for code that opens its own transactions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Understand the tradeoff: RefreshDatabase guarantees isolation but takes time; DatabaseTransactions is faster but incompatible with code that starts its own transactions. Test the combination and measure suite time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Using expectsExceptionMessage with unstable strings like timestamps or generated IDs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>expectsExceptionMessage matches substring — if the exception message includes a timestamp or ID, the test becomes flaky. Use expectExceptionMessageMatches with a regex instead for stability.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>LLM places fake() calls AFTER the action — the assertion then sees an empty fake, false positives.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hard rule: fakes go at the top of the test method, before the act. Calling fake() after the action captures nothing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Mail::fake() plus Mail::send inside a queued job — fake captures only sync sends.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>For queued mail, use Notification::fake() or Queue::fake() and assert the job was pushed instead. Mail::fake() only intercepts direct Mail::send() calls, not jobs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Coverage targets the LLM proposes (often 100%) lead to brittle tests. Pick semantic coverage: every public method has at least one happy + one failure path.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Aiming for 100% coverage often means testing implementation details instead of behavior. Semantic coverage (happy + failure paths for public methods) is more maintainable and catches regressions better.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="unit-tests-booting-laravel" severity="medium">
+      <symptom>`tests/Unit/` runs in 18s even though there are 12 tests; profile shows Laravel boot per test.</symptom>
+      <root-cause source="Laravel docs — Test structure">Unit test class extends `Tests\TestCase` (which boots Laravel) instead of `PHPUnit\Framework\TestCase`.</root-cause>
+      <fix>Switch base class. Reserve `Tests\TestCase` for Feature tests that actually need the framework.</fix>
+    </antipattern>
+
+    <antipattern id="fake-after-action" severity="high">
+      <symptom>Test asserts no mail was sent, but the user reports receiving the email; CI green, prod broken.</symptom>
+      <root-cause source="Laravel docs — Mocking">`Mail::fake()` was called AFTER `$this-&gt;postJson(...)`; the real mail dispatched, then the fake started for the assertion phase.</root-cause>
+      <fix>Move every `*::fake()` to the top of the test, before the action. Add a Pest lint rule that fails on `*::fake()` appearing below `$this-&gt;` HTTP calls.</fix>
+    </antipattern>
+
+    <antipattern id="assertjsonstructure-misuse" severity="medium">
+      <symptom>Response has `"email": null` and the test still passes.</symptom>
+      <root-cause source="Laravel docs — JSON assertions">`assertJsonStructure(['data' =&gt; ['email']])` asserts the key exists, not its value.</root-cause>
+      <fix>Use `assertJsonPath('data.email', $expected)` for value checks. Reserve `assertJsonStructure` for deep key-presence in dynamic payloads.</fix>
+    </antipattern>
+
+    <antipattern id="shared-mutable-fixture" severity="high">
+      <symptom>Tests pass in isolation, fail when run in a specific order; root cause hides for weeks.</symptom>
+      <root-cause source="Internal — flake retro 2026-Q1">Static factory state persists across tests; or `setUp` mutates a shared singleton without resetting.</root-cause>
+      <fix>Always use `RefreshDatabase` on Feature tests; reset singletons via `$this-&gt;app-&gt;instance(...)` in `setUp`; avoid static state in factories.</fix>
+    </antipattern>
+
+    <antipattern id="time-based-flakes" severity="medium">
+      <symptom>Test asserts `Carbon::now()-&gt;diffInSeconds(...) &lt; 1` and flakes 1 in 50 CI runs.</symptom>
+      <root-cause source="Laravel docs — Time helpers">Test uses real wall-clock time without freezing it.</root-cause>
+      <fix>Wrap the action in `$this-&gt;travelTo(now())` (Laravel 9+); assert exact equality with the frozen time. Never use `sleep(...)` in tests.</fix>
+    </antipattern>
+
   </section>
 </text>

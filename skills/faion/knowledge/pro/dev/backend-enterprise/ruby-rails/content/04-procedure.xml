@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rails 7+ Backend Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the Rails 7+ methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="lock-serviceresult">
+      <input>app/services/ folder</input>
+      <action>Create `app/services/service_result.rb` with `success?`, `failure?`, `value`, `errors`. Add CI grep that fails on additional `class ServiceResult` definitions.</action>
+      <output>Single ServiceResult + CI guard</output>
+      <decision-gate>If a second ServiceResult appears, BLOCK per `one-serviceresult-class` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="extract-service-per-verb">
+      <input>Use-case catalogue</input>
+      <action>For each verb create `&lt;Domain&gt;::&lt;Verb&gt;Service` with `initialize(params:, current_user:)` and `call` returning `ServiceResult`. Controllers do Strong Params then `Service.new(params: permitted, current_user: current_user).call`.</action>
+      <output>Service per verb + thin controllers</output>
+      <decision-gate>If service touches `params` or HTTP globals, BLOCK per `strong-params-not-into-service` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="transaction-and-after-commit">
+      <input>Multi-step write paths</input>
+      <action>Wrap writes in `ActiveRecord::Base.transaction do ... end`. Move mailers / webhooks / search indexing to `after_create_commit` callbacks or chained Sidekiq jobs after the transaction returns.</action>
+      <output>Atomic write + post-commit side effects</output>
+      <decision-gate>If `deliver_later` lands inside the transaction, BLOCK per `after-commit-for-side-effects` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="sidekiq-with-ids-and-retry">
+      <input>Async workflow list</input>
+      <action>Declare `perform(record_id, ...)` with primitives. Add `sidekiq_options retry: 5, dead: true` + `sidekiq_retry_in` per exception. Inside `perform` reload the record from DB.</action>
+      <output>Idempotent + retriable jobs</output>
+      <decision-gate>If AR object passed as arg, BLOCK per `sidekiq-jobs-take-ids` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="rspec-per-branch">
+      <input>Branch list per service / job</input>
+      <action>Add request specs (`spec/requests/...`) for controller paths and service specs (`spec/services/...`) for branches. Use FactoryBot `build_stubbed` where persistence isn't needed.</action>
+      <output>Layered RSpec suite</output>
+    </step>
+
+  </section>
+</text>

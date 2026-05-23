@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CLI helper running per-feature-test query budget assertions
+# consumes: per-test query budget number + Pest/PHPUnit suite
+# produces: pass/fail gate per eager-load-at-boundary rule
+# depends-on: content/01-core-rules.xml rule eager-load-at-boundary
+# token-budget-impact: ~250 tokens when loaded as context
 # query-budget.sh — fail CI if any feature test exceeds N queries.
 # Usage: query-budget.sh BUDGET (default 15)
 # Requires: DB_LOG_QUERIES=true support in the test suite.

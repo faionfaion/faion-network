@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Legacy template for the ruby-rspec-testing methodology.
+# consumes: inputs declared in ruby-rspec-testing/AGENTS.md prerequisites.
+# produces: working code/config aligned with content/01-core-rules.xml.
+# depends-on: content/02-output-contract.xml schema for output shape.
+# token-budget-impact: ~600 tokens when loaded as reference.
 # rspec-gate.sh — fail PR on coverage drop, slow specs, or flaky count.
 # Usage: rspec-gate.sh [COVERAGE_MIN] [SLOW_MS]
 # Defaults: COVERAGE_MIN=80, SLOW_MS=1000

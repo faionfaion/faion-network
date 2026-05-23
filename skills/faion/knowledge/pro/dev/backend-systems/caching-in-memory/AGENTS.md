@@ -1,76 +1,101 @@
 ---
 slug: caching-in-memory
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: In-memory (process-local) caching is the L1 layer in a multi-level cache stack: requests that hit L1 never leave the process, achieving sub-millisecond latency with zero network overhead.
-content_id: "74a95ed6e0c6ca08"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces an L1 in-process cache spec: `lru_cache` for pure deterministic functions, `cachetools.TTLCache` with TTL + thread-safety, `WarmableCache` for preload-on-startup; explicit when to fall back to Redis."
+content_id: "47ae975b5152eae9"
+complexity: medium
+produces: config
+est_tokens: 3700
 tags: [caching, in-memory, lru-cache, ttlcache, cache-warming]
 ---
-# In-Memory Application Cache: lru_cache, TTLCache, and Cache Warming
+
+# In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache)
 
 ## Summary
 
-**One-sentence:** In-memory (process-local) caching is the L1 layer in a multi-level cache stack: requests that hit L1 never leave the process, achieving sub-millisecond latency with zero network overhead.
+**One-sentence:** Produces an L1 in-process cache spec: `lru_cache` for pure deterministic functions, `cachetools.TTLCache` with TTL + thread-safety, `WarmableCache` for preload-on-startup; explicit when to fall back to Redis.
 
-**One-paragraph:** In-memory (process-local) caching is the L1 layer in a multi-level cache stack: requests that hit L1 never leave the process, achieving sub-millisecond latency with zero network overhead. Python's lru_cache is appropriate for deterministic pure functions with stable inputs; cachetools TTLCache adds TTL expiry and thread-safety; WarmableCache adds preload-on-startup for predictable hot keys. L1 is not a replacement for Redis — it cannot be shared across processes and does not survive restarts.
+**Ефективно для:**
+
+- Hot pure-function results (parser, regex, format mapping).
+- Per-process config dictionaries (feature flags after fetch).
+- Idempotent computations called >100 times per request.
+- Predictable startup keys worth preloading.
+
+**One-paragraph:** Process-local L1 cache: requests that hit L1 never leave the process — sub-millisecond latency, zero network overhead. Python's `lru_cache` is appropriate for pure deterministic functions with stable inputs; `cachetools.TTLCache` adds TTL expiry + thread-safety; a `WarmableCache` wrapper preloads predictable hot keys at startup. L1 is never a replacement for Redis — it cannot be shared across processes and does not survive restarts.
 
 ## Applies If (ALL must hold)
 
-- Static or semi-static config loaded from DB at startup — warmable, never stale.
-- Permission and role tables accessed on every authenticated request — high hit rate, infrequent updates, short TTL acceptable.
-- Feature flags polled per request — low-cardinality keys, bounded staleness acceptable (30–300s).
-- Expensive pure computations with stable inputs (hash functions, Markdown rendering, regex compilation) — lru_cache without TTL is correct when the input space is bounded.
-- Hot product or article data in a read-heavy API serving one process per machine — L1 reduces Redis load by the L1 hit rate.
+- Function inputs are hashable and bounded.
+- Stale-tolerance ≥ TTL acceptable for the call site.
+- Cache memory budget per worker is documented.
+- Multi-worker invalidation is not required.
 
 ## Skip If (ANY kills it)
 
-- User session data — must be shared across all processes; use Redis.
-- Data requiring cross-process invalidation after writes — L1 has no shared invalidation signal without a Redis pub/sub or version-check mechanism.
-- High-cardinality data (one key per user per request) — L1 cache fills with cold entries, evicting hot ones; hit rate collapses.
-- Large values (>1MB per entry) — in-process caches constrained to <20% of total RAM; a few large values exhaust the maxsize budget.
-- Multi-worker deployments where each worker serves different traffic — L1 caches are independent per worker and cannot be coordinated.
+- Result must be consistent across workers — use Redis.
+- Values are large (>1 MiB) — risk worker OOM.
+- Inputs are unbounded / unhashable — LRU thrashes.
+- Strict freshness on writes — TTL alone is insufficient.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Function signature + call pattern | code path | team |
+| Memory budget per worker | ops doc | SRE |
+| Acceptable staleness (TTL) | product decision | PM |
+| Cache hit-rate floor | telemetry SLO | SRE |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[python-developer]]` | host language conventions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-call-site` | haiku | Pure-vs-IO + stale-tolerance classification. |
+| `size-and-ttl` | sonnet | Memory + freshness tradeoff per cache. |
+| `warm-plan` | sonnet | Identifies which keys are predictable at startup. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/caching-in-memory.json` | JSON Schema for the In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache) output contract |
+| `templates/caching-in-memory.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-caching-in-memory.py` | Enforce the In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[caching-write-patterns]]
+- [[caching-invalidation]]
+- [[caching-stampede-prevention]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

@@ -1,3 +1,8 @@
+# purpose: Legacy template for the error-handling methodology.
+# consumes: inputs declared in error-handling/AGENTS.md prerequisites.
+# produces: working code/config aligned with content/01-core-rules.xml.
+# depends-on: content/02-output-contract.xml schema for output shape.
+# token-budget-impact: ~600 tokens when loaded as reference.
 # api/errors.py
 # RFC 7807 ProblemDetail model + FastAPI exception handlers.
 # Replace trace_id placeholder with your actual OTel/Datadog trace context.

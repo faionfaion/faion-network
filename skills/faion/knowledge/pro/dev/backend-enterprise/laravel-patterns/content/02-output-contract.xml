@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="laravel-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Laravel Enterprise Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the Laravel-patterns manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/laravel-patterns.json",
+  "type": "object",
+  "required": ["laravel_version", "php_version", "uses_form_requests", "prevent_lazy_loading_enabled", "queue_jobs", "api_resources"],
+  "properties": {
+    "laravel_version": {"type": "string", "pattern": "^(10|11)\\."},
+    "php_version": {"type": "string", "pattern": "^8\\.(2|3|4)"},
+    "uses_form_requests": {"type": "boolean", "const": true},
+    "prevent_lazy_loading_enabled": {"type": "boolean", "const": true},
+    "queue_jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "implements_should_be_unique"],
+        "properties": {
+          "class": {"type": "string"},
+          "implements_should_be_unique": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "api_resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "uses_explicit_fields"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Resource$"},
+          "uses_explicit_fields": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "laravel_version": "11.0",
+  "php_version": "8.3",
+  "uses_form_requests": true,
+  "prevent_lazy_loading_enabled": true,
+  "queue_jobs": [{"class": "App\\Jobs\\ChargeInvoice", "implements_should_be_unique": true}],
+  "api_resources": [{"class": "App\\Http\\Resources\\InvoiceResource", "uses_explicit_fields": true}],
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "laravel_version": "8.0",
+  "php_version": "7.4",
+  "uses_form_requests": false,
+  "prevent_lazy_loading_enabled": false,
+  "queue_jobs": [{"class": "ChargeInvoice", "implements_should_be_unique": false}],
+  "api_resources": [{"class": "InvoiceResource", "uses_explicit_fields": false}],
+  "forbidden_patterns_found": ["$request->all() in InvoiceController::store"]
+}
+]]></code>
+    <note>Laravel + PHP versions too old; FormRequest off; lazy loading enabled; job not idempotent; Resource leaking fields.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`$request-&gt;all()` or `Model::create($request-&gt;all())`.</item>
+      <item>`Mail::to(...)-&gt;send(...)` inside a `DB::transaction` block.</item>
+      <item>`app(Service::class)` / `resolve(Service::class)` outside container bindings and tests.</item>
+      <item>API Resource using `$this-&gt;toArray()` or spreading attributes.</item>
+      <item>Queue job that mutates external state without `ShouldBeUnique`.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-laravel-patterns.py">Validator script</reference>
 </text>

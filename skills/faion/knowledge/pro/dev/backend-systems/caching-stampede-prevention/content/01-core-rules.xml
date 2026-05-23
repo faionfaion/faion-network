@@ -1,19 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="caching-stampede-prevention Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for caching-stampede-prevention. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cache Stampede Prevention (Distributed Lock, Probabilistic Refresh, Coalescing) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Cache Stampede Prevention (Distributed Lock, Probabilistic Refresh, Coalescing) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Distributed cache locks MUST use SET NX EX (atomic set-if-not-exists with expiry) — never a two-step SETNX then EXPIRE. Lock release MUST use a Lua script for atomic check-and-delete to prevent releasing a lock owned by another process after TTL expiry.</statement>
-      <rationale source="v1-source">A two-step SETNX + EXPIRE has a crash window between the two commands where the lock is held without a TTL — permanent deadlock. The Lua atomic check-and-delete prevents a slow process from deleting the lock that a faster process already reacquired after TTL expiry.</rationale>
+
+    <rule id="r-setnx-lock-with-ttl" testable="true" depth="essential">
+      <statement>Distributed lock MUST use `SET key value NX EX &lt;ttl&gt;` — lock TTL &gt; expected rebuild time.</statement>
+      <rationale source="Redis docs + redlock note">Rule rooted in source: Redis docs + redlock note. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Probabilistic early refresh MUST only be used for entities where serving a value that is at most one TTL period stale is explicitly acceptable. The beta parameter MUST be tuned: beta=1.0 is conservative (refresh in last 30% of TTL), beta=2.0+ is aggressive (starts refreshing at 50% of TTL remaining).</statement>
-      <rationale source="v1-source">Early refresh returns the current (slightly stale) cached value while asynchronously updating it. For entities with strict consistency requirements (financial data, inventory), this is incorrect behavior regardless of how small the stale window is.</rationale>
+
+    <rule id="r-lock-id-token" testable="true" depth="essential">
+      <statement>Lock value MUST be a UUID per process; release MUST be conditional `IF current_value == my_token`.</statement>
+      <rationale source="Lock-correctness analyses">Rule rooted in source: Lock-correctness analyses. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Request coalescing MUST set a timeout for the coalescing window (100–500ms). If the in-flight request does not complete within the timeout, waiting requests MUST fall through to their own fetch — never block indefinitely waiting for a coalesced result.</statement>
-      <rationale source="v1-source">An unbounded coalescing window turns a single slow origin request into a cascading queue of blocked requests. The coalescing timeout limits the blast radius: if the in-flight request stalls, waiters degrade to individual origin calls rather than an application-wide hang.</rationale>
+
+    <rule id="r-xfetch-probabilistic" testable="true" depth="essential">
+      <statement>For hot keys, implement XFetch probabilistic early refresh `rand() &lt; β·delta·log(rand())`.</statement>
+      <rationale source="Vakili 2015 — XFetch paper">Rule rooted in source: Vakili 2015 — XFetch paper. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-coalesce-in-process" testable="true" depth="essential">
+      <statement>Within a single process, an in-flight map MUST dedup concurrent same-key origin calls.</statement>
+      <rationale source="Go singleflight / Python aiomisc patterns">Rule rooted in source: Go singleflight / Python aiomisc patterns. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-ttl-jitter" testable="true" depth="essential">
+      <statement>Every cache TTL MUST add ±10% jitter to prevent synchronised expiry of correlated keys.</statement>
+      <rationale source="SRE workbook">Rule rooted in source: SRE workbook. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-waiter-timeout" testable="true" depth="essential">
+      <statement>Waiters MUST have a timeout shorter than user-perceived SLO; on timeout serve stale + log.</statement>
+      <rationale source="Field guides">Rule rooted in source: Field guides. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-stale-while-rebuild" testable="true" depth="essential">
+      <statement>Always return stale value to waiters while rebuilder repopulates — never return error.</statement>
+      <rationale source="Field guides">Rule rooted in source: Field guides. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rails Patterns Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the Rails Service Object + ServiceResult patterns end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="define-serviceresult">
+      <input>app/services/ directory</input>
+      <action>Create `app/services/service_result.rb` with the canonical API (`success?`, `failure?`, `value`, `errors`, `self.ok`, `self.fail`). Add CI grep failing on a second `class ServiceResult`.</action>
+      <output>Single ServiceResult + CI guard</output>
+      <decision-gate>If a second ServiceResult exists, BLOCK per `single-serviceresult` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="write-services">
+      <input>Use-case catalogue</input>
+      <action>For each verb create `&lt;Domain&gt;::&lt;Verb&gt;Service` with `initialize(params:, current_user:)` and `call` returning `ServiceResult`. Wrap multi-step writes in `ActiveRecord::Base.transaction`.</action>
+      <output>Service per verb</output>
+      <decision-gate>If service uses positional args or returns a plain hash, BLOCK per `service-signature-params-current-user` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="after-commit-side-effects">
+      <input>Side-effect list (mail, webhook, search)</input>
+      <action>Move side effects to `after_create_commit` / `after_update_commit` callbacks on the model OR chained Sidekiq jobs queued after the service returns. Reject `deliver_later` inside the transaction.</action>
+      <output>Side effects fire only on commit</output>
+    </step>
+
+    <step n="4" name="enable-pundit-verify-authorized">
+      <input>ApplicationController</input>
+      <action>Add `after_action :verify_authorized, unless: :devise_controller?` and `after_action :verify_policy_scoped` to `ApplicationController`. Audit every controller — call `authorize @resource` or `policy_scope(Resource)` explicitly.</action>
+      <output>Pundit coverage at 100 %</output>
+      <decision-gate>If any action lacks `authorize` / `policy_scope`, BLOCK per `pundit-verify-authorized` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="wire-ci-gates">
+      <input>CI workflow file</input>
+      <action>Add Bullet to test env (Bullet.enable = true + raise = true); add `bundle exec brakeman --no-pager --exit-on-warn` + `bundle exec bundler-audit check --update`. Gate the merge on all three.</action>
+      <output>Bullet + Brakeman + bundler-audit gates green</output>
+    </step>
+
+  </section>
+</text>

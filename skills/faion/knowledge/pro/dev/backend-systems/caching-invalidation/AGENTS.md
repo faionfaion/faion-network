@@ -1,74 +1,102 @@
 ---
 slug: caching-invalidation
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cache invalidation is the hardest part of caching.
-content_id: "45f154c64dcf54cf"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a per-entity invalidation strategy: TTL floor, event-based purges on write, Redis SET-backed tag groups, and version-prefixed namespaces; selection by freshness SLO."
+content_id: "314a0a535f35b7e2"
+complexity: deep
+produces: spec
+est_tokens: 4300
 tags: [caching, redis, invalidation, ttl, cache-tags]
 ---
-# Cache Invalidation: TTL, Event-Based, Tag-Based, and Version-Based
+
+# Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based)
 
 ## Summary
 
-**One-sentence:** Cache invalidation is the hardest part of caching.
+**One-sentence:** Produces a per-entity invalidation strategy: TTL floor, event-based purges on write, Redis SET-backed tag groups, and version-prefixed namespaces; selection by freshness SLO.
 
-**One-paragraph:** Cache invalidation is the hardest part of caching. Four strategies exist: TTL (time-to-live, simplest), event-based (invalidate on write events), tag-based (invalidate groups via Redis SETs), and version-based (namespace keys with a bumped version number). Every entity needs at least TTL; event-based is required for strong freshness; tags and versions handle cascading invalidation.
+**Ефективно для:**
+
+- Read-heavy entities with write events on a known channel.
+- Cascading invalidations (one parent → many cached children).
+- Computed views that depend on multiple entities.
+- Migrations / schema changes that must drop old caches instantly.
+
+**One-paragraph:** Cache invalidation is the hardest part of caching. Four strategies exist: TTL (time-to-live, simplest, always include as a floor), event-based (invalidate on write events, required for strong freshness), tag-based (invalidate groups via Redis SETs of keys), and version-based (namespace keys with a bumped version number, useful for schema or computation changes). Every entity needs at least TTL; event-based is required when staleness SLO is below the TTL; tags / versions handle cascading invalidation.
 
 ## Applies If (ALL must hold)
 
-- TTL-based: all entities as a safety net; standalone for data where bounded staleness is explicitly acceptable (analytics, public catalog).
-- Event-based: entities with a write path you control (user profiles, orders) and a freshness budget under 5 minutes.
-- Tag-based: entities with group membership (products in a category, articles by author) where you need to invalidate an entire group on a single event.
-- Version-based: schema changes across deployments, or any time you need atomic invalidation of all cached instances of an entity type.
+- A shared cache (Redis / Memcached / CDN) is in front of origin.
+- Write events are observable (DB log, app event, message bus).
+- Staleness SLO is documented per entity type.
+- Tag / version overhead (~10% extra ops) fits the budget.
 
 ## Skip If (ANY kills it)
 
-- Event-based invalidation without a write-path audit — incomplete invalidation leaves stale keys that TTL alone eventually expires.
-- Tag-based invalidation without TTL on the tag sets themselves — orphaned tag keys accumulate and consume memory indefinitely.
-- Version-based invalidation as the sole strategy — old versioned keys are orphaned until their TTL expires, so memory grows linearly with deploys.
-- KEYS * for bulk invalidation in production — O(N), blocks Redis single-thread loop, causes latency spikes under load.
+- Single-process L1 cache only — use L1 invalidation hook instead.
+- Read-once data — invalidation is unnecessary.
+- No write-event channel — TTL is the only option.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Entity → cache-key map | spec | team |
+| Write-event channel (DB log / bus) | infra doc | SRE |
+| Per-entity staleness SLO | product decision | PM |
+| Redis ACL for tag / version ops | ops doc | SRE |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[backend-systems]]` | host stack |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-strategy-per-entity` | sonnet | Maps SLO + write-channel to TTL / event / tag / version. |
+| `design-key-namespace` | haiku | Generates key + tag templates. |
+| `draft-purge-handlers` | sonnet | Wires events to purge functions with idempotency check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/caching-invalidation.json` | JSON Schema for the Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based) output contract |
+| `templates/caching-invalidation.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-invalidation record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-caching-invalidation.py` | Enforce the Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[caching-write-patterns]]
+- [[caching-stampede-prevention]]
+- [[caching-http-headers]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

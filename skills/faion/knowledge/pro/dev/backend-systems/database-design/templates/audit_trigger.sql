@@ -1,3 +1,8 @@
+-- purpose: Legacy template for the database-design methodology.
+-- consumes: inputs declared in database-design/AGENTS.md prerequisites.
+-- produces: working code/config aligned with content/01-core-rules.xml.
+-- depends-on: content/02-output-contract.xml schema for output shape.
+-- token-budget-impact: ~600 tokens when loaded as reference.
 -- Audit trail: tracks INSERT/UPDATE/DELETE on any table.
 -- App-level user ID must be set per transaction: SET LOCAL app.user_id = '...';
 

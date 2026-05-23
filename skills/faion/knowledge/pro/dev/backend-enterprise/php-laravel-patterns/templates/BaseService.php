@@ -1,4 +1,9 @@
 <?php
+// purpose: abstract Service base class with DB::transaction helper
+// consumes: per-service model + repository dependencies
+// produces: Service skeleton conforming to db-transaction-closure rule
+// depends-on: content/01-core-rules.xml rule db-transaction-closure
+// token-budget-impact: ~250 tokens when loaded as context
 // Abstract base service — extend per resource to share paginate/find/delete
 // Only use when ≥2 resources share the same CRUD shape
 

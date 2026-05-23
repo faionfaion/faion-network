@@ -1,4 +1,9 @@
 <?php
+// purpose: Unit test skeleton without Laravel boot, Mockery for dependencies
+// consumes: service class + collaborator interfaces
+// produces: Unit test conforming to feature-vs-unit-boundary rule
+// depends-on: content/01-core-rules.xml rule feature-vs-unit-boundary
+// token-budget-impact: ~350 tokens when loaded as context
 // Unit test skeleton — single class, no RefreshDatabase, Mockery for dependencies
 // Replace: UserService, UserRepository, UserCreated event
 

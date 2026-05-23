@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Rails 7+ Backend Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-feature-shape">Feature shape?</root-question>
+
+    <branch when="shape == single_step_write">
+      <conclusion ref="strong-params-not-into-service" verdict="skip Service Object ceremony — model + controller is enough; still use Strong Params"/>
+    </branch>
+
+    <branch when="shape == multistep_write_with_side_effects">
+      <question id="q-side-effect">Mail / webhook / index update?</question>
+      <branch when="has_side_effect == true">
+        <conclusion ref="after-commit-for-side-effects" verdict="wrap writes in transaction; fire side effects from after_create_commit OR chained Sidekiq"/>
+      </branch>
+      <branch when="has_side_effect == false">
+        <conclusion ref="service-call-returns-result" verdict="extract Service Object with shared ServiceResult; transaction inside #call"/>
+      </branch>
+    </branch>
+
+    <branch when="shape == async_workflow">
+      <conclusion ref="sidekiq-jobs-take-ids" verdict="Sidekiq job accepting record_id + retry/dead policy + reload inside perform"/>
+    </branch>
+
+    <branch when="shape == destructive_migration">
+      <conclusion ref="destructive-migration-checkpoint" verdict="gate PR on MIGRATION-REVIEW checklist; require human approval"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="user-signup">
+    shape=multistep_write_with_side_effects → has_side_effect=true → after-commit-for-side-effects → transaction creates user + roles, after_create_commit triggers WelcomeMailer.deliver_later.
+  </example>
+</text>

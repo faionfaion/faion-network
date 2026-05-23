@@ -1,23 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="caching-in-memory Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for caching-in-memory. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>lru_cache MUST only be applied to pure functions whose output depends solely on the input arguments — never to functions with side effects, external I/O, or time-dependent results. maxsize MUST be set explicitly; never use maxsize=None (unbounded cache grows without limit until OOM kill).</statement>
-      <rationale source="v1-source">Caching a function with side effects or I/O makes those effects invisible on cache hits — the test may verify the result but the side effect only fires on the first call. An unbounded cache on a high-cardinality function is a memory leak that causes OOM under load without any warning.</rationale>
+
+    <rule id="r-lru-for-pure-only" testable="true" depth="essential">
+      <statement>`functools.lru_cache` is for pure deterministic functions only — never wrap functions with I/O.</statement>
+      <rationale source="Python docs + bugs.python.org issue history">Rule rooted in source: Python docs + bugs.python.org issue history. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>TTLCache instances used in multi-threaded applications MUST be wrapped with a threading.Lock via cachetools.cached(cache, lock=cache_lock). The lock MUST be created once at module level and shared with the cache instance — never created inside the decorated function.</statement>
-      <rationale source="v1-source">TTLCache mutates shared state (eviction, size tracking) on every get and set. Without a lock, concurrent access causes dictionary corruption errors or silent data loss under the GIL race. The lock must be module-level so all threads share the same lock instance.</rationale>
+
+    <rule id="r-ttlcache-for-time-sensitive" testable="true" depth="essential">
+      <statement>Use `cachetools.TTLCache` (thread-safe wrapper) whenever staleness budget &lt; ∞.</statement>
+      <rationale source="cachetools docs">Rule rooted in source: cachetools docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>WarmableCache MUST implement double-checked locking (check outside lock, acquire lock, check again inside lock) on cache miss to prevent concurrent duplicate loads for the same key. The warm() method MUST be called after DB migrations and during rolling deploys before traffic is routed to the new instance.</statement>
-      <rationale source="v1-source">Without double-checked locking, two concurrent misses for the same key both acquire the loader, executing two identical DB queries and one of them being discarded. Under high concurrency this multiplies origin load by the number of concurrent workers.</rationale>
+
+    <rule id="r-bounded-maxsize" testable="true" depth="essential">
+      <statement>Every cache MUST have a `maxsize` — never `maxsize=None` in production.</statement>
+      <rationale source="Memory-safety reviews">Rule rooted in source: Memory-safety reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>In-memory cache maxsize MUST be set to keep total cache memory below 20% of the process's total RAM allocation. Large values (&gt;1KB per entry) MUST be stored in Redis, not L1. Cache memory usage MUST be monitored; alerts MUST fire when cache grows to 80% of the allocated budget.</statement>
-      <rationale source="v1-source">An unbounded or oversized L1 cache competes with heap allocation and triggers GC pressure or OOM kills. The 20% rule leaves headroom for request processing, connection pools, and library buffers. Values above 1KB in an in-process dict with 10k entries become 10GB of heap — use Redis for large objects.</rationale>
+
+    <rule id="r-warmable-startup" testable="true" depth="essential">
+      <statement>Cache keys predictable at startup MUST be preloaded via `WarmableCache.warm()` to avoid first-request latency spikes.</statement>
+      <rationale source="Performance audit reports">Rule rooted in source: Performance audit reports. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-metrics-emit-hit-miss" testable="true" depth="essential">
+      <statement>Every L1 cache MUST emit `hits`, `misses`, `evictions` counters on a per-cache label.</statement>
+      <rationale source="OpenTelemetry semantic conventions for cache">Rule rooted in source: OpenTelemetry semantic conventions for cache. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-never-share-across-procs" testable="true" depth="essential">
+      <statement>L1 cache MUST NOT be relied on for cross-worker consistency; use Redis for that.</statement>
+      <rationale source="Distributed-systems reviews">Rule rooted in source: Distributed-systems reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-clear-on-config-flip" testable="true" depth="essential">
+      <statement>Functions that depend on mutable config MUST register a `cache.clear()` hook on config reload.</statement>
+      <rationale source="Internal feature-flag postmortems">Rule rooted in source: Internal feature-flag postmortems. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

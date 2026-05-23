@@ -1,27 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ruby-activerecord Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ruby-activerecord. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Rails ActiveRecord Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Rails ActiveRecord methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Query Objects must accept a relation in the constructor (default Model.all), chain methods that return self, and expose a terminal results method returning the relation — never an array.</statement>
-      <rationale source="v1-source">Returning self allows callers to compose filters. Returning the relation instead of to_a defers SQL execution and allows further scoping at the controller level.</rationale>
+
+    <rule id="query-object-relation-chain" testable="true" depth="essential">
+      <statement>Query Objects MUST accept a relation in `initialize(relation = Model.all)`, chain methods returning `self`, and expose a terminal `results` method returning the relation (never an array).</statement>
+      <rationale source="Internal — query-object retro 2026-Q1">Returning the relation defers execution and allows further scoping at the controller level; `to_a` freezes the query and forfeits composability.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Cap Query Objects at approximately 10 chainable methods; if more are needed, split by use case into multiple query objects.</statement>
-      <rationale source="v1-source">A 30-method query object that covers every one-off filter becomes a god class — harder to read than inline where chains and impossible to test in isolation.</rationale>
+
+    <rule id="named-scopes-no-default-scope" testable="true" depth="essential">
+      <statement>Filters MUST live in named scopes (`scope :active, -&gt; { where(deleted_at: nil) }`). `default_scope` is forbidden.</statement>
+      <rationale source="Rails guides — Scopes">`default_scope` is invisible at every call site; debugging "missing data" wastes an hour per incident.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Eager-load at the controller boundary, never in views. A view triggering a query is invisible in code review.</statement>
-      <rationale source="v1-source">View-triggered queries are rendered as template output, not as SQL log entries in the request cycle that code reviewers check. Eager loading in controllers makes query cost reviewable.</rationale>
+
+    <rule id="eager-load-at-boundary" testable="true" depth="essential">
+      <statement>Eager-loading MUST happen at the controller boundary via `.includes` / `.preload` / `.eager_load`. Views MUST NOT trigger relation accesses against un-loaded associations.</statement>
+      <rationale source="Rails guides — Eager loading">View-triggered queries are invisible in code review; centralising at the controller makes query cost reviewable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Avoid default_scope; use named scopes (scope :active) and force callers to opt in.</statement>
-      <rationale source="v1-source">A default_scope { where(deleted_at: nil) } is invisible at every call site. Agents debugging "missing data" rarely think to call withoutGlobalScopes — it costs an hour per incident.</rationale>
+
+    <rule id="find-each-for-bulk" testable="true" depth="essential">
+      <statement>Loops over &gt; 1000 records MUST use `find_each` or `in_batches`. `Model.all.each` on growable tables is forbidden.</statement>
+      <rationale source="Rails guides — find_each">`all.each` loads the full result set; `find_each` streams in batches and keeps memory constant.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use find_each / in_batches for any loop over 1k+ records; never User.all.each.</statement>
-      <rationale source="v1-source">User.all.each loads the entire result set into memory. find_each streams in batches of 1000, keeping memory constant.</rationale>
+
+    <rule id="no-arel-string-injection" testable="true" depth="essential">
+      <statement>Where clauses MUST use hash conditions or `where(...)` with placeholders. String interpolation into `where("name = '#{input}'")` is forbidden.</statement>
+      <rationale source="OWASP Rails security guide">String-interpolated WHERE clauses are SQL-injection vectors; AR placeholders are safe by default.</rationale>
     </rule>
+
+    <rule id="n-plus-one-gate-in-ci" testable="true" depth="essential">
+      <statement>CI MUST run a N+1 gate (Prosopite or Bullet in CI mode). Specs that trigger an N+1 MUST fail.</statement>
+      <rationale source="Prosopite / Bullet docs">Without an automated gate, agents reintroduce N+1 within one sprint of the last fix.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

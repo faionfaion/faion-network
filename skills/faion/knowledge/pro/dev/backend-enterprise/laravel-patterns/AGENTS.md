@@ -3,73 +3,99 @@ slug: laravel-patterns
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Thin controllers that delegate to Action or Service classes; Form Requests for validation and authorization via Policies; API Resources for response shaping; DTOs for type-safe data flow through the service layer.
-content_id: "60f0275ee9b5a7f5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Enterprise Laravel 10/11 patterns — thin controllers, Action/Service classes, Form Request validation, API Resources, DTOs, DB::transaction for writes, ShouldBeUnique jobs, eager-load discipline.
+content_id: "bc28c972516c6397"
+complexity: deep
+produces: code
+est_tokens: 4400
 tags: [php, laravel, enterprise, eloquent, patterns]
 ---
 # Laravel Patterns
 
 ## Summary
 
-**One-sentence:** Thin controllers that delegate to Action or Service classes; Form Requests for validation and authorization via Policies; API Resources for response shaping; DTOs for type-safe data flow through the service layer.
+**One-sentence:** Enterprise Laravel 10/11 patterns — thin controllers, Action/Service classes, Form Request validation, API Resources, DTOs, DB::transaction for writes, ShouldBeUnique jobs, eager-load discipline.
 
-**One-paragraph:** Thin controllers that delegate to Action or Service classes; Form Requests for validation and authorization via Policies; API Resources for response shaping; DTOs for type-safe data flow through the service layer. Wrap multi-step writes in DB::transaction(). Make queue jobs idempotent with ShouldBeUnique. Never use $request->all() or $model->fill($request->all()); always call $request->validated(). Always eager-load relationships via with() to prevent N+1 queries. Use Attribute::make() (Laravel 9+) for accessors/mutators.
+**One-paragraph:** Enterprise patterns for Laravel 10/11. Controllers stay thin and delegate to Action (single `__invoke`) or Service classes. Validation lives in Form Requests (`$request->validated()` only — `$request->all()` and `fill($request->all())` are forbidden). Responses go through API Resources with explicit attribute lists. Multi-step writes wrap in `DB::transaction(...)`. Queue jobs implement `ShouldBeUnique` for idempotency. Relationships are eager-loaded via `->with(...)` to kill N+1. Accessors / mutators use the `Attribute::make()` API. Constructor injection replaces `app(Service::class)`.
+
+**Ефективно для:**
+
+- New Laravel 10/11 app with full-stack web or JSON API requirements.
+- Refactoring fat controllers into Service classes, Action classes (single-purpose `__invoke`), and Form Requests.
+- Wiring queue-backed jobs (Horizon + Redis), Eloquent scopes, accessors/mutators, Form Request validation.
+- Standing up Pest / PHPUnit feature tests with RefreshDatabase and factories.
+- Adding API Resources for response shaping and Sanctum / Passport for authentication.
 
 ## Applies If (ALL must hold)
 
-- New Laravel 10/11 application with full-stack web or JSON API requirements.
-- Refactoring fat controllers into Service classes, Action classes (single-purpose __invoke), and Form Requests.
-- Wiring queue-backed jobs (Horizon + Redis), Eloquent scopes, accessors/mutators (Attribute API), and Form Request validation.
-- Standing up Pest/PHPUnit feature tests with RefreshDatabase and factories.
-- Adding API Resources for response shaping and Sanctum/Passport for authentication.
+- Laravel 10/11 app on PHP 8.2+.
+- Full-stack web or JSON API surface; queue workers via Horizon.
+- Codebase that benefits from canonical conventions for agent contributions.
 
 ## Skip If (ANY kills it)
 
 - High-throughput async pipelines with strict tail latency — Laravel's per-request bootstrap is heavy; consider Octane only after profiling.
-- Lambda-style functions where cold start matters; Laravel Vapor mitigates but isn't free.
+- Lambda-style functions where cold start matters; Vapor mitigates but is not free.
 - Microservice meshes where you need fine-grained per-service runtime — Symfony or Slim may be a better fit.
-- Pure data-pipeline batch jobs — a CLI in Symfony Console or pure PHP without the framework is leaner.
+- Pure data-pipeline batch jobs — a Symfony Console CLI is leaner.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Use-case catalogue | Markdown verb list | product |
+| Eloquent model list | Markdown | data modelling |
+| Queue worker SLA | text | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[php-laravel]] | Umbrella for service / queue patterns. |
+| [[decomposition-laravel]] | Action + DTO + FormRequest pattern. |
+| [[php-eloquent]] | ORM discipline that prevents N+1. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: validated-not-all, db-transaction-for-multistep-writes, eager-load-with-relations, api-resource-explicit-fields, shouldbeunique-on-jobs, constructor-injection-not-app | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Laravel-patterns manifest + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: request-all-mass-assignment, n-plus-one-foreach, mail-inside-transaction, container-resolution-not-injection, queue-job-not-idempotent | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: scaffold FormRequest + Action → API Resource → DB::transaction → queue job → tests | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `extract-action-from-controller` | sonnet | Verb extraction needs judgment. |
+| `harden-queue-job` | opus | Idempotency reasoning across retries. |
+| `query-budget-check` | haiku | Mechanical N+1 detection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/query-budget.php` | Pest test helper enforcing query count budget per request. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-laravel-patterns.py` | Validate the Laravel-patterns manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
 
-- parent skill: `pro/dev/backend-enterprise/`
+- [[php-laravel]]
+- [[php-laravel-patterns]]
+- [[decomposition-laravel]]
+- [[php-eloquent]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (write multiplicity, queue use, eager-load gaps) to a rule from `01-core-rules.xml`. Use it before authoring or refactoring a controller / job.

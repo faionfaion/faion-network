@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Laravel Enterprise Patterns Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply enterprise Laravel patterns end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-formrequest-and-action">
+      <input>Use-case verb</input>
+      <action>Create `&lt;Verb&gt;&lt;Subject&gt;Request` with rules + authorize. Create `&lt;Verb&gt;&lt;Subject&gt;Action` with constructor-injected dependencies and single `__invoke` taking the validated DTO.</action>
+      <output>FormRequest + Action pair</output>
+      <decision-gate>If controller uses `$request-&gt;all()`, BLOCK per `validated-not-all` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="add-api-resource">
+      <input>Output contract</input>
+      <action>Add `&lt;Subject&gt;Resource` with `toArray()` returning an explicit literal array of attributes. Add a Pest feature test asserting the response keys match.</action>
+      <output>API Resource + key-set test</output>
+      <decision-gate>If Resource uses `$this-&gt;all()` or spread, BLOCK per `api-resource-explicit-fields` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="wrap-multistep-writes">
+      <input>Action implementation</input>
+      <action>Wrap multi-step writes in `DB::transaction(fn() =&gt; ...)`. Dispatch mail/queue jobs via `DB::afterCommit(...)` so side effects fire only on commit.</action>
+      <output>Atomic write path</output>
+      <decision-gate>If `Mail::send` runs inside the transaction, BLOCK per `db-transaction-for-multistep-writes` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="implement-shouldbeunique-job">
+      <input>Job spec (target external service, retry policy)</input>
+      <action>Implement `ShouldBeUnique` + `uniqueId()` keyed on the work payload. Use exponential backoff. Persist idempotency markers as needed.</action>
+      <output>Idempotent queue job</output>
+      <decision-gate>If `ShouldBeUnique` is missing on a mutating job, BLOCK per `shouldbeunique-on-jobs` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="add-tests-and-prevent-lazy-loading">
+      <input>Pest test suite</input>
+      <action>Enable `Model::preventLazyLoading(! app()-&gt;isProduction())` in `AppServiceProvider::boot`. Add feature tests with RefreshDatabase. Add `query-budget.php` assertion limiting queries per endpoint.</action>
+      <output>Lazy-loading guard + perf budget tests</output>
+    </step>
+
+  </section>
+</text>

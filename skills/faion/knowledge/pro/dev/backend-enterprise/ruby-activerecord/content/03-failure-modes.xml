@@ -1,82 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ruby-activerecord Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ruby-activerecord as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Rails ActiveRecord Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Rails ActiveRecord codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>includes vs eager_load confusion: User.includes(:posts).where('posts.flagged = true') without references(:posts).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>includes heuristically picks strategy; adding a where on the joined table silently switches to eager_load (one big LEFT OUTER JOIN). Use references(:posts) or split the query explicitly to make the join type visible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>update_all used on audited or paper-trailed models.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>update_all bypasses callbacks silently — counter_cache, paper_trail, and audit logs break without any error. Use update! per record or explicitly disable callbacks with a comment explaining why.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hidden default_scope causes missing rows; agent writes User.where(...) and gets fewer results than expected.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force agents to grep for default_scope before any query change. Agents debugging "missing data" rarely reach for withoutGlobalScopes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>save vs save! — agent uses save and does not check return; record silently fails validation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Standardize on save! + rescue at the boundary, or always check .persisted? after save.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Memoization on a relation: @users ||= User.where(...) returns a relation that re-queries on each .each.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Memoize .to_a not the relation; otherwise memoization has no effect.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Strong migrations bypass: add_index :users, :email blocks writes for minutes on large tables.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use algorithm: :concurrently and disable_ddl_transaction! — strong_migrations gem enforces this in development.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>first without order is non-deterministic in Postgres under concurrent inserts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always specify an explicit order: User.order(:created_at).first — or use find(id) when you have the ID.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>N+1 by default. Lazy associations are AR's killer trap. Without includes / preload / eager_load, agents copy patterns straight into prod regressions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use Bullet and Prosopite gems to gate N+1 detections in CI. Run every test with both enabled.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Callback chains explode. before_save → after_commit → after_create_commit-driven logic re-fires on tests, on fixture loads, and at the wrong transactional boundary.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Keep callbacks simple and idempotent. Test callbacks separately in isolation. Use after_create_commit not after_create for email/notification side effects.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Caching invalidation gaps. AR cache_key_with_version invalidates on updated_at; agents forget touch: true on belongs_to, parent caches go stale.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always add touch: true on belongs_to associations that have counter_cache. Test cache behavior explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Query object growing into a god class. Agent adds a method per use case; the query object grows to 30 methods covering one-off filters.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cap at ~10 chainable methods; if more needed, split by use case into multiple query objects. Review query objects for single responsibility.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Polymorphic belongs_to typos. Wrong as: argument silently writes wrong type strings; integrity is not enforced.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add a before_validation to enforce the type from a constant list. Test polymorphic associations in specs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>Test DB ≠ prod DB. Agents test on sqlite, ship to Postgres; case sensitivity, JSON column behavior, and array types diverge.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force Postgres in CI from day 1. Run migrations in CI and on a real Postgres instance before merging.</repair>
-    </failure-mode>
-    <failure-mode id="fm-14" severity="medium">
-      <description>Schema drift across branches. Two agents add migrations with the same timestamp on parallel branches; merge produces non-deterministic order.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use bin/rails db:migrate:status in CI to catch timestamp collisions. Enforce migration naming to prevent conflicts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-15" severity="medium">
-      <description>destroy cascade through dependent: :destroy can fan out to thousands of records.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force agents to find_each + explicit destroy when chains are deep, or switch to soft delete + background cleanup job.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="default-scope-invisible" severity="high">
+      <symptom>Admin endpoint never shows deleted users; investigation reveals `default_scope { where(deleted_at: nil) }` on `User`.</symptom>
+      <root-cause source="Rails guides — Scopes">`default_scope` applies to every call site without visible markers.</root-cause>
+      <fix>Replace with named scope (`scope :active, -&gt; { where(deleted_at: nil) }`); force callers to opt in.</fix>
+    </antipattern>
+
+    <antipattern id="query-object-god-class" severity="medium">
+      <symptom>`UserQuery` has 32 chainable methods; new developers can't tell which combinations are intended.</symptom>
+      <root-cause source="Internal — query-object retro 2026-Q1">One Query Object accumulating every one-off filter.</root-cause>
+      <fix>Cap Query Objects at ~10 methods. Split by use case (`Users::ActiveQuery`, `Users::AdminSearchQuery`).</fix>
+    </antipattern>
+
+    <antipattern id="view-triggered-query" severity="high">
+      <symptom>Endpoint executes 200 queries; profile shows the extra SELECTs inside a `.html.erb` partial.</symptom>
+      <root-cause source="Rails guides — Eager loading">View accessed `user.organization.name` without `.includes(:organization)` in controller.</root-cause>
+      <fix>Move eager-load to the controller boundary. Add a `bullet`/`prosopite` gate to fail the test that triggers the regression.</fix>
+    </antipattern>
+
+    <antipattern id="all-each-memory-blowup" severity="high">
+      <symptom>Background worker OOMs while exporting 2M users; process dies after 6 GB RSS.</symptom>
+      <root-cause source="Rails guides — find_each">Author used `User.all.each` instead of `User.find_each`.</root-cause>
+      <fix>Switch to `find_each` (default batch 1000) or `in_batches(of: 5000)`. For very wide rows, project to only needed columns first.</fix>
+    </antipattern>
+
+    <antipattern id="scope-on-query-object-bypassed" severity="medium">
+      <symptom>Query Object encapsulates tenant filter but caller writes `User.where(id: ids)` inline elsewhere, missing the tenant scope.</symptom>
+      <root-cause source="Internal — scope-bypass retro">Multiple entry points to the same data without a single source of truth.</root-cause>
+      <fix>Enforce: either every read goes through the Query Object OR every Query Object simply layers on top of model scopes (recommended). Add an RSpec helper asserting tenant scope.</fix>
+    </antipattern>
+
   </section>
 </text>

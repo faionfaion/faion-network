@@ -1,22 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="php-laravel-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Laravel Layered Architecture Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the layered-Laravel manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/php-laravel-patterns.json",
+  "type": "object",
+  "required": ["controllers", "services", "uses_form_requests", "uses_json_resources", "uses_db_transaction_closure"],
+  "properties": {
+    "controllers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "contains_eloquent", "loc"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Controller$"},
+          "contains_eloquent": {"type": "boolean", "const": false},
+          "loc": {"type": "integer", "maximum": 150}
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "uses_request_globals", "returns_jsonresponse"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Service$"},
+          "uses_request_globals": {"type": "boolean", "const": false},
+          "returns_jsonresponse": {"type": "boolean", "const": false}
+        }
+      }
+    },
+    "uses_form_requests": {"type": "boolean", "const": true},
+    "uses_json_resources": {"type": "boolean", "const": true},
+    "uses_db_transaction_closure": {"type": "boolean", "const": true},
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "controllers": [{"class": "App\\Http\\Controllers\\UserController", "contains_eloquent": false, "loc": 84}],
+  "services": [{"class": "App\\Services\\UserService", "uses_request_globals": false, "returns_jsonresponse": false}],
+  "uses_form_requests": true,
+  "uses_json_resources": true,
+  "uses_db_transaction_closure": true,
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "controllers": [{"class": "UserController", "contains_eloquent": true, "loc": 410}],
+  "services": [{"class": "UserManager", "uses_request_globals": true, "returns_jsonresponse": true}],
+  "uses_form_requests": false,
+  "uses_json_resources": false,
+  "uses_db_transaction_closure": false,
+  "forbidden_patterns_found": ["User::query() inside UserController"]
+}
+]]></code>
+    <note>Controller fat + has Eloquent; service named UserManager + uses request() globals + returns JsonResponse; FormRequest off; JsonResource off; manual transaction.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Eloquent query (`User::query()`, `DB::table(...)`) inside a controller.</item>
+      <item>`request()`, `auth()`, `session()` accessed inside a service class.</item>
+      <item>`return response()-&gt;json(...)` from a service method.</item>
+      <item>Manual `DB::beginTransaction()` / `commit` / `rollBack` outside framework migrations.</item>
+      <item>Repository class without an explicit justification ADR.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-php-laravel-patterns.py">Validator script</reference>
 </text>

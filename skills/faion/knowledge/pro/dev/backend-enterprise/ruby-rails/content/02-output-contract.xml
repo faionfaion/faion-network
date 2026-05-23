@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ruby-rails Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Rails 7+ Backend Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the Rails-app manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ruby-rails.json",
+  "type": "object",
+  "required": ["rails_version", "ruby_version", "service_result_class_count", "services", "sidekiq_jobs"],
+  "properties": {
+    "rails_version": {"type": "string", "pattern": "^(7|8)\\."},
+    "ruby_version": {"type": "string", "pattern": "^3\\."},
+    "service_result_class_count": {"type": "integer", "minimum": 1, "maximum": 1},
+    "services": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "returns_service_result", "accepts_params_kwarg"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Service$"},
+          "returns_service_result": {"type": "boolean", "const": true},
+          "accepts_params_kwarg": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "sidekiq_jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "args_are_primitives", "retry"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Job$"},
+          "args_are_primitives": {"type": "boolean", "const": true},
+          "retry": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "rails_version": "7.1",
+  "ruby_version": "3.3",
+  "service_result_class_count": 1,
+  "services": [{"class": "Users::CreateService", "returns_service_result": true, "accepts_params_kwarg": true}],
+  "sidekiq_jobs": [{"class": "Users::SendWelcomeJob", "args_are_primitives": true, "retry": 5}],
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "rails_version": "5.2",
+  "ruby_version": "2.7",
+  "service_result_class_count": 4,
+  "services": [{"class": "UserManager", "returns_service_result": false, "accepts_params_kwarg": false}],
+  "sidekiq_jobs": [{"class": "SendWelcome", "args_are_primitives": false, "retry": 0}],
+  "forbidden_patterns_found": ["UserMailer.deliver_later inside ActiveRecord::Base.transaction"]
+}
+]]></code>
+    <note>Rails/Ruby too old; multiple ServiceResult classes; service named UserManager; AR object in Sidekiq args; deliver_later inside transaction.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`deliver_later` / external HTTP / `Search::Index.update` inside `ActiveRecord::Base.transaction`.</item>
+      <item>More than one `class ServiceResult` definition in the repo.</item>
+      <item>ActiveRecord object passed as Sidekiq job arg.</item>
+      <item>Service calling `params.require(...)` directly (HTTP coupling).</item>
+      <item>`remove_column` / `rename_column` migration applied without human approval log.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-ruby-rails.py">Validator script</reference>
 </text>

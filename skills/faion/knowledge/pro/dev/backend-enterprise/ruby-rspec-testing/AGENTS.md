@@ -1,23 +1,35 @@
 ---
 slug: ruby-rspec-testing
 tier: pro
-group: dev
+group: backend-enterprise
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Build comprehensive Rails test suites using layered RSpec strategies: model specs test validations and scopes, service specs test business logic, request specs test HTTP contracts, and system specs test browser behavior.
-content_id: "4f0ee38e298ed1e1"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a layered RSpec test plan + skeleton (model / service / request / system specs) with factory_bot, shoulda-matchers, SimpleCov branch coverage gates and one-behaviour-per-it discipline."
+content_id: "a0ec287be4d0c6e1"
+complexity: medium
+produces: spec
+est_tokens: 4300
 tags: [rspec, testing, rails, bdd, coverage]
 ---
+
 # RSpec Testing for Rails Applications
 
 ## Summary
 
-**One-sentence:** Build comprehensive Rails test suites using layered RSpec strategies: model specs test validations and scopes, service specs test business logic, request specs test HTTP contracts, and system specs test browser behavior.
+**One-sentence:** Produces a layered RSpec test plan + skeleton (model / service / request / system specs) with factory_bot, shoulda-matchers, SimpleCov branch coverage gates and one-behaviour-per-it discipline.
 
-**One-paragraph:** Build comprehensive Rails test suites using layered RSpec strategies: model specs test validations and scopes, service specs test business logic, request specs test HTTP contracts, and system specs test browser behavior. Use factory_bot for test data, shoulda-matchers for one-liners, and SimpleCov branch tracking to find uncovered paths. BDD structure (describe/context/it) enforces one behavior per test block and produces diagnostic failure messages.
+**Ефективно для:**
+
+- Rails apps with layered behaviour (models + PORO services + REST endpoints).
+- TDD / red-green-refactor cycles driven by LLM agents.
+- Coverage gates ≥80% per service (SimpleCov branch).
+- Multi-developer teams using shared examples / shared contexts.
+- Refactor-heavy phases where fast model+service specs are the safety net.
+
+**One-paragraph:** Layered RSpec strategy: model specs test validations and scopes; service specs test business logic; request specs test HTTP contracts; system specs test browser behaviour. Uses factory_bot for data, shoulda-matchers for one-liners, SimpleCov branch tracking for uncovered paths. BDD `describe/context/it` enforces one behaviour per block and makes failure messages diagnostic.
 
 ## Applies If (ALL must hold)
 
@@ -33,44 +45,61 @@ tags: [rspec, testing, rails, bdd, coverage]
 - Pure CLI gems — spec_helper only; rails_helper is overkill.
 - Codebases standardized on Minitest — mixing creates two test infrastructures.
 - Performance benchmarks — use benchmark/ips, not RSpec.
-- Visual regression — use Percy/Chromatic via Capybara, but the value is in the visual-diff service, not RSpec itself.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Rails app skeleton | directory | team |
+| RSpec + factory_bot Gemfile entries | Gemfile lines | team |
+| SimpleCov coverage thresholds | .simplecov | team |
+| Spec layer matrix (model/service/request/system) | decision doc | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[ruby-rails]]` | host framework conventions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-spec-layer` | haiku | Maps method shape to model/service/request/system. |
+| `draft-specs` | sonnet | Light judgment: matchers + subject naming + factories. |
+| `review-spec-quality` | sonnet | Audits stub-the-SUT, let-shadow, factory cascade. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ruby-rspec-testing.json` | JSON Schema for the RSpec Testing for Rails Applications output contract |
+| `templates/ruby-rspec-testing.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a ruby-rspec-testing record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ruby-rspec-testing.py` | Enforce the RSpec Testing for Rails Applications output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-enterprise/`
+- [[ruby-rails]]
+- [[ruby-rails-patterns]]
+- [[ruby-activerecord]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

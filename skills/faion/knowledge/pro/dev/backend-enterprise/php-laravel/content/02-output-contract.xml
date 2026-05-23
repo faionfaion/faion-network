@@ -1,22 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="php-laravel Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Laravel Umbrella Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the Laravel umbrella manifest. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/php-laravel.json",
+  "type": "object",
+  "required": ["laravel_version", "php_version", "queue_connection_prod", "uses_supervisor", "env_in_vcs"],
+  "properties": {
+    "laravel_version": {"type": "string", "pattern": "^(10|11)\\."},
+    "php_version": {"type": "string", "pattern": "^8\\.(2|3|4)"},
+    "queue_connection_prod": {"enum": ["redis", "database", "sqs", "beanstalkd"]},
+    "uses_supervisor": {"type": "boolean", "const": true},
+    "env_in_vcs": {"type": "boolean", "const": false},
+    "sub_methodology_routes": {
+      "type": "object",
+      "properties": {
+        "patterns": {"type": "boolean"},
+        "eloquent": {"type": "boolean"},
+        "queues": {"type": "boolean"},
+        "testing": {"type": "boolean"}
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "laravel_version": "11.0",
+  "php_version": "8.3",
+  "queue_connection_prod": "redis",
+  "uses_supervisor": true,
+  "env_in_vcs": false,
+  "sub_methodology_routes": {"patterns": true, "eloquent": true, "queues": true, "testing": true},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "laravel_version": "8.0",
+  "php_version": "7.4",
+  "queue_connection_prod": "sync",
+  "uses_supervisor": false,
+  "env_in_vcs": true,
+  "sub_methodology_routes": {},
+  "forbidden_patterns_found": [".env committed to git"]
+}
+]]></code>
+    <note>Versions too old; `sync` queue in prod; no supervisor; `.env` in VCS.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`QUEUE_CONNECTION=sync` in `*-prod` / `*-staging` env files.</item>
+      <item>`.env` committed to VCS.</item>
+      <item>`env('SOMETHING')` call inside services (use `config(...)`).</item>
+      <item>Per-task cron entries duplicating `schedule:run`.</item>
+      <item>PHP &lt; 8.2 or Laravel &lt; 10 in `composer.json`.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-php-laravel.py">Validator script</reference>
 </text>

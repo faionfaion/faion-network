@@ -1,47 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="database-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for database-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Database Design (PostgreSQL) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Database Design (PostgreSQL) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every table must have: UUID or UUIDv7 primary key, NOT NULL on all required columns, UNIQUE constraints for natural keys, FK with explicit ON DELETE semantics, CHECK constraints for bounded domains (enums, ranges, non-negative quantities).</statement>
-      <rationale source="v1-source">Constraints at the database level cannot be bypassed by application bugs or direct SQL access. Missing FK enforcement allows orphaned rows that cause silent data corruption.</rationale>
+
+    <rule id="r-3nf-first" testable="true" depth="essential">
+      <statement>Start in 3NF; denormalize ONLY after measuring a specific query bottleneck.</statement>
+      <rationale source="Date — Intro to DB Systems">Rule rooted in source: Date — Intro to DB Systems. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Create indexes derived from stated query patterns only. For skewed data (status IN ('pending', 'processing') where 90% is 'delivered'), use partial indexes. For text search, use GIN with pg_trgm. For time-ordered inserts, prefer UUIDv7 over UUIDv4 to preserve B-tree locality.</statement>
-      <rationale source="v1-source">Over-indexing degrades INSERT/UPDATE/DELETE performance proportionally to the number of indexes. Index for the queries you have, not the queries you might have.</rationale>
+
+    <rule id="r-indexes-from-workload" testable="true" depth="essential">
+      <statement>Every index MUST trace to a real query in the workload sample (`EXPLAIN ANALYZE`), never speculative.</statement>
+      <rationale source="PostgreSQL performance docs">Rule rooted in source: PostgreSQL performance docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Add a nullable deleted_at TIMESTAMPTZ column. Create a partial index on the unique key filtered WHERE deleted_at IS NULL. Create a view (active_X) for queries that never need deleted records. Every query on soft-deleted tables must include the WHERE filter.</statement>
-      <rationale source="v1-source">Without the partial index on the unique key, soft-deleted records block re-insertion of the same natural key (e.g., a user re-registering with the same email).</rationale>
+
+    <rule id="r-constraints-at-db" testable="true" depth="essential">
+      <statement>Integrity rules (FK, CHECK, NOT NULL, UNIQUE) MUST live in the DB, not only in app code.</statement>
+      <rationale source="PostgreSQL admin best-practice">Rule rooted in source: PostgreSQL admin best-practice. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use range partitioning by time column for append-heavy tables (events, logs, orders) where old partitions can be detached and archived. Create indexes on each partition, not just the parent. Document the partition creation and archival schedule in a runbook.</statement>
-      <rationale source="v1-source">Range partitioning allows pg_partman to auto-create future partitions and detach old ones. Without documented partition management, partitions grow unbounded and performance degrades.</rationale>
+
+    <rule id="r-forward-and-backward" testable="true" depth="essential">
+      <statement>Every migration MUST ship a backward `down` step; no one-way migrations in production.</statement>
+      <rationale source="Migration-tool conventions">Rule rooted in source: Migration-tool conventions. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use CREATE INDEX CONCURRENTLY outside a transaction block for all index creation on tables with existing data. Standard CREATE INDEX takes an exclusive lock that blocks reads and writes for the duration.</statement>
-      <rationale source="v1-source">On a table with millions of rows, CREATE INDEX can hold an exclusive lock for minutes, causing a complete outage. CONCURRENTLY builds the index without blocking, at the cost of a longer build time.</rationale>
+
+    <rule id="r-timestamptz-default" testable="true" depth="essential">
+      <statement>Use TIMESTAMPTZ for all wall-clock timestamps; TIMESTAMP (no tz) only for explicit local-time semantics.</statement>
+      <rationale source="PostgreSQL docs + time-zone postmortems">Rule rooted in source: PostgreSQL docs + time-zone postmortems. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Always use TIMESTAMPTZ (TIMESTAMP WITH TIME ZONE) for all timestamp columns. Never use TIMESTAMP (without time zone) — it stores values without timezone awareness and causes cross-region data corruption.</statement>
-      <rationale source="v1-source">TIMESTAMP stores local time; TIMESTAMPTZ converts to UTC on store and back to session timezone on read. A server that changes timezone (DST, migration) silently mis-interprets TIMESTAMP values.</rationale>
+
+    <rule id="r-pk-type-global" testable="true" depth="essential">
+      <statement>PK type (UUID v7 vs bigint) is a global decision; never mix per table.</statement>
+      <rationale source="Schema-consistency reviews">Rule rooted in source: Schema-consistency reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Every migration must have both an upgrade and a downgrade path. The downgrade must be tested on a clean copy of the database before merging. A no-op downgrade is forbidden.</statement>
-      <rationale source="v1-source">Without a tested downgrade path, a failed deployment cannot be rolled back. CI must apply the migration, then apply the downgrade, and confirm the schema matches the pre-migration state.</rationale>
+
+    <rule id="r-on-delete-explicit" testable="true" depth="essential">
+      <statement>Every FK MUST set ON DELETE explicitly (CASCADE / RESTRICT / SET NULL); never rely on default NO ACTION silently.</statement>
+      <rationale source="PostgreSQL docs">Rule rooted in source: PostgreSQL docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>ALTER TABLE ... ADD COLUMN NOT NULL DEFAULT ... rewrites the entire table on PostgreSQL versions older than 11 and requires an exclusive lock. On PG 11+ with a non-volatile default it is instant. Confirm the PG version before using this form in production.</statement>
-      <rationale source="v1-source">A table rewrite on a 100GB table can take hours and block all access. On older PG, the pattern is: ADD COLUMN nullable → backfill with UPDATE → ADD NOT NULL constraint (deferred).</rationale>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Choose a single PK type globally (UUIDv7 for time-ordered inserts, BIGSERIAL for simplicity, ULID for lexicographic sortability) and document it in the schema constitution. Never mix PK types across tables — mixed types make joins ugly and type-mismatch FKs disable index usage.</statement>
-      <rationale source="v1-source">UUIDv4 random primary keys cause B-tree fragmentation on high-insert workloads. UUIDv7 preserves temporal ordering, matching the access pattern of most CRUD tables.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Specify ON DELETE explicitly for every FK. Never rely on the default (NO ACTION / RESTRICT — they are subtly different across PostgreSQL versions). Require human review for every CASCADE before merging.</statement>
-      <rationale source="v1-source">CASCADE silently deletes related rows. On a production database with 10+ years of data, an unexpected CASCADE can wipe terabytes. Review is the only safeguard.</rationale>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

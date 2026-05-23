@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: Legacy template for the error-handling methodology.
+# consumes: inputs declared in error-handling/AGENTS.md prerequisites.
+# produces: working code/config aligned with content/01-core-rules.xml.
+# depends-on: content/02-output-contract.xml schema for output shape.
+# token-budget-impact: ~600 tokens when loaded as reference.
 """CI script: validate every 4xx/5xx OpenAPI response refs ProblemDetail.
 
 Usage: python check_problem_refs.py openapi.yaml

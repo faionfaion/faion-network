@@ -1,43 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="php-eloquent Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for php-eloquent. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Eloquent ORM Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Eloquent ORM methodology for Laravel. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always whitelist $fillable; never use $guarded = [] on any model.</statement>
-      <rationale source="v1-source">Guarded-empty models expose every attribute to mass assignment. Even fields like is_admin or password_hash can be set via $model-&gt;fill($request-&gt;all()) when $guarded is empty — a recurring CVE in agent-generated code.</rationale>
+
+    <rule id="fillable-whitelist" testable="true" depth="essential">
+      <statement>Every Eloquent model MUST declare `protected $fillable = [...]`. Empty `$guarded = []` is forbidden.</statement>
+      <rationale source="Laravel docs — Mass Assignment">Empty `$guarded` lets a client inject any field via `Model::create($request-&gt;all())`; this is the most common Laravel CVE class.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use Attribute::make() exclusively for accessors and mutators; never mix with legacy getXAttribute() on the same model.</statement>
-      <rationale source="v1-source">Mixing the two APIs on one model produces undefined behavior; the framework resolves accessor priority inconsistently across Laravel versions.</rationale>
+
+    <rule id="attribute-make-only" testable="true" depth="essential">
+      <statement>Accessors and mutators MUST use the `Attribute::make(get: ..., set: ...)` API (Laravel 9+). Legacy `getXAttribute()` / `setXAttribute()` on the same model is forbidden.</statement>
+      <rationale source="Laravel docs — Attributes">Mixing the two APIs produces undefined precedence; `Attribute::make` is the single canonical surface.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Eager-load in repository methods by default; never let controllers or resources trigger lazy associations.</statement>
-      <rationale source="v1-source">N+1 bugs caused by lazy loading in controllers are invisible in code review. Forcing eager loading at the repository boundary makes query cost explicit and reviewable.</rationale>
+
+    <rule id="eager-load-at-boundary" testable="true" depth="essential">
+      <statement>Eager-load relations at the repository / service boundary via `-&gt;with(...)`. Controllers and Resources MUST NOT trigger lazy loading.</statement>
+      <rationale source="Laravel docs — Preventing N+1">N+1 hidden inside Resource serialisation passes code review; centralising eager-load at the boundary makes cost reviewable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Wrap multi-write paths in DB::transaction(); Eloquent does not auto-run transactions for create + relation-&gt;attach combinations.</statement>
-      <rationale source="v1-source">Without an explicit transaction, a failed attach after a successful create leaves an orphaned record with no rollback.</rationale>
+
+    <rule id="db-transaction-multiwrite" testable="true" depth="essential">
+      <statement>Multi-write paths (`create` + `relation-&gt;attach`, `create` + `update` siblings) MUST be wrapped in `DB::transaction(fn() =&gt; ...)`. Side effects MUST fire after commit via `DB::afterCommit`.</statement>
+      <rationale source="Laravel docs — Transactions">Eloquent does not auto-run transactions for related writes; a failed attach after a successful create leaves orphaned rows.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Disable lazy loading in non-production: Model::preventLazyLoading(!$this-&gt;app-&gt;isProduction()) — makes N+1 throw instead of silently slow.</statement>
-      <rationale source="v1-source">Prevents silent N+1 regressions that surface in production.</rationale>
+
+    <rule id="prevent-lazy-loading-in-dev" testable="true" depth="essential">
+      <statement>`AppServiceProvider::boot` MUST call `Model::preventLazyLoading(! app()-&gt;isProduction())` (and `preventSilentlyDiscardingAttributes`).</statement>
+      <rationale source="Laravel docs — strict mode">Silent N+1 regressions ship to prod; strict mode in dev forces the offending line to throw immediately.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Always pair a model change with migration + factory + resource; agents that touch only the model cause drift visible in CI hours later.</statement>
-      <rationale source="v1-source">Keeps schema definition, serialization, and test fixtures in sync.</rationale>
+
+    <rule id="paired-migration-factory-resource" testable="true" depth="essential">
+      <statement>Every entity diff MUST land in the same PR with: a Flyway/Laravel migration, a factory update, and an API Resource update where applicable.</statement>
+      <rationale source="Internal — schema-drift retro 2026-Q1">Diffs that touch only the model leave migrations / factories / serializers behind, surfacing as CI failures hours later.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use firstOrCreate / updateOrCreate over manual where-save patterns to avoid race conditions with concurrent writers.</statement>
-      <rationale source="v1-source">These methods handle upsert atomically within a transaction.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Resource classes are the API contract; never return raw models from controllers — leaked password_hash, remember_token, soft-delete columns.</statement>
-      <rationale source="v1-source">Decouples API shape from database schema.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Index every where/orderBy column in migrations; Eloquent makes it cheap to query unindexed columns but the bill arrives in production.</statement>
-      <rationale source="v1-source">Prevents O(n) full table scans on first production query.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

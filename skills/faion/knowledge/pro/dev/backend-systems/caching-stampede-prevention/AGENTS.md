@@ -1,74 +1,103 @@
 ---
 slug: caching-stampede-prevention
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A cache stampede (thundering herd) occurs when a popular cache key expires and multiple concurrent requests simultaneously attempt to reload it from the origin.
-content_id: "351f6daf65faa799"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a stampede-safe cache spec for hot keys: Redis SETNX distributed lock, probabilistic early refresh (XFetch), and request coalescing wrapper; with budgets per pattern."
+content_id: "de2f76155bcc62b6"
+complexity: deep
+produces: spec
+est_tokens: 4300
 tags: [caching, redis, stampede, distributed-lock, thundering-herd]
 ---
-# Cache Stampede Prevention: Distributed Lock, Probabilistic Refresh, Coalescing
+
+# Cache Stampede Prevention (Distributed Lock, Probabilistic Refresh, Coalescing)
 
 ## Summary
 
-**One-sentence:** A cache stampede (thundering herd) occurs when a popular cache key expires and multiple concurrent requests simultaneously attempt to reload it from the origin.
+**One-sentence:** Produces a stampede-safe cache spec for hot keys: Redis SETNX distributed lock, probabilistic early refresh (XFetch), and request coalescing wrapper; with budgets per pattern.
 
-**One-paragraph:** A cache stampede (thundering herd) occurs when a popular cache key expires and multiple concurrent requests simultaneously attempt to reload it from the origin. Without a guard, all requests hit the database simultaneously, causing a load spike that can cascade into a full outage. Three patterns prevent this: distributed lock (one process rebuilds, others wait), probabilistic early refresh (rebuild before expiry with increasing probability), and request coalescing (in-flight deduplication).
+**Ефективно для:**
+
+- Hot keys with rebuild cost > 100ms.
+- Public endpoints with predictable load spikes (launch, push notification).
+- Origin databases with limited connection budget.
+- Multi-region deployments where stampedes amplify across edges.
+
+**One-paragraph:** A cache stampede (thundering herd) occurs when a popular key expires and many concurrent requests reload it from origin at once. Without a guard, all requests hit the database simultaneously, causing a load spike that can cascade into a full outage. Three patterns prevent this: distributed lock (one process rebuilds, others wait for the new value), probabilistic early refresh (rebuild before expiry with increasing probability — XFetch algorithm), and request coalescing (in-flight dedup so concurrent same-key requests share one origin call).
 
 ## Applies If (ALL must hold)
 
-- Any cache key that is accessed by more than ~10 concurrent requests per second and has an expensive origin load (slow query, external API call, ML inference).
-- Keys with a TTL shorter than the origin load time multiplied by peak concurrency — the danger zone where multiple requests can land in the window between expiry and repopulation.
-- After a cache flush or cold start, when the entire keyspace is empty and all requests are simultaneous cache misses.
-- Materialized views or aggregation results that take seconds to compute.
+- Key qualifies as 'hot' (top-10 by request rate or rebuild cost).
+- Origin rebuild is non-trivial (DB query, LLM call, computation).
+- Cache layer supports atomic SETNX (Redis / Memcached).
+- Tail-latency budget tolerates a small wait for the rebuild leader.
 
 ## Skip If (ANY kills it)
 
-- Low-concurrency endpoints (single-digit concurrent requests) — lock overhead exceeds stampede risk.
-- Very fast origin loads (<5ms) — the stampede window is too small to cause measurable damage.
-- High-cardinality keys where each key is accessed infrequently — no stampede risk by definition.
-- Probabilistic early refresh on keys where stale serving is never acceptable — early refresh serves slightly stale data during the refresh window.
+- Cold or rarely-accessed keys — stampede risk is negligible.
+- Rebuild cost ≪ network roundtrip — lock overhead is worse than the stampede.
+- Write-through cache populated by writers, not readers.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Hot-key list with rebuild cost + rate | telemetry | SRE |
+| Redis cluster ACL for SETNX + EXPIRE | infra doc | SRE |
+| Per-key TTL + jitter budget | config | team |
+| Origin connection budget | DB ops | SRE |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[backend-systems]]` | host stack |
+| `[[caching-invalidation]]` | invalidation patterns |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `identify-hot-keys` | haiku | Telemetry threshold filter. |
+| `pick-pattern-per-key` | sonnet | Lock vs XFetch vs coalesce decision. |
+| `draft-rebuild-wrapper` | sonnet | Generates the safe wrapper code. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/caching-stampede-prevention.json` | JSON Schema for the Cache Stampede Prevention (Distributed Lock, Probabilistic Refresh, Coalescing) output contract |
+| `templates/caching-stampede-prevention.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-stampede-prevention record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-caching-stampede-prevention.py` | Enforce the Cache Stampede Prevention (Distributed Lock, Probabilistic Refresh, Coalescing) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[caching-invalidation]]
+- [[caching-write-patterns]]
+- [[caching-in-memory]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

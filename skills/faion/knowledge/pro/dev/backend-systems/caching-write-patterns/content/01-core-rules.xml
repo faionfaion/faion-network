@@ -1,27 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="caching-write-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for caching-write-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cache Write Patterns (Cache-Aside, Write-Through, Write-Behind) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Cache Write Patterns (Cache-Aside, Write-Through, Write-Behind) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Cache-aside implementations MUST supply a typed key_builder function; MUST NOT fall back to hashing the repr() of args/kwargs — dict repr is non-deterministic across Python versions and mutable defaults produce key drift.</statement>
-      <rationale source="v1-source">Args repr hashing silently produces different keys for logically identical calls (dict ordering, subclass repr). Typed key_builder enforces a stable, inspectable key contract and makes invalidation predictable.</rationale>
+
+    <rule id="r-cache-aside-default" testable="true" depth="essential">
+      <statement>Cache-aside (lazy load) is the default pattern; deviations require explicit justification.</statement>
+      <rationale source="Caching pattern catalogues">Rule rooted in source: Caching pattern catalogues. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>All cache-aside set operations MUST use setex (or SET EX) — never SET without a TTL. Invalidation MUST call delete on the exact key, not a wildcard KEYS/SCAN pattern in a hot path.</statement>
-      <rationale source="v1-source">Keys without TTL become permanent stale data. KEYS * is O(N) and blocks Redis single-thread event loop; SCAN in a hot path still saturates I/O under traffic spikes.</rationale>
+
+    <rule id="r-write-through-sync" testable="true" depth="essential">
+      <statement>Write-through MUST be atomic: DB and cache succeed together OR neither writes (transactional outbox).</statement>
+      <rationale source="Distributed-systems best practice">Rule rooted in source: Distributed-systems best practice. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Write-through implementations MUST write to the database first, then update the cache. If the cache update fails after a successful DB write, the implementation MUST delete (not skip) the stale cache key so subsequent reads trigger a fresh load from DB.</statement>
-      <rationale source="v1-source">Writing cache before DB risks serving cached data that was never persisted. A failed cache update after a successful DB write leaves a stale cached value; deletion forces the next read to repopulate from the authoritative DB source.</rationale>
+
+    <rule id="r-write-behind-bounded-queue" testable="true" depth="essential">
+      <statement>Write-behind buffer MUST have a bounded queue + back-pressure to the writer on overflow.</statement>
+      <rationale source="Queueing-theory reviews">Rule rooted in source: Queueing-theory reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Write-behind implementations MUST use a persistent flush queue (e.g., Redis list or a durable message queue) — NOT an in-process dict — so pending writes survive process restarts. The flush loop MUST implement bulk_write with batching and log failures without silently dropping the batch.</statement>
-      <rationale source="v1-source">An in-process defaultdict(dict) for pending_writes loses all unflushed data on crash or OOM kill. A persistent queue survives restarts and makes the data-loss window explicit and bounded to the flush interval.</rationale>
+
+    <rule id="r-write-after-db-default" testable="true" depth="essential">
+      <statement>Cache writes happen AFTER the DB write succeeds, not before — never populate cache speculatively.</statement>
+      <rationale source="Field manuals">Rule rooted in source: Field manuals. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Every cached entity type MUST have a documented caching pattern selection in the codebase (comment, ADR, or schema table) stating: pattern name, TTL, invalidation trigger, and acceptable stale window.</statement>
-      <rationale source="v1-source">Undocumented caching decisions become invisible assumptions that change silently during refactors. The selection must be a first-class artifact so reviewers can catch mismatches at PR time.</rationale>
+
+    <rule id="r-delete-not-update" testable="true" depth="essential">
+      <statement>On write, DELETE the cache key instead of UPDATING it — lazy re-population avoids stale composite bugs.</statement>
+      <rationale source="Memcached + Redis best-practice docs">Rule rooted in source: Memcached + Redis best-practice docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-retry-budget-on-failure" testable="true" depth="essential">
+      <statement>Cache write failures MUST retry up to N times then alert — never silently drop.</statement>
+      <rationale source="SRE workbook">Rule rooted in source: SRE workbook. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-transactional-outbox-for-bus" testable="true" depth="essential">
+      <statement>Write-behind to a message bus MUST use the transactional outbox pattern to avoid lost writes.</statement>
+      <rationale source="Microservices patterns book">Rule rooted in source: Microservices patterns book. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

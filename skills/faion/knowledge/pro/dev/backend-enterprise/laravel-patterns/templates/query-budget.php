@@ -1,4 +1,9 @@
 <?php
+// purpose: Pest/PHPUnit helper enforcing per-request query budget (N+1 detector)
+// consumes: TestCase trait wiring + per-test budget number
+// produces: pass/fail gate per eager-load-with-relations rule
+// depends-on: content/01-core-rules.xml rule eager-load-with-relations
+// token-budget-impact: ~300 tokens when loaded as context
 // Fail tests that exceed a query count budget (N+1 detector).
 // Add to tests/TestCase.php and call $this->failOnNPlusOne() in setUp or per-test.
 //

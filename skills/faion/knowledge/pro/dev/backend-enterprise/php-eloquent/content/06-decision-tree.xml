@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Eloquent ORM Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-workload">Workload shape?</root-question>
+
+    <branch when="shape == read_heavy_analytics">
+      <conclusion ref="fillable-whitelist" verdict="skip-this-methodology — use DB:: query builder + chunkById; Eloquent hydration dominates"/>
+    </branch>
+
+    <branch when="shape == high_throughput_ingest">
+      <conclusion ref="fillable-whitelist" verdict="skip-this-methodology — bypass Eloquent for inserts; use DB::table()->insert() + LazyCollection"/>
+    </branch>
+
+    <branch when="shape == transactional_oltp">
+      <question id="q-write-shape">Endpoint shape?</question>
+      <branch when="shape == multistep_write">
+        <conclusion ref="db-transaction-multiwrite" verdict="wrap in DB::transaction + DB::afterCommit side effects"/>
+      </branch>
+      <branch when="shape == read_or_list">
+        <question id="q-strict-mode">Is preventLazyLoading enabled in dev?</question>
+        <branch when="strict_mode == false">
+          <conclusion ref="prevent-lazy-loading-in-dev" verdict="enable preventLazyLoading + preventSilentlyDiscardingAttributes in AppServiceProvider"/>
+        </branch>
+        <branch when="strict_mode == true">
+          <question id="q-eager-load">Resource or controller touches a relation?</question>
+          <branch when="touches_relation == true">
+            <conclusion ref="eager-load-at-boundary" verdict="eager-load at repository boundary via ->with(...) before serialisation"/>
+          </branch>
+          <branch when="touches_relation == false">
+            <conclusion ref="paired-migration-factory-resource" verdict="apply remaining rules — fillable + Attribute::make + paired migration/factory/resource on diff"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="user-create">
+    shape=transactional_oltp → shape=multistep_write (create + attach roles) → db-transaction-multiwrite → wrap in DB::transaction; queue welcome email via DB::afterCommit.
+  </example>
+</text>

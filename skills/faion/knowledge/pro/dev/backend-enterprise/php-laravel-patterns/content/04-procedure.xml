@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Laravel Layered Architecture Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the layered Laravel architecture end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-form-request">
+      <input>Endpoint contract</input>
+      <action>Create `&lt;Verb&gt;&lt;Subject&gt;Request` (FormRequest) with `rules()` + `authorize()`. Authorize via Policies; do not roll your own. Add a Pest test that hits the endpoint with missing/invalid fields and asserts 422.</action>
+      <output>FormRequest + validation test</output>
+      <decision-gate>If `request()-&gt;all()` is used downstream, BLOCK per `validated-only` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="add-service-with-transaction">
+      <input>Use-case spec</input>
+      <action>Create `&lt;Subject&gt;Service` with constructor-injected dependencies. Add transactional methods using `DB::transaction(fn() =&gt; ...)`. Side effects (mail / queue) live after commit via `DB::afterCommit`.</action>
+      <output>Service class with explicit transaction boundary</output>
+      <decision-gate>If service touches `request()` or returns `JsonResponse`, BLOCK per `service-no-request-globals` + `jsonresource-from-controller-only` rules.</decision-gate>
+    </step>
+
+    <step n="3" name="decide-repository">
+      <input>Existing data source landscape</input>
+      <action>If a single Eloquent model backs the use-case AND no alternative implementation is on the roadmap, inject the model directly into the service. Add a repository only with an ADR justifying the abstraction.</action>
+      <output>Service injects Model OR Repository (with ADR)</output>
+      <decision-gate>If a Repository is introduced without justification, BLOCK per `repository-only-when-needed` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="add-json-resource">
+      <input>API response shape</input>
+      <action>Create `&lt;Subject&gt;Resource` with explicit attribute list. Controllers return `new &lt;Subject&gt;Resource($model)` or `&lt;Subject&gt;Resource::collection($paginator)`.</action>
+      <output>JsonResource + pinned response keys</output>
+    </step>
+
+    <step n="5" name="write-feature-and-unit-tests">
+      <input>Test policy</input>
+      <action>Pest feature tests cover happy + sad paths via HTTP. Service unit tests run without booting Laravel where possible (use `Container::bind` overrides + Mockery for repositories).</action>
+      <output>Two-layer test coverage</output>
+    </step>
+
+  </section>
+</text>

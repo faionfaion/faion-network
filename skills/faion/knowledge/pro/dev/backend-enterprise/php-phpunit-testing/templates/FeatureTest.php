@@ -1,4 +1,9 @@
 <?php
+// purpose: Feature test skeleton with RefreshDatabase + Mail::fake + assertJsonPath
+// consumes: endpoint contract + factory definitions
+// produces: Feature test conforming to refreshdatabase-on-feature + fakes-before-action
+// depends-on: content/01-core-rules.xml rules refreshdatabase-on-feature, fakes-before-action, assertjsonpath-not-structure
+// token-budget-impact: ~400 tokens when loaded as context
 // Feature test skeleton — HTTP-driven, uses RefreshDatabase
 // Replace: User, UserControllerTest, /api/v1/users endpoints
 

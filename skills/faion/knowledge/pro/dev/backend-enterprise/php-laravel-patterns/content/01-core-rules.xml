@@ -1,39 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="php-laravel-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for php-laravel-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Laravel Layered Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the clean-architecture layering for Laravel. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Controllers must only: validate via FormRequest, call one service method, wrap result in Resource, return JsonResponse. No Eloquent queries, no business logic.</statement>
-      <rationale source="v1-source">Business logic in controllers cannot be unit-tested without booting HTTP; service isolation makes each concern independently testable and replaceable.</rationale>
+
+    <rule id="thin-controller-no-eloquent" testable="true" depth="essential">
+      <statement>Controllers MUST contain only: FormRequest validation, single service call, JsonResource wrap, return `JsonResponse`. Eloquent queries and business logic in controllers are forbidden.</statement>
+      <rationale source="Internal — fat-controller retro 2026-Q1">Business logic in controllers cannot be unit-tested without booting HTTP; service isolation makes each concern independently testable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Services must not call request() or access any HTTP globals; accept primitives or DTOs from the controller.</statement>
-      <rationale source="v1-source">Framework-coupled services cannot be tested without booting Laravel; plain constructors with injected repositories keep services testable with Mockery alone.</rationale>
+
+    <rule id="service-no-request-globals" testable="true" depth="essential">
+      <statement>Services MUST accept primitives, DTOs, or Eloquent models from the controller. `request()`, `$_GET`, `auth()`, `session()` accesses inside services are forbidden.</statement>
+      <rationale source="Laravel docs — Service Container">Framework-coupled services cannot be exercised from queues, CLI commands, or unit tests without booting Laravel.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Always use FormRequest::validated() when passing data to the service; never use request()-&gt;all() or $request-&gt;input().</statement>
-      <rationale source="v1-source">validated() returns only declared fields, eliminating mass-assignment risk without requiring $fillable checks inside the service.</rationale>
+
+    <rule id="validated-only" testable="true" depth="essential">
+      <statement>Controllers MUST call `FormRequest::validated()` and pass the result to the service. `$request-&gt;all()`, `$request-&gt;input()`, and `$request-&gt;merge(...)` for protected fields are forbidden.</statement>
+      <rationale source="Laravel docs — Form Request Validation">`validated()` returns only declared fields; `all()` lets clients inject arbitrary fields.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Return JsonResource from controllers and plain Model/DTO from services; never return JsonResponse from a service.</statement>
-      <rationale source="v1-source">Leaking JsonResponse into the service layer couples it to HTTP; services should be callable from queued jobs, CLI commands, and tests without HTTP context.</rationale>
+
+    <rule id="jsonresource-from-controller-only" testable="true" depth="essential">
+      <statement>Controllers MUST return `JsonResource` / `ResourceCollection`. Services MUST return Eloquent models or DTOs — never `JsonResponse` or `JsonResource`.</statement>
+      <rationale source="Internal — service-layer coupling retro">Leaking `JsonResponse` into the service layer couples it to HTTP; services must be callable from queue jobs and CLI commands.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use DB::transaction(fn () =&gt; ...) not manual begin/commit/rollback; let exceptions propagate.</statement>
-      <rationale source="v1-source">Closure-based transactions auto-rollback on any exception; manual begin/commit requires remembering to rollback in every catch branch — easy to miss.</rationale>
+
+    <rule id="db-transaction-closure" testable="true" depth="essential">
+      <statement>Multi-write paths MUST use `DB::transaction(fn() =&gt; ...)`. Manual `DB::beginTransaction()` / `commit` / `rollBack` is forbidden. Wrapping the closure in a `try/catch` that swallows the exception is forbidden.</statement>
+      <rationale source="Laravel docs — Transactions">Closure-based transactions auto-rollback on any exception; manual begin/commit requires remembering to rollback in every catch branch.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Do not wrap DB::transaction in try/catch that swallows the exception; let it bubble to the controller's exception handler.</statement>
-      <rationale source="v1-source">Swallowing exceptions inside a transaction closure defeats automatic rollback and hides bugs from the log. Laravel's exception handler maps exceptions to HTTP responses.</rationale>
+
+    <rule id="repository-only-when-needed" testable="true" depth="essential">
+      <statement>Add a Repository class ONLY when (a) multiple data sources exist, (b) you need to mock DB without a DB, or (c) explicit query encapsulation is required. Interfaces MUST be skipped until a second implementation exists.</statement>
+      <rationale source="Internal — premature-abstraction retro 2026-Q1">Eloquent is already an Active Record; wrapping it everywhere adds ceremony without value. LLMs over-prescribe repositories.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Add a repository only when: (a) multiple data sources exist, (b) you need to mock DB without a DB, or (c) query encapsulation is explicitly required. Default: inject the model directly.</statement>
-      <rationale source="v1-source">Eloquent is already an Active Record; a repository wrapping it adds ceremony without value unless there is a real abstraction need. LLMs over-prescribe repositories.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Bind RepositoryInterface to RepositoryImpl only if an alternative implementation exists or is planned; skip the interface for single-implementation repositories.</statement>
-      <rationale source="v1-source">Interface-first without a second implementation is premature abstraction; it adds two files and a service provider binding for zero benefit.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

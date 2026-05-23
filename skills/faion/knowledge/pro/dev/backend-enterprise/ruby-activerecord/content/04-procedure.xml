@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rails ActiveRecord Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the ActiveRecord methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="identify-hot-path">
+      <input>APM trace / scout / NewRelic data</input>
+      <action>Pick endpoints / jobs where AR &gt; 30 % of request time, or where N+1 is detected. Target those first.</action>
+      <output>Hot-path list</output>
+    </step>
+
+    <step n="2" name="extract-query-object">
+      <input>Inline `where` chains across controllers</input>
+      <action>Create `app/queries/&lt;Domain&gt;::&lt;Name&gt;Query`. Accept relation in `initialize(relation = Model.all)`. Add chainable methods returning `self`. Expose terminal `results` returning the relation.</action>
+      <output>Query Object per filter composition</output>
+      <decision-gate>If Query Object exceeds 10 chainable methods, split per use case per `query-object-god-class` antipattern.</decision-gate>
+    </step>
+
+    <step n="3" name="eager-load-at-boundary">
+      <input>Query Object output + view rendering</input>
+      <action>Controllers call `Query.new.scope_a.scope_b.results.includes(:organization, posts: :tags)`. Views consume already-loaded associations.</action>
+      <output>Eager-loaded relation passed to view</output>
+      <decision-gate>If a partial triggers a query, BLOCK per `eager-load-at-boundary` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="bulk-with-find-each">
+      <input>Background jobs / exports</input>
+      <action>Replace `Model.all.each` with `Model.find_each` (batch 1000) or `in_batches(of: N)`. Project narrow columns when exporting.</action>
+      <output>Memory-stable bulk iteration</output>
+    </step>
+
+    <step n="5" name="wire-n-plus-one-gate">
+      <input>Test suite + CI config</input>
+      <action>Install Prosopite (or Bullet in CI mode). Configure RSpec / Minitest to raise on N+1. Add the gate to required CI checks.</action>
+      <output>Automated regression gate</output>
+      <decision-gate>If specs reintroduce N+1, BLOCK per `n-plus-one-gate-in-ci` rule.</decision-gate>
+    </step>
+
+  </section>
+</text>

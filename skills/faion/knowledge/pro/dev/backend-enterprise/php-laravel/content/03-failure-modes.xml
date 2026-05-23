@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="php-laravel Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for php-laravel as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Laravel Umbrella Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real Laravel 10/11 production deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="sync-queue-in-prod" severity="high">
+      <symptom>Endpoint latency spikes whenever a "background" job fires; CPU saturates the web pod under load.</symptom>
+      <root-cause source="Laravel docs — Queues">`QUEUE_CONNECTION=sync` in production env executes jobs inline on the request thread.</root-cause>
+      <fix>Switch to `redis` (with Horizon) or `sqs`. Run `php artisan queue:work` under Supervisor. Verify via `php artisan queue:monitor`.</fix>
+    </antipattern>
+
+    <antipattern id="env-in-vcs" severity="high">
+      <symptom>Secrets leak to public GitHub mirror; access tokens revoked emergency at 03:00.</symptom>
+      <root-cause source="Laravel docs — Configuration">`.env` accidentally committed; `.gitignore` did not cover it.</root-cause>
+      <fix>Add `.env` + `.env.*` to `.gitignore`. Rotate all secrets. Store production secrets in 1Password / Vault and template into `.env` at deploy time.</fix>
+    </antipattern>
+
+    <antipattern id="scheduler-cron-not-supervised" severity="medium">
+      <symptom>Scheduled tasks stop running silently after the worker crashes; no alert fires.</symptom>
+      <root-cause source="Laravel docs — Task Scheduling">`php artisan schedule:work` ran in a tmux session; the host rebooted; process never restarted.</root-cause>
+      <fix>Run scheduler + queue workers under Supervisor with `autostart=true`, `autorestart=true`. Add a heartbeat job that pings dead-man's-snitch.</fix>
+    </antipattern>
+
+    <antipattern id="php-version-floor-violated" severity="medium">
+      <symptom>Production runs on PHP 7.4; security patches stopped landing two years ago.</symptom>
+      <root-cause source="PHP supported versions">Composer `require` floor too low; deploys never enforced.</root-cause>
+      <fix>Set `"php": "^8.2"` in `composer.json`. Enforce via CI matrix that fails on lower versions.</fix>
+    </antipattern>
+
   </section>
 </text>

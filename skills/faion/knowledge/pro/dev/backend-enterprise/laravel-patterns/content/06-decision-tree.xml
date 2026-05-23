@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Laravel Enterprise Patterns Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-version">Laravel version ≥ 10 and PHP ≥ 8.2?</root-question>
+
+    <branch when="version_supported == false">
+      <conclusion ref="validated-not-all" verdict="upgrade Laravel + PHP first; Attribute::make and ShouldBeUnique require modern stack"/>
+    </branch>
+
+    <branch when="version_supported == true">
+      <question id="q-write-shape">Endpoint shape?</question>
+      <branch when="shape == multistep_write">
+        <conclusion ref="db-transaction-for-multistep-writes" verdict="wrap in DB::transaction + DB::afterCommit side effects"/>
+      </branch>
+      <branch when="shape == background_job">
+        <conclusion ref="shouldbeunique-on-jobs" verdict="implement ShouldBeUnique + uniqueId; idempotency test required"/>
+      </branch>
+      <branch when="shape == read_or_list">
+        <question id="q-eager-load">Does the response touch any relation?</question>
+        <branch when="touches_relation == true">
+          <conclusion ref="eager-load-with-relations" verdict="eager-load via -&gt;with(...); enable preventLazyLoading in dev"/>
+        </branch>
+        <branch when="touches_relation == false">
+          <conclusion ref="api-resource-explicit-fields" verdict="apply remaining rules — Resource with explicit fields + validated input + constructor injection"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="charge-invoice-job">
+    version_supported=true → shape=background_job → shouldbeunique-on-jobs → implement ShouldBeUnique + uniqueId(invoice_id) + retry test verifying single external charge.
+  </example>
+</text>
