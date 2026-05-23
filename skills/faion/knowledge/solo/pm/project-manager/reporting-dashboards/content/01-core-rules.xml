@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="reporting-dashboards Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for reporting-dashboards. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Reporting Dashboards Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every reporting-dashboards run must enforce. These are HARD rules — schedule pressure does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-read-only-token" testable="true" depth="essential">
+      <statement>The fetch step uses a token scoped read-only on the PM tool. Write scopes are forbidden in the reporting pipeline.</statement>
+      <rationale source="Security baseline">A reporter that can mutate the source produces blast radius far beyond its purpose; least-privilege is non-negotiable.</rationale>
     </rule>
+
+    <rule id="r2-schema-first" testable="true" depth="essential">
+      <statement>Report schema is a JSON file checked into the repo: status enum (On Track / At Risk / Off Track), threshold table, metric list, archival path, dashboard URL. Schema changes go through a PR.</statement>
+      <rationale source="Practitioner experience">Ad-hoc formats generate "what does this number mean?" questions; locked schema makes status auditable.</rationale>
+    </rule>
+
+    <rule id="r3-multi-metric-health" testable="true" depth="essential">
+      <statement>Health = function(completion_rate, scope_creep, blocked_count) — not single-metric. A 90% completion sprint with 10 mid-sprint scope adds is not healthy.</statement>
+      <rationale source="Practitioner experience">Single-metric thresholds create false-positive health reports and erode trust.</rationale>
+    </rule>
+
+    <rule id="r4-validate-before-send" testable="true" depth="essential">
+      <statement>Validation gate fires before delivery: committed&gt;0, fetch_errors==0, sprint_start_date&lt;=today. If any fails → error alert + exit non-zero. Never deliver a degraded report.</statement>
+      <rationale source="Practitioner experience">A 0% completion report shipped because the query failed destroys reporting trust faster than no report.</rationale>
+    </rule>
+
+    <rule id="r5-archive-before-deliver" testable="true" depth="essential">
+      <statement>Rendered report + raw JSON fetched are written to a durable store (S3 / Notion / repo path / GitHub issue comment) BEFORE delivery. Delivery includes the archive URL.</statement>
+      <rationale source="Practitioner experience">Without archive, the report is ephemeral; recipients cannot audit, trends cannot be reconstructed.</rationale>
+    </rule>
+
+    <rule id="r6-separate-generate-deliver" testable="true" depth="essential">
+      <statement>Generation and delivery are separate processes / scripts / steps. Generate → archive → deliver. Never collapse them into one call.</statement>
+      <rationale source="Practitioner experience">Coupling makes retry-after-Slack-fail impossible without regenerating; coupling also hides the validation gate.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

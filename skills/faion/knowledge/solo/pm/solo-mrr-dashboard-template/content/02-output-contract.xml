@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo MRR Dashboard Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the monthly MRR/churn/ARPU/LTV dashboard artefact. Validator enforces single-formula-per-metric and frozen-snapshot discipline.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-mrr-dashboard-template.json",
+  "type": "object",
+  "required": ["month", "mrr_usd", "gross_churn_pct", "arpu_usd", "ltv_usd", "customer_count", "annual_handling", "snapshot_frozen_on", "definitions"],
+  "properties": {
+    "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+    "mrr_usd": {"type": "number", "minimum": 0},
+    "gross_churn_pct": {"type": "number", "minimum": 0, "maximum": 1},
+    "net_churn_pct": {"type": "number"},
+    "arpu_usd": {"type": "number", "minimum": 0},
+    "ltv_usd": {"type": "number", "minimum": 0},
+    "customer_count": {"type": "integer", "minimum": 0},
+    "annual_handling": {"type": "string", "enum": ["divide-by-12"]},
+    "refund_handling": {"type": "string", "enum": ["subtract-in-month-only"]},
+    "snapshot_frozen_on": {"type": "string", "format": "date"},
+    "definitions": {
+      "type": "object",
+      "required": ["customer_definition", "churn_definition"],
+      "properties": {
+        "customer_definition": {"type": "string", "enum": ["one-paid-subscription"]},
+        "churn_definition": {"type": "string", "enum": ["gross", "net"]}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "month": "2026-04",
+  "mrr_usd": 3210.00,
+  "gross_churn_pct": 0.038,
+  "net_churn_pct": 0.012,
+  "arpu_usd": 29.10,
+  "ltv_usd": 765.79,
+  "customer_count": 110,
+  "annual_handling": "divide-by-12",
+  "refund_handling": "subtract-in-month-only",
+  "snapshot_frozen_on": "2026-05-05",
+  "definitions": {"customer_definition": "one-paid-subscription", "churn_definition": "gross"}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "month": "April 2026",
+  "mrr_usd": 12000,
+  "gross_churn_pct": 1.5,
+  "customer_count": 350,
+  "annual_handling": "book-as-spike",
+  "refund_handling": "retroactive-delete",
+  "definitions": {"customer_definition": "auth-user", "churn_definition": "depends"}
+}
+]]></code>
+    <note>month wrong format, gross_churn_pct > 1, mrr inflated by annual-as-spike, refund_handling wrong, customer_definition wrong, churn_definition not in enum, missing snapshot date.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">annual_handling != "divide-by-12" (booking annual as spike)</pattern>
+      <pattern id="f2">refund_handling != "subtract-in-month-only" (retro-delete)</pattern>
+      <pattern id="f3">definitions.customer_definition != "one-paid-subscription" (auth-user double-count)</pattern>
+      <pattern id="f4">snapshot_frozen_on after the 10th of the following month (drift risk)</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Round MRR/ARPU/LTV to 2 decimal places.</transformation>
+      <transformation>Default churn_definition to "gross" when omitted.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-solo-mrr-dashboard-template.py">Validator script</reference>
+</text>

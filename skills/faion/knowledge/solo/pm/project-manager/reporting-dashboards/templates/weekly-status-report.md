@@ -1,3 +1,10 @@
+<!--
+purpose: Weekly leadership status template (status enum + RAG threshold mapping)
+consumes: See content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~200-600 tokens when loaded as context
+-->
 # Weekly Status Report
 **Project:** {Project Name}
 **Period:** {Start Date} - {End Date}

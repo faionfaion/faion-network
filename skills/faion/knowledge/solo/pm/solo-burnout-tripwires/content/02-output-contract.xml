@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Burnout Tripwires Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the weekly tripwire-review artefact. Validator enforces all six signals are evaluated; verdict drives downstream behaviour.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-burnout-tripwires.json",
+  "type": "object",
+  "required": ["week_iso", "sleep_7d_mean_minutes", "weekend_days_in_4w_window", "mrr_to_hours_3m_slope", "joy_channel_logged", "deferred_health_count_12m", "non_transactional_contacts_w", "verdict", "action"],
+  "properties": {
+    "week_iso": {"type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$"},
+    "sleep_7d_mean_minutes": {"type": "integer", "minimum": 0},
+    "weekend_days_in_4w_window": {"type": "integer", "minimum": 0, "maximum": 8},
+    "mrr_to_hours_3m_slope": {"type": "number"},
+    "joy_channel_logged": {"type": "array", "items": {"type": "string"}},
+    "deferred_health_count_12m": {"type": "integer", "minimum": 0},
+    "non_transactional_contacts_w": {"type": "integer", "minimum": 0},
+    "verdict": {"type": "string", "enum": ["green", "amber", "red"]},
+    "action": {"type": "string", "enum": ["continue", "schedule-recovery", "block-feature-work", "review-pricing-or-audience", "schedule-non-product-activity", "book-health-appointment", "schedule-conversation"]}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "week_iso": "2026-W21",
+  "sleep_7d_mean_minutes": 412,
+  "weekend_days_in_4w_window": 1,
+  "mrr_to_hours_3m_slope": 0.04,
+  "joy_channel_logged": ["climbing-gym-tue", "dinner-w-mira-sat"],
+  "deferred_health_count_12m": 1,
+  "non_transactional_contacts_w": 2,
+  "verdict": "green",
+  "action": "continue"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "week_iso": "this week",
+  "sleep_7d_mean_minutes": 360,
+  "weekend_days_in_4w_window": 4,
+  "joy_channel_logged": [],
+  "deferred_health_count_12m": 4,
+  "non_transactional_contacts_w": 0,
+  "verdict": "fine",
+  "action": "push through"
+}
+]]></code>
+    <note>week_iso wrong format, sleep below 6h30m threshold, weekend creep over 2/4w, joy empty, health-deferral over 3, social=0, verdict not in enum, action not in enum.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">verdict == green AND any tripwire is red (sleep&lt;390min OR weekend&gt;2/4w OR slope &lt;= 0 OR joy empty 2x OR health_deferral&gt;=3 OR social==0 for 2 consecutive weeks)</pattern>
+      <pattern id="f2">action == continue AND verdict != green</pattern>
+      <pattern id="f3">all six signals not measured (missing field)</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Normalise sleep minutes to integer (round to nearest minute).</transformation>
+      <transformation>Coerce verdict from threshold table when omitted (any red → red; any amber → amber; else green).</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-solo-burnout-tripwires.py">Validator script</reference>
+</text>

@@ -1,59 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Rate Floor — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `RateFloor` output. Must satisfy this contract before returning to operator.</summary>
+<text id="02-output-contract" title="Rate Floor Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the RateFloor artefact this methodology produces. The validator enforces this contract before the floor drives a quote.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`floor_usd_per_hour` — number (baseline band)</item>
-      <item>`sensitivity` — array of 3 objects {band: enum {low, baseline, high}, billable_pct, floor_usd_per_hour}</item>
-      <item>`project_minimum_usd` — convenience: floor × 20 (recommends rejecting engagements &lt; 20h)</item>
-      <item>`breakdown` — object {`target_income_loaded`, `tax_load_pct`, `working_weeks`, `billable_pct`, `benefit_cost_usd`, `tooling_cost_usd`, `profit_margin_pct`}</item>
-      <item>`defense_narrative` — string ≤ 400 chars, prospect-friendly explanation</item>
-      <item>`inputs_warning` — array (may be empty) of `{field, message}` for capped/clamped inputs</item>
-      <item>`computed_at` — ISO-8601 date</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-rate-floor-calculator.json",
+  "type": "object",
+  "required": ["floor_usd_per_hour", "sensitivity", "project_minimum_usd", "breakdown", "defense_narrative", "computed_at"],
+  "properties": {
+    "floor_usd_per_hour": {"type": "number", "minimum": 1},
+    "sensitivity": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["band", "billable_pct", "floor_usd_per_hour"],
+        "properties": {
+          "band": {"type": "string", "enum": ["low", "baseline", "high"]},
+          "billable_pct": {"type": "number", "minimum": 0.1, "maximum": 0.7},
+          "floor_usd_per_hour": {"type": "number", "minimum": 1}
+        }
+      }
+    },
+    "project_minimum_usd": {"type": "number", "minimum": 1},
+    "breakdown": {
+      "type": "object",
+      "required": ["target_income_loaded", "tax_load_pct", "working_weeks", "billable_pct", "benefit_cost_usd", "tooling_cost_usd", "profit_margin_pct"],
+      "properties": {
+        "target_income_loaded": {"type": "number", "minimum": 1},
+        "tax_load_pct": {"type": "number", "minimum": 0, "maximum": 0.7},
+        "working_weeks": {"type": "integer", "minimum": 30, "maximum": 46},
+        "billable_pct": {"type": "number", "minimum": 0.1, "maximum": 0.55},
+        "benefit_cost_usd": {"type": "number", "minimum": 0},
+        "tooling_cost_usd": {"type": "number", "minimum": 0},
+        "profit_margin_pct": {"type": "number", "minimum": 0.15, "maximum": 0.5}
+      }
+    },
+    "defense_narrative": {"type": "string", "maxLength": 400},
+    "inputs_warning": {"type": "array", "items": {"type": "object", "required": ["field", "message"]}},
+    "computed_at": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>`breakdown.billable_pct &gt; 0.55` without `inputs_warning` referencing historical data source.</description>
-      <reason>Violates r1 cap.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`breakdown.working_weeks &gt; 46` without `inputs_warning`.</description>
-      <reason>Violates r3 cap.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`breakdown.profit_margin_pct &lt; 0.15`.</description>
-      <reason>Violates r4 minimum.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`sensitivity` has fewer than 3 bands or bands not at ±10pp billable.</description>
-      <reason>Violates r5 sensitivity requirement.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`defense_narrative` discloses raw target income to prospect.</description>
-      <reason>Operator's income is not the prospect's business. Narrative should defend the rate using market and load, not personal finance.</reason>
-    </antipattern>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "floor_usd_per_hour": 145,
+  "sensitivity": [
+    {"band": "low", "billable_pct": 0.45, "floor_usd_per_hour": 178},
+    {"band": "baseline", "billable_pct": 0.55, "floor_usd_per_hour": 145},
+    {"band": "high", "billable_pct": 0.65, "floor_usd_per_hour": 123}
+  ],
+  "project_minimum_usd": 2900,
+  "breakdown": {
+    "target_income_loaded": 144000,
+    "tax_load_pct": 0.34,
+    "working_weeks": 46,
+    "billable_pct": 0.55,
+    "benefit_cost_usd": 8000,
+    "tooling_cost_usd": 3000,
+    "profit_margin_pct": 0.20
+  },
+  "defense_narrative": "Loaded rate accounting for downtime, taxes, tooling, and a 20% reinvestment margin standard for senior independent practice.",
+  "inputs_warning": [],
+  "computed_at": "2026-05-23"
+}
+]]></code>
+  </example>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Round `floor_usd_per_hour` to nearest $5.</item>
-      <item>Convert to non-USD currency at current rate for non-US operators (annotate currency).</item>
-      <item>Drop benefits row in jurisdictions where employer-equivalent benefits are state-funded (e.g. NHS).</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "floor_usd_per_hour": 58,
+  "sensitivity": [],
+  "breakdown": {
+    "tax_load_pct": 0.10,
+    "working_weeks": 52,
+    "billable_pct": 0.80,
+    "profit_margin_pct": 0.05
+  },
+  "defense_narrative": "I need $120k salary to cover my mortgage and family expenses."
+}
+]]></code>
+    <note>tax_load too low, working_weeks &gt; 46, billable_pct &gt; 0.55, margin &lt; 0.15, sensitivity bands missing, narrative leaks personal income.</note>
+  </example>
 
-  <reference path="templates/rate-floor.json">JSON Schema the output validates against.</reference>
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">breakdown.billable_pct &gt; 0.55 without inputs_warning referencing historical-data source</pattern>
+      <pattern id="f2">breakdown.working_weeks &gt; 46</pattern>
+      <pattern id="f3">breakdown.profit_margin_pct &lt; 0.15</pattern>
+      <pattern id="f4">sensitivity bands missing or not at ±10pp billable</pattern>
+      <pattern id="f5">defense_narrative leaks raw income / personal expenses (tokens: salary, my income, my mortgage, my expenses)</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Round floor_usd_per_hour to nearest $5.</transformation>
+      <transformation>Convert to non-USD currency at current rate for non-US operators (annotate currency).</transformation>
+      <transformation>Drop benefits row in jurisdictions where benefits are state-funded (NHS, etc.).</transformation>
+    </allowed-transformations>
+  </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>All breakdown fields populated.</item>
-      <item>Caps (r1, r3) applied or input data cited.</item>
-      <item>Margin ≥ 15%.</item>
-      <item>3 sensitivity bands present.</item>
-      <item>Defense narrative does NOT leak raw income.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-rate-floor-calculator.py">Validator script</reference>
 </text>

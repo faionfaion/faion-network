@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="notion-pm Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for notion-pm as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Formula that uses prop("Tasks") to iterate task relations and check each task's status manually.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Formula iteration over relations is not supported in Notion formulas. Use a Rollup with a filter instead.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Notion PM Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns observed when applying notion-pm. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-formula-iterates-relations" severity="high">
+      <symptom>Page load takes 5-8s; "Completed Tasks" formula returns wrong counts or errors.</symptom>
+      <root-cause source="Notion docs">Formula tries to iterate prop("Tasks") relation and check each task's Status manually; not supported.</root-cause>
+      <fix>Replace with a Rollup: relation Tasks → property Status → calculation Count values filtered to "Done". Formulas may post-process the Rollup result only.</fix>
+    </antipattern>
+    <antipattern id="fm-deleted-page-rollup-orphan" severity="high">
+      <symptom>Rollup counts drift after housekeeping; tasks vanish from sprint without status change recorded.</symptom>
+      <root-cause source="Notion docs">Deleted (hard-removed) pages break rollups pointing to them; the system has no warning.</root-cause>
+      <fix>Always set Status = "Cancelled" or use archived=true via API instead of deleting. Preserves referential integrity for Rollups.</fix>
+    </antipattern>
+    <antipattern id="fm-silent-rate-limit" severity="medium">
+      <symptom>Bulk script "succeeds" (200 responses) but UI shows only some updates; state drift.</symptom>
+      <root-cause source="Notion API docs">notion-client SDK does not raise on 429 by default; calls are silently throttled.</root-cause>
+      <fix>Cap writes at 3 req/sec, check status code explicitly, exponential backoff on 429, require human checkpoint for &gt;50 bulk mutations.</fix>
+    </antipattern>
+    <antipattern id="fm-property-name-case-mismatch" severity="medium">
+      <symptom>API write returns 200 but property is not updated; agent moves on; data inconsistent.</symptom>
+      <root-cause source="Notion API docs">Property names in API calls must match the UI display name exactly (case + spacing). Silent failure on mismatch.</root-cause>
+      <fix>Resolve the canonical property name once from databases.retrieve, cache it, assert exact string match before writes.</fix>
+    </antipattern>
   </section>
 </text>

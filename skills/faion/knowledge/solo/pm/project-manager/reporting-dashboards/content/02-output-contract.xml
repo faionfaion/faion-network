@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="reporting-dashboards Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Reporting Dashboards Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema for the report artefact this methodology produces. The validator script enforces this contract before the report is delivered.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/reporting-dashboards.json",
+  "type": "object",
+  "required": ["sprint_id", "status", "metrics", "thresholds", "archive_url", "fetch_errors", "validated", "delivered_to"],
+  "properties": {
+    "sprint_id": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["On Track", "At Risk", "Off Track"]},
+    "metrics": {
+      "type": "object",
+      "required": ["committed", "completed", "completion_rate", "scope_creep", "blocked_count"],
+      "properties": {
+        "committed": {"type": "integer", "minimum": 1},
+        "completed": {"type": "integer", "minimum": 0},
+        "completion_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "scope_creep": {"type": "integer", "minimum": 0},
+        "blocked_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": ["on_track_min", "at_risk_min"],
+      "properties": {
+        "on_track_min": {"type": "number", "minimum": 0, "maximum": 1},
+        "at_risk_min": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "archive_url": {"type": "string", "format": "uri"},
+    "dashboard_url": {"type": "string", "format": "uri"},
+    "fetch_errors": {"type": "integer", "minimum": 0, "maximum": 0},
+    "validated": {"type": "boolean", "const": true},
+    "delivered_to": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "generated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "sprint_id": "S-2026-W21",
+  "status": "On Track",
+  "metrics": {"committed": 24, "completed": 22, "completion_rate": 0.917, "scope_creep": 2, "blocked_count": 0},
+  "thresholds": {"on_track_min": 0.85, "at_risk_min": 0.70},
+  "archive_url": "s3://reports/sprint-2026-w21.md",
+  "dashboard_url": "https://metabase.example.com/dashboard/42",
+  "fetch_errors": 0,
+  "validated": true,
+  "delivered_to": ["#leadership"],
+  "generated_at": "2026-05-23T09:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "sprint_id": "S-2026-W21",
+  "status": "Healthy",
+  "metrics": {"committed": 0, "completed": 0, "completion_rate": 0},
+  "fetch_errors": 3,
+  "validated": false
+}
+]]></code>
+    <note>status not in enum, committed=0 (fetch likely failed), fetch_errors must be 0, validated must be true, missing thresholds/archive/delivery, missing scope_creep + blocked_count metrics.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">committed == 0 paired with status != "Off Track" (silent fetch failure)</pattern>
+      <pattern id="f2">validated == false yet delivered_to present (validation gate bypassed)</pattern>
+      <pattern id="f3">archive_url empty or missing (no audit trail)</pattern>
+      <pattern id="f4">single-metric status (only completion_rate, no scope_creep + blocked_count)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Normalise completion_rate to 3 decimal places.</transformation>
+      <transformation>Coerce status from threshold table when status string is missing.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-reporting-dashboards.py">Validator script</reference>
 </text>

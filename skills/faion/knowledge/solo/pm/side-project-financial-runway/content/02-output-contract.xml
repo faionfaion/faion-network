@@ -1,50 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Side-Project Financial Runway Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Side-Project Financial Runway output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Side-Project Financial Runway Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the runway model artefact this methodology produces. Validator enforces before the model drives a leave-job decision.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/side-project-financial-runway.json",
+  "type": "object",
+  "required": ["burn_personal", "burn_business", "savings_buffer", "mrr_current", "mrr_3mo_growth_pct", "leave_job_trigger", "geo_arbitrage_scenario", "stress_tests", "review_quarter", "owner"],
+  "properties": {
+    "burn_personal": {"type": "number", "minimum": 0},
+    "burn_business": {"type": "number", "minimum": 0},
+    "savings_buffer": {"type": "number", "minimum": 0},
+    "mrr_current": {"type": "number", "minimum": 0},
+    "mrr_3mo_growth_pct": {"type": "number"},
+    "leave_job_trigger": {
+      "type": "object",
+      "required": ["runway_months", "mrr_pct_of_burn", "growth_min"],
+      "properties": {
+        "runway_months": {"type": "integer", "minimum": 12},
+        "mrr_pct_of_burn": {"type": "number", "minimum": 0.3},
+        "growth_min": {"type": "number", "minimum": 0}
+      }
+    },
+    "geo_arbitrage_scenario": {
+      "type": "object",
+      "required": ["target_city", "expected_burn_reduction_pct"],
+      "properties": {
+        "target_city": {"type": "string", "minLength": 1},
+        "expected_burn_reduction_pct": {"type": "number", "minimum": 0, "maximum": 0.8}
+      }
+    },
+    "stress_tests": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["scenario", "runway_at_that_burn"],
+        "properties": {
+          "scenario": {"type": "string"},
+          "runway_at_that_burn": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "review_quarter": {"type": "string", "pattern": "^[0-9]{4}-Q[1-4]$"},
+    "owner": {"type": "string", "minLength": 1},
+    "decision_status": {"type": "string", "enum": ["pending", "stay", "leave", "stay-and-prepare"]}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "burn_personal": 6000,
+  "burn_business": 1000,
+  "savings_buffer": 90000,
+  "mrr_current": 2500,
+  "mrr_3mo_growth_pct": 0.12,
+  "leave_job_trigger": {"runway_months": 12, "mrr_pct_of_burn": 0.36, "growth_min": 0},
+  "geo_arbitrage_scenario": {"target_city": "Lisbon", "expected_burn_reduction_pct": 0.45},
+  "stress_tests": [
+    {"scenario": "flat MRR 12mo", "runway_at_that_burn": 12.8},
+    {"scenario": "MRR -20% over 6mo", "runway_at_that_burn": 11.2}
+  ],
+  "review_quarter": "2026-Q2",
+  "owner": "Ruslan",
+  "decision_status": "stay-and-prepare"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "burn_personal": 2000,
+  "savings_buffer": 12000,
+  "mrr_current": 500,
+  "leave_job_trigger": {"runway_months": 6, "mrr_pct_of_burn": 0.20, "growth_min": -0.05},
+  "stress_tests": [],
+  "review_quarter": "next quarter",
+  "owner": ""
+}
+]]></code>
+    <note>burn excludes business categories, leave_job_trigger violates runway_months &gt;= 12 and mrr_pct_of_burn &gt;= 0.30, growth_min negative, stress_tests empty (need &gt;=2), review_quarter wrong format, owner missing, no geo_arbitrage_scenario.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="burn_personal" type="number" required="true">monthly personal expenses USD</field>
-      <field name="burn_business" type="number" required="true">monthly business expenses USD</field>
-      <field name="savings_buffer" type="number" required="true">USD</field>
-      <field name="mrr_current" type="number" required="true">USD</field>
-      <field name="mrr_3mo_growth_pct" type="number" required="true">0-1.0+</field>
-      <field name="leave_job_trigger" type="object" required="true">{runway_months: 12, mrr_pct_of_burn: 0.3, growth_min: 0}</field>
-      <field name="geo_arbitrage_scenario" type="object" required="true">{target_city, expected_burn_reduction_pct}</field>
-      <field name="stress_tests" type="list" required="true">[{scenario, runway_at_that_burn}]</field>
-      <field name="review_quarter" type="string" required="true">YYYY-Qn</field>
-      <field name="owner" type="string" required="true">the founder</field>
-    </required>
-
     <forbidden>
       <pattern id="f1">burn excludes major categories (taxes, health, savings)</pattern>
-      <pattern id="f2">leave-job decision without 12+ months runway</pattern>
-      <pattern id="f3">no stress test for flat or declining MRR</pattern>
-      <pattern id="f4">review skipped &gt; 6 months</pattern>
+      <pattern id="f2">leave-job decision_status == leave with runway_months &lt; 12 OR mrr_pct_of_burn &lt; 0.30</pattern>
+      <pattern id="f3">stress_tests array has fewer than 2 scenarios (flat + declining required)</pattern>
+      <pattern id="f4">review skipped &gt; 6 months (review_quarter older than 2 quarters ago)</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Trim narrative fields to &lt;= 500 chars preserving named entities + numeric claims.</transformation>
+      <transformation>Promote a 'no decision yet' state to decision_status='pending' rather than fabricating a decision.</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/side-project-financial-runway.json"/>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>burn_personal populated with a typed value</item>
-      <item>burn_business populated with a typed value</item>
-      <item>savings_buffer populated with a typed value</item>
-      <item>mrr_current populated with a typed value</item>
-      <item>mrr_3mo_growth_pct populated with a typed value</item>
-      <item>leave_job_trigger populated with a typed value</item>
-      <item>geo_arbitrage_scenario populated with a typed value</item>
-      <item>stress_tests populated with a typed value</item>
-      <item>review_quarter populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-side-project-financial-runway.py">Validator script</reference>
 </text>

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Design GraphQL schemas (SDL first) where every mutation returns a typed MutationNamePayload with userErrors and authorization lives in directives.
-content_id: "816f194f0d103dae"
+content_id: "2852eca1652e9670"
 complexity: medium
 produces: spec
 est_tokens: 4200

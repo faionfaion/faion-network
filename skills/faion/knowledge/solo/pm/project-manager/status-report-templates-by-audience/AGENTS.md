@@ -3,21 +3,31 @@ slug: status-report-templates-by-audience
 tier: solo
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 content_id: "95511be5e005e65a"
-summary: Audience-segmented status report templates — CEO, PMO, technical sponsor, internal leadership — that replace the one-size-fits-all weekly status email with reports each audience will actually read.
+summary: Four audience-segmented weekly status templates (CEO 5-line, PMO RAG-first, Technical Sponsor blockers, Internal Leadership narrative) generated from one shared source spreadsheet.
+complexity: medium
+produces: report
+est_tokens: 4800
 tags: [status-report, communication, project-manager, solo, pm]
 ---
 # Status Report Templates by Audience
 
 ## Summary
 
-**One-sentence:** Four mandatory status report templates segmented by audience (CEO, PMO, technical sponsor, internal leadership), each with a different shape, a different opening hook, and a different escalation threshold — replacing the generic weekly client status email.
+**One-sentence:** Four mandatory status report templates segmented by audience (CEO, PMO, Technical Sponsor, Internal Leadership), each with a different shape, opening hook, and escalation threshold — replacing the generic weekly client status email.
 
-**One-paragraph:** A weekly client status report that goes to the CEO, PMO chief, sponsor, AND internal VP at the same length and tone is read by none of them. The CEO needs three numbers and a risk; the PMO needs RAG status against the plan; the technical sponsor needs scope and blockers; the internal VP needs "is this PM in control". This methodology gives a solopreneur PM (or small-team PM) four ready-to-fork templates, an "audience map" rule for picking the right one per stakeholder, and a single source spreadsheet that the four reports are generated from. Output: stakeholders open and read the report instead of asking the PM "so what's happening?" in the next 1:1.
+**One-paragraph:** A weekly client status report that goes to the CEO, PMO chief, technical sponsor, AND internal VP at the same length and tone is read by none of them. The CEO needs three numbers and a risk; the PMO needs RAG status against the plan; the technical sponsor needs scope and blockers; the internal VP needs "is this PM in control". This methodology gives the solo PM four ready-to-fork templates, an audience-map rule for picking the right one per stakeholder, and a single source spreadsheet that the four reports are generated from.
+
+**Ефективно для:**
+
+- Solo PM with ≥3 stakeholder roles across one or more clients.
+- Client engagements ≥4 weeks long (single-week jobs don't need this).
+- Replacing a generic weekly email that has stopped being read.
+- Calibrating which audience needs RAG vs prose vs technical detail.
 
 ## Applies If (ALL must hold)
 
@@ -29,33 +39,69 @@ tags: [status-report, communication, project-manager, solo, pm]
 ## Skip If (ANY kills it)
 
 - Single stakeholder = single template; do not over-engineer.
-- The client has imposed a status report format — use theirs and adapt the source spreadsheet to it.
-- Project is in active distress / rescue mode → use a daily standup brief, not weekly reports (see `pro/pm/distressed-project-rescue` if present, otherwise improvise).
-- Reporting fatigue is already so high stakeholders explicitly asked for less — drop the report entirely and switch to async demo videos.
+- The client has imposed a status report format — use theirs.
+- Project is in active distress / rescue mode → use a daily standup brief, not weekly reports.
+- Reporting fatigue is so high stakeholders explicitly asked for less — drop reports, switch to async demo videos.
 
 ## Prerequisites
 
-- A single source-of-truth spreadsheet or Notion DB with: milestone, RAG, owner, due date, blocker note, hours spent / budget.
-- An audience map: name + role + report template assigned.
-- An agreed delivery channel per audience (email vs Slack vs portal upload).
-- A draft of one CEO-tier report you would actually send (used to calibrate the others).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source spreadsheet / Notion DB (milestone, RAG, owner, due date, blocker, budget) | sheet | PM |
+| Audience map: name + role + template assignment | YAML / sheet | PM |
+| Delivery channel per audience (email / Slack / portal) | config | PM |
+| One drafted CEO-tier report used as calibration sample | markdown | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager/client-status-report-multistyle` | Pro-tier deep-dive; this solo methodology is the entry point. |
-| `pro/pm/project-manager/escalation-decision-template` | When the report would say RED → escalation script kicks in. |
-| `solo/pm/project-manager/client-visibility-vs-velocity-tradeoff` | Sets the cadence ceiling. |
+| [[reporting-dashboards]] | The source spreadsheet often comes from the reporting pipeline. |
+| [[solo-launch-day-runbook]] | Launch-week status reports follow this audience split. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: audience-mapped templates, one-source spreadsheet, CEO 5-line cap, RAG before prose, separate technical from leadership | ~1200 |
+| `content/01-core-rules.xml` | essential | 5 rules: audience-mapped template, single source spreadsheet, CEO 5-line cap, RAG before prose, separate technical from leadership | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for the 4-template emission record + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: one-size-fits-all, audience-prose-bleed, source-drift, raw technical in leadership | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure: source → audience map → generate 4 → review → deliver | ~800 |
+| `content/05-examples.xml` | essential | Worked example: 4 reports generated from one sheet for a week-7-of-12 project | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `audience_map_validation` | haiku | Closed list check. |
+| `ceo_5_line_emit` | sonnet | Compression discipline; per-week judgement. |
+| `pmo_rag_emit` | haiku | Mechanical table generation from RAG column. |
+| `sponsor_blockers_emit` | sonnet | Pick the right 3 blockers + decisions. |
+| `leadership_translation` | opus | Translate raw technical into business impact. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/ceo-template.md` | 5-line CEO email body |
+| `templates/pmo-template.md` | RAG-first PMO report |
+| `templates/sponsor-template.md` | Technical sponsor scope+blockers report |
+| `templates/leadership-template.md` | Internal leadership narrative report |
+| `templates/audience-map.yaml` | Stakeholder → template map |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-status-report-templates-by-audience.py` | Validate the emission record against 02-output-contract | Friday before send |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
-- peer methodologies: `client-status-email-template-agency` (pro/pm), `client-status-report-multistyle` (pro/pm), `escalation-decision-template` (pro/pm)
-- external: [Mike Cohn — Status Reporting Patterns](https://www.mountaingoatsoftware.com/) · [PMI — Stakeholder Communication](https://www.pmi.org/)
+- [[reporting-dashboards]]
+- [[notion-pm]]
+- [[solo-launch-day-runbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by stakeholder role, source-spreadsheet presence, CEO-line-count, RAG-position, and technical-language-leak onto a rule from `content/01-core-rules.xml`. Walk it before every Friday distribution.

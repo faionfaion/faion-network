@@ -1,43 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retro Facilitation Multistyle — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Retro Facilitation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the per-retro instance artefact. Validator enforces format choice rationale, action-item evidence, named owner, and outcome-review cadence.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/retro-facilitation-multistyle.json",
+  "type": "object",
+  "required": ["retro_date", "format", "selection_rationale", "team_state", "action_items", "outcome_review"],
+  "properties": {
+    "retro_date": {"type": "string", "format": "date"},
+    "format": {"type": "string", "enum": ["mad-sad-glad", "4ls", "sailboat", "lean-coffee", "anonymous-async"]},
+    "selection_rationale": {"type": "string", "minLength": 20},
+    "team_state": {
+      "type": "object",
+      "required": ["distribution", "fatigue_signal"],
+      "properties": {
+        "distribution": {"type": "string", "enum": ["async", "hybrid", "in-person"]},
+        "fatigue_signal": {"type": "string", "enum": ["fresh", "rotating", "fatigued"]}
+      }
+    },
+    "action_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["text", "owner", "evidence_link"],
+        "properties": {
+          "text": {"type": "string"},
+          "owner": {"type": "string"},
+          "evidence_link": {"type": "string", "format": "uri"},
+          "due_date": {"type": "string", "format": "date"}
+        }
+      }
+    },
+    "outcome_review": {
+      "type": "object",
+      "required": ["cadence", "last_run_at"],
+      "properties": {
+        "cadence": {"type": "string", "enum": ["next-retro", "monthly", "quarterly"]},
+        "last_run_at": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}
+]]></code>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "retro_date": "2026-05-23",
+  "format": "anonymous-async",
+  "selection_rationale": "Team is split across UA/PT/UK timezones; live retros bias toward UK voices. Async anonymous brings outsource feedback in.",
+  "team_state": {"distribution": "async", "fatigue_signal": "rotating"},
+  "action_items": [
+    {"text": "Move backend deploy window to 16:00 UTC", "owner": "Carol", "evidence_link": "https://github.com/org/repo/issues/482", "due_date": "2026-05-30"}
+  ],
+  "outcome_review": {"cadence": "next-retro", "last_run_at": "2026-05-09"}
+}
+]]></code>
+  </example>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "retro_date": "2026-05-23",
+  "format": "freeform",
+  "selection_rationale": "",
+  "team_state": {"distribution": "remote", "fatigue_signal": "tired"},
+  "action_items": [],
+  "outcome_review": {"cadence": "ad-hoc", "last_run_at": ""}
+}
+]]></code>
+    <note>format not in enum, selection_rationale empty, distribution not in enum, fatigue_signal not in enum, action_items empty, cadence not in enum.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">format not in the closed list of 5 supported formats</pattern>
+      <pattern id="f2">selection_rationale empty or &lt; 20 chars (vague format choice)</pattern>
+      <pattern id="f3">action_items missing owner or evidence_link (unevidenced/unowned)</pattern>
+      <pattern id="f4">outcome_review.cadence not in {next-retro, monthly, quarterly}</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Default outcome_review.cadence to "next-retro" when omitted.</transformation>
+      <transformation>Lowercase format string before enum check.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-retro-facilitation-multistyle.py">Validator script</reference>
 </text>

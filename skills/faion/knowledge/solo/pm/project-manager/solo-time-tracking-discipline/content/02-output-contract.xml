@@ -1,61 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Time Tracking — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `TimeReport` weekly output and the invoice draft consumed by billing tools.</summary>
+<text id="02-output-contract" title="Time Tracking Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the weekly TimeReport this methodology produces. The validator enforces this contract before the invoice is drafted.</summary>
 
-  <section title="Required fields (TimeReport)">
-    <list>
-      <item>`week_iso` — ISO week (e.g. "2026-W21")</item>
-      <item>`billable_hours_by_project` — array of `{project, hours, rate, amount}`</item>
-      <item>`write_offs` — array of `{reason ∈ {SALES, ADMIN, LEARNING, UNBILLABLE-REWORK, BREAK}, hours}`</item>
-      <item>`untagged_remaining` — number — hours still untagged after reconciliation (target ≤ 0.5h)</item>
-      <item>`billable_pct_actual` — billable_total / total_tracked, for rate-floor recalibration</item>
-      <item>`top_tasks` — array of `{task_label, hours}` (top 5)</item>
-      <item>`gaps_detected` — array of `{start, end, suspected_project}` for operator review</item>
-      <item>`invoice_drafts` — array per client `{project, lines: [{date, task, hours, rate, amount}]}`</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-time-tracking-discipline.json",
+  "type": "object",
+  "required": ["week_iso", "billable_hours_by_project", "write_offs", "untagged_remaining", "billable_pct_actual", "gaps_detected", "invoice_drafts"],
+  "properties": {
+    "week_iso": {"type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$"},
+    "billable_hours_by_project": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["project", "hours", "rate", "amount"],
+        "properties": {
+          "project": {"type": "string", "minLength": 1},
+          "hours": {"type": "number", "minimum": 0},
+          "rate": {"type": "number", "minimum": 0},
+          "amount": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "write_offs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reason", "hours"],
+        "properties": {
+          "reason": {"type": "string", "enum": ["SALES", "ADMIN", "LEARNING", "UNBILLABLE-REWORK", "BREAK"]},
+          "hours": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "untagged_remaining": {"type": "number", "minimum": 0, "maximum": 1.0},
+    "billable_pct_actual": {"type": "number", "minimum": 0, "maximum": 1},
+    "top_tasks": {"type": "array", "maxItems": 5},
+    "gaps_detected": {"type": "array"},
+    "invoice_drafts": {"type": "array", "items": {"type": "object", "required": ["project", "lines"]}},
+    "data_warning": {"type": "boolean"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>`untagged_remaining &gt; 1.0` AND report marked `final: true`.</description>
-      <reason>Untagged hours invoice as zero. Operator silently loses money each week. Reconciliation must close untagged blocks.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`write_offs[*].reason == "OTHER"` or string not in closed list.</description>
-      <reason>Violates r4. Forces coercion to ADMIN.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`invoice_drafts[*].lines` contains a line with `hours == 0` or `rate == 0`.</description>
-      <reason>Empty lines confuse clients. Drop them.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Report emitted without `gaps_detected` array.</description>
-      <reason>Even empty array required — its presence proves the gap detector ran.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`billable_pct_actual &gt; 0.65` for any single week.</description>
-      <reason>Statistically improbable for sustainable solo work; surfaces as a `data_warning` for inspection (capture errors, missed write-offs).</reason>
-    </antipattern>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "week_iso": "2026-W21",
+  "billable_hours_by_project": [
+    {"project": "client-a", "hours": 14, "rate": 145, "amount": 2030},
+    {"project": "client-b", "hours": 6, "rate": 145, "amount": 870}
+  ],
+  "write_offs": [
+    {"reason": "SALES", "hours": 3},
+    {"reason": "ADMIN", "hours": 2},
+    {"reason": "LEARNING", "hours": 1.5},
+    {"reason": "BREAK", "hours": 5}
+  ],
+  "untagged_remaining": 0.25,
+  "billable_pct_actual": 0.541,
+  "top_tasks": [{"task_label": "dev", "hours": 12}, {"task_label": "review", "hours": 4}],
+  "gaps_detected": [],
+  "invoice_drafts": [
+    {"project": "client-a", "lines": [{"date": "2026-05-19", "task": "dev", "hours": 4, "rate": 145, "amount": 580}]}
+  ]
+}
+]]></code>
+  </example>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Round per-day hours to nearest 0.25h (15-min increments).</item>
-      <item>Merge blocks &lt; 5min into the prior block (interruptions, not real switches).</item>
-      <item>Anonymise client names in shareable summaries.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "week_iso": "2026W21",
+  "billable_hours_by_project": [{"project": "client-a", "hours": 40, "rate": 145, "amount": 5800}],
+  "write_offs": [{"reason": "OTHER", "hours": 5}],
+  "untagged_remaining": 4.5,
+  "billable_pct_actual": 0.82
+}
+]]></code>
+    <note>week_iso wrong format, write_off reason not in closed list, untagged_remaining > 1.0, billable_pct_actual > 0.65 without data_warning, gaps_detected missing.</note>
+  </example>
 
-  <reference path="templates/time-report.json">JSON Schema the output validates against.</reference>
-  <reference path="templates/invoice-lines.csv">CSV format invoicing tools (FreshBooks, Wave) ingest.</reference>
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">untagged_remaining &gt; 1.0 with no follow-up reconciliation pass</pattern>
+      <pattern id="f2">write_offs[*].reason not in closed list {SALES, ADMIN, LEARNING, UNBILLABLE-REWORK, BREAK}</pattern>
+      <pattern id="f3">invoice_drafts[*].lines contains hours==0 or rate==0</pattern>
+      <pattern id="f4">gaps_detected array missing (must be present even if empty)</pattern>
+      <pattern id="f5">billable_pct_actual &gt; 0.65 AND data_warning != true</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Round per-day hours to nearest 0.25h (15-min increments).</transformation>
+      <transformation>Merge blocks &lt; 5min into the prior block (interruptions, not real switches).</transformation>
+      <transformation>Anonymise client names in shareable summaries.</transformation>
+    </allowed-transformations>
+  </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>`untagged_remaining &lt; 0.5h`.</item>
-      <item>All write-off reasons from closed list.</item>
-      <item>Per-project totals sum to billable_hours total.</item>
-      <item>Each invoice draft has ≥ 1 line.</item>
-      <item>`billable_pct_actual` &lt; 0.65 OR `data_warning: true`.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-time-tracking-discipline.py">Validator script</reference>
 </text>

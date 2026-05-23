@@ -1,45 +1,143 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Solo Launch Day — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Schema for the per-launch execution log + rollback decision log.</summary>
+<text id="02-output-contract" title="Solo Launch Day Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema for the per-launch execution log + rollback decision log. The validator enforces this contract after closeout.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-launch-day-runbook.json",
+  "type": "object",
+  "required": ["launch_id", "product", "announce_at", "founder_name", "pre_checks", "checkpoints", "closeout"],
+  "properties": {
+    "launch_id": {"type": "string", "minLength": 1},
+    "product": {"type": "string", "minLength": 1},
+    "announce_at": {"type": "string", "format": "date-time"},
+    "founder_name": {"type": "string"},
+    "pre_checks": {
+      "type": "object",
+      "required": ["smoke_t_minus_24h", "smoke_t_minus_2h", "stripe_live_swap_at", "fallback_content_ready", "rollback_dry_run_at"],
+      "properties": {
+        "smoke_t_minus_24h": {"type": "string", "format": "date-time"},
+        "smoke_t_minus_2h": {"type": "string", "format": "date-time"},
+        "stripe_live_swap_at": {"type": ["string", "null"], "format": "date-time"},
+        "stripe_verify_charge_id": {"type": ["string", "null"]},
+        "fallback_content_ready": {"type": "boolean", "const": true},
+        "rollback_dry_run_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["at", "label", "errors_count", "signups_count", "paid_count"],
+        "properties": {
+          "at": {"type": "string", "format": "date-time"},
+          "label": {"type": "string"},
+          "observations": {"type": "string"},
+          "errors_count": {"type": "integer", "minimum": 0},
+          "signups_count": {"type": "integer", "minimum": 0},
+          "paid_count": {"type": "integer", "minimum": 0},
+          "actions_taken": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "rollback_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["triggered_at", "reason", "steps_taken", "reverted_at"],
+        "properties": {
+          "triggered_at": {"type": "string", "format": "date-time"},
+          "reason": {"type": "string"},
+          "steps_taken": {"type": "array", "items": {"type": "string"}},
+          "reverted_at": {"type": "string", "format": "date-time"},
+          "outcome": {"type": "string"}
+        }
+      }
+    },
+    "closeout": {
+      "type": "object",
+      "required": ["paid_signups", "total_signups", "errors", "top_3_learnings"],
+      "properties": {
+        "paid_signups": {"type": "integer", "minimum": 0},
+        "total_signups": {"type": "integer", "minimum": 0},
+        "errors": {"type": "integer", "minimum": 0},
+        "top_3_learnings": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string"}},
+        "runbook_updates": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "launch_id": "launch-2026-05-23",
+  "product": "Faion Pro",
+  "announce_at": "2026-05-23T15:00:00Z",
+  "founder_name": "Ruslan",
+  "pre_checks": {
+    "smoke_t_minus_24h": "2026-05-22T15:00:00Z",
+    "smoke_t_minus_2h": "2026-05-23T13:00:00Z",
+    "stripe_live_swap_at": "2026-05-23T12:50:00Z",
+    "stripe_verify_charge_id": "ch_3OabcXYZ",
+    "fallback_content_ready": true,
+    "rollback_dry_run_at": "2026-05-22T16:00:00Z"
+  },
+  "checkpoints": [
+    {"at": "2026-05-23T15:15:00Z", "label": "T+15m", "errors_count": 0, "signups_count": 12, "paid_count": 3, "actions_taken": []},
+    {"at": "2026-05-23T16:00:00Z", "label": "T+1h", "errors_count": 1, "signups_count": 47, "paid_count": 9, "actions_taken": []},
+    {"at": "2026-05-23T19:00:00Z", "label": "T+4h", "errors_count": 1, "signups_count": 120, "paid_count": 21, "actions_taken": []},
+    {"at": "2026-05-24T03:00:00Z", "label": "T+12h", "errors_count": 2, "signups_count": 180, "paid_count": 31, "actions_taken": []},
+    {"at": "2026-05-24T15:00:00Z", "label": "T+24h", "errors_count": 2, "signups_count": 210, "paid_count": 38, "actions_taken": []}
+  ],
+  "rollback_log": [],
+  "closeout": {
+    "paid_signups": 38,
+    "total_signups": 210,
+    "errors": 2,
+    "top_3_learnings": ["mailer warmed 96h was overkill", "PH timezone shift cost 30m peak", "support canned responses saved 2h"],
+    "runbook_updates": ["add PH-tz check to T-24h"]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "launch_id": "launch-bad",
+  "product": "X",
+  "announce_at": "2026-05-23T15:00:00Z",
+  "pre_checks": {
+    "smoke_t_minus_2h": null,
+    "stripe_live_swap_at": null,
+    "fallback_content_ready": false
+  },
+  "checkpoints": []
+}
+]]></code>
+    <note>smoke_t_minus_2h null, Stripe not live, fallback not ready, checkpoints empty (need ≥5), missing closeout + founder_name.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="launch_id" type="string"/>
-      <field name="product" type="string"/>
-      <field name="announce_at" type="datetime"/>
-      <field name="founder_name" type="string"/>
-      <field name="pre_checks" required_keys="smoke_t_minus_24h,smoke_t_minus_2h,stripe_live_swap_at,stripe_verify_charge_id,fallback_content_ready,rollback_dry_run_at"/>
-      <field name="checkpoints" type="list" min_entries="5"
-             item_required_keys="at,label,observations,errors_count,signups_count,paid_count,actions_taken"/>
-      <field name="rollback_log" type="list"
-             item_required_keys="triggered_at,reason,steps_taken,reverted_at"/>
-      <field name="closeout" required_keys="paid_signups,total_signups,errors,top_3_learnings,runbook_updates"/>
-    </required>
-
     <forbidden>
-      <pattern id="f1">pre_checks.smoke_t_minus_2h is null OR returned errors AND announce_at proceeded as planned</pattern>
+      <pattern id="f1">pre_checks.smoke_t_minus_2h is null while announce_at proceeded</pattern>
       <pattern id="f2">pre_checks.stripe_verify_charge_id is null AND product is paid</pattern>
-      <pattern id="f3">infrastructure change recorded between T-2h and T+12h that is NOT a rollback action</pattern>
-      <pattern id="f4">checkpoints missing T+15m, T+1h, T+4h, T+12h, or T+24h checkpoint</pattern>
-      <pattern id="f5">rollback action listed without "reverted_at" or "outcome" field</pattern>
+      <pattern id="f3">infrastructure change between T-2h and T+12h that is NOT a rollback action</pattern>
+      <pattern id="f4">checkpoints missing T+15m / T+1h / T+4h / T+12h / T+24h</pattern>
+      <pattern id="f5">rollback action listed without "reverted_at"</pattern>
       <pattern id="f6">closeout.top_3_learnings empty</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Compress checkpoints to T+15m, T+1h, T+6h, T+24h for shorter launch windows (free product, etc.).</transformation>
+      <transformation>Compress checkpoints to T+15m, T+1h, T+6h, T+24h for shorter launch windows (free product).</transformation>
       <transformation>Add channel-specific checkpoints (e.g. Product Hunt page-rank check at T+2h).</transformation>
-      <transformation>Note alternative announce times (e.g. mailing-list first, social at T+30m) per pre-agreed schedule.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Both smoke tests run; results captured</item>
-      <item>Stripe live swap done ≥2h before announce; verify charge id recorded</item>
-      <item>Fallback content paths exist and tested</item>
-      <item>Rollback rehearsed within last 24h</item>
-      <item>All five checkpoints captured</item>
-      <item>Closeout completed within 24h post-launch</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-launch-day-runbook.py">Validator script</reference>
 </text>

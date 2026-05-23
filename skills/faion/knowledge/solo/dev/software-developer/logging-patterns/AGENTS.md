@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Emit structured JSON logs with correlation IDs, level discipline, masked sensitive fields, and middleware-attached context for every request.
-content_id: "1554d307ae7110f6"
+content_id: "b2318604d6400096"
 complexity: medium
 produces: code
 est_tokens: 4000

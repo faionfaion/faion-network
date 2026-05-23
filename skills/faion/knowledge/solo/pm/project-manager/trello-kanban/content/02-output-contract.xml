@@ -1,22 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trello-kanban Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trello Kanban Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the board configuration artefact this methodology produces. Validator enforces before the board is registered as canonical.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trello-kanban.json",
+  "type": "object",
+  "required": ["board_id", "lists", "labels", "rate_limit_per_10s", "ids_cached"],
+  "properties": {
+    "board_id": {"type": "string", "minLength": 1},
+    "lists": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "wip_limit": {"type": ["integer", "null"], "minimum": 1}
+        }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "kind": {"type": "string", "enum": ["type", "priority", "modifier"]}
+        }
+      }
+    },
+    "custom_fields": {
+      "type": "object",
+      "properties": {
+        "story_points": {"type": "boolean"},
+        "sprint": {"type": "boolean"},
+        "component": {"type": "boolean"}
+      }
+    },
+    "butler_rules_documented_in": {"type": "string"},
+    "rate_limit_per_10s": {"type": "integer", "minimum": 1, "maximum": 100},
+    "ids_cached": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "board_id": "abc123",
+  "lists": [
+    {"id": "l1", "name": "Backlog", "wip_limit": null},
+    {"id": "l2", "name": "Ready", "wip_limit": null},
+    {"id": "l3", "name": "In Dev (WIP: 3)", "wip_limit": 3},
+    {"id": "l4", "name": "Review (WIP: 2)", "wip_limit": 2},
+    {"id": "l5", "name": "QA (WIP: 2)", "wip_limit": 2},
+    {"id": "l6", "name": "Done", "wip_limit": null}
+  ],
+  "labels": [
+    {"id": "lb1", "name": "Feature", "kind": "type"},
+    {"id": "lb2", "name": "Bug", "kind": "type"},
+    {"id": "lb3", "name": "P1-High", "kind": "priority"},
+    {"id": "lb4", "name": "Blocked", "kind": "modifier"}
+  ],
+  "custom_fields": {"story_points": true, "sprint": true, "component": true},
+  "butler_rules_documented_in": "constitution.md",
+  "rate_limit_per_10s": 100,
+  "ids_cached": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "board_id": "abc",
+  "lists": [
+    {"id": "l1", "name": "L1"}, {"id": "l2", "name": "L2"}, {"id": "l3", "name": "L3"},
+    {"id": "l4", "name": "L4"}, {"id": "l5", "name": "L5"}, {"id": "l6", "name": "L6"},
+    {"id": "l7", "name": "L7"}, {"id": "l8", "name": "L8"}, {"id": "l9", "name": "L9"}
+  ],
+  "labels": [],
+  "rate_limit_per_10s": 500,
+  "ids_cached": false
+}
+]]></code>
+    <note>lists > 7, labels empty (must be >=1), rate_limit > 100, ids_cached must be true.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">lists count &gt; 7 or &lt; 5</pattern>
+      <pattern id="f2">labels count &gt; 12</pattern>
+      <pattern id="f3">ids_cached == false (forces name-lookup-per-write)</pattern>
+      <pattern id="f4">rate_limit_per_10s &gt; 100 (above documented limit)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Default rate_limit_per_10s to 80 when omitted (margin under 100).</transformation>
+      <transformation>Default butler_rules_documented_in to "constitution.md" when omitted.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-trello-kanban.py">Validator script</reference>
 </text>

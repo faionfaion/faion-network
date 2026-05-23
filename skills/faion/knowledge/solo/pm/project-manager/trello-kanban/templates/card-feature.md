@@ -1,3 +1,10 @@
+<!--
+purpose: Feature card description template (user story / AC / technical notes / DoD)
+consumes: See content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~150-400 tokens when loaded as context
+-->
 ## Feature: {Title}
 
 ### User Story

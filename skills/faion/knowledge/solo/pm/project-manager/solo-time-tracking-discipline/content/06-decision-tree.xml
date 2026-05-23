@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Solo Time Tracking Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from raw tracker stream to a rule from 01-core-rules.xml for solo-time-tracking-discipline.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is one tracker the source-of-truth AND is reconciliation on cadence?</root-question>
+
+    <branch when="parallel_trackers_count &gt; 1">
+      <conclusion ref="r1-single-source" verdict="BLOCK — designate single source"/>
+    </branch>
+    <branch when="reconstructed_blocks_pct &gt; 0.10">
+      <conclusion ref="r2-capture-at-boundary" verdict="BLOCK — retro-tracking is forbidden"/>
+    </branch>
+    <branch when="untagged_remaining &gt; 1.0">
+      <conclusion ref="r3-label-discipline" verdict="BLOCK — close gaps before invoice"/>
+    </branch>
+    <branch when="write_off_reason_outside_closed_list == true">
+      <conclusion ref="r4-write-off-tag" verdict="BLOCK — reclassify from closed list"/>
+    </branch>
+    <branch when="reconciliation_weekday_drift &gt; 3">
+      <conclusion ref="r5-friday-cadence" verdict="BLOCK — schedule Friday 16:00"/>
+    </branch>
+    <branch when="billable_pct_actual &gt; 0.65 AND data_warning != true">
+      <conclusion ref="r1-single-source" verdict="BLOCK — likely double-count; investigate"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — emit invoice draft"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="solo-time-tracking-discipline-happy-path">
+    Single Toggl source + 37h captured at boundary + 0.25h untagged after reconcile + closed-list write-offs + Friday 16:00 close + billable_pct=0.635 → APPROVE → invoice drafts emitted.
+  </example>
+</text>

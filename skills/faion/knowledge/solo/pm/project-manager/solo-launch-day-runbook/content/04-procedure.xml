@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Solo Launch Day Procedure" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>7-checkpoint procedure to execute the launch-day runbook end-to-end.</summary>
+  <section title="Procedure">
+    <step n="1" name="t-minus-24h-preflight">
+      <input>Launch date + product state</input>
+      <action>Full smoke test against production (signup, payment, welcome email, support email, password reset). Rollback dry run. Fallback content frozen + reviewed. Stripe live keys provisioned (NOT swapped).</action>
+      <output>pre_checks.smoke_t_minus_24h + rollback_dry_run_at filled.</output>
+    </step>
+    <step n="2" name="t-minus-2h-final-checks">
+      <input>Pre-flight state</input>
+      <action>Smoke-test rerun. Stripe key swap from test→live. $1 verify charge with founder card. Refund the verify charge. Confirm webhook signing-key matches live. Monitoring alert path tested.</action>
+      <output>pre_checks.stripe_live_swap_at + stripe_verify_charge_id filled.</output>
+      <decision-gate>If any check fails → DEFER announce by ≥1h while fixing. Never announce with a red pre-check.</decision-gate>
+    </step>
+    <step n="3" name="t-zero-announce">
+      <input>Pre-checks all green</input>
+      <action>Mailing list first, then X / LinkedIn / IndieHackers / Product Hunt. Plausible live counter open. tg-bot ping armed.</action>
+      <output>announce_at recorded.</output>
+    </step>
+    <step n="4" name="t-plus-15m-1h-4h-checkpoints">
+      <input>Live traffic</input>
+      <action>Per checkpoint: capture errors_count, signups_count, paid_count, observations, actions_taken. Update log via tg-bot ping.</action>
+      <output>checkpoints array (3 entries by T+4h).</output>
+    </step>
+    <step n="5" name="change-freeze">
+      <input>T-2h through T+12h window</input>
+      <action>NO deploys, NO env-var changes, NO DNS swaps unless triggered by an incident requiring rollback. Improvements wait until T+24h.</action>
+      <output>No rogue change in the change log.</output>
+      <decision-gate>If rollback is triggered → execute the documented ≤10-min path; record triggered_at + steps_taken + reverted_at + outcome.</decision-gate>
+    </step>
+    <step n="6" name="t-plus-12h-closeout-start">
+      <input>Checkpoint data</input>
+      <action>Final-day checkpoint. Decide: continue active monitoring vs hand off to async. Sleep is mandatory if past midnight local time.</action>
+      <output>checkpoints array (4 entries).</output>
+    </step>
+    <step n="7" name="t-plus-24h-postmortem">
+      <input>Full launch data</input>
+      <action>Final checkpoint. Closeout: paid_signups, total_signups, errors, top_3_learnings, runbook_updates. Validate the execution log.</action>
+      <output>closeout filled + validator pass.</output>
+    </step>
+  </section>
+</text>

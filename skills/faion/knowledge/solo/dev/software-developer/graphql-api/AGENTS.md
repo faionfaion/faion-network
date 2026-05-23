@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Build a GraphQL API with schema-first SDL, codegen, per-request DataLoader, depth + complexity limits, cursor pagination, and breaking-change CI gates.
-content_id: "5f79024fb231c446"
+content_id: "005abf9ce7795f81"
 complexity: medium
 produces: code
 est_tokens: 4200

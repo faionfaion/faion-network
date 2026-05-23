@@ -3,82 +3,98 @@ slug: retro-facilitation-multistyle
 tier: solo
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 content_id: "da58c4a3ffb13071"
-summary: Retro Facilitation Multistyle — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so async cross-timezone delivery cadence (p4 outsource) stops being folklore and starts being a reviewable operating tool.
+summary: Facilitation playbook for picking + running one of five retro formats (mad-sad-glad, 4Ls, sailboat, lean-coffee, anonymous-async) by team state, with named owner, evidence anchors, and outcome review.
+complexity: light
+produces: playbook-step
+est_tokens: 3500
 tags: [pm, solo, method, retro, facilitation, multistyle]
 ---
 # Retro Facilitation Multistyle
 
 ## Summary
 
-**One-sentence:** Retro Facilitation Multistyle — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so async cross-timezone delivery cadence (p4 outsource) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Five canonical retro formats (mad-sad-glad, 4Ls, sailboat, lean-coffee, anonymous-async) with named selection criteria per team state, plus an evidence-anchored outcome review so retros stop being folklore.
 
-**One-paragraph:** In project / programme management, the project manager runs async cross-timezone delivery cadence (p4 outsource) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. scrum-ceremonies mentions retros generically. No facilitation playbook with multiple formats (mad-sad-glad, 4Ls, sailboat, lean-coffee, anonymous-async). P4 outsource teams need anonymous-async; P6 stable product teams cycle formats to avoid retro fatigue. `retro-facilitation-multistyle` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** scrum-ceremonies mentions retros generically; there is no facilitation playbook with multiple formats and selection criteria. Async cross-timezone teams (P4 outsource) need anonymous-async; stable product teams (P6) cycle formats to avoid fatigue. This methodology pins the artefact: a versioned per-retro instance with the chosen format, the selection rationale (team-state evidence), the action items it produced, the named owner of those actions, and the outcome review at the next retro that closes the loop on whether actions changed behaviour.
+
+**Ефективно для:**
+
+- Solo PM facilitating retros across an async/outsourced team.
+- Stable product team cycling formats to avoid retro fatigue (≥3 instances/year).
+- Documenting why a format was picked + whether it produced change.
+- Replacing free-form retro notes with a reviewable artefact.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Async cross-timezone delivery cadence (P4 outsource)`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- PM facilitates retros on a recurring cadence (≥3 per year).
+- PM owns the artefact (or escalates ownership to a named role).
+- Team uses a version-controlled or wiki-style space for retro notes.
+- The retro trigger fires on a published cadence (event, threshold, schedule).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot retro with no recurrence — write a single doc.
+- Team has &lt; 3 retros per year — review cadence costs more than it returns.
+- Regulated context mandating a different shape — use the regulator's template.
+- No named owner — defer until ownership is resolved.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Access to repo / wiki hosting retro notes | repo path | platform |
+| Named owner for retro outcomes | identity | PM |
+| List of 5 supported formats with their selection criteria | doc | PM |
+| Outcome-review cadence published | calendar | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[retro-format-rotation-guide]] | Sibling guide that informs format choice across multiple retros. |
+| [[status-report-templates-by-audience]] | Retro outputs flow into status reports. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
+| `content/01-core-rules.xml` | essential | 5 rules — explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for retro instance + valid/invalid examples + forbidden patterns | ~900 |
 | `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `format_selection` | sonnet | Team-state judgement (async vs in-person, fatigue cycle). |
+| `retro_facilitation_notes` | sonnet | Per-instance synthesis of team input. |
+| `outcome_review_synthesis` | opus | Cross-cycle: did action items change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/retro-instance.md` | Per-retro instance template (format / actions / owner / review) |
+| `templates/format-card.md` | One-pager listing the 5 supported formats + selection criteria |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-retro-facilitation-multistyle.py` | Validate retro instance against 02-output-contract schema | Pre-merge + next retro review |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[retro-format-rotation-guide]]
+- [[status-report-templates-by-audience]]
+- [[solo-burnout-tripwires]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by team state, format choice, action-item evidence, owner naming, and outcome-review staleness onto a rule from `content/01-core-rules.xml`. Walk it before every retro.

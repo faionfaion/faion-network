@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Implement async message passing with idempotent consumers, DLQ + alerts, manual acknowledgement, and explicit retry policy per queue.
-content_id: "2d111252aba48685"
+content_id: "6e74d08ec7d74178"
 complexity: medium
 produces: code
 est_tokens: 4200

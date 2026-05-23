@@ -3,82 +3,98 @@ slug: retro-format-rotation-guide
 tier: solo
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 content_id: "6ec38b9756ab3fcb"
-summary: Retro Format Rotation Guide — pinned guide for the project manager: fixed shape + named owner + evidence anchors + outcome review, so run sprint review + retrospective back-to-back stops being folklore and starts being a reviewable operating tool.
+summary: Rotation guide that picks the next retro format from the last-3-retro history, the team state, and a stale-format detector — so the team doesn't repeat the same format until it stops surfacing signal.
+complexity: light
+produces: playbook-step
+est_tokens: 3500
 tags: [pm, solo, guide, retro, format, rotation]
 ---
 # Retro Format Rotation Guide
 
 ## Summary
 
-**One-sentence:** Retro Format Rotation Guide — pinned guide for the project manager: fixed shape + named owner + evidence anchors + outcome review, so run sprint review + retrospective back-to-back stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** A cross-retro rotation guide that picks the next format from {start-stop-continue, sailboat, 4ls, timeline, anonymous-async} based on the previous 3 formats, team state, and a stale-format detector.
 
-**One-paragraph:** In project / programme management, the project manager runs run sprint review + retrospective back-to-back on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. scrum-ceremonies covers the existence of retro; no playbook for picking format (start-stop-continue / sailboat / 4Ls / timeline) by team state. `retro-format-rotation-guide` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored guide committed to the team's knowledge space.
+**One-paragraph:** scrum-ceremonies covers the existence of retros; no playbook for picking the *next* format. Teams default to one format and retro fatigue sets in within 4-6 cycles — output drops, contributors disengage, action items dry up. This guide tracks the last-3-retro history per team, applies a rotation rule (no format used twice in last 3), and emits the recommended next format with a one-line rationale. Outcome review at the following retro confirms whether the rotation refreshed signal.
+
+**Ефективно для:**
+
+- Solo PM running retros for the same team ≥4 times/year.
+- Detecting retro fatigue early (action-item count dropping cycle-over-cycle).
+- Pairing with retro-facilitation-multistyle to remove the "what format this time?" friction.
+- Quarterly retro-rotation health check.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Run sprint review + retrospective back-to-back`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Team has run ≥3 retros under the PM's facilitation (history exists).
+- PM facilitates ≥4 retros per year for this team.
+- PM owns the rotation artefact (or escalates ownership).
+- Team uses a version-controlled or wiki space hosting the history.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- First-ever retro for the team — no rotation needed.
+- Team has run &lt; 3 retros — defer until history exists.
+- One-shot retro (post-incident, post-launch) — different rubric.
+- No named owner — defer until ownership is resolved.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Last 3 retro instances with format + outcome | repo path | PM |
+| Team-state input (distribution + fatigue) | doc | PM |
+| Named owner for the rotation guide | identity | PM |
+| Outcome-review cadence published | calendar | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[retro-facilitation-multistyle]] | Per-retro facilitation methodology this guide schedules across. |
+| [[status-report-templates-by-audience]] | Rotation health flows into status reports. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
+| `content/01-core-rules.xml` | essential | 5 rules — explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for the rotation guide artefact + valid/invalid examples + forbidden patterns | ~900 |
 | `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `history_read` | haiku | Pull last-3 retro instances + outcome counts. |
+| `rotation_pick` | sonnet | Apply the rotation rule + team state to the next format. |
+| `health_check` | opus | Cross-cycle synthesis: is rotation refreshing signal? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/rotation-guide.md` | Per-team rotation guide (history + next pick + rationale) |
+| `templates/rotation-rule-card.md` | One-pager: rotation rule + stale-format detector |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-retro-format-rotation-guide.py` | Validate the rotation artefact against 02-output-contract schema | Before each next retro is scheduled |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[retro-facilitation-multistyle]]
+- [[status-report-templates-by-audience]]
+- [[solo-burnout-tripwires]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by history length, last-3-format set, team-state, and outcome-review staleness onto a rule from `content/01-core-rules.xml`. Walk it before scheduling every next retro.

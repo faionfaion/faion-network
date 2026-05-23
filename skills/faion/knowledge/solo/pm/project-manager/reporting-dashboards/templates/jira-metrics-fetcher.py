@@ -1,3 +1,8 @@
+# purpose: Read-only Jira fetch reference implementation (committed/completed/blocked)
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-700 tokens when loaded as context
 """
 Fetch Jira sprint metrics and post a status digest to Slack.
 

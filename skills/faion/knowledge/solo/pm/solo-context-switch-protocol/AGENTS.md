@@ -3,12 +3,16 @@ slug: solo-context-switch-protocol
 tier: solo
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 content_id: "bc0cc0ce638a48aa"
-summary: Opinionated mode-batching protocol for the solo founder day — separates building from inbox/support/ops to cut context-switch cost from hours to minutes.
+summary: Daily Builder/Operator/Inbox mode-batching protocol with silenced notifications, 5-min handoff notes, and a weekly review that turns repeat violations into structural fixes.
+complexity: light
+produces: checklist
+est_tokens: 3300
+tags: [focus, solo, mode-batching, deep-work]
 ---
 # Solo Context Switch Protocol
 
@@ -16,7 +20,14 @@ summary: Opinionated mode-batching protocol for the solo founder day — separat
 
 **One-sentence:** A daily mode-batching protocol — Builder block, Operator block, Inbox block — with hard transitions and a one-page handoff note that compresses the context-switch tax to a few minutes.
 
-**One-paragraph:** Weekly-review-solo handles the strategic cadence. Nothing in faion covers the in-day mode-switching cost, which is the single biggest solo-founder productivity leak. This methodology defines three named modes, the order in which they run, a 5-minute end-of-mode handoff note (what was open, what is next, what the next mode must remember), and a hard rule that no Slack/email/Stripe-alert checking happens inside a Builder block. The protocol is fixed; only the time blocks are configurable. Anchored to "Solo founder operating system (weekly cadence + focus discipline)" — the pain Alex (canonical persona) stated as primary.
+**One-paragraph:** Weekly-review methodologies handle the strategic cadence. Nothing covers the in-day mode-switching cost, which is the single biggest solo-founder productivity leak. This methodology defines three named modes, the order in which they run, a 5-minute end-of-mode handoff note, and a hard rule that no Slack/email/Stripe-alert checking happens inside a Builder block. The protocol is fixed; only time-block windows are configurable.
+
+**Ефективно для:**
+
+- Solo founder splitting the day across building, customer support, and ops/admin.
+- Day pattern that currently looks like "Twitter → email → tried to code → Slack".
+- Calibrating Operator block length when repeat "urgent" interruptions break Builder time.
+- Replacing willpower-based focus with system-based focus.
 
 ## Applies If (ALL must hold)
 
@@ -28,30 +39,61 @@ summary: Opinionated mode-batching protocol for the solo founder day — separat
 ## Skip If (ANY kills it)
 
 - Live incident or P0 outage — the protocol is for normal days; incidents preempt it.
-- Pre-product, no users, no inbox — only one mode is needed (Builder); the protocol is overkill.
-- Operating across multiple time zones with hard-scheduled customer calls all day — block-based mode batching is incompatible with calendar-driven day; use a different operating model.
+- Pre-product, no users, no inbox — only one mode is needed (Builder).
+- Operating across multiple time zones with hard-scheduled customer calls all day — calendar-driven day; use a different operating model.
+- Founder unwilling to silence notifications — the protocol fails by definition.
 
 ## Prerequisites
 
-- Calendar with the ability to recur multi-block templates.
-- OS-level focus / do-not-disturb capability.
-- A handoff-note template (in a notes app or markdown file).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Calendar with recurring multi-block templates | calendar | founder |
+| OS-level focus / do-not-disturb capability | OS | founder |
+| Handoff-note template (notes app or markdown file) | template | founder |
+| Documented incident-override list (P0 outage, charge dispute, security) | doc | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/AGENTS.md` | Parent group context |
-| `solo/pm/burndown-diagnosis-cheatsheet` if present | Sibling — diagnoses when the protocol fails |
+| [[solo-burnout-tripwires]] | Weekly review of block violations feeds the broader burnout signal. |
+| [[solo-time-tracking-discipline]] | Capture-at-boundary aligns with mode boundary; same hour boundaries. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules every day's blocks enforce | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: mode order, notification silence, handoff note, urgency override, weekly violations review | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for daily block log + valid/invalid examples + forbidden patterns | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: inbox-first, no-handoff, urgency-override-creep | ~600 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `handoff_note_compose` | haiku | Mechanical 3-question fill. |
+| `weekly_violations_summary` | sonnet | Per-week pattern analysis (structural-fix vs willpower). |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/daily-blocks.yaml` | Daily block schedule skeleton |
+| `templates/handoff-note.md` | 5-minute handoff template |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-context-switch-protocol.py` | Validate daily block log against 02-output-contract schema | End of day |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- triggering activity: `p1-solo-saas-builder/Solo founder operating system (weekly cadence + focus discipline)`
-- adjacent: `solo/sdd/daily-ship-rubric`, `solo/pm/burnout-tripwires`
+- [[solo-burnout-tripwires]]
+- [[solo-time-tracking-discipline]]
+- [[solo-rate-floor-calculator]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by mode order, notification silence, handoff-note completeness, and weekly violation count onto a rule from `content/01-core-rules.xml`. Walk it at end of day for review and end of week for structural action.

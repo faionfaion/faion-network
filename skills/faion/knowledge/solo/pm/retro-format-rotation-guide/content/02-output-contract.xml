@@ -1,43 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retro Format Rotation Guide — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A guide artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Retro Format Rotation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the rotation guide artefact. Validator enforces last-3-format history present, no-repeat rule, named owner, and outcome-review staleness.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/retro-format-rotation-guide.json",
+  "type": "object",
+  "required": ["team_id", "owner", "last_3_formats", "next_format", "rationale", "team_state", "outcome_review"],
+  "properties": {
+    "team_id": {"type": "string", "minLength": 1},
+    "owner": {"type": "string", "minLength": 1},
+    "last_3_formats": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"type": "string", "enum": ["start-stop-continue", "sailboat", "4ls", "timeline", "anonymous-async", "mad-sad-glad", "lean-coffee"]}
+    },
+    "next_format": {"type": "string", "enum": ["start-stop-continue", "sailboat", "4ls", "timeline", "anonymous-async", "mad-sad-glad", "lean-coffee"]},
+    "rationale": {"type": "string", "minLength": 20},
+    "team_state": {
+      "type": "object",
+      "required": ["distribution", "fatigue_signal"],
+      "properties": {
+        "distribution": {"type": "string", "enum": ["async", "hybrid", "in-person"]},
+        "fatigue_signal": {"type": "string", "enum": ["fresh", "rotating", "fatigued"]}
+      }
+    },
+    "outcome_review": {
+      "type": "object",
+      "required": ["cadence", "last_run_at"],
+      "properties": {
+        "cadence": {"type": "string", "enum": ["next-retro", "monthly", "quarterly"]},
+        "last_run_at": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}
+]]></code>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "team_id": "platform",
+  "owner": "Ruslan",
+  "last_3_formats": ["mad-sad-glad", "4ls", "sailboat"],
+  "next_format": "anonymous-async",
+  "rationale": "Distribution shifted to async after Carol relocated to PT timezone; previous 3 covered in-person variants; rotate to async.",
+  "team_state": {"distribution": "async", "fatigue_signal": "rotating"},
+  "outcome_review": {"cadence": "next-retro", "last_run_at": "2026-05-09"}
+}
+]]></code>
+  </example>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "team_id": "platform",
+  "owner": "team",
+  "last_3_formats": ["sailboat", "sailboat", "sailboat"],
+  "next_format": "sailboat",
+  "rationale": "everyone likes it",
+  "team_state": {"distribution": "remote", "fatigue_signal": "tired"},
+  "outcome_review": {"cadence": "ad-hoc", "last_run_at": ""}
+}
+]]></code>
+    <note>owner is team, no-repeat rule violated, rationale too short, distribution + fatigue_signal not in enum, outcome_review.cadence not in enum.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">next_format in last_3_formats (no-repeat-in-3 rule)</pattern>
+      <pattern id="f2">rationale &lt; 20 chars (vague picking)</pattern>
+      <pattern id="f3">owner is a team / channel</pattern>
+      <pattern id="f4">outcome_review.cadence not in enum</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Lowercase format strings before enum check.</transformation>
+      <transformation>Default outcome_review.cadence to "next-retro" when omitted.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-retro-format-rotation-guide.py">Validator script</reference>
 </text>

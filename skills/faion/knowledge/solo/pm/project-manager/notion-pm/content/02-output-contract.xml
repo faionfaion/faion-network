@@ -1,22 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="notion-pm Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Notion PM Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the workspace configuration artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/notion-pm.json",
+  "type": "object",
+  "required": ["projects_db_id", "tasks_db_id", "sprints_db_id", "properties_per_db", "uses_rollups", "archive_cutoff_days", "rate_limit_per_sec"],
+  "properties": {
+    "projects_db_id": {"type": "string", "pattern": "^[0-9a-f-]{36}$"},
+    "tasks_db_id": {"type": "string", "pattern": "^[0-9a-f-]{36}$"},
+    "sprints_db_id": {"type": "string", "pattern": "^[0-9a-f-]{36}$"},
+    "properties_per_db": {
+      "type": "object",
+      "properties": {
+        "projects": {"type": "integer", "minimum": 1, "maximum": 20},
+        "tasks": {"type": "integer", "minimum": 1, "maximum": 20},
+        "sprints": {"type": "integer", "minimum": 1, "maximum": 20}
+      },
+      "required": ["projects", "tasks", "sprints"]
+    },
+    "uses_rollups": {"type": "boolean", "const": true},
+    "uses_status_property": {"type": "boolean", "const": true},
+    "archive_cutoff_days": {"type": "integer", "minimum": 30, "maximum": 365},
+    "active_task_count": {"type": "integer", "minimum": 0, "maximum": 500},
+    "rate_limit_per_sec": {"type": "number", "minimum": 0.1, "maximum": 3},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "projects_db_id": "11111111-1111-1111-1111-111111111111",
+  "tasks_db_id": "22222222-2222-2222-2222-222222222222",
+  "sprints_db_id": "33333333-3333-3333-3333-333333333333",
+  "properties_per_db": {"projects": 12, "tasks": 18, "sprints": 9},
+  "uses_rollups": true,
+  "uses_status_property": true,
+  "archive_cutoff_days": 90,
+  "active_task_count": 312,
+  "rate_limit_per_sec": 2.5,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "projects_db_id": "not-a-uuid",
+  "tasks_db_id": "22222222-2222-2222-2222-222222222222",
+  "properties_per_db": {"projects": 35, "tasks": 50, "sprints": 9},
+  "uses_rollups": false,
+  "archive_cutoff_days": 730,
+  "rate_limit_per_sec": 50
+}
+]]></code>
+    <note>projects_db_id not UUID, properties_per_db exceeds 20, uses_rollups must be true, archive cutoff too long, rate_limit above 3 req/sec, missing required fields.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Formula that iterates prop("relation") to count or sum related rows (use Rollup)</pattern>
+      <pattern id="f2">Select property used for task workflow state (must be Status)</pattern>
+      <pattern id="f3">Single database holding tasks + projects + sprints flat (must be 3 relational)</pattern>
+      <pattern id="f4">rate_limit_per_sec &gt; 3 (Notion enforces 3 req/sec/token)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Default rate_limit_per_sec to 2.5 when omitted (margin under the 3 req/sec ceiling).</transformation>
+      <transformation>Default archive_cutoff_days to 90 when omitted.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-notion-pm.py">Validator script</reference>
 </text>

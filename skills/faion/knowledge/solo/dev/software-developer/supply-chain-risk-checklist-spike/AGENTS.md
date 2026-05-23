@@ -57,7 +57,7 @@ tags: [supply-chain, dependency-risk, library-evaluation, security, sbom]
 | Methodology | Why |
 |-------------|-----|
 | [[security-testing]] | consumer of this report; library risk feeds into release security pass. |
-| [[supply-chain-risk-checklist-spike]] | self-reference for re-evaluation cycle. |
+| [[openapi-specification]] | API surface consumers consider before adopting a transitive library risk. |
 
 ## Content (load on demand)
 

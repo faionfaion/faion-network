@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Context Switch Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the daily block log artefact. Validator enforces the mode order, notification-silence flag, and handoff-note presence per block.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-context-switch-protocol.json",
+  "type": "object",
+  "required": ["date", "blocks", "violations_today", "urgency_overrides_today"],
+  "properties": {
+    "date": {"type": "string", "format": "date"},
+    "blocks": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["mode", "window", "handoff_note"],
+        "properties": {
+          "mode": {"type": "string", "enum": ["builder", "operator", "inbox"]},
+          "window": {"type": "string"},
+          "notifications": {"type": "string", "enum": ["silenced", "open"]},
+          "handoff_note": {"type": "string", "minLength": 20}
+        }
+      }
+    },
+    "first_block_mode": {"type": "string", "enum": ["builder"]},
+    "violations_today": {"type": "integer", "minimum": 0},
+    "urgency_overrides_today": {"type": "integer", "minimum": 0}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "date": "2026-05-20",
+  "blocks": [
+    {"mode": "builder", "window": "09:00-12:00", "notifications": "silenced", "handoff_note": "Open: checkout-retry. Next: exp vs fixed backoff. Operator: env STRIPE_RETRY_MAX=5."},
+    {"mode": "operator", "window": "13:00-15:00", "notifications": "open", "handoff_note": "Closed 2 DMs + refund. Next: data-export FAQ. Builder: nothing."},
+    {"mode": "inbox", "window": "15:00-16:00", "notifications": "open", "handoff_note": "Inbox zero. Next: tomorrow Builder agenda set."}
+  ],
+  "first_block_mode": "builder",
+  "violations_today": 0,
+  "urgency_overrides_today": 0
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "date": "2026-05-20",
+  "blocks": [
+    {"mode": "inbox", "window": "09:00-09:30", "notifications": "open", "handoff_note": ""},
+    {"mode": "builder", "window": "09:30-11:00", "notifications": "open", "handoff_note": ""}
+  ],
+  "first_block_mode": "inbox",
+  "violations_today": 5,
+  "urgency_overrides_today": 4
+}
+]]></code>
+    <note>first_block_mode must be builder; Builder block notifications must be silenced; handoff_notes empty; high violations + urgency overrides need structural-fix action.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">first_block_mode != builder</pattern>
+      <pattern id="f2">builder block with notifications != silenced</pattern>
+      <pattern id="f3">block with handoff_note shorter than 20 chars (template not filled)</pattern>
+      <pattern id="f4">urgency_overrides_today &gt; 2 (override list abused)</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Normalise mode strings to lowercase.</transformation>
+      <transformation>Compute first_block_mode from blocks[0].mode if omitted.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-solo-context-switch-protocol.py">Validator script</reference>
+</text>

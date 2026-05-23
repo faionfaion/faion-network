@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Reporting Dashboards Procedure" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>7-step pipeline to apply reporting-dashboards end-to-end.</summary>
+  <section title="Procedure">
+    <step n="1" name="audit-data-quality">
+      <input>Sprint id + JQL/GraphQL query</input>
+      <action>List issues without estimates, status=Done + resolution=Unresolved, status=In Progress + no assignee. If &gt;5% of sprint size → abort with "fix data first" alert.</action>
+      <output>Audit result OK / FIX-DATA-FIRST.</output>
+      <decision-gate>If FIX-DATA-FIRST → halt the pipeline; do not generate the report.</decision-gate>
+    </step>
+    <step n="2" name="lock-schema">
+      <input>Report schema JSON in repo</input>
+      <action>Read status enum, threshold table, metric list, archival path, dashboard URL. No ad-hoc additions.</action>
+      <output>Schema loaded.</output>
+    </step>
+    <step n="3" name="fetch-read-only">
+      <input>Read-only token + pagination cursor</input>
+      <action>Paginate until done. Persist raw JSON to disk with timestamp before computing.</action>
+      <output>Raw JSON archive.</output>
+    </step>
+    <step n="4" name="compute-multi-metric-health">
+      <input>Raw JSON + threshold table</input>
+      <action>Compute completion_rate, scope_creep (issues added after day 2), blocked_count. Apply thresholds → status enum.</action>
+      <output>Metrics + status.</output>
+    </step>
+    <step n="5" name="validate">
+      <input>Metrics + audit</input>
+      <action>Check committed&gt;0, fetch_errors==0, sprint_start_date&lt;=today. If any fails → error alert + exit non-zero.</action>
+      <output>Validated boolean.</output>
+      <decision-gate>On validation fail → DO NOT deliver; alert engineering and stop.</decision-gate>
+    </step>
+    <step n="6" name="archive">
+      <input>Rendered Markdown + raw JSON</input>
+      <action>Write to durable store (S3/Notion/GitHub issue/repo path) with sprint id + timestamp.</action>
+      <output>archive_url.</output>
+    </step>
+    <step n="7" name="deliver">
+      <input>Validated report + archive_url</input>
+      <action>Post Block-Kit (chunk &gt;3000 chars) to Slack OR push to BI sink. For executive reports, route to human checkpoint queue with 1-2 sentence narrative slot.</action>
+      <output>delivered_to list.</output>
+    </step>
+  </section>
+</text>

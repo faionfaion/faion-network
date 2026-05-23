@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Prepare software for multiple languages and locales via ICU MessageFormat, externalised strings, locale-aware formatting, and RTL-ready CSS.
-content_id: "66f987770d3b9b55"
+content_id: "096cf21fda14af00"
 complexity: medium
 produces: code
 est_tokens: 4000
