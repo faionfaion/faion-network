@@ -1,3 +1,8 @@
+// purpose: Next.js config with experimental flags + image domains
+// consumes: See content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~200-1000 tokens when loaded as context
 // next.config.ts — production-ready baseline
 // Requires: npm i -D @next/bundle-analyzer
 import type { NextConfig } from 'next';

@@ -1,42 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="monorepo-turborepo Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for monorepo-turborepo as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Circular package dependencies: packages/a depends on packages/b, which depends on packages/a.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Turborepo cannot compute a valid execution order for a cycle; the build hangs or fails with an opaque error. Extract the shared code into a third package with no internal dependencies.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Phantom dependencies: package uses a library that works in development because it is hoisted to the root node_modules, but the package.json does not declare it as a dependency.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The build works locally but fails on a clean install or after publishing because the transitive dep is no longer guaranteed to be present. Always declare every import as an explicit dependency.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hardcoded relative imports across packages: import { Button } from '../../../packages/ui/src/button'.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Relative cross-package imports bypass the exports map, break on publish, and are invisible to Turborepo's dependency graph. Always use the package name: import { Button } from '@org/ui'.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Outputs path mismatch: turbo.json declares outputs: ["dist/**"] but the build tool emits to out/.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Turborepo caches an empty directory. Future CI runs get a cache hit with no files, then fail during the next task that consumes the outputs. Use --summarize to inspect what was actually cached.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Undeclared environment variables in env / globalEnv that affect the build output.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The same task hash is computed for both NODE_ENV=development and NODE_ENV=production builds, so the prod artifact gets served as the dev build (or vice versa). Every env var that changes output must be declared.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Caching dev and start tasks, or caching non-deterministic tasks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Dev servers are non-deterministic and never complete. Caching them stores incomplete state and breaks subsequent runs that depend on the server being available.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Caching tasks as dev when they should not be cached because they have side effects or random output.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any task with "cache": false must also have "persistent": true to prevent Turborepo from treating the task as one-shot.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Monorepo with Turborepo Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying monorepo-turborepo. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-mixed-package-manager" severity="high">
+      <symptom>Repo has package-lock.json + pnpm-lock.yaml; developers install with whatever they have; transitive deps differ.</symptom>
+      <root-cause source="Practitioner experience">pnpm migration started but not finished.</root-cause>
+      <fix>Delete non-pnpm lockfiles. Add CI check that fails on `package-lock.json` or `yarn.lock` presence. Verify pnpm version pinned via packageManager field.</fix>
+    </antipattern>
+    <antipattern id="fm-floating-deps" severity="high">
+      <symptom>Build succeeds on dev machine, fails in CI because a transitive dep released a breaking patch.</symptom>
+      <root-cause source="Practitioner experience">Versions use `^` ranges; minor differences in installed deps.</root-cause>
+      <fix>Pin all direct deps exactly. Set up Renovate to propose upgrades as PRs.</fix>
+    </antipattern>
+    <antipattern id="fm-no-outputs-no-cache" severity="medium">
+      <symptom>turbo build re-runs everything every time; CI takes 20 minutes per push.</symptom>
+      <root-cause source="Practitioner experience">Tasks declared without outputs; turbo cannot cache.</root-cause>
+      <fix>Add outputs to every task. Verify cache hit rate &gt; 70% after the next CI run; iterate if not.</fix>
+    </antipattern>
+    <antipattern id="fm-bypass-script" severity="medium">
+      <symptom>Root scripts include `prebuild: pnpm -r run prebuild` that bypasses turbo; cache miss across the board.</symptom>
+      <root-cause source="Practitioner experience">Author wanted finer control; bypassed pipeline.</root-cause>
+      <fix>Migrate to a turbo task with proper dependsOn. Remove direct -r commands from root scripts.</fix>
+    </antipattern>
   </section>
 </text>

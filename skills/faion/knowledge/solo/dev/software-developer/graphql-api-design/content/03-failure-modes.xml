@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="graphql-api-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for graphql-api-design as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Resolver eagerly loads all related entities in the parent query, regardless of whether the client requested them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Executes DB queries for data the client never uses, degrading performance proportionally to the number of unused relations loaded.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>List field returns all items with no pagination: async def users(self) -&gt; List[User].</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Returns millions of rows in one request on a large dataset. All list fields that could grow must use cursor-based Connection types with server-enforced size caps.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mutations raise exceptions for business errors (validation, not found, conflict) instead of returning typed error payloads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Exceptions become opaque errors[] entries with no type information. Clients cannot distinguish "user not found" from "permission denied" without string-matching error messages.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Schema breaking changes (renaming or removing a field) merged without a deprecation cycle and schema diff check in CI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Clients that query the renamed/removed field receive a GraphQL error. Breaking changes require @deprecated(reason: "..."), usage analytics to confirm zero traffic, then removal.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="GraphQL API Design Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying graphql-api-design. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-scalar-mutation-return" severity="high">
+      <symptom>createOrder returns Boolean; six months later, schema cannot communicate which fields had validation errors.</symptom>
+      <root-cause source="Practitioner experience">Author shortcut payload type; later additions break clients.</root-cause>
+      <fix>Add CreateOrderPayload type with order + userErrors. Migrate clients; deprecate scalar return; remove after grace window.</fix>
+    </antipattern>
+    <antipattern id="fm-inline-auth-drift" severity="high">
+      <symptom>Each resolver does its own scope check; an audit finds two resolvers missing the check entirely.</symptom>
+      <root-cause source="Practitioner experience">No centralised authorization model.</root-cause>
+      <fix>Move auth to @auth directive applied in SDL. Run an audit script that lists every protected field; reviewer signs off on directive coverage.</fix>
+    </antipattern>
+    <antipattern id="fm-offset-pagination-mix" severity="medium">
+      <symptom>Some lists use Connection/Edge; others use plain arrays with offset args; clients keep two pagination code paths.</symptom>
+      <root-cause source="Practitioner experience">Naming convention not enforced from the start.</root-cause>
+      <fix>Migrate all paginated lists to Connection. Run schema lint with relay-compatible rule.</fix>
+    </antipattern>
+    <antipattern id="fm-raw-scalar-id" severity="medium">
+      <symptom>Relation `author: User` resolves on `int` id leaked from Postgres; later migration to UUID breaks clients.</symptom>
+      <root-cause source="Practitioner experience">Storage detail leaked into the schema.</root-cause>
+      <fix>Wrap with opaque ID type (Relay global ID). Server decodes; storage detail is hidden.</fix>
+    </antipattern>
   </section>
 </text>

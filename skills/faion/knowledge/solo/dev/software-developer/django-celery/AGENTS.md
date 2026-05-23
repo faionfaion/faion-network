@@ -3,74 +3,99 @@ slug: django-celery
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for integrating Celery into Django applications: every async task must declare explicit name, idempotency guard, retry policy (max_retries, retry_backoff, retry_jitter), and time limits (soft_time_limit, time_limit).
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Integrate Celery into Django with explicit task names, idempotency, retry policy, time limits, and DLQ for every async task.
 content_id: "f08c7e65f5c4fc81"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [django, celery, async, task-queue, redis]
 ---
 # Django Celery Tasks
 
 ## Summary
 
-**One-sentence:** A methodology for integrating Celery into Django applications: every async task must declare explicit name, idempotency guard, retry policy (max_retries, retry_backoff, retry_jitter), and time limits (soft_time_limit, time_limit).
+**One-sentence:** Integrate Celery into Django with explicit task names, idempotency, retry policy, time limits, and DLQ for every async task.
 
-**One-paragraph:** A methodology for integrating Celery into Django applications: every async task must declare explicit name, idempotency guard, retry policy (max_retries, retry_backoff, retry_jitter), and time limits (soft_time_limit, time_limit). Tasks receive primitive IDs only — never model instances. Queues map to workload classes; workers are deployed as systemd services per queue.
+**One-paragraph:** Every Celery task declares an explicit name, an idempotency guard, retry policy (max_retries, retry_backoff, retry_jitter), and time limits (soft_time_limit, time_limit). Tasks land on a named queue with a known worker pool. Failures route to a dead-letter queue with alert + retry policy. Output is task module code + queue config + monitoring spec.
+
+**Ефективно для:**
+
+- Building reliable async pipelines (emails, webhooks, ETL, report generation).
+- Replacing synchronous request handlers with background processing.
+- Designing predictable retry + failure semantics across many task types.
+- Onboarding engineers to a Celery codebase with consistent conventions.
 
 ## Applies If (ALL must hold)
 
-- Offloading work that exceeds ~500ms inside an HTTP request (emails, PDF gen, image processing).
-- Scheduled jobs (Celery beat) replacing cron for deploy-portable scheduling.
-- Fan-out workloads (nightly digests, batch notifications) with concurrency limits.
-- Webhook receivers that must return 200 immediately and process async.
-- Retry-with-backoff for flaky upstreams without poisoning the request thread.
+- Django project with Celery 5+ as the async runner.
+- Broker is Redis or RabbitMQ; result backend chosen.
+- Tasks have user-visible failure modes (retry, alert, DLQ).
+- Operations team needs visibility into task health (Flower, Prometheus exporters).
 
 ## Skip If (ANY kills it)
 
-- Sub-second jobs already inside the request — Celery overhead dominates.
-- Strict-ordering pipelines with stateful dependencies — use Prefect/Temporal/Dagster.
-- Streaming or exactly-once semantics — Celery is at-least-once; design idempotency or use Kafka.
-- Tasks needing mid-flight cancellation across many workers — Celery revoke is best-effort.
-- Apps already on django-q2, huey, dramatiq, or arq where switching costs don't pay back.
+- Sync request handling is fast enough — Celery adds complexity without payoff.
+- Use case is a single cron job (django-extensions runscript or crontab is simpler).
+- Project uses a different runner (RQ, Dramatiq, Huey) — methodology specifics differ.
+- Long-running pipelines belong in Airflow / Prefect, not Celery.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task inventory: name, trigger, payload shape, frequency | table | tech-lead |
+| Broker + result backend chosen + version pinned | config | platform |
+| Queue topology decision: per-priority or per-domain queues | ADR | tech-lead |
+| Alerting integration (PagerDuty, Slack) for DLQ events | endpoint | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[django-services]] | Tasks call into service-layer functions. |
+| [[logging-patterns]] | Structured logs around task lifecycle. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (explicit name, idempotency, retry policy, time limits, named queues, DLQ) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for Celery task module spec + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: inventory → name + idempotency → policies → queues → monitoring | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `task_authoring` | sonnet | Mechanical task module emission with policies. |
+| `queue_topology_design` | opus | Cross-cutting decision about isolation + priority. |
+| `dlq_alerting_wire_up` | sonnet | Plumbing exporters + alert routes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/task-idempotent.py` | Celery task template with idempotency, retry, time limits |
+| `templates/celery-worker.service` | systemd unit for worker |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-celery.py` | Validate the task module spec metadata against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[django-services]]
+- [[message-queues]]
+- [[logging-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps async need, runner choice, and reliability requirements to a rule from `01-core-rules.xml`, telling the agent whether to apply the Celery conventions or skip in favour of a different runner or sync handling. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

@@ -1,93 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="E2E Framework Migration — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules that prevent multi-week migration projects from stalling forever, dual-running forever, or shipping broken cutovers.</summary>
+<text id="01-core-rules" title="E2E Framework Migration Playbook Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every E2E Framework Migration Playbook application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
 
     <rule id="r1-parity-before-cutover" testable="true" depth="essential">
-      <statement>Before flag-flip (Wave 3), the team MUST demonstrate functional parity: every customer-visible behavior covered by an existing test passes equivalently on the new framework. Parity gate fails if any test passes on old AND fails on new, with no documented justification (and ticket to fix).</statement>
-      <rationale source="Strangler-fig literature, large-scale migration case studies (Etsy, Stripe, Shopify)">Skipping parity creates "the new system mostly works" surprises in production — the most expensive class of migration defect because rollback is harder once cutover commits. Parity gate is the cheap insurance.</rationale>
+      <statement>Wave 3 cutover requires every targeted module to have a passing parity test pair (old framework + new framework producing equivalent observable behaviour).</statement>
+      <rationale source="Strangler pattern + migration literature">Cutover without parity means regressions hide until customers find them; parity tests are the only objective gate.</rationale>
     </rule>
 
     <rule id="r2-codemod-where-mechanical" testable="true" depth="essential">
-      <statement>For mechanical transformations (API rename, import-path change, syntax shift), an automated codemod MUST be written and applied. Manual conversion of mechanical changes is forbidden — it introduces inconsistency and slows the migration. Codemod scope is documented; non-mechanical changes (semantic differences) get human review per module.</statement>
-      <rationale source="Facebook jscodeshift case studies, Vue Migration Build patterns">Manual mechanical changes have ~5% defect rate even with senior engineers; codemods have &lt;0.5% on the mechanical portion. Codemods also force the team to articulate which changes are mechanical vs semantic, which reveals migration risk early.</rationale>
+      <statement>Wave 2 prefers automated codemods (jscodeshift, libcst, ast-grep) over hand-edits for any transformation affecting &gt;=10 files.</statement>
+      <rationale source="Practitioner experience">Hand-edits at scale introduce drift; codemods are reviewable transformations applied uniformly.</rationale>
     </rule>
 
-    <rule id="r3-dual-window" testable="true" depth="essential">
-      <statement>Wave 2 (parallel build) MUST include a documented dual-write OR dual-test window: either both frameworks run in parallel (dual-write for stateful), or both test suites run in CI (dual-test for tests), for a defined duration (typically 1-3 weeks). The window has an explicit end date — forbidden: indefinite dual-running.</statement>
-      <rationale source="Dual-write migration patterns (database / framework), continuous-delivery research">Dual-running is a safety net during parallel build but becomes tech debt if perpetual. Explicit end date forces commitment to cutover and prevents the "we'll just keep both" stall pattern that kills many migrations at 70% complete.</rationale>
+    <rule id="r3-dual-test-window" testable="true" depth="essential">
+      <statement>During Wave 2, both old and new code paths are exercised in CI by parity tests until decommission is approved.</statement>
+      <rationale source="Practitioner experience">Single-path testing during dual-run misses regressions in whichever side stops running; running both keeps both honest.</rationale>
     </rule>
 
     <rule id="r4-rollback-path-per-wave" testable="true" depth="essential">
-      <statement>Each wave MUST have a documented rollback path that can be executed within a defined RTO (typically &lt;= 30 min). The rollback path is exercised at least once before the next wave begins (rollback fire drill). Wave entry is blocked until prior-wave rollback is rehearsed.</statement>
-      <rationale source="SRE / disaster-recovery research, deployment-safety literature">Untested rollback paths fail in actual emergencies. Rehearsal turns "we can roll back" from hope into a tested capability. The 30-min RTO keeps the rollback realistic — long rollbacks are not actually rollbacks; they're new outages.</rationale>
+      <statement>Every wave has a documented rollback procedure with maximum 30 minutes time-to-rollback. No wave is started without it.</statement>
+      <rationale source="Practitioner experience">Migration risk is dominated by the absence of rollback; documenting the path forces the failure modes into the open.</rationale>
     </rule>
 
-    <rule id="r5-decommission-non-skippable" testable="true" depth="essential">
-      <statement>Wave 4 (decommission) MUST be executed. The old framework / language / library is removed from the codebase, feature flags retired, related CI jobs deleted, documentation updated to reference only the new system. Migrations that skip Wave 4 are NOT complete — they leave dual-system tech debt that compounds future migrations.</statement>
-      <rationale source="Tech-debt accumulation research, organizational learning on stalled migrations">Empirically, migrations that skip decommission produce 2-3x harder NEXT migrations because the codebase now has both old AND new frameworks indefinitely. Forcing Wave 4 prevents this compound debt.</rationale>
+    <rule id="r5-decommission-is-non-skippable" testable="true" depth="essential">
+      <statement>Wave 4 decommission is part of the playbook, not optional. Leaving old framework in 'just in case' is not a wave exit.</statement>
+      <rationale source="Practitioner experience">Skipped decommission compounds debt and prevents future migrations; the fourth wave closes the migration.</rationale>
     </rule>
 
-  </section>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
 
-  <section title="Canonical example">
-
-    <example type="good" title="Wave-2 module port with codemod + parity test">
-      <code lang="text"><![CDATA[
-Migration: Cypress -> Playwright (3-month plan)
-Wave: 2 (parallel build), Module: checkout-flow
-
-Inventory:
-  - 18 Cypress tests in tests/e2e/checkout/*.cy.ts
-  - 4 use cy.intercept (mechanical port via codemod)
-  - 12 use cy.get + chai assertions (mechanical port + assertion-style change via codemod)
-  - 2 use cy.task (semantic — needs human review, no codemod)
-
-Codemod authored: scripts/cypress-to-playwright-codemod.ts
-  Handles: cy.get -> page.locator, cy.intercept -> page.route,
-           chai -> expect, cy.visit -> page.goto.
-
-Applied to: 16 mechanical tests. Code review confirmed no semantic drift.
-Manual port: 2 cy.task tests; review by checkout-feature owner.
-
-Parity test:
-  Ran Cypress and Playwright suites against the same staging deploy.
-  Result: 17/18 pass on both. 1 difference: Playwright detected a
-  real timing bug Cypress was masking. Filed ticket TICKET-2340,
-  documented as a discovered issue (not a migration defect).
-
-Wave entry/exit:
-  Entry criteria met: ADR-2026-005 approved, Wave 1 PoC passed parity.
-  Exit criteria for this module: codemod applied + parity pass +
-  PR merged + rollback documented (revert PR ready in branch).
-
-Status: module-DONE; 8 of 12 checkout-flow modules complete.
-Dual-test window: ends 2026-06-15 (2 weeks from now).
-      ]]></code>
-      <note>Illustrates r1-r4: parity gate, codemod for mechanical, dual-window with end date, rollback ready.</note>
-    </example>
-
-    <example type="bad" title="Parallel-run-forever stall">
-      <code lang="text"><![CDATA[
-Migration: Selenium -> Playwright
-Started: 12 months ago
-Current state:
-  - 60% of tests on Playwright
-  - 40% still on Selenium
-  - CI runs BOTH suites on every PR (3x build time)
-  - "We'll finish next quarter" -- has been said 4 times
-  - No flag-flip date. No decommission plan. No Wave 4.
-
-Outcome: developers double-maintain tests, both suites get stale,
-flaky tests accumulate, team morale degrades, migration never closes.
-
-Repair: enforce r3 + r5. Set hard end date for dual-window. After
-end date, remaining Selenium tests are converted in a 2-week sprint
-OR retired with explicit rationale. Wave 4 happens.
-      ]]></code>
-      <note>Illustrates r3, r5 violations — the most common migration failure: parallel-running forever.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
 
   </section>
 

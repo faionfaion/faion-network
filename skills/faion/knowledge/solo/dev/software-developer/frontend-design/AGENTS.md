@@ -3,74 +3,101 @@ slug: frontend-design
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A multi-phase workflow for solopreneur-scale UI projects: fix requirements (type, style, tech), generate 3-5 truly distinct design variants differing in navigation pattern and information density, render them to screenshots for comparison, select one based on human taste, define design tokens before components, scaffold Storybook with pinned versions, and deliver components colocated with stories and tests.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run a multi-phase workflow that produces 3-5 distinct UI design variants, picks one by taste, and ships components colocated with stories and tests.
 content_id: "5ae6e00f1000265b"
+complexity: medium
+produces: spec
+est_tokens: 4600
 tags: [frontend-design, ui-design, design-tokens, storybook, component-library]
 ---
 # Frontend Design
 
 ## Summary
 
-**One-sentence:** A multi-phase workflow for solopreneur-scale UI projects: fix requirements (type, style, tech), generate 3-5 truly distinct design variants differing in navigation pattern and information density, render them to screenshots for comparison, select one based on human taste, define design tokens before components, scaffold Storybook with pinned versions, and deliver components colocated with stories and tests.
+**One-sentence:** Run a multi-phase workflow that produces 3-5 distinct UI design variants, picks one by taste, and ships components colocated with stories and tests.
 
-**One-paragraph:** A multi-phase workflow for solopreneur-scale UI projects: fix requirements (type, style, tech), generate 3-5 truly distinct design variants differing in navigation pattern and information density, render them to screenshots for comparison, select one based on human taste, define design tokens before components, scaffold Storybook with pinned versions, and deliver components colocated with stories and tests. Tokens come first; components inherit from them to prevent color hardcoding and post-hoc drift.
+**One-paragraph:** Solopreneur-scale UI projects move from fixed requirements (type, style, tech) to 3-5 distinct design variants differing in navigation pattern and information density, rendered to screenshots for comparison, selected by human taste, defined as design tokens before components, scaffolded with Storybook on pinned versions, and delivered as components colocated with stories and tests. Output is a frontend spec + token system + component library scaffolded in Storybook.
+
+**Ефективно для:**
+
+- Greenfield UI projects where the visual direction is open.
+- Redesigns where stakeholders need to compare distinct directions rather than iterate one.
+- Token + component-library decisions made before any production component lands.
+- Solopreneur or small-team contexts without a dedicated design system team.
 
 ## Applies If (ALL must hold)
 
-- Greenfield frontend (landing, dashboard, marketing site) where visual direction is open.
-- Component library bootstrap before product features land (storybook.faion.net pattern).
-- Rebrand / redesign passes that need 3-5 explored variants before committing.
-- Solopreneur-scale projects (faion.net portfolio sites: ruslan, viktoria, art) — designer + dev are the same person + agents.
-- Translating brand brief or PRD into concrete tokens (colors, type scale, spacing) and components.
+- Project ships a UI with non-trivial component count (>=20 components).
+- Visual direction is undecided or being deliberately revisited.
+- Tech stack supports Storybook (React/Vue/Svelte/Angular/Web Components).
+- Engineer has authority to pick design direction (no enforced design system to inherit).
 
 ## Skip If (ANY kills it)
 
-- Active production UI with established design system — variant brainstorming is wasted; iterate on tokens instead.
-- Pure backend or CLI projects.
-- Brownfield refactors where scope is "make this page faster", not "redesign".
-- Native mobile (iOS/Android) — patterns assume web (HTML/CSS/JSX); use platform-native tools.
-- Engineering-driven internal admin tools where utility outweighs aesthetics.
+- Existing design system locks all visual decisions — no design phase needed.
+- Project is a one-page marketing site — variant generation overhead exceeds value.
+- Team has a dedicated design crew — handoff workflow differs.
+- Component count <=5 — direct build is faster than the workflow.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief: app type, style direction, tech stack (React/Vue/etc) | doc | product |
+| Component inventory (estimated count + key flows) | list | tech-lead |
+| Storybook version + framework adapter pinned | config | platform |
+| Screenshot tooling (Playwright or Chromatic) for variant render | tool | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[design-tokens]] | Tokens are defined before components. |
+| [[ui-component-library]] | Component library structure follows separately. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules (3-5 distinct variants, screenshot before decide, tokens before components, Storybook pinned versions, colocate story+test+component) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for frontend spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: fix-requirements → variants → screenshots → select → tokens → scaffold | 800 |
+| `content/05-examples.xml` | essential | Worked example: SaaS dashboard variant comparison | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `variant_generation` | opus | Generating truly distinct variants requires deep visual synthesis. |
+| `screenshot_render` | sonnet | Mechanical: run Playwright against each variant. |
+| `token_extraction` | sonnet | Extract values from chosen variant for token system. |
+| `storybook_scaffold` | sonnet | Storybook setup with pinned versions + addons. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| none | This methodology ships no template files. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/render-variants.sh` | Playwright/Chromatic script to render variant screenshots | Wave 3 of procedure: screenshot all variants |
+| `scripts/validate-frontend-design.py` | Validate the frontend spec artefact against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[design-tokens]]
+- [[ui-component-library]]
+- [[tailwind-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps project scope, design ownership, and component count to a rule from `01-core-rules.xml`, telling the agent whether to run the full design workflow or skip when the design direction is fixed by inheritance. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

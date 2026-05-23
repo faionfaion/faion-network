@@ -1,22 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="feature-flags Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Feature Flags Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/feature-flags.json",
+  "type": "object",
+  "required": ["flag_key", "owner", "created_at", "expires_at", "default_variant", "variants", "cleanup_pr_url"],
+  "properties": {
+    "flag_key": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+    "owner": {"type": "string", "format": "email"},
+    "created_at": {"type": "string", "format": "date"},
+    "expires_at": {"type": "string", "format": "date"},
+    "default_variant": {"type": "string"},
+    "variants": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+    "is_kill_switch": {"type": "boolean"},
+    "cleanup_pr_url": {"type": "string", "pattern": "^https?://"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "flag_key": "new_checkout_flow",
+  "owner": "team-payments@example.com",
+  "created_at": "2026-05-23",
+  "expires_at": "2026-08-23",
+  "default_variant": "off",
+  "variants": ["off", "on"],
+  "is_kill_switch": false,
+  "cleanup_pr_url": "https://github.com/example/repo/pull/123"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "flag_key": "NewCheckoutFlow",
+  "owner": "someone",
+  "variants": ["on"]
+}
+]]></code>
+    <note>flag_key not snake_case, owner not email, variants has fewer than 2, missing expires_at + cleanup_pr_url.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Flag without expires_at (open-ended lifecycle)</pattern>
+      <pattern id="f2">Flag without cleanup_pr_url (no queued cleanup)</pattern>
+      <pattern id="f3">Risky feature without is_kill_switch == true</pattern>
+      <pattern id="f4">Flag evaluation with side effects (DB write, remote call) inside the evaluation path</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Lowercase flag_key.</transformation>
+      <transformation>Default is_kill_switch to false when omitted.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-feature-flags.py">Validator script</reference>
 </text>

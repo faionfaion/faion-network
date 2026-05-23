@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Render variant screenshots via Playwright
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 # render-variants.sh — render all design variants to PNG for review
 # Input:  $1 = variants root dir (default: designs/)
 #         $2 = output dir (default: .tmp/variants/)

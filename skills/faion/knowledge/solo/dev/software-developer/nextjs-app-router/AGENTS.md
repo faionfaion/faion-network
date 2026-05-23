@@ -3,74 +3,98 @@ slug: nextjs-app-router
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Modern Next.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Build with Next.js 14+ App Router using server components by default, server actions for mutations, and explicit `'use client'` boundaries.
 content_id: "307eeb4aa296acea"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [nextjs, react, server-components, routing, app-router]
 ---
 # Next.js App Router
 
 ## Summary
 
-**One-sentence:** Modern Next.
+**One-sentence:** Build with Next.js 14+ App Router using server components by default, server actions for mutations, and explicit `'use client'` boundaries.
 
-**One-paragraph:** Modern Next.js (13+) routing using React Server Components as the default, with client components only at the leaves. Covers segment structure (page.tsx, loading.tsx, error.tsx), Server Actions for mutations, Route Handlers for API endpoints, and middleware for auth.
+**One-paragraph:** Modern Next.js apps default to React Server Components in app/; client interactivity lives only behind explicit `'use client'` boundaries. Mutations use server actions (no API routes for form submits). Loading + error states use the conventions (loading.tsx, error.tsx) per segment. Data fetching is colocated with the component. Output is the routing tree + server/client boundaries + server action set.
+
+**Ефективно для:**
+
+- Greenfield Next.js >=14 apps.
+- Migrating Pages Router projects to App Router.
+- Replacing client-fetch + spinner patterns with server-rendered + suspense.
+- Producing SEO-friendly + fast-paint marketing or product surfaces.
 
 ## Applies If (ALL must hold)
 
-- New Next.js 13+ projects (App Router is the default; Pages Router is legacy).
-- SSR/SSG/ISR products where SEO and first-paint matter.
-- Apps with deep nested layouts and per-segment loading/error UI.
-- Server-first stacks calling the DB directly from RSCs without an internal API.
-- Form-heavy products using Server Actions with progressive enhancement.
+- Next.js >=14 (App Router stable).
+- Stack supports server runtime (Node or Edge) — not static export only.
+- Project owns the routing layer (not embedded into another framework).
+- Team is comfortable with React Server Components mental model.
 
 ## Skip If (ANY kills it)
 
-- Migrating a working Pages Router app with no concrete pain — rewrite cost rarely pays off.
-- Static portfolio/brochure sites — Astro/Gatsby/11ty are simpler and cheaper.
-- Heavy realtime/dashboard SPAs — Vite + React Router is lighter; RSC adds little.
-- Apps that must run on serverless without a Node-compatible runtime (some Workers, Lambda@Edge) — Server Components are a tight fit only on Vercel and Node-compatible hosts.
-- Teams with no Server Components experience and no time to learn — bugs in client/server boundary are subtle and frequent.
+- Project locked on Pages Router for legacy reasons.
+- Static export only (server components and actions don't apply).
+- App is wrapped in a different routing framework (Remix, TanStack Router).
+- Tiny prototype where the App Router overhead exceeds payoff.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Next.js version + Node version pinned | config | platform |
+| Auth strategy (Next-Auth, Clerk, custom JWT) | ADR | tech-lead |
+| Data layer (Postgres + Drizzle/Prisma, REST API, GraphQL) | ADR | tech-lead |
+| Caching strategy (revalidatePath / revalidateTag / static) | ADR | tech-lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[frontend-design]] | Design tokens + component library follow separately. |
+| [[api-error-handling]] | Server actions surface domain errors consistently. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (server-components by default, explicit use-client, server actions for mutations, loading+error conventions, no fetch in client components, revalidate explicit) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for App Router spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: route map → server components → client boundaries → server actions → caching | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `route_tree_design` | sonnet | Mechanical: layout/page/loading/error per segment. |
+| `server_action_authoring` | opus | Form + revalidation patterns need synthesis. |
+| `caching_strategy` | opus | revalidatePath vs revalidateTag vs static decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/next.config.ts` | Next.js config with experimental flags + image domains |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-nextjs-app-router.py` | Validate App Router spec against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[react-component-architecture]]
+- [[frontend-design]]
+- [[monorepo-turborepo]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps Next.js version, routing scope, and team familiarity to a rule from `01-core-rules.xml`, telling the agent whether to apply App Router patterns or skip for Pages Router / static-only. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

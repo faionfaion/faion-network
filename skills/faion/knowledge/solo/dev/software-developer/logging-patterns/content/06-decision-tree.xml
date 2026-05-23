@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Structured Logging Patterns Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from inputs to a rule from 01-core-rules.xml for logging-patterns.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the service emit logs as part of its operational story AND have an aggregator?</root-question>
+
+    <branch when="aggregator == none AND deployment == cli">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — stderr is fine"/>
+    </branch>
+    <branch when="log_destination == managed_service_owns_everything">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — managed service handles structure"/>
+    </branch>
+    <branch when="plain_text_logs_present == true">
+      <conclusion ref="r1-json-output" verdict="BLOCK — switch to JSON"/>
+    </branch>
+    <branch when="correlation_id_missing == true">
+      <conclusion ref="r2-correlation-id-propagated" verdict="BLOCK — wire middleware"/>
+    </branch>
+    <branch when="pii_unmasked_in_logs == true">
+      <conclusion ref="r4-no-pii-in-logs" verdict="BLOCK — add to redaction pipeline"/>
+    </branch>
+    <branch when="redaction_pipeline_count != 1">
+      <conclusion ref="r5-single-redaction-pipeline" verdict="BLOCK — consolidate to one"/>
+    </branch>
+    <branch when="print_calls &gt; 0">
+      <conclusion ref="r6-no-print-statements" verdict="BLOCK — remove prints"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — logging module ready"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="logging-patterns-happy-path">
+    Backend service + Loki → first two branches do not match → JSON logs → correlation_id wired → PII masked → 1 redaction pipeline → no prints → APPROVE.
+  </example>
+</text>

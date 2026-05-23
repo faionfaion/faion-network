@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="go-standard-layout Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-standard-layout as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>All code in a single package at the repo root (flat structure).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>No package boundaries means any file can call any function. Adding internal/ later requires touching every import.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>A single "utils" or "common" package that grows into a God package imported by everyone.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>God packages create circular dependency risks and make the codebase harder to understand and test in isolation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Importing a parent layer from a child (e.g. repository importing service).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reverse dependencies create circular import errors or force awkward interface gymnastics to break the cycle.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Go Standard Layout Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying go-standard-layout. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-fat-handler" severity="high">
+      <symptom>Handler function is 200 lines including validation, query orchestration, and conditional rendering.</symptom>
+      <root-cause source="Practitioner experience">Author kept adding 'one more thing' to handler instead of pushing to service.</root-cause>
+      <fix>Extract logic into service. Handler reduces to decode + service.X(ctx, primitives) + encode.</fix>
+    </antipattern>
+    <antipattern id="fm-http-in-service" severity="high">
+      <symptom>Service file imports net/http to read a header from a request struct.</symptom>
+      <root-cause source="Practitioner experience">Author passed the *http.Request to service instead of extracting primitives at the handler.</root-cause>
+      <fix>Extract values at handler. Service takes primitives. Add depguard rule blocking net/http import in service packages.</fix>
+    </antipattern>
+    <antipattern id="fm-sql-in-handler" severity="high">
+      <symptom>Handler calls db.QueryContext directly to short-circuit a repo call.</symptom>
+      <root-cause source="Practitioner experience">Author wanted 'just a quick query' without a repo method.</root-cause>
+      <fix>Add a repo method. Handler calls service which calls repo. Block database/sql import in handler packages.</fix>
+    </antipattern>
+    <antipattern id="fm-producer-side-interface" severity="medium">
+      <symptom>Repo declares an interface that exposes 23 methods; each service uses 3 of them.</symptom>
+      <root-cause source="Practitioner experience">Author wrote interface at repo to expose 'API surface'.</root-cause>
+      <fix>Move interfaces to consumer side. Each service declares the 3 methods it needs. Repo exports a concrete struct.</fix>
+    </antipattern>
   </section>
 </text>

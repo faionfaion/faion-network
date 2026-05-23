@@ -1,39 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nextjs-app-router Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nextjs-app-router. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Next.js App Router Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Next.js App Router application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Default every component to a Server Component. Add 'use client' only when the component needs state, effects, browser APIs, or event handlers.</statement>
-      <rationale source="v1-source">Server Components ship zero client JS by default; premature 'use client' inflates the bundle and disables server-side data access.</rationale>
+
+    <rule id="r1-server-components-default" testable="true" depth="essential">
+      <statement>Files in app/ are React Server Components by default. Add `'use client'` only when the component requires hooks, browser APIs, or event handlers.</statement>
+      <rationale source="Next.js docs">Defaulting client makes server-rendering benefits disappear; defaulting server preserves them and forces explicit decisions about interactivity.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Keep 'use client' at the leaves of the component tree — never at layout level unless strictly necessary.</statement>
-      <rationale source="v1-source">A 'use client' directive is viral: it converts the entire subtree to client code, negating RSC benefits for unrelated children.</rationale>
+
+    <rule id="r2-explicit-use-client-boundary" testable="true" depth="essential">
+      <statement>`'use client'` is added at the smallest necessary boundary, not the page or layout top. Client-only widgets are isolated; their parents stay server.</statement>
+      <rationale source="Next.js docs">Top-level `'use client'` cascades client-only to all descendants; small boundaries preserve maximum server rendering.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Pass only serializable props across the server/client boundary: primitives, plain objects, arrays. Never pass functions, Date objects, class instances, or Map/Set.</statement>
-      <rationale source="v1-source">Non-serializable props cause silent runtime errors when Next.js tries to serialize the server-rendered component tree.</rationale>
+
+    <rule id="r3-server-actions-for-mutations" testable="true" depth="essential">
+      <statement>Mutations triggered from forms or buttons go through server actions, not API routes. API routes are reserved for webhooks and third-party integrations.</statement>
+      <rationale source="Next.js App Router docs">Server actions handle CSRF, progressive enhancement, and revalidation for free; rolling your own API + fetch path loses these benefits.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Co-locate data fetching with the component that consumes it (async Server Component + await), not in a parent layout that passes data down.</statement>
-      <rationale source="v1-source">Prop-drilling through layouts couples layout structure to data shape; each component fetching its own data removes the coupling and enables parallel requests.</rationale>
+
+    <rule id="r4-loading-and-error-conventions" testable="true" depth="essential">
+      <statement>Each route segment that needs them defines loading.tsx (Suspense boundary) and error.tsx (error boundary). No bespoke spinner/banner per page.</statement>
+      <rationale source="Next.js docs">Per-segment conventions give consistent UX and let Next.js orchestrate streaming + recovery.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Wrap each slow data fetch in a Suspense boundary with a meaningful skeleton, not a generic spinner.</statement>
-      <rationale source="v1-source">Streaming allows fast sections to render while slow ones load; a global spinner blocks everything and wastes RSC's streaming capability.</rationale>
+
+    <rule id="r5-no-fetch-in-client-components" testable="true" depth="essential">
+      <statement>Client components don't `fetch` on mount; data is passed from server components or fetched via server actions. SWR/TanStack Query allowed only when justified by interactivity (live polling, subscriptions).</statement>
+      <rationale source="Next.js docs + React community">fetch-on-mount triggers waterfalls and undoes server-rendering benefits; passing data from server is the canonical shape.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use Server Actions for mutations; validate inputs with Zod before any DB call; call revalidatePath/revalidateTag to refresh exactly the affected data.</statement>
-      <rationale source="v1-source">Server Actions remove the need for a separate API route for mutations and integrate with progressive enhancement. Zod validation prevents trusting raw formData.</rationale>
+
+    <rule id="r6-explicit-revalidate-strategy" testable="true" depth="essential">
+      <statement>Each data read declares its cache strategy: `fetch(url, { next: { revalidate: N, tags: [t] } })` or `export const revalidate = N`. No implicit / default behaviour at scale.</statement>
+      <rationale source="Next.js docs">Implicit caching surprises engineers and breaks freshness assumptions; explicit declaration is the only auditable shape.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Choose a rendering strategy per route and document it: full SSG (generateStaticParams), ISR (revalidate: N), or dynamic (force-dynamic). Default is static; dynamic rendering opts in by touching cookies()/headers()/searchParams.</statement>
-      <rationale source="v1-source">Accidental dynamic rendering is a silent performance regression; auditing next build output for unexpected λ dynamic routes surfaces it.</rationale>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Every route segment should include loading.tsx (Suspense fallback) and error.tsx (error boundary). Do not delete them — they are required for graceful UX.</statement>
-      <rationale source="v1-source">Missing loading.tsx causes the entire segment to block until all data is resolved; missing error.tsx surfaces unhandled errors to users.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
     </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

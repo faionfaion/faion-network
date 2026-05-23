@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="go-project-structure Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-project-structure as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Cyclic imports: package A imports B, package B imports A.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Go toolchain rejects cyclic imports at compile time. The fix is to extract shared types into a third package (e.g., internal/model), not to export more symbols upward.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Global state: var DB *sql.DB at package level.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Global DB makes parallel tests interfere, prevents multiple instances, and hides dependencies. Use constructor injection: NewUserRepository(db *sql.DB).</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Everything in the main package: type User, type Order, func CreateUser, func HandleRequest all in package main.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Single-package projects become untestable and unmaintainable above ~500 lines. Separate by responsibility into internal/ sub-packages.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Go Project Structure Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying go-project-structure. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-logic-in-main" severity="high">
+      <symptom>cmd/api/main.go grows to 500 lines including HTTP handlers and DB queries.</symptom>
+      <root-cause source="Practitioner experience">Author kept adding 'just one more' until main.go became the whole app.</root-cause>
+      <fix>Extract handlers + service + repo into internal/. Reduce main.go to wiring (config, deps, app.Run).</fix>
+    </antipattern>
+    <antipattern id="fm-internal-in-pkg" severity="high">
+      <symptom>pkg/auth/ used only inside this module; external consumers can import it and create accidental dependencies.</symptom>
+      <root-cause source="Practitioner experience">Author copied a tutorial that used pkg/ for everything.</root-cause>
+      <fix>Move to internal/auth/. Verify external consumers don't break (they shouldn't have been importing it).</fix>
+    </antipattern>
+    <antipattern id="fm-cyclic-imports" severity="high">
+      <symptom>Build fails with 'import cycle not allowed' after internal/orders and internal/payments both grew to import each other.</symptom>
+      <root-cause source="Practitioner experience">Cross-feature dependencies grew bidirectional.</root-cause>
+      <fix>Invert one side via an interface declared at consumer. Resolve cycle, document the boundary.</fix>
+    </antipattern>
+    <antipattern id="fm-top-level-rot" severity="medium">
+      <symptom>Project root contains scripts/, tools/, helpers/, scratch/ — many overlapping.</symptom>
+      <root-cause source="Practitioner experience">No top-level discipline; each helper added a new dir.</root-cause>
+      <fix>Consolidate to Makefile orchestration. Move runnable helpers to cmd/&lt;helper&gt;/. Delete one-off scripts after capturing intent in Make targets.</fix>
+    </antipattern>
   </section>
 </text>

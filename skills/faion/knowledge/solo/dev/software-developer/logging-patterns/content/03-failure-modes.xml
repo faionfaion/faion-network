@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="logging-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for logging-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Log an error then immediately re-throw it (log-and-throw).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The same error is logged twice — once at the origin and once at the outer handler — creating duplicate entries that inflate error counts and confuse incident timelines.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Log passwords, tokens, authorization headers, or credit card numbers without masking.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Log aggregators and log shipping pipelines often have weaker access controls than primary storage. A single log export leaks all credentials.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mix structured and unstructured log lines in the same service (some JSON, some plain text).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Log parsers must handle two formats. A single unstructured line breaks field-level alerting for the entire log stream.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Log entries with no request ID, user ID, or entity ID (no context).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Contextless logs cannot be correlated to a specific request or user. Debugging requires guessing from timestamps alone.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Build log message strings with f-strings or concatenation before passing to the logger.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The string is constructed even when the log level is filtered out. Pass structured key-value pairs — the logger skips serialization entirely for filtered levels.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Structured Logging Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying logging-patterns. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-plain-text-leak" severity="high">
+      <symptom>log.info('user ' + email + ' logged in') in a code path; aggregator can't query by user.</symptom>
+      <root-cause source="Practitioner experience">Author shortcut structured fields.</root-cause>
+      <fix>Replace with log.info('user_login', user_id=..., email=mask(email)). Add lint to flag string concatenation in log calls.</fix>
+    </antipattern>
+    <antipattern id="fm-correlation-id-missing" severity="high">
+      <symptom>Multi-service trace impossible because logs lack correlation_id; root-cause analysis takes hours.</symptom>
+      <root-cause source="Practitioner experience">Middleware not wired; child contexts didn't inherit.</root-cause>
+      <fix>Add request-id middleware that generates / propagates correlation_id. Bind to logger context via contextvars / async-local-storage.</fix>
+    </antipattern>
+    <antipattern id="fm-pii-in-error-stacktrace" severity="high">
+      <symptom>Error log captures the full request body including credit-card number; aggregator stores it indefinitely.</symptom>
+      <root-cause source="Practitioner experience + GDPR">Redaction pipeline missed nested fields.</root-cause>
+      <fix>Make redaction recursive over the payload. Add a unit test that asserts each PII field is masked in nested contexts.</fix>
+    </antipattern>
+    <antipattern id="fm-print-statement-leak" severity="medium">
+      <symptom>`print('here')` left in a hot path; logs are noisy + un-redacted.</symptom>
+      <root-cause source="Practitioner experience">Author used print for local debug; never removed.</root-cause>
+      <fix>Add ruff T20 / no-console / forbidigo rule. Run pre-commit. Sweep existing prints.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="feature-flags Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for feature-flags. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Feature Flags Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Feature Flags application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-owner-and-expiry" testable="true" depth="essential">
+      <statement>Every flag has a named human owner and an expiry date &lt;=180 days from creation. Flags past expiry are auto-flagged for removal.</statement>
+      <rationale source="Practitioner experience + LaunchDarkly + Statsig docs">Owner-less flags rot; expiry-less flags accumulate forever. Both are the source of feature-flag debt.</rationale>
     </rule>
+
+    <rule id="r2-pure-evaluation" testable="true" depth="essential">
+      <statement>Flag evaluation is a pure function of (flag_key, context). No side effects — no DB writes, no remote calls inside the evaluation path beyond the SDK.</statement>
+      <rationale source="Practitioner experience">Side-effecting evaluation creates phantom dependencies and makes incident triage harder; pure evaluation is easy to reason about.</rationale>
+    </rule>
+
+    <rule id="r3-central-registry" testable="true" depth="essential">
+      <statement>Flags are declared in one central registry (file or service). No 'shadow flags' inferred from env vars or feature toggles scattered in code.</statement>
+      <rationale source="Practitioner experience">Shadow flags hide from audits; central registry makes ownership and lifecycle observable.</rationale>
+    </rule>
+
+    <rule id="r4-kill-switch-for-risky" testable="true" depth="essential">
+      <statement>Risky features (payment changes, third-party integration switch, schema migration cutover) ship behind a kill-switch flag with default off + monitored on rollout.</statement>
+      <rationale source="Reliability engineering">Without a kill-switch, rollback to disable a feature requires a deploy; with one, a single config flip cuts blast radius in seconds.</rationale>
+    </rule>
+
+    <rule id="r5-cleanup-pr-queued" testable="true" depth="essential">
+      <statement>When a flag is created, the cleanup PR (removing the flag eval branches and the dead-path) is created in draft status and assigned to the flag owner.</statement>
+      <rationale source="Practitioner experience">Cleanup gets forgotten. Pre-creating the PR makes the cleanup work concrete and assigned, not 'someday'.</rationale>
+    </rule>
+
+    <rule id="r6-no-deep-nesting" testable="true" depth="essential">
+      <statement>Flag evaluations may nest at most 2 deep in any code path. Beyond 2, the logic is split into separate functions or replaced with a single composite flag.</statement>
+      <rationale source="Practitioner experience">Nested flags create combinatorial test cases; &gt;2 deep becomes untestable in practice.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

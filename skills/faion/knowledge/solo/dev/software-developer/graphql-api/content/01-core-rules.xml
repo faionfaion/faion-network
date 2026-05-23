@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="graphql-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for graphql-api. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GraphQL API Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every GraphQL API application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-schema-first-sdl" testable="true" depth="essential">
+      <statement>Schema is authored in SDL (.graphql files); resolvers are generated or hand-written against the SDL. No 'resolver-first' that emits SDL later.</statement>
+      <rationale source="GraphQL community + practitioner experience">Resolver-first drift between resolver shape and schema makes the schema unreliable; SDL-first is the only single source.</rationale>
     </rule>
+
+    <rule id="r2-codegen-for-types" testable="true" depth="essential">
+      <statement>Server and client types are generated from SDL (graphql-codegen, gqlgen, Pothos). Manual type declarations duplicating SDL are forbidden.</statement>
+      <rationale source="GraphQL tooling consensus">Hand-typed shapes drift; codegen guarantees alignment.</rationale>
+    </rule>
+
+    <rule id="r3-dataloader-for-every-1-to-n" testable="true" depth="essential">
+      <statement>Every 1:N relation traversed in a resolver uses a per-request DataLoader. Plain repo.findByXxx calls inside list resolvers are blocked by lint.</statement>
+      <rationale source="GraphQL N+1 problem literature">Without DataLoader, a list of 100 items with a relation fires 101 queries; with DataLoader, 2 queries.</rationale>
+    </rule>
+
+    <rule id="r4-depth-and-complexity-caps" testable="true" depth="essential">
+      <statement>Schema runs with depth limit (5-8 default) and query complexity cap (configurable). Plugin runs before resolvers; rejects queries that exceed.</statement>
+      <rationale source="GraphQL security best practices">Without caps, hostile clients craft DoS queries (deeply nested introspection); caps are the only practical defence.</rationale>
+    </rule>
+
+    <rule id="r5-cursor-pagination-relay" testable="true" depth="essential">
+      <statement>Lists use Relay-style cursor pagination: edges + node + pageInfo with hasNextPage + endCursor. Offset/limit lists are forbidden for paginated resources.</statement>
+      <rationale source="Relay spec + GraphQL community">Offset pagination breaks under concurrent inserts; cursor is consistent under writes.</rationale>
+    </rule>
+
+    <rule id="r6-schema-diff-gate-in-ci" testable="true" depth="essential">
+      <statement>Every PR touching schema.graphql runs graphql-inspector (or equivalent) against main. Breaking changes block merge without explicit BREAKING-CHANGE token in commit body.</statement>
+      <rationale source="GraphQL versioning practices">Breaking changes shipped silently break clients; CI gate makes the decision visible.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

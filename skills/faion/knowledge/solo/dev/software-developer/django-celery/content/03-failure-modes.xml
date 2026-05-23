@@ -1,42 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-celery Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-celery as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Passing a Django model instance to a task via .delay(user=user_obj).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Celery serializes the object at call time. The worker deserializes stale data or fails entirely on restart. Always pass the primary key and fetch fresh inside the task.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Calling self.retry() inside a task defined without bind=True.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without bind=True, self is undefined. The task crashes on the first retry attempt with a NameError, not a retry.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Defining tasks without soft_time_limit and time_limit.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without limits, a hung task (blocked network call, deadlocked DB query) holds a worker slot indefinitely, starving all other tasks in that queue.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Running multiple celery beat processes without RedBeat or django-celery-beat for leader election on multi-replica deployments.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each beat process fires the full schedule independently. N replicas produce N copies of every periodic task, causing duplicate side effects.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Building deeply nested Celery chains/chords on a Redis broker without monitoring back-pressure.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Redis-backed chord results accumulate in memory. Deep nesting stalls the entire workflow when intermediate results expire or the broker fills up.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Inlining API keys or credentials directly in task function bodies or as default argument values.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Task code is deployed to all workers. Secrets in code appear in logs, tracebacks, and version history. Use environment variables loaded via systemd EnvironmentFile.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Dispatching tasks across all users (User.objects.all().iterator()) without an explicit human approval gate.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A single typo or bug fan-outs to every user. Require an explicit approval checkpoint before any task that sends to more than N users.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Django Celery Tasks Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying django-celery. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-implicit-task-name" severity="high">
+      <symptom>After a refactor that moves `tasks.py`, queued jobs deserialise to NotRegistered and dead-letter without alert.</symptom>
+      <root-cause source="Practitioner experience">@shared_task without name argument; module path baked into queued payload.</root-cause>
+      <fix>Add explicit `name=` to every task. Run a one-off script to backfill DLQ jobs under the new name.</fix>
+    </antipattern>
+    <antipattern id="fm-retry-without-idempotency" severity="high">
+      <symptom>Customer received the same receipt email three times; charge endpoint debited twice.</symptom>
+      <root-cause source="Practitioner experience">Task retried on transient broker disconnect; no idempotency guard.</root-cause>
+      <fix>Add idempotency key to payload. Persist 'processed_at' against the key in a DB table; reject retries that match a processed key.</fix>
+    </antipattern>
+    <antipattern id="fm-no-time-limits" severity="high">
+      <symptom>Worker pool exhausted; tasks back up for hours because one task hung on an HTTP call.</symptom>
+      <root-cause source="Practitioner experience">Defaults assumed; soft_time_limit + time_limit never set.</root-cause>
+      <fix>Set soft_time_limit = p95 latency * 2 and time_limit = soft + 30s. Verify with a fault-injected hung-call test.</fix>
+    </antipattern>
+    <antipattern id="fm-default-queue-mix" severity="medium">
+      <symptom>Low-priority report jobs starved time-sensitive email tasks.</symptom>
+      <root-cause source="Practitioner experience">All tasks went to default queue; single worker pool.</root-cause>
+      <fix>Declare explicit queues per task. Spin up workers with `-Q emails -Q reports` and per-queue concurrency settings.</fix>
+    </antipattern>
   </section>
 </text>

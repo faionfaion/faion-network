@@ -1,3 +1,8 @@
+# purpose: Build/test/lint/run/docker targets
+# consumes: Go project skeleton + binary list
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~300 tokens when loaded as context
 # Makefile — standard Go project build automation
 # Usage: make build | run | test | lint | clean
 

@@ -1,22 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="go-concurrency-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Go Concurrency Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/go-concurrency-patterns.json",
+  "type": "object",
+  "required": ["package_path", "pool_size", "context_used", "errgroup_used", "unbounded_spawns", "closed_by_receiver"],
+  "properties": {
+    "package_path": {"type": "string", "minLength": 3},
+    "pool_size": {"type": "integer", "minimum": 1},
+    "context_used": {"type": "boolean"},
+    "errgroup_used": {"type": "boolean"},
+    "unbounded_spawns": {"type": "integer", "minimum": 0, "maximum": 0},
+    "closed_by_receiver": {"type": "integer", "minimum": 0, "maximum": 0},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "package_path": "internal/worker",
+  "pool_size": 8,
+  "context_used": true,
+  "errgroup_used": true,
+  "unbounded_spawns": 0,
+  "closed_by_receiver": 0,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "package_path": "x",
+  "pool_size": 0,
+  "unbounded_spawns": 3,
+  "closed_by_receiver": 1
+}
+]]></code>
+    <note>package_path too short, pool_size below minimum, unbounded_spawns and closed_by_receiver above zero (both must be 0).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Bare `go func()` spawn without a bound or wg/ctx tracking</pattern>
+      <pattern id="f2">Goroutine without context.Context parameter</pattern>
+      <pattern id="f3">Channel close performed by receiver-side code</pattern>
+      <pattern id="f4">Multi-worker fan-out without errgroup.WithContext</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Normalise pool size constants to declared CPU-aware defaults where appropriate.</transformation>
+      <transformation>Auto-format with gofmt before review.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-go-concurrency-patterns.py">Validator script</reference>
 </text>

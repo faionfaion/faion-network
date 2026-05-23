@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nextjs-app-router Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nextjs-app-router as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>useEffect(() =&gt; fetch('/api/x')) inside a client component when data could be fetched in the server component parent.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Adds a network round-trip, slows first paint, and bypasses RSC's direct DB access capability.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>'use client' at the top of every component file.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pre-RSC habit that converts all components to client-side JS; eliminates server rendering benefits entirely.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Importing Node-only modules (crypto, fs, path) in middleware.ts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Middleware runs on the Edge runtime which does not support Node built-ins; the build fails silently or at runtime.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Calling revalidatePath('/') after every mutation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Over-invalidation purges the entire cache; performance collapses on high-traffic sites. Invalidate only the affected path or tag.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Next.js App Router Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying nextjs-app-router. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-top-level-use-client" severity="high">
+      <symptom>Page declares 'use client' at the top; all children rendered client-side; SEO + paint metrics regress.</symptom>
+      <root-cause source="Practitioner experience">Author added 'use client' to use one hook; cascading effect not noticed.</root-cause>
+      <fix>Move 'use client' to the smallest leaf component that needs it. Verify SEO bots see server-rendered HTML.</fix>
+    </antipattern>
+    <antipattern id="fm-fetch-on-mount" severity="high">
+      <symptom>Client component fetches data on mount; user sees spinner; LCP regresses.</symptom>
+      <root-cause source="Practitioner experience">Pages Router habit; server-component data passing not adopted.</root-cause>
+      <fix>Refactor: parent server component fetches; passes data as prop. Client component renders. SWR allowed only for live/interactive cases.</fix>
+    </antipattern>
+    <antipattern id="fm-api-routes-for-mutations" severity="medium">
+      <symptom>Mutation flows via /api/orders POST + fetch; CSRF + revalidation hand-rolled and inconsistent.</symptom>
+      <root-cause source="Practitioner experience">Author followed Pages Router pattern.</root-cause>
+      <fix>Migrate to server actions. Form posts directly to the action; revalidatePath/Tag declared inline.</fix>
+    </antipattern>
+    <antipattern id="fm-implicit-cache" severity="medium">
+      <symptom>Customer-facing prices stale because default fetch cache cached the response indefinitely.</symptom>
+      <root-cause source="Practitioner experience">No revalidate declared; default behaviour kicked in.</root-cause>
+      <fix>Add explicit `next: { revalidate: 60, tags: ['prices'] }` to fetch. Use revalidateTag from server action when prices change.</fix>
+    </antipattern>
   </section>
 </text>

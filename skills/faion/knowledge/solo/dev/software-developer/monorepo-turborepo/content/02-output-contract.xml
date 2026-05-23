@@ -1,22 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="monorepo-turborepo Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Monorepo with Turborepo Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/monorepo-turborepo.json",
+  "type": "object",
+  "required": ["workspace_root", "package_count", "task_count", "floating_versions", "tasks_without_outputs", "remote_cache_in_ci"],
+  "properties": {
+    "workspace_root": {"type": "string", "minLength": 1},
+    "package_count": {"type": "integer", "minimum": 2},
+    "task_count": {"type": "integer", "minimum": 1},
+    "floating_versions": {"type": "integer", "minimum": 0, "maximum": 0},
+    "tasks_without_outputs": {"type": "integer", "minimum": 0, "maximum": 0},
+    "remote_cache_in_ci": {"type": "boolean"},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "workspace_root": "/",
+  "package_count": 7,
+  "task_count": 5,
+  "floating_versions": 0,
+  "tasks_without_outputs": 0,
+  "remote_cache_in_ci": true,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "workspace_root": "",
+  "package_count": 1,
+  "floating_versions": 42,
+  "tasks_without_outputs": 3
+}
+]]></code>
+    <note>workspace_root empty, package_count below minimum, floating_versions and tasks_without_outputs above 0, missing required fields.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Mixed package manager lockfiles (package-lock.json + yarn.lock + pnpm-lock.yaml)</pattern>
+      <pattern id="f2">Task in turbo.json without dependsOn or outputs declared</pattern>
+      <pattern id="f3">Floating version range in any workspace package.json</pattern>
+      <pattern id="f4">Root script that invokes a per-package command directly bypassing turbo</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Normalise pnpm-workspace.yaml to alphabetical packages list.</transformation>
+      <transformation>Default remote_cache_in_ci to false when omitted (forces explicit confirmation).</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-monorepo-turborepo.py">Validator script</reference>
 </text>

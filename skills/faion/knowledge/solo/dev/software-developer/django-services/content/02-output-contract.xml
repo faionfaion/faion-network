@@ -1,22 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-services Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Django Service Layer Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/django-services.json",
+  "type": "object",
+  "required": ["module_path", "aggregate", "public_functions", "http_imports", "orm_outside_services"],
+  "properties": {
+    "module_path": {"type": "string", "pattern": "^[a-z_]+/services/[a-z_]+\\.py$"},
+    "aggregate": {"type": "string", "minLength": 2},
+    "public_functions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "http_imports": {"type": "integer", "minimum": 0, "maximum": 0},
+    "orm_outside_services": {"type": "integer", "minimum": 0, "maximum": 0},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "module_path": "app/services/orders.py",
+  "aggregate": "orders",
+  "public_functions": ["place_order", "cancel_order", "list_orders_for_customer"],
+  "http_imports": 0,
+  "orm_outside_services": 0,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "module_path": "app/views/orders.py",
+  "aggregate": "o",
+  "public_functions": [],
+  "http_imports": 3,
+  "orm_outside_services": 5
+}
+]]></code>
+    <note>module_path not in services/, aggregate too short, public_functions empty, http_imports and orm_outside_services above zero (must be 0).</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Service module imports from django.http or rest_framework.response</pattern>
+      <pattern id="f2">View or admin file calls Model.objects.save/create/delete directly (must go through service)</pattern>
+      <pattern id="f3">Service function accepting an HttpRequest as parameter</pattern>
+      <pattern id="f4">Service module mixing two aggregates (orders and payments in one file)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Auto-format with ruff before final review.</transformation>
+      <transformation>Sort public_functions alphabetically for diff hygiene.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-django-services.py">Validator script</reference>
 </text>

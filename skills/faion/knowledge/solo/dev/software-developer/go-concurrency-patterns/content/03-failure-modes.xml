@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="go-concurrency-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-concurrency-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Spawning `len(items)` goroutines unconditionally for a slice.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>For large slices this creates thousands of goroutines simultaneously, exhausting memory and scheduler capacity. Use a bounded pool instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>`for range jobs { job() }` without a `select` on `ctx.Done()`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The `range` loop blocks until the channel is closed; if the context is cancelled first, the goroutine ignores it and keeps processing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Worker pool with `_ = job(ctx)` discarding errors.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Silently swallows all job errors; callers have no way to detect failures, leading to silent data loss or corruption.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Go Concurrency Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying go-concurrency-patterns. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-unbounded-spawn" severity="high">
+      <symptom>Service spawns one goroutine per incoming request; under load, 50k goroutines drag the scheduler.</symptom>
+      <root-cause source="Practitioner experience">Author copied an 'easy parallel' pattern without a pool.</root-cause>
+      <fix>Wrap with errgroup.SetLimit(N) or semaphore.Weighted. Choose N based on downstream resource (DB conns, HTTP target). Verify with pprof.</fix>
+    </antipattern>
+    <antipattern id="fm-no-context" severity="high">
+      <symptom>HTTP handler returns to the client but the spawned goroutine continues hitting the DB for another 30 seconds.</symptom>
+      <root-cause source="Practitioner experience">Author omitted ctx parameter; goroutine had no way to learn about cancellation.</root-cause>
+      <fix>Add ctx context.Context to the goroutine. Check ctx.Done() in the work loop. Test with cancelled context.</fix>
+    </antipattern>
+    <antipattern id="fm-close-from-receiver" severity="high">
+      <symptom>Pipeline goroutine panics with 'send on closed channel' under flush.</symptom>
+      <root-cause source="Practitioner experience">Cleanup goroutine closed the work channel from the receiving side.</root-cause>
+      <fix>Move close() to the sender. If multiple senders, use sync.Once or a coordinator goroutine that owns the close.</fix>
+    </antipattern>
+    <antipattern id="fm-manual-error-channel" severity="medium">
+      <symptom>First worker error is logged; remaining workers continue and write conflicting results.</symptom>
+      <root-cause source="Practitioner experience">Manual `errC := make(chan error)` instead of errgroup; cancellation logic missed.</root-cause>
+      <fix>Replace with errgroup.WithContext. Workers return error directly; errgroup cancels the rest.</fix>
+    </antipattern>
   </section>
 </text>

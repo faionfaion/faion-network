@@ -1,22 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="message-queues Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Message Queue Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/message-queues.json",
+  "type": "object",
+  "required": ["queue_name", "broker", "idempotency_strategy", "manual_ack", "dlq_name", "alert_endpoint", "max_retries", "schema_version"],
+  "properties": {
+    "queue_name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]+$"},
+    "broker": {"type": "string", "enum": ["rabbitmq", "redis_streams", "sqs", "nats", "kafka"]},
+    "idempotency_strategy": {"type": "string", "enum": ["idempotency_key", "db_upsert", "check_before_act", "natural_key"]},
+    "manual_ack": {"type": "boolean"},
+    "dlq_name": {"type": "string", "minLength": 1},
+    "alert_endpoint": {"type": "string", "format": "uri"},
+    "max_retries": {"type": "integer", "minimum": 1, "maximum": 20},
+    "schema_version": {"type": "integer", "minimum": 1},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "queue_name": "orders.events",
+  "broker": "rabbitmq",
+  "idempotency_strategy": "idempotency_key",
+  "manual_ack": true,
+  "dlq_name": "orders.events.dlq",
+  "alert_endpoint": "https://alert.example.com/dlq",
+  "max_retries": 5,
+  "schema_version": 2,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "queue_name": "Orders Events",
+  "broker": "custom",
+  "manual_ack": false,
+  "max_retries": 50
+}
+]]></code>
+    <note>queue_name not lowercase-dotted, broker not in enum, manual_ack false, max_retries above maximum, missing required fields.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Auto-ack consumer (drops on crash)</pattern>
+      <pattern id="f2">Consumer without idempotency strategy declared</pattern>
+      <pattern id="f3">DLQ without alert_endpoint</pattern>
+      <pattern id="f4">Infinite or unbounded retry policy</pattern>
+      <pattern id="f5">Pre-ack side effect to an external system (no outbox)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Lowercase + dot-normalise queue_name.</transformation>
+      <transformation>Default schema_version to 1 when omitted.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-message-queues.py">Validator script</reference>
 </text>

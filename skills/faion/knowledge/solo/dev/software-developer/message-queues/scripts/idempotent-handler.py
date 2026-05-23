@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: Idempotent handler pattern for queue consumers
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 """idempotent-handler.py — DB-backed idempotency key claim for message consumers.
 
 Uses a processed_messages table with a UNIQUE constraint on (key) to ensure

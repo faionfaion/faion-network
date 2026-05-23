@@ -3,76 +3,100 @@ slug: internationalization
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for preparing software to support multiple languages and locales without code changes.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Prepare software for multiple languages and locales via ICU MessageFormat, externalised strings, locale-aware formatting, and RTL-ready CSS.
 content_id: "66f987770d3b9b55"
+complexity: medium
+produces: code
+est_tokens: 4000
 tags: [i18n, localization, icu-messageformat, rtl, internationalization]
 ---
 # Internationalization
 
 ## Summary
 
-**One-sentence:** Methodology for preparing software to support multiple languages and locales without code changes.
+**One-sentence:** Prepare software for multiple languages and locales via ICU MessageFormat, externalised strings, locale-aware formatting, and RTL-ready CSS.
 
-**One-paragraph:** Methodology for preparing software to support multiple languages and locales without code changes. Covers string externalization via ICU MessageFormat, Babel (Python) and react-intl (TS), database-driven translations, locale-aware formatting (date/number/currency), RTL layout, and the translation management workflow. Core rule: one message = one complete sentence with ICU placeholders; never concatenate translated fragments.
+**One-paragraph:** Externalise every user-facing string into locale catalogues (PO/JSON/XLIFF), use ICU MessageFormat for plurals and gender, format numbers / dates / currencies via Intl (browser) or CLDR (server), keep CSS logical (start/end vs left/right) for RTL, and run pseudo-localization in CI to catch hardcoded strings and overflow. Translators receive context comments and a translation memory; release pipeline includes a no-missing-keys check.
+
+**Ефективно для:**
+
+- Products targeting >=2 locales or multi-region rollout.
+- Replacing ad-hoc string interpolation with ICU MessageFormat.
+- Adding RTL support (Arabic, Hebrew) to existing LTR product.
+- Establishing a translation handoff workflow.
 
 ## Applies If (ALL must hold)
 
-- Product shipping into a second locale or with regulatory obligation (EU, Quebec Bill 96)
-- Externalising hardcoded strings before translation work begins
-- Adding RTL support (Arabic, Hebrew, Persian) — must be designed in, not retrofitted
-- Standardising date/number/currency formatting across services
-- Creating white-label products requiring locale switching
-- Product is shipping into a second locale or already has user demand from non-English speakers
-- Legal / contractual obligation (EU CRA, French Toubon law, Quebec Bill 96, accessibility regs)
-- Standardising date/number/currency formatting across services (e.g., backend → email → mobile must agree)
+- Product UI surfaces user-facing text (not backend-only).
+- At least 2 locales planned or supported.
+- Engineering owns the i18n pipeline (extraction, catalogues, build integration).
+- Translators or translation vendors are in the workflow.
 
 ## Skip If (ANY kills it)
 
-- Single-locale internal tool with no expansion plan — extraction/build overhead not justified
-- Marketing landing pages better handled by a translation CMS (Phrase, Lokalise, Crowdin)
-- Domain-specific jargon that does not translate — keep English, localise only UI chrome
-- Using Google Translate at runtime — fluency too low for product UI; only acceptable for user-generated content snippets
+- Single-locale product with no internationalisation plans (premature).
+- All text is dynamic user-generated content — i18n applies to UI chrome only here.
+- Embedded firmware where locale catalogues exceed budget.
+- Project delegates i18n to a SaaS (Crowdin/Lokalise) and accepts their model end-to-end.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Locale list + fallback rules | table | product |
+| i18n library chosen (FormatJS, i18next, gettext, Polyglot) | config | platform |
+| Translation pipeline (PO files vs SaaS) decided | ADR | tech-lead |
+| Pseudo-localization tooling for CI | config | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[frontend-design]] | Design tokens + components support locale switching. |
+| [[logging-patterns]] | Logs note locale + missing-key events. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules (no hardcoded strings, ICU MessageFormat for plurals, Intl for numbers/dates, logical CSS for RTL, pseudo-loc in CI) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for i18n module spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: catalogue init → externalise strings → ICU patterns → RTL audit → pseudo-loc CI | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `string_externalisation` | sonnet | Mechanical: replace string literals with t() calls + keys. |
+| `icu_message_authoring` | sonnet | Convert hand-built plural strings to ICU. |
+| `rtl_audit` | sonnet | Walk CSS; replace physical (left/right) with logical (start/end). |
+| `pseudo_loc_pipeline` | sonnet | CI step: render pages with pseudo-loc; assert no truncation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/babel-cfg.ini` | Babel/extraction config for gettext-style flows |
+| `templates/pseudo-loc.py` | Pseudo-localization transformer for catalogue values |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-internationalization.py` | Validate i18n module spec against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[frontend-design]]
+- [[logging-patterns]]
+- [[accessibility]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps locale count, UI surface, and pipeline ownership to a rule from `01-core-rules.xml`, telling the agent whether to run the full i18n setup or skip when premature. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

@@ -1,11 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="go-standard-layout Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-standard-layout. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Go Standard Layout Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every Go Standard Layout application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-handler-decodes-encodes-only" testable="true" depth="essential">
+      <statement>Handler functions decode the request (JSON, query params, headers) into primitives, call the service with those primitives, and encode the response. No business logic.</statement>
+      <rationale source="Clean architecture + Go community">Logic in handlers means it can only be tested via HTTP; pulling it down to service makes unit tests trivial.</rationale>
     </rule>
+
+    <rule id="r2-service-holds-business-logic" testable="true" depth="essential">
+      <statement>Service functions hold all decisions: validation rules, branching, orchestration of multiple repos, side effects (calling external APIs). They take and return domain types — never HTTP or DB types.</statement>
+      <rationale source="Clean architecture">Business logic anywhere else duplicates; service is the testable core.</rationale>
+    </rule>
+
+    <rule id="r3-repo-owns-sql-and-orm" testable="true" depth="essential">
+      <statement>Repository functions own SQL queries (or ORM calls). They take primitives or domain structs and return domain structs. No HTTP types ever enter the repo.</statement>
+      <rationale source="Clean architecture">SQL leaking out of repos couples upper layers to schema details; changing the schema becomes a multi-file change.</rationale>
+    </rule>
+
+    <rule id="r4-no-http-types-in-service" testable="true" depth="essential">
+      <statement>Service packages do not import net/http, encoding/json, or chi/gin/echo. The compiler enforces this via golangci-lint depguard.</statement>
+      <rationale source="Practitioner experience">Imports are the easiest leak vector; the lint enforcement is cheap.</rationale>
+    </rule>
+
+    <rule id="r5-interfaces-at-consumer" testable="true" depth="essential">
+      <statement>Where service depends on repo, the interface is declared at the service (consumer) side, not at the repo (implementer) side. The repo package exports concrete types; service defines what subset it needs.</statement>
+      <rationale source="Accept interfaces, return structs (Go proverb)">Consumer-side interfaces let each service define only the methods it uses; producer-side interfaces bloat and couple.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

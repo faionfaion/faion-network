@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="graphql-api Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for graphql-api as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Module-level DataLoader shared across requests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Caches results from one request and serves them to subsequent requests, leaking data between users. Per-request instantiation is mandatory.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Subscriptions using subscriptions-transport-ws (deprecated protocol).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>subscriptions-transport-ws is unmaintained and has known issues. The current standard is graphql-ws. Many server libraries still default to the old protocol — opt in explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Input types with nested optional objects creating impossible validation shapes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deeply nested optional inputs produce 2^n possible shapes that are impossible to validate exhaustively. Use flat, single-purpose input types: CreateOrderInput, UpdateOrderStatusInput.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Adding a new resolver field without an accompanying DataLoader for 1:N traversal.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every parent object triggers a separate DB query. 100 user nodes in a list query = 100 separate order queries. Always require an XByYLoader for any 1:N field.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Mixing schema-first and code-first approaches in the same service without documentation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Codegen output drift between the two approaches causes type mismatches that surface only at runtime. Pick one approach and document it in CLAUDE.md.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="GraphQL API Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying graphql-api. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-n-plus-1-resolver" severity="high">
+      <symptom>Query returning 100 items with a `.author` relation fires 101 queries; response time balloons.</symptom>
+      <root-cause source="Practitioner experience">Resolver called repo.findById per parent without batching.</root-cause>
+      <fix>Wrap with DataLoader: authorLoader.load(authorId). Register loader per request in context. Add lint rule that blocks repo calls inside list resolvers.</fix>
+    </antipattern>
+    <antipattern id="fm-no-depth-limit" severity="high">
+      <symptom>Hostile client sends a query with 20 nested authorOfAuthorOfAuthor introspection; resolver hangs the worker.</symptom>
+      <root-cause source="Practitioner experience">Defaults used; no depth limit set.</root-cause>
+      <fix>Configure depth limit (5-8). Measure against worst-case legitimate query before picking the number.</fix>
+    </antipattern>
+    <antipattern id="fm-offset-pagination-drift" severity="medium">
+      <symptom>Customer paginates through items; concurrent inserts cause duplicate items across pages or missed items.</symptom>
+      <root-cause source="Practitioner experience">Offset pagination assumed stable ordering under writes.</root-cause>
+      <fix>Migrate to Relay cursor pagination. Encode cursor as base64-encoded last-id + ordering field.</fix>
+    </antipattern>
+    <antipattern id="fm-silent-breaking-change" severity="high">
+      <symptom>Field renamed; mobile clients shipped a week ago crash on the new schema.</symptom>
+      <root-cause source="Practitioner experience">No diff gate; PR merged a breaking change.</root-cause>
+      <fix>Wire graphql-inspector or graphql-cli check in CI. Fail on breaking changes unless BREAKING-CHANGE token in commit body.</fix>
+    </antipattern>
   </section>
 </text>

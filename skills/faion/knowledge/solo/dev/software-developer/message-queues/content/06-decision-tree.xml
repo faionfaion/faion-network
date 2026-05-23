@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Message Queue Patterns Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from inputs to a rule from 01-core-rules.xml for message-queues.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is the workload async-tolerant AND can the consumer be idempotent?</root-question>
+
+    <branch when="latency_budget &lt; 50ms AND blocking_required == true">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — sync RPC is the right shape"/>
+    </branch>
+    <branch when="semantics == exactly_once_strict AND broker_cannot_provide">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — need transactional outbox + 2PC alternative"/>
+    </branch>
+    <branch when="consumer_not_idempotent == true">
+      <conclusion ref="r1-consumer-is-idempotent" verdict="BLOCK — add idempotency guard"/>
+    </branch>
+    <branch when="auto_ack_in_use == true">
+      <conclusion ref="r2-manual-acknowledgement" verdict="BLOCK — switch to manual ack"/>
+    </branch>
+    <branch when="dlq_alert_missing == true">
+      <conclusion ref="r3-dlq-wired-with-alert" verdict="BLOCK — wire DLQ + alert"/>
+    </branch>
+    <branch when="unbounded_retries == true">
+      <conclusion ref="r4-retry-policy-explicit-and-bounded" verdict="BLOCK — set max_retries + backoff"/>
+    </branch>
+    <branch when="schema_unversioned == true">
+      <conclusion ref="r5-versioned-message-schema" verdict="BLOCK — add version field"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — queue config ready"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="message-queues-happy-path">
+    RabbitMQ + idempotent consumer + 5 max retries → first two branches do not match → manual ack → DLQ + alert → versioned schema → all_gates_green=true → APPROVE.
+  </example>
+</text>

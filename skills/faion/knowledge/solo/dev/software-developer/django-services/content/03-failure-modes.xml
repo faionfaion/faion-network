@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-services Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-services as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Importing DRF's Response, serializers.ValidationError, or any Django HttpResponse into service modules.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Services become untestable without a full DRF request context and unreusable from non-HTTP entry points like Celery.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Django Service Layer Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying django-services. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-leaky-http-in-services" severity="high">
+      <symptom>services/orders.py imports HttpRequest to read user.id from a request inside place_order().</symptom>
+      <root-cause source="Practitioner experience">Author shortcut the refactor by passing the whole request through.</root-cause>
+      <fix>Refactor: pass user_id primitive into the service. Add import-linter contract: services/ may not import django.http.*.</fix>
+    </antipattern>
+    <antipattern id="fm-orm-leak-in-views" severity="high">
+      <symptom>Views still call Model.objects.create(...) for some 'small' operations after partial refactor.</symptom>
+      <root-cause source="Practitioner experience">Partial migration; some 'simple' operations never moved to services.</root-cause>
+      <fix>Sweep with a codemod that finds Model.objects.(create|save|delete) outside services/. Move each call through a service function.</fix>
+    </antipattern>
+    <antipattern id="fm-service-by-caller-type" severity="medium">
+      <symptom>Services organised as services/views.py, services/admin.py, services/tasks.py — same aggregate logic duplicated.</symptom>
+      <root-cause source="Practitioner experience">Module structure mirrors callers instead of aggregates.</root-cause>
+      <fix>Reorganise by aggregate: services/orders.py, services/payments.py. Each function called from any number of caller types.</fix>
+    </antipattern>
+    <antipattern id="fm-test-via-client" severity="medium">
+      <symptom>All tests use Django test client; service-layer not tested directly.</symptom>
+      <root-cause source="Practitioner experience">Habit from fat-view era; test client covers everything but slowly.</root-cause>
+      <fix>Add direct pytest tests against service functions with pydantic inputs. Keep client tests only for HTTP-layer concerns (auth, content type).</fix>
+    </antipattern>
   </section>
 </text>

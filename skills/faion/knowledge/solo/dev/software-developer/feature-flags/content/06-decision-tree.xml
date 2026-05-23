@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Feature Flags Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from inputs to a rule from 01-core-rules.xml for feature-flags.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the runtime support flag evaluation AND is exposure risk non-trivial?</root-question>
+
+    <branch when="runtime_supports_flags == false">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — no central runtime to flip"/>
+    </branch>
+    <branch when="exposure_risk == none AND experiment_intent == none">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — flag adds overhead without payoff"/>
+    </branch>
+    <branch when="flag_lacks_owner_or_expiry == true">
+      <conclusion ref="r1-owner-and-expiry" verdict="BLOCK — add owner and expiry"/>
+    </branch>
+    <branch when="evaluation_has_side_effects == true">
+      <conclusion ref="r2-pure-evaluation" verdict="BLOCK — move side effects out of evaluation"/>
+    </branch>
+    <branch when="risky_feature AND not is_kill_switch">
+      <conclusion ref="r4-kill-switch-for-risky" verdict="BLOCK — mark as kill-switch"/>
+    </branch>
+    <branch when="cleanup_pr_missing == true">
+      <conclusion ref="r5-cleanup-pr-queued" verdict="BLOCK — queue cleanup PR"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — flag ready to ship"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="feature-flags-happy-path">
+    Web SaaS + checkout change → first two branches do not match → owner+expiry set → pure evaluation → not kill-switch needed → cleanup queued → all_gates_green=true → APPROVE.
+  </example>
+</text>

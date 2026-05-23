@@ -1,22 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-celery Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Django Celery Tasks Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/django-celery.json",
+  "type": "object",
+  "required": ["task_name", "queue", "idempotency", "max_retries", "soft_time_limit", "time_limit", "dlq_strategy"],
+  "properties": {
+    "task_name": {"type": "string", "pattern": "^[a-z][a-z0-9_.]+$"},
+    "queue": {"type": "string", "minLength": 1},
+    "idempotency": {"type": "string", "enum": ["idempotency_key", "db_upsert", "check_before_act", "natural_key"]},
+    "max_retries": {"type": "integer", "minimum": 0, "maximum": 10},
+    "retry_backoff": {"type": "boolean"},
+    "retry_jitter": {"type": "boolean"},
+    "soft_time_limit": {"type": "integer", "minimum": 1},
+    "time_limit": {"type": "integer", "minimum": 1},
+    "dlq_strategy": {"type": "string", "enum": ["dlq", "failure_record", "alert_only"]}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "task_name": "app.payments.send_receipt_email",
+  "queue": "emails",
+  "idempotency": "idempotency_key",
+  "max_retries": 3,
+  "retry_backoff": true,
+  "retry_jitter": true,
+  "soft_time_limit": 30,
+  "time_limit": 60,
+  "dlq_strategy": "dlq"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "task_name": "SendEmail",
+  "max_retries": 99
+}
+]]></code>
+    <note>task_name not dotted snake_case, max_retries above maximum, missing required fields.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Task without explicit name argument (relies on auto-discovery)</pattern>
+      <pattern id="f2">Task without idempotency strategy declared</pattern>
+      <pattern id="f3">Task without both soft_time_limit and time_limit</pattern>
+      <pattern id="f4">Worker started with no -Q queue arg (consumes default only)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Lowercase + dot-normalize task names.</transformation>
+      <transformation>Default retry_backoff and retry_jitter to true when omitted.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-django-celery.py">Validator script</reference>
 </text>

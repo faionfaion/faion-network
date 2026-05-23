@@ -3,82 +3,99 @@ slug: logging-patterns
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Emit structured JSON logs with correlation IDs, mask sensitive fields, use appropriate log levels, attach context via middleware, integrate with aggregators, prevent PII leaks.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Emit structured JSON logs with correlation IDs, level discipline, masked sensitive fields, and middleware-attached context for every request.
 content_id: "1554d307ae7110f6"
+complexity: medium
+produces: code
+est_tokens: 4000
 tags: [logging, structured-logs, observability, json, correlation-id]
 ---
 # Structured Logging Patterns
 
 ## Summary
 
-**One-sentence:** Emit structured JSON logs with correlation IDs, mask sensitive fields, use appropriate log levels, attach context via middleware, integrate with aggregators, prevent PII leaks.
+**One-sentence:** Emit structured JSON logs with correlation IDs, level discipline, masked sensitive fields, and middleware-attached context for every request.
 
-**One-paragraph:** Emit structured JSON logs with correlation IDs, mask sensitive fields, use appropriate log levels, attach context via middleware, integrate with aggregators, prevent PII leaks.
+**One-paragraph:** Logs are JSON objects, never plain text. Every request carries a correlation_id propagated via middleware; every log line includes it. Levels follow a contract (ERROR for actionable, WARN for degraded, INFO for state changes, DEBUG for verbose). Sensitive fields (PII, secrets, tokens) are masked in a single pipeline stage. Logs ship to an aggregator (Loki, ELK, Datadog). Output is the logging module + middleware + redaction rules.
+
+**Ефективно для:**
+
+- Backend services where log volume + searchability matter.
+- Multi-service architectures needing request tracing.
+- Compliance contexts requiring PII redaction.
+- Replacing print/log.info('...') with reviewable structured calls.
 
 ## Applies If (ALL must hold)
 
-- Setting up logging for any new service (Python or TypeScript)
-- Adding audit trails for compliance (payments, auth events)
-- Integrating with OpenTelemetry for distributed tracing
-- Diagnosing production incidents where correlation is required
-- New service or module: agent scaffolds a structured-logging baseline (JSON formatter, contextvars, request middleware) before any business logic ships.
-- Refactor of legacy print / console.log / fmt.Println debris into structured logs.
-- Adding distributed tracing: pair trace_id / request_id injection across services so logs join with spans.
-- Compliance/audit (SOC2, HIPAA, PCI): structured logs with retention policy and PII redaction.
-- Onboarding a log aggregator (Loki, ELK, Datadog, CloudWatch): agents map fields to indices and dashboards.
-- After a P1 incident: postmortems revealing missing logs become input for an agent that proposes new log calls and levels.
-- Cost reduction: agents identify high-volume, low-value log lines and propose level downgrades or sampling.
+- Service emits logs as part of its operational story.
+- Log aggregator exists (Loki, ELK, Datadog, Cloud Logging).
+- Requests have an identifiable boundary (HTTP request, message consumption, worker job).
+- PII or secrets may appear in logged payloads.
 
 ## Skip If (ANY kills it)
 
-- Short scripts or one-shot jobs — standard print/stderr is fine
-- Test output — pytest captures output; structured logs add noise
-- Very high-frequency inner loops — log outside the loop or sample
-- Tiny throwaway scripts where stderr suffices.
-- Hot paths where logging cost is measurable (per-row inside a 100k iteration loop) — sample or move to metrics.
-- Security-sensitive code paths where any log line is a leak risk (raw payloads, secrets) — emit metric counters instead.
-- Real-time / latency-critical signal paths (audio, video, trading) — buffered async logging only; never block.
+- Single-binary CLI where stderr is the only output channel.
+- Embedded systems with no aggregator and constrained memory.
+- Services that emit only metrics + traces, no logs by design.
+- Logs go to a managed service that owns redaction + structure entirely.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Logging library chosen per language (structlog, zap, slog, winston) | config | platform |
+| Log aggregator endpoint + index schema | config | platform |
+| PII field list to redact (emails, phones, tokens) | policy | security |
+| Correlation-ID source: request header, generated UUID, parent context | ADR | tech-lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-error-handling]] | Error logs carry structured fields matching error chain. |
+| [[go-error-handling-patterns]] | Error wrapping preserves fields the logger surfaces. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (JSON output, correlation_id everywhere, level discipline, no PII in logs, single redaction pipeline, no print statements) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for logging module spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: pick library → middleware → redaction → level audit → aggregator | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `middleware_wiring` | sonnet | Plug correlation_id into request context. |
+| `redaction_rules` | sonnet | Field-list-driven redaction pipeline. |
+| `level_audit` | sonnet | Walk existing log calls; reclassify by contract. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/structlog-config.py` | structlog (Python) config with JSON renderer + processors |
+| `templates/request-middleware.py` | Middleware: bind correlation_id + request context |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-logging-patterns.py` | Validate logging module spec against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[api-error-handling]]
+- [[go-error-handling-patterns]]
+- [[django-celery]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps service architecture, log destination, and PII exposure to a rule from `01-core-rules.xml`, telling the agent whether to apply the conventions or skip for managed/CLI cases. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

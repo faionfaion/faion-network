@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="go-concurrency-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-concurrency-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Go Concurrency Patterns Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Go Concurrency Patterns application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-bounded-pool-not-unbounded-goroutines" testable="true" depth="essential">
+      <statement>Worker pools have a fixed maximum size (`semaphore.Weighted`, `errgroup.SetLimit`, or buffered channel). No code path spawns goroutines without a bound.</statement>
+      <rationale source="Practitioner experience + Go community guidance">Unbounded `go func()` spawns under load saturate scheduler + memory; bounded pools provide backpressure naturally.</rationale>
     </rule>
+
+    <rule id="r2-context-everywhere" testable="true" depth="essential">
+      <statement>Every long-running goroutine takes a context.Context as its first argument and respects ctx.Done(). No goroutine runs forever without a cancellation source.</statement>
+      <rationale source="Go context package docs">Goroutines without context cannot be shut down; in HTTP handlers, this manifests as request-bound goroutines outliving the request.</rationale>
+    </rule>
+
+    <rule id="r3-channel-closed-by-sender" testable="true" depth="essential">
+      <statement>Channels are closed only by the sender (or last sender via sync.Once). Receivers never close. No 'close from outside' for cleanup.</statement>
+      <rationale source="Go specification + community convention">Closing a channel from the receiver side panics the sender; this rule is the only safe convention.</rationale>
+    </rule>
+
+    <rule id="r4-goroutine-with-exit-signal" testable="true" depth="essential">
+      <statement>Every spawned goroutine has a deterministic exit path: ctx.Done(), input channel drained, or wg.Done()-tracked completion. 'Eventually it returns' is not acceptable.</statement>
+      <rationale source="Practitioner experience">Hand-wavy exit paths are how leaks happen; explicit signals make lifecycles reviewable.</rationale>
+    </rule>
+
+    <rule id="r5-fan-out-fan-in-pipeline" testable="true" depth="essential">
+      <statement>Pipelines with N stages use the fan-out/fan-in pattern: bounded pool per stage, channels between stages, single output channel. Custom pipeline shapes require an ADR.</statement>
+      <rationale source="Go concurrency patterns literature">Fan-out/fan-in is the canonical shape; bespoke shapes accrue maintenance cost and obscure backpressure.</rationale>
+    </rule>
+
+    <rule id="r6-errgroup-for-first-error" testable="true" depth="essential">
+      <statement>Multi-worker operations use errgroup.WithContext so the first error cancels remaining workers. Bare goroutines with manual error channels are forbidden.</statement>
+      <rationale source="golang.org/x/sync/errgroup docs">errgroup handles cancellation propagation correctly; manual implementations consistently miss the edge cases.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

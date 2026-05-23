@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="logging-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for logging-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Structured Logging Patterns Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Structured Logging Patterns application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-json-output" testable="true" depth="essential">
+      <statement>Log lines are JSON objects with at minimum `level`, `timestamp`, `event`, `correlation_id`, `service`. Plain-text logs are forbidden in production.</statement>
+      <rationale source="Observability practices">JSON allows structured queries in the aggregator; plain text forces grep + regex and loses fields.</rationale>
     </rule>
+
+    <rule id="r2-correlation-id-propagated" testable="true" depth="essential">
+      <statement>Every log line within a request boundary carries the request's correlation_id. Middleware attaches it; child contexts inherit.</statement>
+      <rationale source="Distributed tracing practice">Without correlation_id, tracing a multi-service request requires correlating timestamps and is unreliable.</rationale>
+    </rule>
+
+    <rule id="r3-level-discipline" testable="true" depth="essential">
+      <statement>Levels follow the contract: ERROR = actionable (page-able), WARN = degraded but recovering, INFO = significant state change, DEBUG = verbose / dev-only. No level inflation.</statement>
+      <rationale source="Practitioner experience">Level inflation (everything is ERROR) trains operators to ignore signals; discipline preserves the alert path.</rationale>
+    </rule>
+
+    <rule id="r4-no-pii-in-logs" testable="true" depth="essential">
+      <statement>PII fields (email, phone, password, token, full name, address) are masked before logging. A single redaction pipeline applies; ad-hoc masking in call sites is forbidden.</statement>
+      <rationale source="GDPR + practitioner experience">Single pipeline is the only auditable surface; per-call-site masking drifts and leaks.</rationale>
+    </rule>
+
+    <rule id="r5-single-redaction-pipeline" testable="true" depth="essential">
+      <statement>Redaction happens in one processor / formatter / interceptor. The field list lives in code-as-config. PRs that change the redaction list require a paired ADR.</statement>
+      <rationale source="Practitioner experience">Multiple redaction sites duplicate and drift; one source is the only reviewable shape.</rationale>
+    </rule>
+
+    <rule id="r6-no-print-statements" testable="true" depth="essential">
+      <statement>print(), console.log(), fmt.Println in non-test paths is forbidden. Linting (T20 / no-console / forbidigo) enforces the rule.</statement>
+      <rationale source="Practitioner experience">Stray prints escape redaction + correlation; lint enforcement is the cheap gate.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

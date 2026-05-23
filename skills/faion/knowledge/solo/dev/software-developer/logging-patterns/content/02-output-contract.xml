@@ -1,22 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="logging-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Structured Logging Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/logging-patterns.json",
+  "type": "object",
+  "required": ["logger_module", "json_output", "correlation_id_middleware", "redaction_pipeline_count", "pii_field_count", "print_calls"],
+  "properties": {
+    "logger_module": {"type": "string", "minLength": 3},
+    "json_output": {"type": "boolean"},
+    "correlation_id_middleware": {"type": "boolean"},
+    "redaction_pipeline_count": {"type": "integer", "minimum": 1, "maximum": 1},
+    "pii_field_count": {"type": "integer", "minimum": 1},
+    "print_calls": {"type": "integer", "minimum": 0, "maximum": 0},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "logger_module": "app.observability.logger",
+  "json_output": true,
+  "correlation_id_middleware": true,
+  "redaction_pipeline_count": 1,
+  "pii_field_count": 8,
+  "print_calls": 0,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "logger_module": "x",
+  "json_output": false,
+  "redaction_pipeline_count": 4,
+  "print_calls": 17
+}
+]]></code>
+    <note>logger_module too short, json_output false, redaction_pipeline_count above max, print_calls above 0, missing required fields.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Plain-text log line in production code</pattern>
+      <pattern id="f2">Log call without correlation_id binding (outside startup/shutdown)</pattern>
+      <pattern id="f3">PII field appearing in a log payload (email, phone, token)</pattern>
+      <pattern id="f4">print()/console.log()/Println in non-test source files</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Auto-sort log keys for readable JSON.</transformation>
+      <transformation>Default correlation_id to startup-time UUID when no request context.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-logging-patterns.py">Validator script</reference>
 </text>

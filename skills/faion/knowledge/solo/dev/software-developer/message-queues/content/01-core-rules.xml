@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="message-queues Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for message-queues. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Message Queue Patterns Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Message Queue Patterns application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-consumer-is-idempotent" testable="true" depth="essential">
+      <statement>Every consumer is idempotent: same message processed twice produces the same end state. Strategies: idempotency key, db upsert by natural key, check-before-act.</statement>
+      <rationale source="Distributed systems literature">Brokers deliver at-least-once; non-idempotent consumers double-process under retry, causing visible bugs.</rationale>
     </rule>
+
+    <rule id="r2-manual-acknowledgement" testable="true" depth="essential">
+      <statement>Consumers acknowledge after success, never on receipt. Crashes during processing must retry, not lose the message.</statement>
+      <rationale source="Broker docs (RabbitMQ, SQS)">Auto-ack drops messages on consumer crash; manual ack is the only safe default.</rationale>
+    </rule>
+
+    <rule id="r3-dlq-wired-with-alert" testable="true" depth="essential">
+      <statement>Messages that exhaust retries route to a DLQ. DLQ depth and growth rate are monitored; alerts fire on threshold breach.</statement>
+      <rationale source="Reliability engineering">DLQs without alerts accumulate invisibly until the broker disk fills or someone notices a missing feature.</rationale>
+    </rule>
+
+    <rule id="r4-retry-policy-explicit-and-bounded" testable="true" depth="essential">
+      <statement>Each consumer declares max retries, backoff strategy (exponential + jitter), and TTL. Infinite retries are forbidden.</statement>
+      <rationale source="Practitioner experience">Infinite retries pin worker capacity on poison messages, blocking unrelated work.</rationale>
+    </rule>
+
+    <rule id="r5-versioned-message-schema" testable="true" depth="essential">
+      <statement>Messages carry a `version` field. Consumers branch on version; old versions are accepted for the deprecation window then dropped explicitly.</statement>
+      <rationale source="Practitioner experience">Un-versioned schemas force everyone to upgrade simultaneously; versioning lets producer + consumer evolve independently.</rationale>
+    </rule>
+
+    <rule id="r6-no-side-effects-before-ack" testable="true" depth="essential">
+      <statement>Consumers do not emit messages, write to external systems, or commit visible state changes before the ack happens. (Use the outbox pattern for outgoing messages.)</statement>
+      <rationale source="Distributed systems literature">Pre-ack side effects produce ghost data on crash-after-side-effect-before-ack; the outbox pattern handles this correctly.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

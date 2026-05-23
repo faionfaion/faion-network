@@ -1,3 +1,8 @@
+# purpose: Pseudo-localization transformer for catalogue values
+# consumes: See content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 """Generate pseudo-localised catalogue to surface truncation in CI.
 
 Usage: python pseudo-loc.py locales/en.json locales/pseudo.json

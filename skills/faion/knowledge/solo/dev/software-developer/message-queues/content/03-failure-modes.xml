@@ -1,42 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="message-queues Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for message-queues as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Consumer without idempotency: assumes each message is delivered exactly once.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every broker delivers at-least-once under network failure, consumer crash, or rebalancing. Without idempotency, duplicate messages produce duplicate DB rows, double-charged payments, or double-sent emails.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using auto_ack=True (RabbitMQ) or acknowledging before processing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Auto-ack removes the message from the queue before the handler runs. A crash mid-handler means the message is permanently lost. Use manual ack after successful processing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Celery without task_acks_late=True.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Default acks on receipt. A worker crash after receipt but before completion silently drops the task. task_acks_late defers ack to completion, enabling safe replay.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Calling Celery apply_async() inside a DB transaction before the commit.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The task fires immediately. If the transaction rolls back after the task fires, the consumer processes data that never existed. Use transaction.on_commit() or the outbox pattern.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>SQS visibility timeout shorter than the p99 handler runtime.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If processing takes longer than the visibility timeout, SQS makes the message visible again while the first consumer is still processing it. Two consumers process the same message in parallel, requiring idempotency to prevent double effects.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>RabbitMQ DLX/DLQ declared with mismatched arguments on different broker restarts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>RabbitMQ queue arguments are immutable after declaration. A mismatch between the arguments in code and those on the broker produces a passive-declare error, silently routing to a different queue or failing to declare DLQ routing. Always test by publishing a known-bad message and checking the DLQ.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Fan-out via app code (for sub in subs: queue.publish(...)) instead of exchange/topic routing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If the publisher crashes mid-loop, some subscribers receive the message and others do not. Exchange-based fan-out is atomic from the broker's perspective.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Message Queue Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying message-queues. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-auto-ack-loss" severity="high">
+      <symptom>Consumer crashes mid-process; queue loses the message; downstream system never receives the event.</symptom>
+      <root-cause source="Practitioner experience">Author used auto-ack default 'because it was simpler'.</root-cause>
+      <fix>Switch to manual ack. Acknowledge only after the side-effect commit. Test with a kill-9 during processing to confirm redelivery.</fix>
+    </antipattern>
+    <antipattern id="fm-non-idempotent-consumer" severity="high">
+      <symptom>Payment processor double-charges customer because broker retried and consumer didn't have an idempotency guard.</symptom>
+      <root-cause source="Practitioner experience">No idempotency key; check-before-act missing.</root-cause>
+      <fix>Add idempotency key to message schema. Persist (key, processed_at) in a DB table. Reject retries that match a processed key.</fix>
+    </antipattern>
+    <antipattern id="fm-silent-dlq" severity="high">
+      <symptom>DLQ has accumulated 14k messages; nobody noticed because no alert was wired.</symptom>
+      <root-cause source="Practitioner experience">DLQ existed but unmonitored.</root-cause>
+      <fix>Wire alert_endpoint to DLQ depth metric. Threshold: depth &gt; 10 OR rate &gt; 1/minute. PagerDuty for severity-1; Slack for warning.</fix>
+    </antipattern>
+    <antipattern id="fm-poison-message-loop" severity="medium">
+      <symptom>Bad message retried 1000 times per second, pinning the worker pool and saturating the broker.</symptom>
+      <root-cause source="Practitioner experience">max_retries unset; backoff missing.</root-cause>
+      <fix>Declare max_retries (3-5) with exponential backoff + jitter. Move to DLQ on exhaustion. Add poison-message detector that drops on n consecutive same-payload failures.</fix>
+    </antipattern>
   </section>
 </text>

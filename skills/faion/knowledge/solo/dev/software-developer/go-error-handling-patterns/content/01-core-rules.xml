@@ -1,11 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="go-error-handling-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-error-handling-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Go Error Handling Patterns Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every Go Error Handling Patterns application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-sentinels-in-one-package" testable="true" depth="essential">
+      <statement>Domain error sentinels (ErrNotFound, ErrConflict, ErrUnauthorized, ErrValidation, ErrSystem) live in a single `internal/apperror` (or `pkg/apperror`) package. Other packages reference them.</statement>
+      <rationale source="Go community convention">Sentinels scattered across packages duplicate; the edge translator needs one canonical set to switch on.</rationale>
     </rule>
+
+    <rule id="r2-wrap-with-percent-w" testable="true" depth="essential">
+      <statement>Errors crossing a layer boundary are wrapped with `fmt.Errorf("&lt;context&gt;: %w", err)`. Plain `return err` is allowed only when the context is already attached.</statement>
+      <rationale source="Go errors package docs">Wrapping preserves the chain; errors.Is/As at the edge can still match sentinels through wrapped layers.</rationale>
+    </rule>
+
+    <rule id="r3-classify-with-errors-is-as" testable="true" depth="essential">
+      <statement>Error classification uses errors.Is (for sentinel matching) or errors.As (for typed errors carrying data). Type assertions on `err.(SomeError)` are forbidden.</statement>
+      <rationale source="Go errors package docs">errors.Is/As walks the wrap chain; type assertion only matches the outermost type and silently misses wrapped errors.</rationale>
+    </rule>
+
+    <rule id="r4-no-panic-for-control-flow" testable="true" depth="essential">
+      <statement>Panic is reserved for unrecoverable programmer error (invariant violation, must-have config missing at startup). It is never used to signal recoverable errors.</statement>
+      <rationale source="Go community convention">Panic-as-control-flow makes error paths invisible to compiler analysis and surfaces unpredictably in production.</rationale>
+    </rule>
+
+    <rule id="r5-translate-at-edge-once" testable="true" depth="essential">
+      <statement>HTTP/gRPC translation from domain error to status code happens in exactly one place (middleware or interceptor). Handlers return Go errors; the translator owns the mapping.</statement>
+      <rationale source="Practitioner experience">Per-handler translation accumulates inconsistencies; a single translator is auditable and changeable in one place.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

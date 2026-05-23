@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-celery Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-celery. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Django Celery Tasks Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Django Celery Tasks application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-explicit-task-name" testable="true" depth="essential">
+      <statement>Every @shared_task or @app.task carries an explicit `name='app.module.task'` argument; never rely on auto-discovered names that change when modules move.</statement>
+      <rationale source="Celery docs + practitioner experience">Auto-discovered names break silently on module rename; queued jobs deserialize against missing tasks and dead-letter.</rationale>
     </rule>
+
+    <rule id="r2-idempotency-guard" testable="true" depth="essential">
+      <statement>Every task has an idempotency strategy: idempotency key in payload, DB upsert by natural key, or 'check before act' pattern. Retries must be safe.</statement>
+      <rationale source="Distributed systems literature">Celery delivers at-least-once; tasks that mutate state without idempotency double-bill, double-email, or corrupt counters.</rationale>
+    </rule>
+
+    <rule id="r3-retry-policy-declared" testable="true" depth="essential">
+      <statement>Tasks declare max_retries, retry_backoff (exponential), retry_jitter (true), and retry_kwargs. Never rely on Celery defaults silently.</statement>
+      <rationale source="Celery docs + practitioner experience">Default retry policy retries forever or never depending on version; explicit policy keeps behavior reviewable.</rationale>
+    </rule>
+
+    <rule id="r4-time-limits-required" testable="true" depth="essential">
+      <statement>Every task sets both soft_time_limit and time_limit. soft raises an exception inside the task; time_limit kills the worker process.</statement>
+      <rationale source="Celery operations guidance">Without time limits, a hung task pins a worker indefinitely; the pool starves and unrelated tasks back up.</rationale>
+    </rule>
+
+    <rule id="r5-named-queues-not-default" testable="true" depth="essential">
+      <statement>Tasks declare an explicit queue via `@shared_task(queue='emails')`. Workers consume specific queues; never run a worker on default-only.</statement>
+      <rationale source="Celery routing docs">All-tasks-on-default mixes priorities; a slow task on default starves time-sensitive tasks.</rationale>
+    </rule>
+
+    <rule id="r6-dlq-with-alert" testable="true" depth="essential">
+      <statement>Tasks that exhaust retries route to a dead-letter queue or store a failure record with structured fields. An alert fires within minutes.</statement>
+      <rationale source="Reliability engineering">Silent terminal failures accumulate invisibly; alerting + DLQ give operators a single place to triage.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>
