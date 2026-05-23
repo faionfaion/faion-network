@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-aws-three-tier Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS Three-Tier Architecture (VPC, ALB, App, Database) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-devops-aws-three-tier.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-aws-three-tier.json",
+  "type": "object",
+  "required": [
+    "project",
+    "az_count",
+    "tiers",
+    "nat_gateway_per_az_prod",
+    "sg_reference_by_id",
+    "aurora_serverless_v2",
+    "encryption_at_rest"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "az_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 6
+    },
+    "tiers": {
+      "type": "object",
+      "required": [
+        "public",
+        "private",
+        "database"
+      ],
+      "properties": {
+        "public": {
+          "type": "array",
+          "minItems": 1
+        },
+        "private": {
+          "type": "array",
+          "minItems": 1
+        },
+        "database": {
+          "type": "array",
+          "minItems": 1
+        }
+      }
+    },
+    "nat_gateway_per_az_prod": {
+      "type": "boolean",
+      "const": true
+    },
+    "sg_reference_by_id": {
+      "type": "boolean",
+      "const": true
+    },
+    "aurora_serverless_v2": {
+      "type": "boolean"
+    },
+    "encryption_at_rest": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project": "checkout-app",
+  "az_count": 2,
+  "tiers": {
+    "public": [
+      "alb"
+    ],
+    "private": [
+      "app"
+    ],
+    "database": [
+      "aurora"
+    ]
+  },
+  "nat_gateway_per_az_prod": true,
+  "sg_reference_by_id": true,
+  "aurora_serverless_v2": true,
+  "encryption_at_rest": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project": "checkout-app",
+  "az_count": 1,
+  "tiers": {
+    "public": [
+      "alb"
+    ],
+    "private": [
+      "app"
+    ],
+    "database": []
+  },
+  "nat_gateway_per_az_prod": false,
+  "sg_reference_by_id": false,
+  "aurora_serverless_v2": false,
+  "encryption_at_rest": false
+}
+]]></code>
+    <note>Single-AZ; DB tier empty; SG by CIDR; encryption off.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">az_count &lt; 2 on prod</pattern>
+    <pattern id="f2">nat_gateway_per_az_prod = false on prod</pattern>
+    <pattern id="f3">sg_reference_by_id = false</pattern>
+    <pattern id="f4">encryption_at_rest = false</pattern>
+    <pattern id="f5">tiers.database empty (collapses 3-tier into 2-tier)</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-aws-three-tier.py">Validator script</reference>
 </text>

@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-lb-ssl-tls Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-lb-ssl-tls as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="SSL/TLS Termination at the Load Balancer Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns from real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the default Nginx ssl_ciphers or HAProxy cipher list without explicitly disabling legacy ciphers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Default cipher lists historically include RC4, 3DES, and CBC-mode ciphers for backward compatibility. Attackers can force downgrade to these weak ciphers if the client supports them. Always specify an explicit allowlist.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Storing TLS private keys as unencrypted PEM files owned by the web server user with world-readable permissions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any process running as that user can read the private key and decrypt past or future sessions. Use filesystem permissions (mode 600, root ownership) and ideally inject keys from a secrets manager at runtime.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="tls10-or-11" severity="high">
+      <symptom>Compliance scanner flags weak TLS; PCI audit fail.</symptom>
+      <root-cause>Old protocol versions still enabled.</root-cause>
+      <fix>Disable TLS 1.0/1.1; allow only TLS 1.2+.</fix>
+    </antipattern>
+    <antipattern id="default-cipher-list" severity="medium">
+      <symptom>Weak ciphers (CBC, RC4) negotiated by old clients.</symptom>
+      <root-cause>No explicit cipher allowlist.</root-cause>
+      <fix>Pin Mozilla intermediate AEAD list.</fix>
+    </antipattern>
+    <antipattern id="no-hsts" severity="medium">
+      <symptom>MITM downgrade attacks possible on public domain.</symptom>
+      <root-cause>HSTS header missing.</root-cause>
+      <fix>Add preload-eligible HSTS header.</fix>
+    </antipattern>
+    <antipattern id="manual-cert-rotation" severity="high">
+      <symptom>Cert expired Sunday 03:00; pager fire.</symptom>
+      <root-cause>No automation.</root-cause>
+      <fix>cert-manager or ACM auto-renewal.</fix>
+    </antipattern>
+
   </section>
 </text>

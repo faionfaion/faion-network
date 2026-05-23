@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-elk-beats-collection Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-elk-beats-collection as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Log Collection with Filebeat and Elastic Beats Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="nested-fields" severity="high">
+      <symptom>Dashboards query `service:checkout` but events have `fields.service:checkout`; no results.</symptom>
+      <root-cause source="Filebeat docs">Default `fields_under_root: false` left in place.</root-cause>
+      <fix>Set `fields_under_root: true` on every input. Re-index if necessary.</fix>
+    </antipattern>
+
+    <antipattern id="no-multiline" severity="high">
+      <symptom>Java stack traces appear as 50 separate log events; impossible to triage exceptions.</symptom>
+      <root-cause source="Filebeat multiline">Source emits multiline; Filebeat default treats each line as event.</root-cause>
+      <fix>Add multiline.pattern + multiline.negate + multiline.match to the input.</fix>
+    </antipattern>
+
+    <antipattern id="hostpath-instead-of-dsmount" severity="medium">
+      <symptom>K8s pods cannot read /var/log because RBAC + mount missing.</symptom>
+      <root-cause source="Elastic K8s guide">DaemonSet manifest used sidecar mount points or skipped hostPath.</root-cause>
+      <fix>Use the standard DaemonSet manifest with hostPath mounts of /var/log/containers + /var/log/pods + /var/lib/docker/containers.</fix>
+    </antipattern>
+
+    <antipattern id="output-no-retry" severity="medium">
+      <symptom>Brief ES outage; Filebeat drops events with no retry; logs lost.</symptom>
+      <root-cause source="Filebeat output docs">output.elasticsearch.bulk_max_size + retry settings left default; in some versions bulk error retry disabled.</root-cause>
+      <fix>Configure bulk_max_size + worker + retry. Ensure `output.elasticsearch.compression_level: 1` + `bulk_max_size: 1024`.</fix>
+    </antipattern>
+
   </section>
 </text>

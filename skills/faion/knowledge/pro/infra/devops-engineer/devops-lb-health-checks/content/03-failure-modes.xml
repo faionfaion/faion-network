@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-lb-health-checks Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-lb-health-checks as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Load Balancer Health Checks Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns from real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Health endpoint that always returns 200 regardless of dependency state.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The load balancer routes traffic to instances that will fail every real request. The outage is hidden until users report errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Liveness probe that checks the database connection.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A database outage will cause every pod to fail liveness and restart in a loop, converting a partial outage into a full application restart storm. Liveness must only verify the process is not deadlocked.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="liveness-checks-db" severity="high">
+      <symptom>Database hiccup restarts every pod; cascading outage.</symptom>
+      <root-cause>Liveness probes DB → DB blip → all pods marked unhealthy.</root-cause>
+      <fix>Move dependency check to readiness only.</fix>
+    </antipattern>
+    <antipattern id="bare-200-no-body" severity="medium">
+      <symptom>Backend returns 200 even when DB unreachable.</symptom>
+      <root-cause>Health handler is `return 200` constant.</root-cause>
+      <fix>Return structured JSON; verify deps before status.</fix>
+    </antipattern>
+    <antipattern id="flapping-via-rise-1" severity="high">
+      <symptom>Backends bounce in/out — load skews wildly.</symptom>
+      <root-cause>`rise=1`, `fall=1` — no anti-flap.</root-cause>
+      <fix>Set `fall=3`, `rise=2` minimum.</fix>
+    </antipattern>
+    <antipattern id="no-probe-timeout" severity="medium">
+      <symptom>Slow probes mask real failures.</symptom>
+      <root-cause>Default probe timeout (often 30s).</root-cause>
+      <fix>Cap timeout ≤500ms.</fix>
+    </antipattern>
+
   </section>
 </text>

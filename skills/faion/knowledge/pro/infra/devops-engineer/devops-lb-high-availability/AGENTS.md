@@ -3,70 +3,94 @@ slug: devops-lb-high-availability
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A load balancer is itself a single point of failure unless deployed in an HA topology.
-content_id: "7308941a3d7042ae"
-tags: [load-balancing, high-availability, cloud, aws, disaster-recovery]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an LB high-availability design: HA topology (active-passive / active-active / anycast / DNS failover), cloud LB choice (ALB / NLB / GLB), and infra-as-code skeleton.
+content_id: "aac341f8618e47c1"
+complexity: deep
+produces: decision-record
+est_tokens: 4600
+tags: [high-availability, anycast, vrrp, alb, nlb, cloud-lb]
 ---
 # Load Balancer High Availability and Cloud Patterns
 
 ## Summary
 
-**One-sentence:** A load balancer is itself a single point of failure unless deployed in an HA topology.
+**One-sentence:** Generates an LB high-availability design: HA topology (active-passive / active-active / anycast / DNS failover), cloud LB choice (ALB / NLB / GLB), and infra-as-code skeleton.
 
-**One-paragraph:** A load balancer is itself a single point of failure unless deployed in an HA topology. Active-active with floating VIP is the standard on-premise pattern; cloud managed LBs (AWS ALB, GCP HTTPS LB, Azure Front Door) handle HA internally across availability zones. Select the cloud LB product based on OSI layer and routing requirements.
+**One-paragraph:** Generates an LB high-availability design: HA topology (active-passive / active-active / anycast / DNS failover), cloud LB choice (ALB / NLB / GLB), and infra-as-code skeleton. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Per-region HA pair (keepalived + VRRP / floating VIP) на bare-metal.
+- Multi-AZ cloud LB selection (ALB vs NLB vs GLB; GCP HTTPS LB; Azure Front Door).
+- Active-active anycast для global traffic.
+- DNS-failover як disaster-recovery fallback (Route 53 health checks).
 
 ## Applies If (ALL must hold)
 
-- Any production service with an SLA above 99% — a single LB instance cannot achieve this.
-- Multi-AZ deployments where backend servers span availability zones.
-- Global applications requiring cross-region failover or latency-based routing.
-- Deployments where the load balancer tier must survive a full AZ failure.
+- Service has an availability target (SLO) higher than what a single LB instance delivers.
+- Failover behaviour (RTO/RPO) must be documented and tested.
+- Either self-hosted HA pair OR cloud managed LB is on the table.
 
 ## Skip If (ANY kills it)
 
-- Development or staging environments where downtime during maintenance is acceptable — HA adds cost and complexity.
-- Do not implement active-active LB without cross-session state synchronisation or sticky sessions — inconsistent routing will break stateful applications.
+- Internal LB with no availability requirement.
+- Single-region single-AZ deployment with no DR commitment.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Availability SLO | % per month | Business / SRE |
+| Failure scenarios | table (scenario, RTO target) | SRE |
+| Region/AZ inventory | list (region, az, capacity) | Platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/devops-engineer/devops-lb-algorithms/AGENTS.md` | Layer + algorithm context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-devops-lb-high-availability` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-lb-high-availability.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- Parent: `pro/infra/devops-engineer/AGENTS.md`
+- [[devops-lb-algorithms]]
+- [[devops-lb-haproxy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

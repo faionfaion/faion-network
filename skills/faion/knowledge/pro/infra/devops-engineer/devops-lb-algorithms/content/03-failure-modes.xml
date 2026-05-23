@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-lb-algorithms Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-lb-algorithms as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Load Balancer Types and Algorithm Selection Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns from real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using IP Hash for general web traffic as a substitute for proper session management.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>IP Hash breaks when clients share a NAT gateway (all traffic hits one backend) or use mobile networks (IP changes break session). Use server-side session storage (Redis) or cookie-based affinity instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Choosing L4 for microservices to "avoid overhead".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Microservices require path-based routing, header injection (trace IDs, auth), and SSL termination — none of which L4 provides. The overhead of L7 HTTP parsing is negligible compared to the routing flexibility gained.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="ip-hash-for-web" severity="high">
+      <symptom>Mobile users randomly logged out; NAT clusters all hit one backend.</symptom>
+      <root-cause>IP hash used as affinity; client IP is not stable.</root-cause>
+      <fix>Cookie-based affinity or server-side session store (Redis).</fix>
+    </antipattern>
+    <antipattern id="l4-for-microservices" severity="medium">
+      <symptom>Need path-routing or header injection — LB cannot help.</symptom>
+      <root-cause>L4 chosen 'to avoid HTTP parsing overhead'.</root-cause>
+      <fix>Move to L7 (HAProxy / Envoy / managed ALB).</fix>
+    </antipattern>
+    <antipattern id="round-robin-with-high-variance" severity="high">
+      <symptom>Some backends idle; one always saturated.</symptom>
+      <root-cause>Round Robin with 10×+ duration variance.</root-cause>
+      <fix>Switch to Least Connections.</fix>
+    </antipattern>
+    <antipattern id="consistent-hash-on-web" severity="medium">
+      <symptom>Uneven traffic; some backends overloaded.</symptom>
+      <root-cause>Consistent hash used on skewed user IDs.</root-cause>
+      <fix>Limit consistent hash to cache tier; use round-robin/least-conn for web.</fix>
+    </antipattern>
+
   </section>
 </text>

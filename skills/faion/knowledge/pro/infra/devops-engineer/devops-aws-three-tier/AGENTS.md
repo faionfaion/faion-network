@@ -3,71 +3,99 @@ slug: devops-aws-three-tier
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The three-tier pattern places the Application Load Balancer in public subnets, application workloads (ECS Fargate or EKS) in private subnets, and Aurora Serverless v2 in isolated database subnets.
-content_id: "191b0a1976d3be3e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces Terraform for a three-tier VPC: public ALB, private app tier (Fargate/EKS), isolated DB subnets with Aurora Serverless v2 + SG-by-reference + multi-AZ.
+content_id: "3c6d7d2a8fadee58"
+complexity: medium
+produces: config
+est_tokens: 4400
 tags: [aws, vpc, three-tier, alb, aurora]
 ---
-# AWS Three-Tier Architecture: VPC, ALB, App, Database
+
+# AWS Three-Tier Architecture (VPC, ALB, App, Database)
 
 ## Summary
 
-**One-sentence:** The three-tier pattern places the Application Load Balancer in public subnets, application workloads (ECS Fargate or EKS) in private subnets, and Aurora Serverless v2 in isolated database subnets.
+**One-sentence:** Produces Terraform for a three-tier VPC: public ALB, private app tier (Fargate/EKS), isolated DB subnets with Aurora Serverless v2 + SG-by-reference + multi-AZ.
 
-**One-paragraph:** The three-tier pattern places the Application Load Balancer in public subnets, application workloads (ECS Fargate or EKS) in private subnets, and Aurora Serverless v2 in isolated database subnets. Security groups enforce strict least-privilege ingress between tiers. Terraform modules orchestrate the full stack.
+**One-paragraph:** The three-tier pattern places the ALB in public subnets, app workloads (Fargate / EKS) in private subnets, and Aurora Serverless v2 in isolated DB subnets. Security groups reference each other by ID (not CIDR) — self-documenting + no CIDR drift. Prod VPC spans ≥2 AZs per tier; NAT GW per AZ in prod (shared in dev). Output is a Terraform skeleton + SG matrix + VPC module call that gives you a compliant HA baseline.
+
+**Ефективно для:**
+
+- Нові cloud-native web apps — HA prod baseline.
+- On-prem 3-tier migration → AWS, minimal arch change.
+- Scalable microservices з shared relational DB.
+- Compliance isolation (PCI / HIPAA) між tiers.
 
 ## Applies If (ALL must hold)
 
-- Building new cloud-native web applications that need a standard HA production baseline.
-- Migrating on-premises three-tier apps to AWS with minimal architecture change.
-- Designing scalable microservices that still use a shared relational database.
-- Any workload requiring compliance isolation between network tiers (PCI, HIPAA).
+- Workload is a web app or microservice fronted by HTTP.
+- Relational DB needed (Aurora Serverless v2 acceptable).
+- AZ-redundancy is a hard requirement (prod SLO ≥ 99.9%).
 
 ## Skip If (ANY kills it)
 
-- Pure serverless workloads — use devops-aws-serverless-api instead; no EC2/ECS/EKS needed.
-- Single-AZ dev environments where cost matters more than HA — one NAT Gateway suffices.
-- Event-driven pipelines with no persistent HTTP layer — EventBridge + Lambda + SQS is simpler.
+- Pure serverless workload — use devops-aws-serverless-api.
+- Single-AZ dev env where cost > HA — one NAT GW suffices.
+- Event-driven pipeline with no persistent HTTP layer.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| CIDR plan | /16 VPC + subnets per tier per AZ | network team |
+| Compute decision | Fargate / EKS | see devops-aws-service-selection |
+| DB requirements | Aurora MySQL / Postgres + ACU range | data team |
+| Domain + cert | ACM cert ARN | DNS |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[devops-aws-service-selection]] | Compute + DB picks live there |
+| [[devops-aws-terraform-cicd]] | IaC delivery owned upstream |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: multi-az-per-tier, nat-gw-per-az-prod, sg-reference-by-id, isolated-db-subnets, aurora-serverless-v2-default, skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for 3-tier config + valid/invalid + forbidden | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: single-az-prod, sg-by-cidr, db-internet-route, single-nat-gw-prod | 800 |
+| `content/04-procedure.xml` | essential | 5 steps: VPC/subnets → ALB → app → DB → SG matrix | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree on env + AZ count → topology | 800 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `plan-cidrs` | haiku | Mechanical /16 → /22 split per AZ. |
+| `compose-tf-modules` | sonnet | Assemble terraform-aws-modules/vpc + alb + aurora calls. |
+| `audit-sgs` | sonnet | SG matrix review + by-ID conversion. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vpc.tf` | Terraform VPC using terraform-aws-modules/vpc with 3 tiers + 2 AZs |
+| `templates/alb.tf` | Terraform ALB in public subnets with HTTPS listener |
+| `templates/aurora.tf` | Terraform Aurora Serverless v2 in isolated DB subnets |
+| `templates/_smoke-test.json` | Minimum config used by validate-devops-aws-three-tier.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-aws-three-tier.py` | Validate the config artefact against the schema in `content/02-output-contract.xml` | CI on every artefact change + pre-commit hook |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[devops-aws-service-selection]]
+- [[devops-aws-terraform-cicd]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when standing up a new HA web-app baseline on AWS.

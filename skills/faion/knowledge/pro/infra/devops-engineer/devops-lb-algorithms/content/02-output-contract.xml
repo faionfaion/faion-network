@@ -1,22 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-lb-algorithms Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Load Balancer Types and Algorithm Selection Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-lb-algorithms.json",
+  "title": "Load Balancer Types and Algorithm Selection",
+  "type": "object",
+  "required": [
+    "layer",
+    "algorithm",
+    "session_affinity",
+    "rationale",
+    "backends",
+    "owner",
+    "last_reviewed"
+  ],
+  "properties": {
+    "layer": {
+      "enum": [
+        "L4",
+        "L7",
+        "DNS",
+        "Global"
+      ]
+    },
+    "algorithm": {
+      "enum": [
+        "round_robin",
+        "weighted_round_robin",
+        "least_connections",
+        "weighted_least_connections",
+        "ip_hash",
+        "least_response_time",
+        "random",
+        "consistent_hashing"
+      ]
+    },
+    "session_affinity": {
+      "enum": [
+        "none",
+        "cookie",
+        "consistent_hash_key",
+        "ip_hash"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 50
+    },
+    "backends": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "host",
+          "weight"
+        ]
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "last_reviewed": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "layer": "L7",
+  "algorithm": "weighted_least_connections",
+  "session_affinity": "cookie",
+  "rationale": "API backend with heterogeneous instance sizes and long-lived WebSocket connections; least-conn rebalances under variance while weights match measured RPS capacity.",
+  "backends": [
+    {
+      "host": "api1.internal",
+      "weight": 100
+    },
+    {
+      "host": "api2.internal",
+      "weight": 100
+    },
+    {
+      "host": "api3.internal",
+      "weight": 50
+    }
+  ],
+  "owner": "sre@acme.io",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "layer": "L4",
+  "algorithm": "ip_hash",
+  "session_affinity": "ip_hash",
+  "owner": "team"
+}
+]]></code>
+    <note>Missing or empty required fields; placeholder owner ('team'). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>missing required keys per schema</pattern>
+  </section>
+
+  <reference path="scripts/validate-devops-lb-algorithms.py">Validator script</reference>
 </text>

@@ -1,22 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-elk-beats-collection Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Log Collection with Filebeat and Elastic Beats Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-devops-elk-beats-collection.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-elk-beats-collection.json",
+  "type": "object",
+  "required": [
+    "deployment",
+    "inputs",
+    "output"
+  ],
+  "properties": {
+    "deployment": {
+      "enum": [
+        "daemonset",
+        "host-agent",
+        "sidecar"
+      ]
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "fields_under_root"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "fields_under_root": {
+            "type": "boolean",
+            "const": true
+          },
+          "fields": {
+            "type": "object",
+            "required": [
+              "service",
+              "environment"
+            ]
+          },
+          "multiline_pattern": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "autodiscover_k8s": {
+      "type": "boolean"
+    },
+    "output": {
+      "type": "object",
+      "required": [
+        "target",
+        "tls"
+      ],
+      "properties": {
+        "target": {
+          "enum": [
+            "elasticsearch",
+            "logstash"
+          ]
+        },
+        "tls": {
+          "type": "boolean",
+          "const": true
+        },
+        "bulk_max_size": {
+          "type": "integer",
+          "minimum": 100
+        }
+      }
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "deployment": "daemonset",
+  "inputs": [
+    {
+      "type": "log",
+      "fields_under_root": true,
+      "fields": {
+        "service": "checkout-api",
+        "environment": "prod"
+      },
+      "multiline_pattern": "^[[:space:]]"
+    }
+  ],
+  "autodiscover_k8s": true,
+  "output": {
+    "target": "elasticsearch",
+    "tls": true,
+    "bulk_max_size": 1024
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "deployment": "sidecar",
+  "inputs": [
+    {
+      "type": "log",
+      "fields_under_root": false,
+      "fields": {}
+    }
+  ],
+  "output": {
+    "target": "elasticsearch",
+    "tls": false
+  }
+}
+]]></code>
+    <note>Sidecar deployment; nested fields; no service/env labels; TLS off.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">deployment = 'sidecar' on K8s</pattern>
+    <pattern id="f2">any input with fields_under_root = false</pattern>
+    <pattern id="f3">output.tls = false</pattern>
+    <pattern id="f4">K8s + autodiscover_k8s = false (static config)</pattern>
+    <pattern id="f5">inputs missing service / environment labels</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-elk-beats-collection.py">Validator script</reference>
 </text>

@@ -3,70 +3,94 @@ slug: devops-lb-health-checks
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Health checks allow the load balancer to remove unhealthy backends from rotation automatically.
-content_id: "bae1e90dd49345aa"
-tags: [load-balancing, health-checks, liveness, readiness, observability]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an LB health-check spec: liveness vs readiness endpoints, dependency checks, tuned interval/fall/rise parameters, language-specific implementation skeletons (Go / FastAPI / Node).
+content_id: "6ad7131c85a4e5e9"
+complexity: medium
+produces: config
+est_tokens: 4300
+tags: [health-checks, liveness, readiness, load-balancer, reliability]
 ---
 # Load Balancer Health Checks
 
 ## Summary
 
-**One-sentence:** Health checks allow the load balancer to remove unhealthy backends from rotation automatically.
+**One-sentence:** Generates an LB health-check spec: liveness vs readiness endpoints, dependency checks, tuned interval/fall/rise parameters, language-specific implementation skeletons (Go / FastAPI / Node).
 
-**One-paragraph:** Health checks allow the load balancer to remove unhealthy backends from rotation automatically. Proper design separates liveness (process alive) from readiness (can serve traffic), uses dedicated endpoints, and checks real dependencies — not just HTTP 200.
+**One-paragraph:** Generates an LB health-check spec: liveness vs readiness endpoints, dependency checks, tuned interval/fall/rise parameters, language-specific implementation skeletons (Go / FastAPI / Node). The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Розділення `/healthz` (liveness) і `/ready` (readiness) для rolling deploys.
+- Dependency checks (DB ping + Redis ping) в readiness, не в liveness.
+- Tuning `interval`/`unhealthy_threshold`/`healthy_threshold` під SLO.
+- Probe skeletons на Go/Python/Node з proper timeouts.
 
 ## Applies If (ALL must hold)
 
-- Any production load-balanced service — health checks are mandatory, not optional.
-- Services with external dependencies (database, cache, upstream APIs) that can fail independently.
-- Kubernetes deployments requiring liveness and readiness probes.
-- Blue-green or rolling deployments where new instances must pass checks before receiving traffic.
+- Application is multi-instance behind any LB (HAProxy / cloud ALB / k8s Service).
+- Backend exposes at least one process or dependency that can fail independently.
+- Rolling deployment or autoscaling will be used (≥1 deploy per week).
 
 ## Skip If (ANY kills it)
 
-- Health check path must not execute expensive operations (full DB query, large file load) — it will add latency to every check interval.
-- Do not use the same endpoint for liveness and readiness — liveness failing restarts the pod; readiness failing only removes it from rotation.
+- Single-instance app with no upstream LB.
+- Backend has zero external dependencies and zero restart logic — TCP-only check is acceptable.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Dependency list | table (name, criticality, ping path) | Application team |
+| Deploy cadence | frequency per week | SRE |
+| SLO error budget | % allowed downtime per month | SRE |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/devops-engineer/devops-lb-algorithms/AGENTS.md` | LB layer context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-devops-lb-health-checks` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-lb-health-checks.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- Parent: `pro/infra/devops-engineer/AGENTS.md`
+- [[devops-lb-haproxy]]
+- [[devops-lb-kubernetes]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,12 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-elk-queries-alerting Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-elk-queries-alerting as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Kibana Queries, Dashboards, and Alerting Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns from real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using message: "*error*" instead of level: ERROR for finding errors in structured logs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wildcard queries on the message text field bypass the inverted index and scan all documents, causing query times 10-100x slower than keyword field lookups on the level field.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="wildcard-message-search" severity="high">
+      <symptom>Dashboard queries time out under load; cluster CPU pegged at 100%.</symptom>
+      <root-cause>Wildcard on `message` bypasses inverted index — full document scan.</root-cause>
+      <fix>Switch to `level:` and `service:` keyword filters; index structured fields.</fix>
+    </antipattern>
+    <antipattern id="query-context-time-range" severity="medium">
+      <symptom>Slow dashboards even though row count is low.</symptom>
+      <root-cause>`@timestamp` lives in `must` (scored) instead of `filter` (cached).</root-cause>
+      <fix>Move all time-range and term filters into `bool.filter`.</fix>
+    </antipattern>
+    <antipattern id="no-missing-logs-alert" severity="high">
+      <symptom>Service went silent for 6 hours; nobody noticed until users complained.</symptom>
+      <root-cause>Only rate-based alerts; no count&lt;1 detector.</root-cause>
+      <fix>Add a missing-heartbeat alert per critical service.</fix>
+    </antipattern>
+    <antipattern id="alerting-without-encryption-key" severity="medium">
+      <symptom>Webhook actions vanish after Kibana restart.</symptom>
+      <root-cause>`xpack.encryptedSavedObjects.encryptionKey` not configured.</root-cause>
+      <fix>Set the encryption key in `kibana.yml` before configuring connectors.</fix>
+    </antipattern>
+
   </section>
 </text>

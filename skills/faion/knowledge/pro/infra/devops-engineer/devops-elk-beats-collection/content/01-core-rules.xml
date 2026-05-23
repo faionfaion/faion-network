@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="devops-elk-beats-collection Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for devops-elk-beats-collection. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Log Collection with Filebeat and Elastic Beats Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 rules grounded in Filebeat docs + K8s production patterns.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every Filebeat log input MUST set fields.service and fields.environment with fields_under_root: true so that these fields appear at the document root in Elasticsearch. Inputs for application logs MUST enable JSON parsing (json.keys_under_root: true) when the application emits structured JSON.</statement>
-      <rationale source="v1-source">Fields not at document root end up nested under a fields object, making KQL queries require fields.service syntax instead of service, which breaks dashboards and alerting rules that expect flat field names.</rationale>
+
+    <rule id="daemonset-on-k8s" testable="true" depth="essential">
+      <statement>On K8s, Filebeat MUST be deployed as a DaemonSet (one pod per node). Sidecar-per-pod patterns are forbidden.</statement>
+      <rationale source="Elastic Kubernetes deployment guide">DaemonSet means O(nodes) pods, not O(containers). Sidecar pattern multiplies log shipper count by container count → wasted CPU + memory.</rationale>
+    </rule>
+    <rule id="fields-under-root" testable="true" depth="essential">
+      <statement>Every input MUST set `fields_under_root: true`. Nested `fields.service` paths in queries are forbidden.</statement>
+      <rationale source="Filebeat docs">Nested fields break flat dashboards + alerting rules that assume top-level field names. Default behaviour is nesting — must be explicitly set.</rationale>
+    </rule>
+    <rule id="multiline-config" testable="true" depth="essential">
+      <statement>Multiline-capable sources (Java / Python tracebacks) MUST configure `multiline.pattern` + `multiline.negate` + `multiline.match`. Single-line-per-event default is forbidden when source produces multiline events.</statement>
+      <rationale source="Filebeat multiline docs">Without multiline, every stack-trace line becomes its own document — breaks search + makes alerting unusable.</rationale>
+    </rule>
+    <rule id="autodiscover" testable="true" depth="essential">
+      <statement>K8s deployments MUST enable Kubernetes autodiscover provider (or hints-based). Static input lists are forbidden.</statement>
+      <rationale source="Filebeat autodiscover docs">Static inputs require config updates on every deploy. Autodiscover picks up new pods automatically + cleans up on terminate.</rationale>
+    </rule>
+    <rule id="output-pinned" testable="true" depth="essential">
+      <statement>Output target (Elasticsearch / Logstash) MUST be pinned to a versioned endpoint with TLS + auth. Plain HTTP outputs are forbidden in prod.</statement>
+      <rationale source="Filebeat output docs">Plain HTTP leaks log content. Unauth output lets any host on the network inject logs.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

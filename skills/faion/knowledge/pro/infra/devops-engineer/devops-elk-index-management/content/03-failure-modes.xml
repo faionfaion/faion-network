@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-elk-index-management Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-elk-index-management as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Elasticsearch Index Lifecycle Management and Templates Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Writing directly to the physical index name (e.g., logs-000001) instead of the rollover alias.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When ILM rolls over, the write alias moves to the new index but any code referencing the old index name continues writing stale data to a read-only index, producing 403 errors.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="no-template-default-mapping" severity="high">
+      <symptom>First indexed log creates 100+ field mappings with default `text+keyword`; storage doubles; query speed halves.</symptom>
+      <root-cause source="Elastic mapping docs">Author indexed before defining a template.</root-cause>
+      <fix>Define index template up-front; reindex (or accept the bad mapping until rollover).</fix>
+    </antipattern>
+
+    <antipattern id="daily-index-without-rollover" severity="medium">
+      <symptom>Some days produce 1 GB index; other days 200 GB; shard sizes wildly uneven; warm-tier migration confusing.</symptom>
+      <root-cause source="Elastic rollover docs">Author used `logs-YYYY.MM.dd` naming without rollover thresholds.</root-cause>
+      <fix>Replace with rollover-driven naming (logs-000001, logs-000002…) + write alias.</fix>
+    </antipattern>
+
+    <antipattern id="no-ilm-manual-delete" severity="high">
+      <symptom>Forgotten cron job; disk fills; cluster red; emergency triage at 2 a.m.</symptom>
+      <root-cause source="Elastic ILM docs">Author wrote a one-off bash cron; never reviewed.</root-cause>
+      <fix>Replace cron with ILM policy. Verify via `GET _ilm/explain` that indices are progressing through phases.</fix>
+    </antipattern>
+
+    <antipattern id="oversharded-cluster" severity="medium">
+      <symptom>Search slow + heap pressure; cluster has 20k shards on 6 nodes.</symptom>
+      <root-cause source="Elastic sharding guide">Author left default 5 shards + per-day index.</root-cause>
+      <fix>Reduce to 1-shard default + rollover; force-merge older indices to 1 segment (warm phase action).</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-lb-kubernetes Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-lb-kubernetes as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Kubernetes Load Balancing: Services, Ingress, Probes Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns from real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using Service type LoadBalancer for every HTTP service in a cluster.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each Service type LoadBalancer provisions a separate cloud LB, multiplying cost and management overhead by the number of services. Use an Ingress controller to consolidate all HTTP/HTTPS traffic behind a single LB.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Omitting readiness probes on Deployments with rolling update strategy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Kubernetes marks pods Ready immediately after the container starts, before the application has initialised. Traffic is routed to unready pods, causing errors during every deployment. Readiness probes gate traffic admission until the application is ready to serve.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="default-loadbalancer-everywhere" severity="high">
+      <symptom>Cloud LB cost explodes; one LB per workload.</symptom>
+      <root-cause>Service `type: LoadBalancer` default.</root-cause>
+      <fix>Use ClusterIP + a single Ingress; LoadBalancer for the Ingress only.</fix>
+    </antipattern>
+    <antipattern id="no-readiness-probe" severity="high">
+      <symptom>Rolling deploy drops traffic for 5-10s per pod.</symptom>
+      <root-cause>Missing readiness; traffic hits pods not yet warm.</root-cause>
+      <fix>Add readiness probe checking real dependencies.</fix>
+    </antipattern>
+    <antipattern id="manual-tls-secret" severity="medium">
+      <symptom>Cert expires; nobody renews; outage.</symptom>
+      <root-cause>Manually-mounted TLS secret.</root-cause>
+      <fix>Use cert-manager + Issuer/ClusterIssuer.</fix>
+    </antipattern>
+    <antipattern id="no-preStop" severity="medium">
+      <symptom>WebSocket clients see RST during rollout.</symptom>
+      <root-cause>No `preStop` hook; pod killed mid-connection.</root-cause>
+      <fix>Add `preStop` sleep + `terminationGracePeriodSeconds`.</fix>
+    </antipattern>
+
   </section>
 </text>

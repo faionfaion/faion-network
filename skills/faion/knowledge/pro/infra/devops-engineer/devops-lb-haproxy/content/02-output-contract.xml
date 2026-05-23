@@ -1,22 +1,167 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-lb-haproxy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="HAProxy / Nginx Load Balancer Configuration Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-lb-haproxy.json",
+  "title": "HAProxy / Nginx Load Balancer Configuration",
+  "type": "object",
+  "required": [
+    "mode",
+    "frontends",
+    "backends",
+    "tls",
+    "rate_limit",
+    "healthcheck_policy",
+    "owner",
+    "last_reviewed"
+  ],
+  "properties": {
+    "mode": {
+      "enum": [
+        "http",
+        "tcp",
+        "mixed"
+      ]
+    },
+    "frontends": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "bind",
+          "default_backend"
+        ]
+      }
+    },
+    "backends": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "balance",
+          "servers"
+        ]
+      }
+    },
+    "tls": {
+      "type": "object",
+      "required": [
+        "cert_path",
+        "min_version"
+      ]
+    },
+    "rate_limit": {
+      "type": "object",
+      "required": [
+        "per_ip_rpm",
+        "deny_status"
+      ]
+    },
+    "healthcheck_policy": {
+      "type": "object",
+      "required": [
+        "inter",
+        "fall",
+        "rise"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "last_reviewed": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "mode": "http",
+  "frontends": [
+    {
+      "name": "http_redirect",
+      "bind": "*:80",
+      "default_backend": "redirect"
+    },
+    {
+      "name": "https_in",
+      "bind": "*:443",
+      "default_backend": "web_backend"
+    }
+  ],
+  "backends": [
+    {
+      "name": "web_backend",
+      "balance": "roundrobin",
+      "servers": [
+        {
+          "name": "web1",
+          "addr": "10.0.0.1:8080"
+        },
+        {
+          "name": "web2",
+          "addr": "10.0.0.2:8080"
+        }
+      ]
+    },
+    {
+      "name": "api_backend",
+      "balance": "leastconn",
+      "servers": [
+        {
+          "name": "api1",
+          "addr": "10.0.1.1:8000"
+        }
+      ]
+    }
+  ],
+  "tls": {
+    "cert_path": "/etc/haproxy/certs/example.com.pem",
+    "min_version": "TLSv1.2"
+  },
+  "rate_limit": {
+    "per_ip_rpm": 600,
+    "deny_status": 429
+  },
+  "healthcheck_policy": {
+    "inter": "10s",
+    "fall": 3,
+    "rise": 2
+  },
+  "owner": "sre@acme.io",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "mode": "http",
+  "owner": "team"
+}
+]]></code>
+    <note>Missing or empty required fields; placeholder owner ('team'). Validator rejects with explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>missing required keys per schema</pattern>
+  </section>
+
+  <reference path="scripts/validate-devops-lb-haproxy.py">Validator script</reference>
 </text>

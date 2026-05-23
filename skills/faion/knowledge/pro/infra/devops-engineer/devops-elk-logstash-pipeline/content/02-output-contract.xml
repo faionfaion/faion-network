@@ -1,22 +1,149 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-elk-logstash-pipeline Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Logstash Pipeline Configuration and Tuning Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-devops-elk-logstash-pipeline.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-elk-logstash-pipeline.json",
+  "type": "object",
+  "required": [
+    "pipelines",
+    "pii_masking",
+    "outputs"
+  ],
+  "properties": {
+    "pipelines": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "workers",
+          "batch_size",
+          "dlq_enabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workers": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "batch_size": {
+            "type": "integer",
+            "minimum": 50
+          },
+          "dlq_enabled": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "pii_masking": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "field",
+          "pattern",
+          "replacement"
+        ]
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "tls",
+          "auth"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "tls": {
+            "type": "boolean",
+            "const": true
+          },
+          "auth": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "pipelines": [
+    {
+      "id": "heavy",
+      "workers": 4,
+      "batch_size": 250,
+      "dlq_enabled": true
+    }
+  ],
+  "pii_masking": [
+    {
+      "field": "message",
+      "pattern": "credit-card",
+      "replacement": "[REDACTED-CC]"
+    }
+  ],
+  "outputs": [
+    {
+      "target": "elasticsearch",
+      "tls": true,
+      "auth": true
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pipelines": [
+    {
+      "id": "main",
+      "workers": 1,
+      "batch_size": 10,
+      "dlq_enabled": false
+    }
+  ],
+  "pii_masking": [],
+  "outputs": [
+    {
+      "target": "elasticsearch",
+      "tls": false,
+      "auth": false
+    }
+  ]
+}
+]]></code>
+    <note>Single worker; tiny batch; DLQ off; no PII masking; TLS off.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">any pipeline with dlq_enabled = false</pattern>
+    <pattern id="f2">pii_masking empty (mandatory for GDPR/PCI scope)</pattern>
+    <pattern id="f3">outputs[*].tls = false</pattern>
+    <pattern id="f4">outputs[*].auth = false</pattern>
+    <pattern id="f5">pipeline.workers = 1 in prod</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-elk-logstash-pipeline.py">Validator script</reference>
 </text>

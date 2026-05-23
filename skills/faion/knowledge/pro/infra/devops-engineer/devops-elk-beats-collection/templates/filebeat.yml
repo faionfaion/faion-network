@@ -1,0 +1,45 @@
+# purpose: Filebeat YAML config with inputs + autodiscover + processors + output
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (config)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~350 tokens when loaded
+
+filebeat.inputs:
+  - type: log
+    id: app-logs
+    enabled: true
+    paths: ["/var/log/app/*.log"]
+    fields:
+      service: "checkout-api"
+      environment: "${ENV}"
+      log_type: "application"
+    fields_under_root: true
+    multiline.type: pattern
+    multiline.pattern: '^[[:space:]]'
+    multiline.negate: false
+    multiline.match: after
+    json:
+      keys_under_root: true
+      add_error_key: true
+
+filebeat.autodiscover:
+  providers:
+    - type: kubernetes
+      node: ${NODE_NAME}
+      hints.enabled: true
+      hints.default_config:
+        type: container
+        paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
+
+processors:
+  - add_kubernetes_metadata: { host: ${NODE_NAME} }
+  - add_cloud_metadata: ~
+  - add_host_metadata: ~
+
+output.elasticsearch:
+  hosts: ["https://elasticsearch:9200"]
+  username: "${ES_USER}"
+  password: "${ES_PASS}"
+  ssl.certificate_authorities: ["/etc/filebeat/ca.crt"]
+  bulk_max_size: 1024
+  worker: 2

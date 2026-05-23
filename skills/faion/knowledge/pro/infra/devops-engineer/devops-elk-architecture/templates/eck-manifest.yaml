@@ -1,0 +1,32 @@
+# purpose: Sample ECK Elasticsearch CRD with role split + hot-warm tiers
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (spec)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~350 tokens when loaded
+
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: prod-logs
+spec:
+  version: 8.13.0
+  nodeSets:
+    - name: master
+      count: 3
+      config:
+        node.roles: ["master"]
+        node.store.allow_mmap: false
+    - name: data-hot
+      count: 3
+      config:
+        node.roles: ["data_hot", "ingest"]
+      volumeClaimTemplates:
+        - metadata: { name: elasticsearch-data }
+          spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Ti } }, storageClassName: gp3-nvme }
+    - name: data-warm
+      count: 2
+      config:
+        node.roles: ["data_warm"]
+      volumeClaimTemplates:
+        - metadata: { name: elasticsearch-data }
+          spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 4Ti } }, storageClassName: gp3 }

@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="devops-aws-three-tier Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for devops-aws-three-tier. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Three-Tier Architecture (VPC, ALB, App, Database) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 rules grounded in AWS Well-Architected Reliability + Security pillars.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Production VPCs MUST span at least 2 AZs for each subnet tier (public, private, database). Single-AZ deployments are forbidden for prod. NAT Gateways MUST be one per AZ in prod and one shared for dev/staging.</statement>
-      <rationale source="v1-source">AZ failure takes down all resources in that AZ simultaneously. A single NAT Gateway is an AZ-level SPOF that blocks all outbound traffic from private subnets if the AZ fails.</rationale>
+
+    <rule id="multi-az-per-tier" testable="true" depth="essential">
+      <statement>Prod VPC MUST span ≥2 AZs per tier (public / private / database). Single-AZ prod is forbidden.</statement>
+      <rationale source="AWS Well-Architected Reliability">AZ failure takes down all resources in that AZ simultaneously. Multi-AZ is the minimum for any SLO above 99.9%.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>ALB listeners MUST redirect HTTP 80 to HTTPS 443 with status 301. SSL policy MUST be ELBSecurityPolicy-TLS13-1-2-2021-06 or newer. ALB access logs MUST be enabled.</statement>
-      <rationale source="v1-source">HTTP-to-HTTPS redirect at the load balancer prevents plaintext traffic from reaching the app. TLS 1.3-only policy drops broken legacy ciphers. Access logs are required for forensics and compliance.</rationale>
+    <rule id="nat-gw-per-az-prod" testable="true" depth="essential">
+      <statement>Prod MUST deploy one NAT Gateway per AZ. Single shared NAT GW is forbidden in prod.</statement>
+      <rationale source="AWS VPC docs">A single NAT GW is an AZ-level SPOF that blocks all outbound traffic from private subnets if its AZ fails. ~$33/mo extra per AZ vs full outage.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Aurora clusters MUST enable storage_encrypted with a customer-managed KMS key, enable performance_insights, set deletion_protection=true in prod, and use iam_database_authentication_enabled=true. Backup retention MUST be ≥30 days in prod.</statement>
-      <rationale source="v1-source">Customer-managed KMS enables key revocation for compliance. IAM authentication eliminates static DB passwords. Deletion protection prevents accidental data loss from a Terraform mistake.</rationale>
+    <rule id="sg-reference-by-id" testable="true" depth="essential">
+      <statement>Security groups MUST reference each other by SG ID (not by CIDR) for inter-tier traffic.</statement>
+      <rationale source="AWS Security Groups best-practice">SG-by-CIDR drifts when subnets change; SG-by-ID is self-documenting + survives CIDR refactors.</rationale>
+    </rule>
+    <rule id="isolated-db-subnets" testable="true" depth="essential">
+      <statement>Database subnets MUST have no route to the internet (no IGW route, no NAT route). DB SG MUST only accept traffic from the app SG.</statement>
+      <rationale source="AWS WA Security pillar">Internet-routable DB subnets enable data exfiltration on credential compromise. Isolated subnets force exfil through the app layer (auditable).</rationale>
+    </rule>
+    <rule id="aurora-serverless-v2-default" testable="true" depth="essential">
+      <statement>New relational workloads MUST default to Aurora Serverless v2 unless ACU limits / extension support require provisioned Aurora.</statement>
+      <rationale source="AWS Aurora Serverless v2 docs">Aurora SLv2 removes DBA capacity-planning toil; scales 0.5 → 32+ ACU in seconds; ~50% cheaper for bursty workloads.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

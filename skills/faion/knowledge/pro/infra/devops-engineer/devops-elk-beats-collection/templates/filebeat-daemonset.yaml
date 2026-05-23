@@ -1,0 +1,33 @@
+# purpose: Kubernetes DaemonSet manifest for Filebeat (one pod per node)
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (config)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~350 tokens when loaded
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+spec:
+  selector: { matchLabels: { app: filebeat } }
+  template:
+    metadata: { labels: { app: filebeat } }
+    spec:
+      serviceAccountName: filebeat
+      containers:
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:8.13.0
+          env:
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          volumeMounts:
+            - { name: config, mountPath: /usr/share/filebeat/filebeat.yml, subPath: filebeat.yml, readOnly: true }
+            - { name: varlogcontainers, mountPath: /var/log/containers, readOnly: true }
+            - { name: varlogpods, mountPath: /var/log/pods, readOnly: true }
+            - { name: dockercontainers, mountPath: /var/lib/docker/containers, readOnly: true }
+      volumes:
+        - { name: config, configMap: { name: filebeat-config } }
+        - { name: varlogcontainers, hostPath: { path: /var/log/containers } }
+        - { name: varlogpods, hostPath: { path: /var/log/pods } }
+        - { name: dockercontainers, hostPath: { path: /var/lib/docker/containers } }

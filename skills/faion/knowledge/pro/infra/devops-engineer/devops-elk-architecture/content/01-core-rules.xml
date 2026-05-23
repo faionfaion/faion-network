@@ -1,15 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="devops-elk-architecture Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for devops-elk-architecture. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ELK Stack Architecture and Deployment Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 rules grounded in Elastic best-practice + production incident postmortems.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Production clusters with more than 5 nodes MUST assign dedicated node roles. Master nodes MUST NOT hold data. Heap for master nodes MUST be set to 4 GB; data node heap MUST be 50% of RAM with a hard maximum of 32 GB.</statement>
-      <rationale source="v1-source">Mixed master-data nodes allow a data-heavy GC pause to delay cluster state updates, causing false node failures and shard reallocation storms. Heap above 32 GB disables the JVM's compressed ordinary object pointers (CompressedOops), doubling pointer size and wasting memory.</rationale>
+
+    <rule id="node-roles-split" testable="true" depth="essential">
+      <statement>Cluster MUST split master, data, and coordinating roles into separate nodes. Mixed-role nodes are forbidden in prod.</statement>
+      <rationale source="Elastic node-roles docs">Mixed roles cause master instability under data-node pressure. Separation isolates failure modes + lets each role be sized correctly.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Set number_of_shards based on (expected_index_size_gb / 30). Never set number_of_shards above 5 for indices smaller than 100 GB. Always set number_of_replicas to at least 1 in production.</statement>
-      <rationale source="v1-source">Over-sharding (many small shards) causes high per-shard overhead: each shard is a Lucene index with file handles, heap usage, and merge threads. Under-sharding (one massive shard) prevents horizontal search scaling and makes shard recovery on node failure extremely slow.</rationale>
+    <rule id="hot-warm-cold-tiers" testable="true" depth="essential">
+      <statement>Prod cluster MUST use hot-warm-cold tier architecture for time-series logs. Single-tier setups are forbidden for retention &gt; 30 days.</statement>
+      <rationale source="Elastic hot-warm-cold architecture">Hot tier (SSD/NVMe) holds recent + searched-often data; warm (HDD/EBS gp3) holds aged data; cold (searchable snapshot to S3) holds rarely-accessed. Reduces storage cost 70-90%.</rationale>
+    </rule>
+    <rule id="3-master-nodes" testable="true" depth="essential">
+      <statement>Cluster MUST have exactly 3 master-eligible nodes (or 5+ for very large clusters). 1 and 2 master setups are forbidden.</statement>
+      <rationale source="Elastic quorum docs">Single master = no HA. Two masters = split-brain risk. Three masters tolerate one failure with quorum.</rationale>
+    </rule>
+    <rule id="capacity-plan-numeric" testable="true" depth="essential">
+      <statement>Spec MUST include a numeric capacity plan: GB/day in × retention × replication = total storage. Heap MUST be ≤ 31 GB per JVM.</statement>
+      <rationale source="Elastic capacity-planning docs">Undocumented capacity plans become 'cluster red' incidents at 2 a.m. The 31 GB heap limit avoids loss of compressed oops.</rationale>
+    </rule>
+    <rule id="deployment-tool-managed" testable="true" depth="essential">
+      <statement>Prod deployment MUST use ECK (Elastic Cloud on Kubernetes) for K8s clusters, or vendor-managed (Elastic Cloud / OpenSearch Service). Hand-rolled Docker Compose is forbidden for prod.</statement>
+      <rationale source="ECK docs">ECK automates upgrades, master quorum, rolling restarts. Hand-rolled Compose breaks on the first upgrade.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

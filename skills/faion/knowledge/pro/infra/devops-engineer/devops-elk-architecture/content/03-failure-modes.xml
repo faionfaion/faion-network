@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-elk-architecture Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-elk-architecture as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ELK Stack Architecture and Deployment Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="flat-cluster" severity="high">
+      <symptom>Single-node cluster runs all roles; cluster red at first burst; master OOMs from data-side pressure.</symptom>
+      <root-cause source="Elastic docs">Author scaled the dev single-node config to prod.</root-cause>
+      <fix>Split into master / data / coordinating role nodes per Elastic best-practice.</fix>
+    </antipattern>
+
+    <antipattern id="2-master-split-brain" severity="high">
+      <symptom>2 master nodes; network partition → both think they're elected → divergent state when partition heals.</symptom>
+      <root-cause source="Elastic quorum">Author thought 2 masters = HA; missed quorum requirement.</root-cause>
+      <fix>Add a 3rd dedicated master node. Set discovery.zen.minimum_master_nodes = 2 (legacy) or use the cluster-coordination API.</fix>
+    </antipattern>
+
+    <antipattern id="no-tier-separation" severity="high">
+      <symptom>All data on SSD; storage cost 5x what it should be; team plans deletion of old data instead of moving to warm.</symptom>
+      <root-cause source="Elastic hot-warm-cold">Author skipped tier setup because 'we'll add later'; ILM never came.</root-cause>
+      <fix>Add data-warm + data-cold nodes; create ILM policy that rolls data hot→warm→cold→delete based on age.</fix>
+    </antipattern>
+
+    <antipattern id="undersized-heap" severity="medium">
+      <symptom>Heap set to 64 GB; node crashes on first heavy aggregation; lose compressed oops benefit.</symptom>
+      <root-cause source="Elastic capacity-planning">Author thought 'more heap = better'.</root-cause>
+      <fix>Set heap to min(50% of RAM, 31 GB). Use the remaining RAM for OS file cache (Lucene loves it).</fix>
+    </antipattern>
+
   </section>
 </text>

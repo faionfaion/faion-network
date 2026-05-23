@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-elk-index-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Elasticsearch Index Lifecycle Management and Templates Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-devops-elk-index-management.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-elk-index-management.json",
+  "type": "object",
+  "required": [
+    "index_pattern",
+    "policy_name",
+    "phases",
+    "rollover",
+    "shard_count",
+    "write_alias"
+  ],
+  "properties": {
+    "index_pattern": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "hot",
+          "warm",
+          "cold",
+          "frozen",
+          "delete"
+        ]
+      },
+      "contains": {
+        "const": "hot"
+      },
+      "minItems": 2
+    },
+    "rollover": {
+      "type": "object",
+      "required": [
+        "max_primary_shard_size",
+        "max_age_days"
+      ],
+      "properties": {
+        "max_primary_shard_size": {
+          "type": "string"
+        },
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "shard_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "replica_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "write_alias": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "index_pattern": "logs-*",
+  "policy_name": "logs-policy",
+  "phases": [
+    "hot",
+    "warm",
+    "cold",
+    "delete"
+  ],
+  "rollover": {
+    "max_primary_shard_size": "50gb",
+    "max_age_days": 7
+  },
+  "shard_count": 1,
+  "replica_count": 1,
+  "write_alias": "logs-write"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "index_pattern": "logs-*",
+  "policy_name": "logs-policy",
+  "phases": [
+    "hot"
+  ],
+  "rollover": {
+    "max_primary_shard_size": "",
+    "max_age_days": 0
+  },
+  "shard_count": 5,
+  "write_alias": ""
+}
+]]></code>
+    <note>Only hot phase; rollover thresholds empty; 5 shards (default); no write alias.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">shard_count &gt; 3 for log workloads</pattern>
+    <pattern id="f2">phases length &lt; 2 (need at least hot + delete)</pattern>
+    <pattern id="f3">rollover.max_primary_shard_size empty AND max_age_days = 0</pattern>
+    <pattern id="f4">write_alias empty</pattern>
+    <pattern id="f5">phases missing 'delete' (forces unbounded retention)</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-elk-index-management.py">Validator script</reference>
 </text>

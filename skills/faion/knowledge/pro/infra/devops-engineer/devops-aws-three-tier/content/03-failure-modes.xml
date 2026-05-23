@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-aws-three-tier Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-aws-three-tier as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="AWS Three-Tier Architecture (VPC, ALB, App, Database) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="single-az-prod" severity="high">
+      <symptom>us-east-1a AZ failure → full outage; SLO blown.</symptom>
+      <root-cause source="AWS WA Reliability">Author optimised dev/staging single-AZ and copied to prod.</root-cause>
+      <fix>Add second AZ to all tiers; rebalance subnets. NAT GW per AZ.</fix>
+    </antipattern>
+
+    <antipattern id="sg-by-cidr" severity="medium">
+      <symptom>Subnet refactor changes CIDR; SG rules silently allow nothing; service breaks.</symptom>
+      <root-cause source="AWS SG best-practice">Author wrote rules with hardcoded CIDR ranges.</root-cause>
+      <fix>Convert all inter-tier rules to SG-by-ID references.</fix>
+    </antipattern>
+
+    <antipattern id="db-internet-route" severity="high">
+      <symptom>DB subnet has IGW / NAT route 'just in case'; credential compromise → direct data exfil.</symptom>
+      <root-cause source="AWS WA Security">Author lifted-and-shifted from a single-subnet VPC.</root-cause>
+      <fix>Remove all internet routes from DB subnet. DB SG accepts only from app SG.</fix>
+    </antipattern>
+
+    <antipattern id="single-nat-gw-prod" severity="medium">
+      <symptom>Cost optimisation merged single-NAT-GW config to prod; AZ failure → app cannot reach external APIs; outage.</symptom>
+      <root-cause source="AWS VPC docs">Author copied dev cfg ('single_nat_gateway = true').</root-cause>
+      <fix>Set single_nat_gateway = (var.environment != 'prod'). Validate per-AZ NAT GW count.</fix>
+    </antipattern>
+
   </section>
 </text>

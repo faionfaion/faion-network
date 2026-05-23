@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-elk-logstash-pipeline Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-elk-logstash-pipeline as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Logstash Pipeline Configuration and Tuning Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="pii-leak" severity="high">
+      <symptom>Credit card numbers indexed verbatim; compliance audit fails; recall+reindex costs days.</symptom>
+      <root-cause source="GDPR / PCI">PII masking step missing or applied AFTER output stage.</root-cause>
+      <fix>Add mutate gsub filter BEFORE the elasticsearch output. Re-test with a fixture containing sample PII.</fix>
+    </antipattern>
+
+    <antipattern id="single-pipeline-bottleneck" severity="medium">
+      <symptom>One slow grok pattern blocks all other log streams; ingest lag grows to hours.</symptom>
+      <root-cause source="Logstash docs">All filters live in one pipeline; one heavy filter starves the others.</root-cause>
+      <fix>Split into heavy + routing pipelines via pipelines.yml. Use pipeline-to-pipeline forwarding.</fix>
+    </antipattern>
+
+    <antipattern id="dropped-on-parse-failure" severity="medium">
+      <symptom>Grok pattern fails on a new log variant; events vanish silently; nobody notices for weeks.</symptom>
+      <root-cause source="Logstash DLQ">DLQ disabled; tag_on_failure default (silent).</root-cause>
+      <fix>Enable DLQ; route _grokparsefailure events to DLQ or a debug index. Set up an alert on DLQ depth.</fix>
+    </antipattern>
+
+    <antipattern id="default-worker-count" severity="medium">
+      <symptom>Default 1 worker; Logstash CPU stuck at 100% on one core; 7 cores idle; ingest lag.</symptom>
+      <root-cause source="Logstash performance">pipeline.workers never tuned.</root-cause>
+      <fix>Set workers = physical cores. Tune batch.size 125-500. Measure with `_node/stats`.</fix>
+    </antipattern>
+
   </section>
 </text>
