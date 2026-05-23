@@ -2,73 +2,94 @@
 slug: feature-prioritization-rice
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Quantitative scoring model that ranks features by `(Reach × Impact × Confidence) / Effort`.
-content_id: "ed007ef10322796b"
-tags: [prioritization, rice, product-ops, scoring, roadmap]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Score features by Reach × Impact × Confidence ÷ Effort; rank by descending RICE; refuse to commit anything with confidence <50% or effort >team-week without a spike.
+content_id: "5451ffd9fe875c22"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["rice", "prioritisation", "scoring", "decision-record", "ops"]
 ---
-# Feature Prioritization (RICE)
+# Feature Prioritisation — RICE
 
 ## Summary
 
-**One-sentence:** Quantitative scoring model that ranks features by `(Reach × Impact × Confidence) / Effort`.
+**One-sentence:** Score features by Reach × Impact × Confidence ÷ Effort; rank by descending RICE; refuse to commit anything with confidence <50% or effort >team-week without a spike.
 
-**One-paragraph:** Quantitative scoring model that ranks features by `(Reach × Impact × Confidence) / Effort`. Reach is users per quarter from analytics; Impact uses a fixed 5-point scale (3/2/1/0.5/0.25); Confidence is capped at 50% without cited evidence; Effort is total person-months including design, dev, QA, and docs. Higher score = higher priority. Re-score quarterly; archive prior scoring files with date stamps.
+**One-paragraph:** RICE turns prioritisation arguments into arithmetic. The score forces explicit estimates per dimension; the comparison is the score not the dimension. Confidence floor + effort ceiling keep low-evidence bets out of Now and prevent multi-week scope from sneaking in unspiked.
+
+**Ефективно для:**
+
+- Solo PM with ≥5 features competing for the same engineering hour; needs a defensible, repeatable ordering rather than a HiPPO vote.
 
 ## Applies If (ALL must hold)
 
-- Backlog has 10+ candidates needing an objective, repeatable rank for the next quarter or release.
-- Stakeholders disagree on priority and you need a math-based artifact to defuse HiPPO.
-- A subagent drafts a roadmap from a raw idea list and needs a defensible default ordering.
-- You have at least funnel/MAU data plus an effort estimate per item.
+- ≥5 features contending for the next slot.
+- Reach and impact can be estimated within an order of magnitude.
+- Decision needs to be auditable / explainable to stakeholders.
 
 ## Skip If (ANY kills it)
 
-- Single-feature decisions — RICE adds noise versus a one-liner rationale.
-- Pre-PMF / 0-to-1 products where Reach is unknowable — use opportunity solution trees or Kano.
-- Compliance, security, or contractual must-haves — they bypass RICE and go straight into the plan.
-- Cross-portfolio bets where strategic fit dominates the score (RICE has no strategy term).
+- Single contested item — RICE doesn't decide between 1.
+- Compliance / contractual deadline — RICE doesn't override.
+- All items same persona + same job — use kano or another lens.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature list | csv | Backlog |
+| Reach unit policy (users/week vs lifetime) | table | Team doc |
+| Effort estimation scale (person-weeks) | table | Team doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-operations/backlog-management` | Source of items that enter scoring. |
+| `solo/product/product-manager/spec-writing` | Downstream artefact for the top-RICE item. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-feature-prioritization-rice` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-feature-prioritization-rice` | haiku | Schema check + threshold checks; deterministic. |
+| `review-feature-prioritization-rice` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/feature-prioritization-rice.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/feature-prioritization-rice.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-feature-prioritization-rice.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-operations/`
+- [[backlog-management]]
+- [[spec-writing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

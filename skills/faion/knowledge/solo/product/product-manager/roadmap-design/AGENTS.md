@@ -2,73 +2,94 @@
 slug: roadmap-design
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A five-step process for building a product roadmap as a strategic communication tool, not a delivery schedule.
-content_id: "f51a13474b8b0a80"
-tags: [roadmap, strategy, product-planning, now-next-later, communication]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Design an outcome-based roadmap with Now/Next/Later horizons, explicit confidence per item, and quarterly review cadence so the roadmap becomes a steering tool instead of a wishlist.
+content_id: "00bde11348cb1c2d"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["roadmap", "now-next-later", "outcomes", "planning", "confidence"]
 ---
 # Roadmap Design
 
 ## Summary
 
-**One-sentence:** A five-step process for building a product roadmap as a strategic communication tool, not a delivery schedule.
+**One-sentence:** Design an outcome-based roadmap with Now/Next/Later horizons, explicit confidence per item, and quarterly review cadence so the roadmap becomes a steering tool instead of a wishlist.
 
-**One-paragraph:** A five-step process for building a product roadmap as a strategic communication tool, not a delivery schedule. Covers four roadmap formats (timeline, Now-Next-Later, outcome-based, kanban) with a selection matrix, theme-based organisation, confidence levels, and audience-specific rendering (internal vs external). The core rule: every initiative links to one objective ID; orphaned initiatives are strategy leakage.
+**One-paragraph:** Replaces feature lists with outcome statements per horizon. Now items carry committed scope + owner; Next items carry hypotheses + dependencies; Later items carry bets + open questions. Confidence labels (high/medium/low) prevent the document from being read as a contract.
+
+**Ефективно для:**
+
+- Solo founder or small-team PM whose roadmap doc drifts every 2 weeks; needs a structure that holds shape under reprioritisation without lying about commitments.
 
 ## Applies If (ALL must hold)
 
-- Communicating a 1-4 quarter plan to internal team, investors, or customers.
-- Multiple stakeholders need a single source of truth linking strategy → themes → initiatives.
-- Choosing between roadmap formats — use the selection matrix.
-- Onboarding a new contractor or PM who needs a one-page direction document.
+- Multi-stakeholder product where alignment beats individual feature scope.
+- Quarterly planning cadence exists or is being established.
+- Roadmap will be shared externally or with non-PM stakeholders.
 
 ## Skip If (ANY kills it)
 
-- Less than 4 weeks of work — roadmap overhead exceeds value; use a sprint plan or release notes.
-- Pure exploration phase before PMF — explicit roadmaps create anchors that bias discovery.
-- Highly volatile environments (hackathon, week-by-week pivots) — keep a backlog.
-- Feature commitment to a single customer — that is a contract, not a roadmap.
+- Single-developer 1-week scope where a plain task list is sufficient.
+- Pre-product phase where there are no users to align with.
+- Stable maintenance product with no strategic direction.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Strategic outcomes / OKRs | markdown | Strategy doc |
+| Confidence rubric | table | PM doc |
+| Audience list for the roadmap (internal/external) | list | CRM / team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-planning/okr-setting` | Outcomes anchor the roadmap horizons. |
+| `solo/product/product-operations/feature-prioritization-rice` | Within-horizon ranking when items contend. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-roadmap-design` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-roadmap-design` | haiku | Schema check + threshold checks; deterministic. |
+| `review-roadmap-design` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/roadmap-design.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/roadmap-design.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-roadmap-design.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-manager/`
+- [[okr-setting]]
+- [[feature-prioritization-rice]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -2,73 +2,96 @@
 slug: feature-prioritization-rice
 tier: solo
 group: product
-domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Score each candidate feature as (Reach x Impact x Confidence) / Effort.
-content_id: "ed007ef10322796b"
-tags: [prioritization, rice, scoring, roadmap, feature-ranking]
+domain: product
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a RICE-scored backlog config (Reach × Impact × Confidence ÷ Effort with named units + confidence-floor + evidence citations) so prioritisation stops being a gut-vote ritual."
+content_id: "0fab3091021d3751"
+complexity: light
+produces: rubric
+est_tokens: 2900
+tags: [prioritization, rice, product-management, scoring]
 ---
-# Feature Prioritization (RICE)
+
+# Feature Prioritization RICE
 
 ## Summary
 
-**One-sentence:** Score each candidate feature as (Reach x Impact x Confidence) / Effort.
+**One-sentence:** Produces a RICE-scored backlog config (Reach × Impact × Confidence ÷ Effort with named units + confidence-floor + evidence citations) so prioritisation stops being a gut-vote ritual.
 
-**One-paragraph:** Score each candidate feature as (Reach x Impact x Confidence) / Effort. Reach = users affected per quarter (cite an analytics query or proxy metric). Impact = {3, 2, 1, 0.5, 0.25} only — do not add intermediate values. Confidence = 100%/80%/50% only — drop one tier for each unknown. Effort = person-months including design, dev, QA, and a 30% buffer for unknowns; engineers must own this column. Sort highest-to-lowest, sanity-check, then apply strategic veto for one bet that may rank lower but is the only path to differentiation.
+**Ефективно для:** Solopreneur PMs whose RICE scores rank features but everyone disagrees what 'Reach' or 'Impact' means and Confidence is always 100%.
+
+**One-paragraph:** RICE is widely deployed and widely vibe-coded — Reach gets confused with funnel-step counts, Impact uses an undeclared scale, Confidence defaults to 100%. This methodology pins Reach to a named unit (users / month or sessions / quarter), Impact to a 1-3 scale with anchor examples, Confidence to evidence-citation tiers (high/med/low) with rejection if no source cited, and Effort to person-weeks. Output is consumed by sprint planning + roadmap.
 
 ## Applies If (ALL must hold)
 
-- Comparing 5+ candidate features in a single quarter where reach and effort vary widely.
-- Killing pet features: a numeric score forces debate on inputs, not opinions.
-- Triaging a backlog after a discovery sprint produced more validated problems than capacity.
-- Deciding between two features that both look "obviously valuable" — RICE exposes effort-adjusted ROI.
+- Operator runs ≥5 candidate features competing for limited cycle scope.
+- Operator has analytics data for reach estimates.
+- Operator can name effort in person-weeks (or hours).
+- A named anchor exists for Impact scale.
 
 ## Skip If (ANY kills it)
 
-- Solo founder with fewer than 3 candidates — overhead exceeds signal; pick by gut and ship.
-- Hard-deadline regulatory or compliance work — there is no score; you ship or get fined.
-- Discovery phase before reach and impact data exist — confidence will be 50% across the board and ranking is noise.
-- Strategic bets / 0-to-1 features — RICE punishes high-effort items even when they are the only path to a moat.
+- Pre-PMF with no analytics — Reach is guess-work.
+- Operator unwilling to cite Confidence sources — RICE collapses to opinion.
+- Single-cycle one-off project — RICE overhead exceeds benefit.
+- Already using WSJF / MoSCoW exclusively — pick one method to avoid duplicate scoring.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| candidate feature list | array | operator |
+| reach unit chosen | enum (users/mo, sessions/Q, accounts/Y) | founder |
+| impact anchor examples | array of 3 strings | team |
+| effort unit chosen | enum (person-weeks, hours) | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/product/product-manager/feature-prioritization-moscow` | Sibling — alternative method; pick one per cycle. |
+| `solo/product/product-manager/backlog-management` | Upstream — backlog supplies candidates. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `score_each_feature` | haiku | Apply numbers per feature against anchors. |
+| `audit_confidence` | sonnet | Verify Confidence has cited source per row. |
+| `rank_and_cut` | opus | Synthesis: apply RICE rank, find cut line, generate rationale. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/feature-prioritization-rice.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/feature-prioritization-rice.md` | Markdown skeleton with the required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-feature-prioritization-rice.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/product-manager/`
+- [[feature-prioritization-moscow]] — related methodology.
+- [[backlog-management]] — related methodology.
+- [[rice-for-one-person-cheatsheet]] — related methodology.
+- [[rice-for-design]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

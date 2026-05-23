@@ -2,74 +2,100 @@
 slug: outcome-based-roadmaps-advanced
 tier: solo
 group: product
-domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Decompose a top-line business goal into 2-4 product outcomes, each with a leading indicator measurable within 4 weeks, a confidence level (low/med/high) backed by evidence, and 2-3 candidate experiments.
-content_id: "12d3860c47dee210"
-tags: [outcome, roadmap, metrics, leading-indicators, product-strategy]
+domain: product
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces an advanced outcome-roadmap spec (multi-quarter outcome chains + dependency edges + confidence-decay model + portfolio-level swim lanes) for teams beyond single-quarter horizons."
+content_id: "22f21b95725411e4"
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: [roadmap, outcomes, multi-quarter, dependency, portfolio]
 ---
-# Outcome-Based Roadmaps Advanced
+
+# Outcome Based Roadmaps Advanced
 
 ## Summary
 
-**One-sentence:** Decompose a top-line business goal into 2-4 product outcomes, each with a leading indicator measurable within 4 weeks, a confidence level (low/med/high) backed by evidence, and 2-3 candidate experiments.
+**One-sentence:** Produces an advanced outcome-roadmap spec (multi-quarter outcome chains + dependency edges + confidence-decay model + portfolio-level swim lanes) for teams beyond single-quarter horizons.
 
-**One-paragraph:** Decompose a top-line business goal into 2-4 product outcomes, each with a leading indicator measurable within 4 weeks, a confidence level (low/med/high) backed by evidence, and 2-3 candidate experiments. Maintain one source-of-truth roadmap, then generate four audience views from it: theme-based (customers, no dates), outcome-metric (board, quarterly targets), outcome-plus-options (engineering, sprint-level when known), and problem-solution (sales, only confirmed items get timing). Confidence inflation — defaulting to "medium" without evidence — is the primary failure mode.
+**Ефективно для:** Senior solopreneur PMs whose 1-quarter outcome roadmap is fine but cross-quarter chains, dependencies, and confidence-decay over 6+ months are invisible.
+
+**One-paragraph:** Single-quarter outcome roadmaps work for 1 product / 1 team / 1 stakeholder. Beyond that, outcomes chain across quarters, solutions develop hard dependencies, and confidence decays predictably the further out you plan. This advanced methodology produces a multi-quarter outcome chain with explicit dependency edges, a confidence-decay model (high < 1Q, medium 1-2Q, low > 2Q), and portfolio-level swim lanes per product. Output is consumed by board / stakeholder reviews + strategic planning.
 
 ## Applies If (ALL must hold)
 
-- Stakeholders keep demanding feature timelines; you need audience-tailored views per cohort (board, sales, eng, customers).
-- Translating a top-line business goal into a tree of product outcomes with leading indicators.
-- Quarterly re-planning where confidence levels shift and the same roadmap must be presented to different audiences.
-- A PM transitioning from feature owner to "architect of impact" who needs scaffolding for the new role.
-- Trigger phrase: agent or human says "we need a roadmap that says when feature X ships" while leadership has formally adopted outcome-based planning.
+- Operator runs a roadmap across ≥2 quarters / ≥2 products.
+- Cross-product or cross-outcome dependencies are real (not just preferences).
+- Stakeholders need a multi-quarter horizon.
+- Confidence-decay tradeoffs are accepted (not 'just guarantee Q4').
 
 ## Skip If (ANY kills it)
 
-- Early-stage product (pre-PMF) where outcomes are unstable and discovery dominates — use a "now/next/later" theme list.
-- Single-stakeholder context (just you and your co-founder) — the audience-matrix overhead has zero ROI.
-- Enterprise with hard-deadline contractual commitments — use a hybrid (outcome theme plus dated milestones).
-- Org with no metrics infrastructure — you cannot operate confidence levels without measurement.
+- Single-quarter horizon — outcome-based-roadmaps (the base methodology) is enough.
+- Single product + no cross-outcome dependencies — base methodology suffices.
+- Stakeholders demand exact long-horizon dates — use a date-bound plan instead.
+- Pre-PMF — long-horizon planning is theatre at this stage.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| multi-quarter horizon dates | ISO range | operator |
+| portfolio swim lanes (per product) | array | operator |
+| dependency graph candidates | DAG | operator |
+| instrumented metrics per outcome | object | analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/product/product-manager/outcome-based-roadmaps` | Base — this is the advanced layer atop the quarterly method. |
+| `solo/product/multi-product-portfolio-management` | Sibling — portfolio swim lanes mirror portfolio config. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 5 step-by-step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_multi_q_chain` | sonnet | Bounded judgement on outcome chain across quarters. |
+| `attach_dependency_edges` | sonnet | Per-edge judgement on dependency type (hard/soft). |
+| `apply_confidence_decay` | opus | Cross-horizon synthesis with decay model. |
+| `portfolio_swim_lane_synthesis` | opus | Per-product swim lane reconciliation. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/outcome-based-roadmaps-advanced.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/outcome-based-roadmaps-advanced.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-outcome-based-roadmaps-advanced.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/product-manager/`
+- [[outcome-based-roadmaps]] — related methodology.
+- [[multi-product-portfolio-management]] — related methodology.
+- [[okr-setting]] — related methodology.
+- [[feature-prioritization-rice]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

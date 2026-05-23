@@ -2,73 +2,94 @@
 slug: product-launch
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A product launch is the coordinated introduction of a product to its target market.
-content_id: "da11718a6f944b1e"
-tags: [launch, gtm, product-hunt, release, marketing]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run an outcome-driven product launch: stage-gated checklist, audience-segment cadence, on-launch monitors, and a 14-day post-launch review that decides scale/hold/rollback.
+content_id: "219309a7d020c19e"
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: ["launch", "go-to-market", "release", "post-launch", "rollback"]
 ---
 # Product Launch
 
 ## Summary
 
-**One-sentence:** A product launch is the coordinated introduction of a product to its target market.
+**One-sentence:** Run an outcome-driven product launch: stage-gated checklist, audience-segment cadence, on-launch monitors, and a 14-day post-launch review that decides scale/hold/rollback.
 
-**One-paragraph:** A product launch is the coordinated introduction of a product to its target market. Plan 6-8 weeks ahead using a T-8-to-T+2 timeline. Required for any public or beta launch: a launch DRI, an asset checklist (landing page, announcement email, demo/screenshots, social posts, documentation), a channel-per-timing matrix, success metrics with targets set before launch day, and a rollback narrative written before launch. Launch Tuesday or Wednesday, mid-month, avoiding major industry events.
+**One-paragraph:** Sequences launch work across pre-launch (assets + monitors), launch day (release + announce), and post-launch (review + scale-down). Every gate carries an explicit go/no-go threshold tied to metrics so 'we launched' becomes a measurable event with a sign-off and a rollback path, not a press release.
+
+**Ефективно для:**
+
+- Solo founder shipping a paid feature or new product to a list of ≥50 active users; needs a launch playbook that survives single-operator constraints and ends with a measurable post-launch decision.
 
 ## Applies If (ALL must hold)
 
-- Public release with a coordinated marketing moment (Product Hunt, press, partner amplification).
-- Major version bump where existing users need migration messaging and new acquisition push.
-- Beta-to-GA transition where pricing, positioning, or audience changes.
-- Geographic or segment expansion of an existing product into a new market.
+- Launching a paid or significant free product to ≥1 audience segment.
+- Pre-launch checklist required (assets, support, monitors).
+- Post-launch review window ≥14 days available before next major change.
 
 ## Skip If (ANY kills it)
 
-- Bug-fix releases or quiet shipping behind a feature flag — use a release-notes template, not a launch playbook.
-- Solo founder shipping iteratively to fewer than 100 users — the playbook overhead exceeds the value; ship to a Discord and write a tweet.
-- Internal tools — coordinate with stakeholders, but the GTM machinery is unnecessary.
-- Markets where a loud launch backfires (regulated industries, B2B enterprise where field sales owns timing).
+- Silent feature toggle for internal use only.
+- Bug fix or maintenance release with no audience comms.
+- No metrics infrastructure to evaluate launch success.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Launch brief (problem/audience/value) | markdown | PM doc |
+| Success metrics list | table | analytics plan |
+| Audience segments | csv | CRM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-manager/spec-writing` | Spec is the input artefact this methodology launches. |
+| `solo/product/product-manager/roadmap-design` | Roadmap context — where this launch sits in the sequence. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-product-launch` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-product-launch` | haiku | Schema check + threshold checks; deterministic. |
+| `review-product-launch` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/product-launch.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/product-launch.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-launch.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-manager/`
+- [[spec-writing]]
+- [[roadmap-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

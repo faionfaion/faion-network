@@ -2,73 +2,94 @@
 slug: backlog-management
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for maintaining a prioritized, healthy backlog that connects work items to product goals.
-content_id: "501ac9dc9ceae54b"
-tags: [backlog, prioritization, grooming, deep, invest]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Maintain a single-source backlog with weekly grooming, age caps per state, and a refusal-to-publish guardrail when the backlog exceeds the team's capacity by ≥3×.
+content_id: "d35dc1c0a5f22bee"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["backlog", "grooming", "prioritisation", "wishlist-prevention", "ops"]
 ---
 # Backlog Management
 
 ## Summary
 
-**One-sentence:** Methodology for maintaining a prioritized, healthy backlog that connects work items to product goals.
+**One-sentence:** Maintain a single-source backlog with weekly grooming, age caps per state, and a refusal-to-publish guardrail when the backlog exceeds the team's capacity by ≥3×.
 
-**One-paragraph:** Methodology for maintaining a prioritized, healthy backlog that connects work items to product goals. Applies the DEEP principle (Detailed-top, Emergent-bottom, Estimated, Prioritized) and INVEST criteria for story quality. Weekly grooming, regular cleanup, and a clear "ready" definition prevent backlogs from becoming unactionable dumping grounds.
+**One-paragraph:** A managed backlog has ≤3 states (Now/Next/Icebox), age caps per state, and a weekly grooming ritual that closes/merges drift. The capacity ratio (backlog items ÷ weekly throughput) is the health signal: above 3× it stops being a plan and becomes a wishlist.
+
+**Ефективно для:**
+
+- Solo founder watching a 200-item backlog grow weekly without ever shipping anything — needs a forcing function to keep the backlog meaningful instead of cathartic.
 
 ## Applies If (ALL must hold)
 
-- Backlog has more than 100 items and "next sprint" is unclear or untrusted.
-- Pre-grooming session: classify new items, flag stale ones for archive.
-- After SDD spec/design lands: decompose into INVEST stories with acceptance criteria.
-- Cross-project rollup: same person owns 5+ backlogs across Linear/Jira/GitHub Projects.
-- Migrating between trackers (Trello to Linear, GitHub Issues to Jira).
+- Backlog exists and is consulted ≥weekly.
+- Team throughput is measurable (items/week).
+- Backlog has ≥10 items in some kind of order.
 
 ## Skip If (ANY kills it)
 
-- Solo founder with fewer than 30 items — a Markdown file beats agent automation.
-- Backlog is a wishlist with no commitment system — fix process before adding agents.
-- Compliance-bound product (medical, aviation) where every state change needs human signoff and audit trail.
+- Pre-product phase; no backlog yet.
+- Team uses kanban with WIP=1 and no backlog visible.
+- Single-developer fire-and-forget mode (use a plain task list).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Backlog source-of-truth URL | url | Linear / GitHub / Notion |
+| Weekly throughput estimate | integer | Historical data |
+| Capacity ratio policy | table | Team doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-operations/feature-prioritization-rice` | Within-state ranking when items contend. |
+| `solo/product/product-manager/roadmap-design` | Backlog feeds horizons of the roadmap. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-backlog-management` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-backlog-management` | haiku | Schema check + threshold checks; deterministic. |
+| `review-backlog-management` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/backlog-management.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/backlog-management.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-backlog-management.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-operations/`
+- [[feature-prioritization-rice]]
+- [[roadmap-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

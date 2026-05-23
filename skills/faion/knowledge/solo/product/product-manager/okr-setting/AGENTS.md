@@ -2,75 +2,99 @@
 slug: okr-setting
 tier: solo
 group: product
-domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: OKRs (Objectives and Key Results) combine qualitative inspiring goals (Objectives) with quantitative outcome measures (Key Results).
-content_id: "c7ad9015fc8f0277"
-tags: [okrs, goal-setting, key-results, quarterly-planning, outcomes]
+domain: product
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces an OKR config (≤3 objectives + 2-4 measurable KRs each + quarter boundary + check-in cadence + named owners) so quarter goals stop being a list of features."
+content_id: "e336e8ff660ba24c"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [okr, goals, product-management, quarterly]
 ---
+
 # OKR Setting
 
 ## Summary
 
-**One-sentence:** OKRs (Objectives and Key Results) combine qualitative inspiring goals (Objectives) with quantitative outcome measures (Key Results).
+**One-sentence:** Produces an OKR config (≤3 objectives + 2-4 measurable KRs each + quarter boundary + check-in cadence + named owners) so quarter goals stop being a list of features.
 
-**One-paragraph:** OKRs (Objectives and Key Results) combine qualitative inspiring goals (Objectives) with quantitative outcome measures (Key Results). The core rule: KRs must be outcomes, not tasks — any KR that starts with "ship/launch/build/release" is a task in disguise and must be rewritten as a measurable metric movement.
+**Ефективно для:** Solopreneur PMs whose 'quarter goals' read like a feature list and whose KRs are activity counts instead of outcome measurements.
+
+**One-paragraph:** OKR theatre is common: objectives become feature lists, KRs become activity counts ('ship 5 features'), and quarter-end is the first time anyone checks. This methodology enforces ≤3 objectives, 2-4 KRs per objective with numeric outcome metrics (not activity counts), a hard quarter boundary, biweekly check-ins, and named owners. Output is consumed by the roadmap + weekly planning + the 30-day post-launch review.
 
 ## Applies If (ALL must hold)
 
-- Quarterly goal-setting with 2-50 person teams that need shared focus
-- Mid-sized org with 3-5 strategic priorities that must cascade across teams
-- Solo creator or founder using OKRs to focus a self-directed quarter
-- Aligning a cross-functional initiative (eng + design + marketing) on shared outcome metrics
-- Existing goal system is broken — everyone "achieved 100%" or no one tracks
+- Operator runs quarter-bounded planning (≥1 quarter horizon).
+- Operator can name 1-3 outcomes worth pursuing this quarter.
+- KRs can be tied to instrumented metrics.
+- Biweekly check-in slot can be calendared.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF startup where every week pivots — OKRs become stale before the quarter ends; use weekly bets instead
-- Agencies or consultancies where every project is a deliverable — billable utilization tracking beats OKRs
-- Pure delivery teams (compliance, internal IT) — OKRs need outcome variability that does not exist in service work
-- Org with no metric infrastructure — KRs that require new instrumentation will fail because the data never arrives
-- Psychologically unsafe culture — OKRs are amplifiers; in fear-driven orgs they devolve into sandbagging or punishment
+- Pure flow / no quarter boundary — OKRs degenerate to weekly todos.
+- No instrumented metrics — KRs collapse to activity counts.
+- Operator unwilling to cut features for OKR focus — OKRs become a feature wishlist.
+- Company-wide OKR cascade already in place — adapt to that frame, don't double-set.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| quarter dates | ISO range | calendar |
+| candidate outcomes | array | founder |
+| metrics instrumented per outcome | object | analytics |
+| biweekly slot | recurring calendar event | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/product/product-manager/outcome-based-roadmaps` | Sibling — roadmap layers on top of OKRs. |
+| `solo/product/mvp-instrumentation-checklist` | Upstream — KRs require instrumented metrics. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 4 step-by-step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_okrs` | haiku | Template fill from candidate outcomes. |
+| `audit_kr_outcome_vs_activity` | sonnet | Bounded judgement: are KRs outcome metrics or activity counts? |
+| `check_in_synthesis` | opus | Biweekly synthesis: are OKRs trending toward targets? |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/okr-setting.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/okr-setting.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-okr-setting.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/product-manager/`
+- [[outcome-based-roadmaps]] — related methodology.
+- [[feature-prioritization-rice]] — related methodology.
+- [[metric-deviation-hypothesis-framework]] — related methodology.
+- [[mvp-instrumentation-checklist]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
