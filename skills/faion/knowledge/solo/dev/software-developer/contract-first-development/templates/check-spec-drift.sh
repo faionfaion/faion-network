@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI gate that fails on spec/code drift or breaking schema changes
+# consumes: openapi.yaml + server/app/models + git main branch spec
+# produces: pass/fail exit code (0=clean, 1=drift or breaking change)
+# depends-on: spectral, openapi-generator-cli, oasdiff, redocly
+# token-budget-impact: ~300 tokens when loaded as context
 # check-spec-drift.sh — fail CI if generated code diverges from server/ or spec has breaking changes.
 # Usage: bash check-spec-drift.sh [openapi.yaml]
 set -euo pipefail

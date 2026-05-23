@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="api-error-handling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for api-error-handling as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="API Error Handling Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns commonly observed in shipped api-error-handling work. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="free-form-error" severity="high">
+      <symptom>Every endpoint returns a different error shape; partner SDK has a per-endpoint switch statement.</symptom>
+      <root-cause source="RFC 7807 Problem Details">No standardised envelope; each developer rolled their own.</root-cause>
+      <fix>Adopt RFC 7807; centralise via middleware. See rule rfc-7807-envelope.</fix>
+    </antipattern>
+
+    <antipattern id="no-trace-id" severity="high">
+      <symptom>Customer complaint says "request failed at 14:32"; support has no traceId; engineers grep logs by IP.</symptom>
+      <root-cause source="OpenTelemetry tracing semantic conventions">Tracer present but errors do not surface span id.</root-cause>
+      <fix>Middleware that copies active span trace_id into error body. See rule traceid-required.</fix>
+    </antipattern>
+
+    <antipattern id="500-for-validation" severity="high">
+      <symptom>Invalid input returns 500; oncall paged at 3am for what is the user's typo.</symptom>
+      <root-cause source="RFC 9110 HTTP Semantics">Exception handler catches all and emits 500.</root-cause>
+      <fix>Per-exception mapping: ValidationError → 400; AuthError → 401; etc. See rule 4xx-vs-5xx-split.</fix>
+    </antipattern>
+
+    <antipattern id="stack-trace-leak" severity="high">
+      <symptom>Production 500 returns full Python traceback including DB hostname + query.</symptom>
+      <root-cause source="OWASP API Security Top 10">DEBUG=True in production.</root-cause>
+      <fix>Strip traceback before serialisation; log full trace server-side with traceId. See rule no-pii-in-error.</fix>
+    </antipattern>
+
   </section>
 </text>

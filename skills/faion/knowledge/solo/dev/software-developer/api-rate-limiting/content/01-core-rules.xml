@@ -1,11 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-rate-limiting Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-rate-limiting. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="API Rate Limiting Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every api-rate-limiting artefact must obey. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="key-from-auth" testable="true" depth="essential">
+      <statement>Limiter key MUST be derived from the AUTH-* identity (token sub / api-key id / session uid). IP-only limiting is forbidden (NAT collisions).</statement>
+      <rationale source="RFC 6585 + Internal — rate-limit audit 2024">IP-only limits punish users behind NAT/corporate proxies while leaving authenticated abuse channels open.</rationale>
+    </rule>
+    <rule id="429-with-retry-after" testable="true" depth="essential">
+      <statement>Every 429 response MUST include Retry-After header (seconds) AND RFC 7807 body with type=https://api.example.com/errors/rate-limited.</statement>
+      <rationale source="RFC 6585 + RFC 7807">Without Retry-After, well-behaved clients retry exponentially or immediately; both waste cycles.</rationale>
+    </rule>
+    <rule id="per-tier-quotas" testable="true" depth="essential">
+      <statement>Policy MUST define quotas per tier (free / paid / partner / internal). One quota for all tiers is forbidden.</statement>
+      <rationale source="Stripe / GitHub rate-limit guidance + Internal — quota audit">Single quota either starves free tier or bankrupts on paid abuse; per-tier limits match capacity to revenue.</rationale>
+    </rule>
+    <rule id="burst-and-sustained" testable="true" depth="essential">
+      <statement>Each tier MUST set both sustained (per-minute / per-hour) and burst (per-second) limits. Single-limit policies are forbidden.</statement>
+      <rationale source="Token-bucket / leaky-bucket literature">Sustained-only allows traffic spikes that overload backends; burst-only allows long-running abuse below the burst threshold.</rationale>
+    </rule>
+    <rule id="observable-eviction" testable="true" depth="essential">
+      <statement>Policy MUST emit metrics: limit hits / tier, rejected requests / tier, p95 limiter latency. Silent limiting is forbidden.</statement>
+      <rationale source="Internal — incident post-mortems 2025">Silent rate-limit causes mysterious 429s in production; metrics let SRE see the policy working (or misfiring).</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

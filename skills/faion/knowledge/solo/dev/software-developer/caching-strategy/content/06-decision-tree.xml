@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Caching Strategy Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes by the observables defined in 02-output-contract.xml to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-jitter">ttl_jitter_pct &gt;= 5?</root-question>
+    <branch when="jitter_low">
+      <conclusion ref="ttl-with-jitter" verdict="verdict=fail; add jitter to TTL"/>
+    </branch>
+    <branch when="jitter_ok">
+      <question id="q-invalidation">invalidation.mode in enum?</question>
+      <branch when="invalidation_bad">
+        <conclusion ref="invalidation-contract" verdict="verdict=fail; declare invalidation contract"/>
+      </branch>
+      <branch when="invalidation_ok">
+        <question id="q-single-flight">single_flight == true?</question>
+        <branch when="sf_off">
+          <conclusion ref="single-flight-on-miss" verdict="verdict=fail; wrap miss path with singleflight"/>
+        </branch>
+        <branch when="sf_on">
+          <conclusion ref="hit-rate-floor" verdict="verdict=pass; ship strategy + alert"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="cache-pricing-get">
+    ttl_jitter=20 → invalidation=pubsub-event → single_flight=true → conclusion hit-rate-floor → pass.
+  </example>
+</text>

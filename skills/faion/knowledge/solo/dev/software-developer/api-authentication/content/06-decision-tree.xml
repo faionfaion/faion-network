@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Authentication Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes by the observables defined in 02-output-contract.xml to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-audience">audience category?</root-question>
+
+    <branch when="audience == 'b2c-browser'">
+      <conclusion ref="jwt-not-for-b2c-session" verdict="scheme=opaque-session; cookie + server store; ttl &lt;= 7d"/>
+    </branch>
+
+    <branch when="audience == 'b2b-partner' or audience == 'server-to-server'">
+      <question id="q-revocation">revocation SLA &lt; 1h?</question>
+      <branch when="sla &lt; 3600">
+        <conclusion ref="revocation-path-required" verdict="scheme=oauth2-client-credentials; ttl 600..3600; introspection endpoint"/>
+      </branch>
+      <branch when="sla &gt;= 3600">
+        <conclusion ref="scheme-matches-audience" verdict="scheme=jwt with KID-based rotation; ttl &lt;= 3600"/>
+      </branch>
+    </branch>
+
+    <branch when="audience == 'iot' or audience == 'b2c-mobile'">
+      <conclusion ref="api-key-rotation-cadence" verdict="scheme=api-key with 90-day rotation OR mtls for hardware-bound"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="auth-partner-api">
+    audience=b2b-partner → sla=3600 → conclusion revocation-path-required → scheme=oauth2-client-credentials.
+  </example>
+</text>

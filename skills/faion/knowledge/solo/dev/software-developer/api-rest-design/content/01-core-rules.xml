@@ -1,11 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-rest-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-rest-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="REST API Design Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every api-rest-design artefact must obey. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="plural-resource-paths" testable="true" depth="essential">
+      <statement>Resource paths MUST use plural nouns: /orders, /users. Singular nouns and verbs (/getOrder, /createUser) are forbidden.</statement>
+      <rationale source="Roy Fielding dissertation + RFC 9110">Consistency lets consumers predict URLs without reading docs; verbs in URLs duplicate HTTP method semantics.</rationale>
+    </rule>
+    <rule id="verb-idempotency-match" testable="true" depth="essential">
+      <statement>GET / PUT / DELETE MUST be idempotent. POST / PATCH MUST be safe to call once but may not be idempotent without an Idempotency-Key header. Endpoints whose semantics contradict the verb (e.g. GET that mutates) are forbidden.</statement>
+      <rationale source="RFC 9110 HTTP Semantics">Caches, proxies, and retries assume HTTP semantics; violating idempotency turns retries into duplicated charges.</rationale>
+    </rule>
+    <rule id="status-codes-rfc-9110" testable="true" depth="essential">
+      <statement>Status codes MUST follow RFC 9110: 200 success-with-body, 201 created (Location header), 204 success-no-body, 400 validation, 401 auth, 403 permission, 404 missing, 409 conflict, 422 semantic-invalid, 429 rate-limit, 5xx server. Repurposed codes are forbidden.</statement>
+      <rationale source="RFC 9110 HTTP Semantics">Consumers (and CDNs / browsers) rely on RFC-correct codes; repurposing breaks caching and retry behaviour.</rationale>
+    </rule>
+    <rule id="idempotency-key-on-charge" testable="true" depth="essential">
+      <statement>POST endpoints that create monetary or external side-effects MUST accept an Idempotency-Key header AND cache the response for &gt;= 24h. Replay returns the original response, never a duplicate charge.</statement>
+      <rationale source="Stripe / PayPal idempotency guidance + RFC 7240">Network retries are unavoidable; without idempotency keys, retries become double-charges.</rationale>
+    </rule>
+    <rule id="hateoas-on-stateful" testable="true" depth="essential">
+      <statement>Resources with discoverable state transitions (e.g. order: pending → paid → shipped) MUST expose `_links` (or similar) with next-action URIs. Bare resources for stateful workflows are forbidden.</statement>
+      <rationale source="Richardson Maturity Model Level 3 + RFC 8288 Web Linking">Without links, clients hard-code transition URLs; API evolution breaks them. Links make the workflow self-describing.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

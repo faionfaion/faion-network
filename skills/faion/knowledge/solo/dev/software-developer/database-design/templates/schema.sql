@@ -1,3 +1,8 @@
+-- purpose: Reference PostgreSQL schema (UUIDs, constraints, indexes, soft-delete, audit trigger)
+-- consumes: entity inventory + constraint decisions
+-- produces: artefact conforming to content/02-output-contract.xml
+-- depends-on: content/01-core-rules.xml
+-- token-budget-impact: ~600 tokens when loaded as context
 -- Reference e-commerce schema: UUIDs, constraints, indexes, soft-delete, audit trigger
 -- PostgreSQL 14+
 

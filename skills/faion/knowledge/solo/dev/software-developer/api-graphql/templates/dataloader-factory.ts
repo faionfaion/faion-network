@@ -1,3 +1,10 @@
+/*
+ * purpose: TypeScript DataLoader factory for 1-to-N relations
+ * consumes: Relation list
+ * produces: Per-relation DataLoader instance
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: ~300 tokens when loaded
+ */
 import DataLoader from 'dataloader';
 import { db } from '../db';
 

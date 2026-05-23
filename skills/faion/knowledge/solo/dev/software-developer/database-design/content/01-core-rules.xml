@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="database-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for database-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Database Design Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every Database Design application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-constraints-at-db-not-app" testable="true" depth="essential">
+      <statement>Every foreign key, unique constraint, NOT NULL, and CHECK constraint is declared in DDL — not enforced only in application code.</statement>
+      <rationale source="Practitioner experience + PostgreSQL docs">Application-only constraints are silently bypassed by data imports, admin tools, and concurrent writers; DB-layer constraints are the only authoritative integrity gate.</rationale>
     </rule>
+
+    <rule id="r2-3nf-default-denormalize-with-justification" testable="true" depth="essential">
+      <statement>Schemas default to 3NF; denormalization requires a documented justification (query plan, latency target, write pattern) and a paired view or trigger to keep redundant data consistent.</statement>
+      <rationale source="Database design literature">Premature denormalization compounds maintenance cost; 3NF is the reversible baseline.</rationale>
+    </rule>
+
+    <rule id="r3-index-after-observing-plan" testable="true" depth="essential">
+      <statement>Indexes are added only after observing EXPLAIN on the actual query workload — not speculatively. Every index is justified by a measured query.</statement>
+      <rationale source="PostgreSQL performance guides">Speculative indexes consume write throughput and storage without measurable benefit; remove or never add.</rationale>
+    </rule>
+
+    <rule id="r4-additive-migrations-expand-then-contract" testable="true" depth="essential">
+      <statement>Schema changes follow expand-then-contract: deploy additive migration, switch reads/writes, then deploy destructive migration. Never combine add + drop in one release.</statement>
+      <rationale source="Industry consensus on zero-downtime migrations">Single-shot destructive migrations couple deploy timing to code timing; expand-contract decouples them and gives rollback safety.</rationale>
+    </rule>
+
+    <rule id="r5-naming-convention-enforced" testable="true" depth="essential">
+      <statement>Tables are plural snake_case; columns are snake_case; FKs are `&lt;other_table_singular&gt;_id`; constraints carry meaningful names (no auto-generated `idx_xyz_abc1`).</statement>
+      <rationale source="PEP 8 + PostgreSQL convention">Predictable naming makes migrations greppable and reviews mechanical; auto-generated constraint names become opaque debugging tax.</rationale>
+    </rule>
+
+    <rule id="r6-no-business-logic-in-database" testable="true" depth="essential">
+      <statement>Business logic lives in application code, not stored procedures, triggers, or rule rewrites. The DB enforces structural invariants only.</statement>
+      <rationale source="Modern application architecture">Logic-in-DB defeats source control, code review, and language tooling; debugging cascades through triggers becomes a graveyard.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the procedure end-to-end and run the validator before declaring done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met" to the canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
 </text>

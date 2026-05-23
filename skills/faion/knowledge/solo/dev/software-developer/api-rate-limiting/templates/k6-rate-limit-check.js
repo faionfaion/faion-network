@@ -1,3 +1,10 @@
+/*
+ * purpose: k6 load script that verifies 429 + Retry-After at burst boundary
+ * consumes: RL-* policy
+ * produces: k6 pass/fail report
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: ~200 tokens when loaded
+ */
 // k6-rate-limit-check.js — verify rate limit headers and 429 boundary behavior.
 // Usage: k6 run -e BASE=https://api.example.com -e TOKEN=your_token k6-rate-limit-check.js
 import http from 'k6/http';

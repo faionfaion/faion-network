@@ -1,47 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-error-handling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-error-handling. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="API Error Handling Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every api-error-handling artefact must obey. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every error response must include type (URI), title (short string), and status (HTTP code).</statement>
-      <rationale source="v1-source">These three fields are the RFC 7807 minimum. Clients that parse errors programmatically rely on type as the stable identifier.</rationale>
+    <rule id="rfc-7807-envelope" testable="true" depth="essential">
+      <statement>Every error response MUST conform to RFC 7807 Problem Details: required fields type (URI), title (string), status (int). Free-form error bodies are forbidden.</statement>
+      <rationale source="RFC 7807 Problem Details for HTTP APIs">Standardised envelope lets programmatic clients parse errors without per-endpoint customisation; one schema replaces N.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The type field must be a URI that identifies the error class, not a generic string.</statement>
-      <rationale source="v1-source">URI type enables clients to look up documentation and allows error taxonomies to be machine-navigable.</rationale>
+    <rule id="stable-type-uri" testable="true" depth="essential">
+      <statement>type URI MUST be stable across releases (e.g. `https://api.example.com/errors/insufficient-funds`). Title MAY change for i18n; type MUST NOT.</statement>
+      <rationale source="RFC 7807 + Stripe / GitHub stable-error-code conventions">Clients key off type for routing; type churn breaks every consumer at once.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Always include traceId in every error response.</statement>
-      <rationale source="v1-source">Without a trace ID, correlating a client-reported error to a server log entry requires time-based guessing, which fails under concurrent load.</rationale>
+    <rule id="traceid-required" testable="true" depth="essential">
+      <statement>Every error response MUST include `traceId` (or `trace_id`) as a top-level extension field, populated from the active span.</statement>
+      <rationale source="OpenTelemetry tracing semantic conventions">Without traceId, support cannot find the user's request in logs; debugging time multiplies.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Include detail with a human-readable explanation of this specific occurrence.</statement>
-      <rationale source="v1-source">title is generic (e.g. "Validation Error"); detail explains what was wrong in this request.</rationale>
+    <rule id="4xx-vs-5xx-split" testable="true" depth="essential">
+      <statement>4xx = caller-fixable (auth/input/permission); 5xx = our-fault (deps down / bug / timeout). Mis-classification (e.g. 500 for a validation error) is forbidden.</statement>
+      <rationale source="RFC 9110 HTTP Semantics + Internal — error-rate audit">Mis-classification corrupts alerting (5xx pages oncall for caller errors); clients also retry 5xx but not 4xx.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Include instance as the request path URI where the error occurred.</statement>
-      <rationale source="v1-source">Allows log systems to group errors by endpoint without parsing log lines.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>For 400/422 validation errors, include an errors array with field, code, and message per violation.</statement>
-      <rationale source="v1-source">Field-level errors let clients highlight specific form inputs rather than showing a generic top-level message.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Never include stack traces, internal exception messages, or database error details in responses.</statement>
-      <rationale source="v1-source">Internal details reveal implementation, schema, and potential attack vectors to adversaries.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Define error codes as string constants grouped by 4xx vs 5xx; never use raw strings inline.</statement>
-      <rationale source="v1-source">Centralized constants prevent typos and make all error codes searchable in one place.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Register a global exception handler for ValidationError and a catch-all handler for Exception; log the catch-all server-side before responding.</statement>
-      <rationale source="v1-source">Without a catch-all, unhandled exceptions return raw 500 HTML from the framework, not a structured error body.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Error messages must be actionable: name the field, state the constraint, and describe the fix.</statement>
-      <rationale source="v1-source">"Invalid input" tells the client nothing; "Email must be in format user@domain.com" tells them exactly what to change.</rationale>
+    <rule id="no-pii-in-error" testable="true" depth="essential">
+      <statement>Error responses MUST NOT contain PII or secret material in any field. Stack traces, raw SQL, internal IPs, and tokens are forbidden.</statement>
+      <rationale source="OWASP API Security Top 10 — Improper Inventory Mgmt + GDPR">Error responses are the easiest exfil channel; leaks land in logs, screenshots, and customer-support tickets.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

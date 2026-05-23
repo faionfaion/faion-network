@@ -1,3 +1,8 @@
+# purpose: FastAPI dependency that verifies JWT against JWKS + denylist
+# consumes: Authorization header + JWKS URL
+# produces: Decoded claims OR 401 envelope
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~300 tokens when loaded
 # FastAPI JWT verifier using RS256 public key
 # Usage: from templates.fastapi_jwt_verifier import verify_jwt_token
 # Requires: python-jose[cryptography], fastapi

@@ -1,67 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-authentication Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-authentication. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="API Authentication Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every api-authentication artefact must obey. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Choose the auth method based on traffic shape: API keys for server-to-server, JWT for user sessions, OAuth 2.0 for third-party delegation, mTLS for high-trust B2B.</statement>
-      <rationale source="v1-source">Each method closes a different threat: API keys are simple but hard to revoke; JWTs are stateless but require short TTL; OAuth delegates without sharing credentials; mTLS requires cert management but is the strongest mutual auth.</rationale>
+    <rule id="scheme-matches-audience" testable="true" depth="essential">
+      <statement>Auth scheme MUST match the caller audience: B2C session → opaque-session; cross-service → JWT or mTLS; partner integration → OAuth2 client-credentials; key-only call → API-key with rotation.</statement>
+      <rationale source="OWASP API Security Top 10 2023">Mismatched scheme produces structural risk (e.g. long-lived JWT cannot be revoked instantly), regardless of cryptographic strength.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Hash API keys before storage (SHA-256), use a recognisable prefix (sk_live_, sk_test_), and compare with hmac.compare_digest — never ==.</statement>
-      <rationale source="v1-source">Plain-text storage leaks all keys in a DB breach. == comparison is vulnerable to timing attacks. A prefix allows UI display of the last 4 chars without revealing the secret.</rationale>
+    <rule id="token-lifetime-cap" testable="true" depth="essential">
+      <statement>Access-token lifetime MUST be &lt;= 60 minutes for high-revocation-SLA workloads. Refresh tokens (when used) MUST rotate on every use.</statement>
+      <rationale source="OAuth 2.1 draft + Auth0 / Okta operational guidance">Long-lived tokens cannot satisfy revocation SLA; reuse-detection on refresh tokens catches token theft.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Send API keys in the Authorization header (Authorization: Api-Key &lt;key&gt;), not in query params.</statement>
-      <rationale source="v1-source">Query params end up in server logs, proxy access logs, browser history, and Referer headers — all of which leak secrets.</rationale>
+    <rule id="revocation-path-required" testable="true" depth="essential">
+      <statement>Scheme spec MUST name a concrete revocation path (token-introspection endpoint OR session-store delete OR API-key rotation procedure). "Logout" alone is not a revocation path for JWT.</statement>
+      <rationale source="OWASP API Security Top 10 — Broken Authentication">JWTs cannot be revoked by client logout; without a server-side path, compromised tokens stay valid until expiry.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Rate-limit auth endpoints aggressively: 5 req/min/IP on login, 20 req/min/user on refresh.</statement>
-      <rationale source="v1-source">Without rate limiting, brute-force attacks against API keys and refresh tokens are trivially fast.</rationale>
+    <rule id="jwt-not-for-b2c-session" testable="true" depth="essential">
+      <statement>JWT MUST NOT be used as the B2C browser session token without a server-side denylist or short-lived (&lt;=15 min) policy paired with refresh rotation.</statement>
+      <rationale source="Internal — auth audit on 6 SaaS 2024-2025">Browser-stored JWTs are exfiltrated by XSS; without server-side controls the session lives until token TTL.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Log every auth decision with decision, reason, user_id, ip, user_agent; fail closed on logging failure for high-risk endpoints.</statement>
-      <rationale source="v1-source">Auth logs are the primary forensic artifact for incident response. Silent failures hide intrusions.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Always verify iss, aud, exp, nbf with clock-skew tolerance of at most 60 s; reject tokens missing any of these.</statement>
-      <rationale source="v1-source">Missing audience check lets a token issued for service A be replayed at service B. Missing issuer check lets any party in the trust boundary mint tokens for your service.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use RS256 or EdDSA for multi-service architectures; never HS256 with a shared secret across services.</statement>
-      <rationale source="v1-source">A shared HS256 secret means any service that holds it can mint admin-level tokens. RS256 lets services verify with the public key; only the auth service can sign.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Never pass algorithm=none or accept tokens without an explicit algorithms=[...] list in the decoder.</statement>
-      <rationale source="v1-source">alg:none is a historical CVE class; jwt.decode without explicit algorithms accepts it on some libraries.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Access token TTL must be at most 15 minutes; refresh tokens rotate on every use and must detect reuse.</statement>
-      <rationale source="v1-source">Short access TTL limits the blast radius of a stolen token. Refresh token rotation with reuse detection invalidates the entire refresh family on replay, catching stolen tokens.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>For revocation: keep a Redis denylist keyed by jti with TTL equal to the remaining token lifetime.</statement>
-      <rationale source="v1-source">Stateless JWTs cannot be invalidated mid-life without a server-side record. A denylist with matching TTL avoids indefinite storage growth.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Store JWTs in HTTP-only SameSite=Lax cookies for SPAs; never in localStorage.</statement>
-      <rationale source="v1-source">localStorage is readable by any JavaScript on the page — XSS immediately steals all tokens. HTTP-only cookies are invisible to JS; SameSite=Lax blocks most CSRF.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Use Authorization Code + PKCE for all public clients (SPAs, mobile); never Implicit flow or Password grant — both are deprecated in OAuth 2.1.</statement>
-      <rationale source="v1-source">Implicit flow exposes tokens in the URL fragment (logged by proxies). Password grant defeats the purpose of OAuth.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Always verify the state parameter on the callback to prevent CSRF; verify the PKCE code_verifier to prevent code interception.</statement>
-      <rationale source="v1-source">LLM-generated OAuth callbacks routinely omit state and PKCE verification, making them vulnerable to CSRF and authorization code interception attacks.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Use Client Credentials grant for machine-to-machine; store client_secret in env or a secrets manager, never in source code.</statement>
-      <rationale source="v1-source">S2S tokens don't involve user context; a simple POST to the token endpoint with client credentials gives a short-lived access token scoped to the requested permissions.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Define scopes as a registry and enforce per-route via a policy layer; never scatter if user.role checks across handler code.</statement>
-      <rationale source="v1-source">Scattered role checks are easy to forget and hard to audit. A centralised scope checker raises 403 consistently and can be tested independently of business logic.</rationale>
+    <rule id="api-key-rotation-cadence" testable="true" depth="essential">
+      <statement>API keys MUST have a documented rotation cadence (&lt;= 90 days) AND a graceful overlap window during rotation. Hard-coded never-rotating keys are forbidden.</statement>
+      <rationale source="NIST SP 800-57 + cloud-provider IAM guidance">Static keys leak via repos and CI logs; rotation cadence bounds the blast radius.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

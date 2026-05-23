@@ -1,3 +1,8 @@
+# purpose: Stdlib sliding-window limiter keyed on auth identity
+# consumes: Limiter key + tier config
+# produces: allow / 429 + Retry-After
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~350 tokens when loaded
 """
 sliding_window.py — Redis sliding-window rate limiter for FastAPI.
 

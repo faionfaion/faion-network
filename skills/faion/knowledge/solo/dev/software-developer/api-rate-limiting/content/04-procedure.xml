@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="API Rate Limiting Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure from raw input to validated api-rate-limiting artefact.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pick-key-source">
+      <input>AUTH-* artefact</input>
+      <action>Map auth scheme to limiter key: jwt → sub claim; session → uid; api-key → key_id; oauth2 → client_id.</action>
+      <output>key_source tag</output>
+      
+    </step>
+
+    <step n="2" name="pick-algorithm">
+      <input>Burst tolerance requirement</input>
+      <action>Sliding-window for fairness; token-bucket for burst tolerance; leaky-bucket for smoothing. Avoid fixed-window for public APIs (boundary spikes).</action>
+      <output>algorithm tag</output>
+      
+    </step>
+
+    <step n="3" name="size-quotas">
+      <input>Caller-tier inventory + capacity model</input>
+      <action>Set per_second + per_minute + per_hour per tier; sustained &lt; backend capacity / tier-fraction.</action>
+      <output>tiers table</output>
+      
+    </step>
+
+    <step n="4" name="wire-429-envelope">
+      <input>Error catalogue</input>
+      <action>Issue type URI for rate-limited; set Retry-After in middleware; align body to RFC 7807.</action>
+      <output>envelope_type_uri + middleware code</output>
+      
+    </step>
+
+    <step n="5" name="instrument-and-ship">
+      <input>Limiter code + metrics</input>
+      <action>Emit metrics_emitted; add alert on reject_rate &gt; 1% per tier. Emit RL-* artefact.</action>
+      <output>RL-* policy artefact</output>
+      <decision-gate>tiers &lt; 2 OR metrics_emitted empty → verdict=fail.</decision-gate>
+    </step>
+
+  </section>
+</text>

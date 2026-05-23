@@ -1,3 +1,8 @@
+# purpose: Stdlib breaking-change classifier on a spec diff
+# consumes: openapi-base.yaml + openapi-new.yaml
+# produces: {change_kind, signals[]}
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~300 tokens when loaded
 # versioning.py — FastAPI multi-version router with deprecation middleware
 # Mount both routers on the FastAPI app:
 #   app.include_router(v1)

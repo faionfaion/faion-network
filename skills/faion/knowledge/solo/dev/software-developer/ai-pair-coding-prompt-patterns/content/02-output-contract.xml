@@ -1,30 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Pair Coding Prompt Patterns Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Pair Coding Prompt Patterns deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="steps" type="list" min="4" schema="{id,input,owner,exit_criterion,output_location}" />
-      <field name="decision_branches" type="list" />
-      <field name="owner_of_playbook" type="string" />
-      <field name="deviation_log_reference" format="url_or_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">step without exit_criterion</pattern>
-      <pattern id="f2">playbook without named owner</pattern>
-      <pattern id="f3">decision branch without explicit signal</pattern>
-      <pattern id="f4">deviation log missing</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder steps as long as input/output graph stays acyclic.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="AI Pair-Coding Prompt Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the ai-pair-coding-prompt-patterns artefact. Validator enforces the listed required fields + cross-field checks.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-pair-coding-prompt-patterns.json",
+  "type": "object",
+  "required": [
+    "scaffold_id",
+    "pattern",
+    "task_summary",
+    "stop_conditions",
+    "acceptance_checklist",
+    "unit"
+  ],
+  "properties": {
+    "scaffold_id": {
+      "type": "string",
+      "pattern": "^PS-[A-Z0-9-]{2,40}$"
+    },
+    "pattern": {
+      "type": "string",
+      "enum": [
+        "spec-first",
+        "test-first",
+        "repo-grep",
+        "diff-review",
+        "refactor-isolate",
+        "plan-then-execute",
+        "branch-canary"
+      ]
+    },
+    "task_summary": {
+      "type": "string",
+      "minLength": 8
+    },
+    "stop_conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptance_checklist": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string"
+      }
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "feature",
+        "refactor",
+        "fix",
+        "spike",
+        "docs",
+        "test"
+      ]
+    },
+    "repo_grep_targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prompt_body": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "scaffold_id": "PS-PRICING-ENDPOINT",
+  "pattern": "spec-first",
+  "task_summary": "Add POST /pricing endpoint that returns total price for a cart payload",
+  "stop_conditions": [
+    "Stop when tests pass",
+    "Stop if diff exceeds 200 LOC",
+    "Stop if any new import is not present in the repo"
+  ],
+  "acceptance_checklist": [
+    "Spec written in docs/pricing.md before code",
+    "Endpoint has at least 3 table-driven tests",
+    "OpenAPI schema updated",
+    "No imports outside requirements.txt"
+  ],
+  "unit": "feature",
+  "repo_grep_targets": [
+    "app/api/",
+    "tests/api/"
+  ],
+  "prompt_body": "Read docs/pricing.md, then implement POST /pricing in app/api/pricing.py..."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "scaffold_id": "x",
+  "pattern": "wing-it",
+  "task_summary": "do stuff",
+  "stop_conditions": [],
+  "acceptance_checklist": [
+    "it works"
+  ],
+  "unit": "feature"
+}
+]]></code>
+    <note>scaffold_id pattern fails; pattern not in enum; stop_conditions empty; checklist has &lt;3 items.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>Every step has exit_criterion</item>
-      <item>Owner named</item>
-      <item>Branches explicit</item>
-      <item>Deviation log exists</item>
+      <item>pattern outside the 7 named values.</item>
+      <item>stop_conditions empty.</item>
+      <item>acceptance_checklist length &lt; 3.</item>
+      <item>unit absent or outside enum.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-ai-pair-coding-prompt-patterns.py">Validator script</reference>
 </text>

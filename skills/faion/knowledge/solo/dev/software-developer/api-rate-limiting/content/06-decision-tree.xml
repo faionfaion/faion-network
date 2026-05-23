@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="API Rate Limiting Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes by the observables defined in 02-output-contract.xml to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-key">key_source derived from auth?</root-question>
+    <branch when="key_ip_only">
+      <conclusion ref="key-from-auth" verdict="verdict=fail; switch to auth-derived key"/>
+    </branch>
+    <branch when="key_from_auth">
+      <question id="q-tiers">tiers count &gt;= 2?</question>
+      <branch when="single_tier">
+        <conclusion ref="per-tier-quotas" verdict="verdict=fail; define free / paid / partner tiers"/>
+      </branch>
+      <branch when="multi_tier">
+        <question id="q-burst">every tier has per_second + per_minute + per_hour?</question>
+        <branch when="missing_window">
+          <conclusion ref="burst-and-sustained" verdict="verdict=fail; set both burst + sustained per tier"/>
+        </branch>
+        <branch when="windows_complete">
+          <conclusion ref="429-with-retry-after" verdict="verdict=pass; ship policy"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="rl-public-api">
+    key_source=jwt-sub → tiers=3 → all 3 windows per tier → conclusion 429-with-retry-after → pass.
+  </example>
+</text>

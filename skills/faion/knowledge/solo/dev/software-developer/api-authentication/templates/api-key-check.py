@@ -1,3 +1,8 @@
+# purpose: Stdlib API-key validator with rotation overlap window
+# consumes: Header key + key store
+# produces: Boolean valid/invalid + rotation flag
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~250 tokens when loaded
 # Constant-time SHA-256 API key verification
 # Usage: from templates.api_key_check import hash_key, verify_api_key
 

@@ -1,3 +1,10 @@
+/*
+ * purpose: Extraction primitive separated from interaction
+ * consumes: Page Object instance
+ * produces: Typed extracted data
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: ~200 tokens when loaded
+ */
 // extract.js — Playwright extractor with Zod schema validation.
 // Usage: URL=https://example.com/products npx playwright install chromium && node extract.js
 const { chromium } = require('playwright');

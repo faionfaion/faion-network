@@ -1,22 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-versioning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Versioning Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the api-versioning artefact. Validator enforces the listed required fields + cross-field checks.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-versioning.json",
+  "type": "object",
+  "required": [
+    "plan_id",
+    "scheme",
+    "current_version",
+    "next_version",
+    "change_kind",
+    "deprecation_window_days"
+  ],
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "pattern": "^VER-[A-Z0-9-]{2,40}$"
+    },
+    "scheme": {
+      "type": "string",
+      "enum": [
+        "url-path",
+        "accept-header",
+        "header-key"
+      ]
+    },
+    "current_version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?$"
+    },
+    "next_version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?$"
+    },
+    "change_kind": {
+      "type": "string",
+      "enum": [
+        "breaking",
+        "additive",
+        "docs-only"
+      ]
+    },
+    "breaking_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "deprecation_window_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 730
+    },
+    "sunset_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "plan_id": "VER-PUBLIC-V2",
+  "scheme": "url-path",
+  "current_version": "v1",
+  "next_version": "v2",
+  "change_kind": "breaking",
+  "breaking_signals": [
+    "Field 'amount' became required on POST /charges",
+    "Status 422 added in place of 400 for semantic validation"
+  ],
+  "deprecation_window_days": 180,
+  "sunset_date": "2026-11-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "plan_id": "x",
+  "scheme": "body",
+  "current_version": "1",
+  "next_version": "1.0.1",
+  "change_kind": "breaking",
+  "deprecation_window_days": 30
+}
+]]></code>
+    <note>plan_id pattern fails; scheme not in enum; breaking change with patch bump; window &lt; 90d.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>change_kind=breaking with next_version equal to current_version major.</item>
+      <item>deprecation_window_days &lt; 90 for public APIs.</item>
+      <item>scheme outside {url-path, accept-header, header-key}.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-api-versioning.py">Validator script</reference>
 </text>

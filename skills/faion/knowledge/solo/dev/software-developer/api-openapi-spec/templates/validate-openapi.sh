@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Shell runner that lints spec with Spectral and counts duplicate schemas
+# consumes: openapi.yaml + spectral.yaml
+# produces: Exit code 0/1 + counts
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~150 tokens when loaded
 # validate-openapi.sh — pre-commit gate for OpenAPI specs.
 # Usage: bash validate-openapi.sh [openapi.yaml]
 set -euo pipefail

@@ -1,11 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="caching-strategy Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for caching-strategy. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Caching Strategy Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every caching-strategy artefact must obey. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="pattern-matches-ratio" testable="true" depth="essential">
+      <statement>Cache pattern MUST match read/write ratio: cache-aside for &gt;10:1 reads; read-through for &gt;5:1; write-through for write-heavy &lt; stale-tolerance 1s; write-behind for high-write-tolerance loss-acceptable workloads.</statement>
+      <rationale source="Stack Overflow Architecture + AWS caching whitepaper">Wrong pattern doubles either staleness or write latency; matching the pattern to ratio is the largest single decision.</rationale>
+    </rule>
+    <rule id="ttl-with-jitter" testable="true" depth="essential">
+      <statement>Per-key TTL MUST include random jitter (e.g. base ± 20%) to prevent synchronised expiry stampedes.</statement>
+      <rationale source="AWS caching whitepaper + Internal — outage post-mortems 2024">Without jitter, popular keys expire at the same instant; cache rebuild creates a thundering herd that overloads the source.</rationale>
+    </rule>
+    <rule id="invalidation-contract" testable="true" depth="essential">
+      <statement>Cache MUST declare an explicit invalidation contract: TTL-only OR write-through OR pub/sub event. "Hope it expires soon" is forbidden.</statement>
+      <rationale source="Internal — staleness audit 2025">Without a contract, writers in other services have no path to flush the cache; stale data persists past SLA.</rationale>
+    </rule>
+    <rule id="single-flight-on-miss" testable="true" depth="essential">
+      <statement>On cache miss, only ONE coroutine MUST recompute per key; concurrent requests for the same key MUST wait for the in-flight one. Thundering-herd patterns are forbidden.</statement>
+      <rationale source="Russ Cox — Singleflight + Internal — incident post-mortems">Without single-flight, N concurrent misses launch N source queries; the source dies under the load it should be cached from.</rationale>
+    </rule>
+    <rule id="hit-rate-floor" testable="true" depth="essential">
+      <statement>Hit-rate target MUST be &gt;= 0.80 for cache-aside on stable hot keys; an alert MUST fire when 5-minute rate drops below the floor.</statement>
+      <rationale source="Internal — caching SRE audit">Hit-rate is the only signal that catches a broken cache before latency degrades; without an alert, broken caches go unnoticed for days.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

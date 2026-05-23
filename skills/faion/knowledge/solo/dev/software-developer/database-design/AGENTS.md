@@ -3,74 +3,101 @@ slug: database-design
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Relational schema design for integrity, performance, and maintainability.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Design a relational schema (PostgreSQL-first) for integrity, query performance, and zero-downtime migrations.
 content_id: "4637ec007df638a6"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [database, postgresql, schema, migrations]
 ---
 # Database Design
 
 ## Summary
 
-**One-sentence:** Relational schema design for integrity, performance, and maintainability.
+**One-sentence:** Design a relational schema (PostgreSQL-first) for integrity, query performance, and zero-downtime migrations.
 
-**One-paragraph:** Relational schema design for integrity, performance, and maintainability. Core rules: normalize to 3NF first and denormalize only with a measured query showing the join is the bottleneck; use ULID or UUIDv7 primary keys (not auto-increment integers that leak row counts); every entity needs created_at and updated_at (timestamptz); foreign keys must have explicit ON DELETE (default RESTRICT, never implicit CASCADE).
+**One-paragraph:** Models the domain into 3NF tables (denormalize only with documented justification), declares every FK + check constraint at DB layer (not app), creates indexes only after observing query plans, and treats every schema change as an additive expand-then-contract migration so deploys are reversible. Output is a schema spec + ERD + migration plan that reviewers can validate against acceptance criteria.
+
+**Ефективно для:**
+
+- New service designs with non-trivial relational data.
+- Schema reviews before code lands to prevent integrity bugs at the DB edge.
+- Migration planning for live systems where downtime windows are scarce.
+- Bringing junior developers to schema-quality parity.
 
 ## Applies If (ALL must hold)
 
-- Greenfield schema for a new product (3NF first, denormalize with evidence later).
-- Major feature touching more than 2 tables — needs ER diagram + migration plan.
-- Performance regression traced to schema (missing index, wrong column type, hot row contention).
-- Designing audit trails, soft deletes, multi-tenancy, or time-series partitioning.
-- Migrating between engines (Postgres to MySQL, monolith to sharded, OLTP to OLAP mirror).
+- Service has multi-table relational data (>=3 entities with FKs).
+- Persistence is PostgreSQL or another transactional RDBMS.
+- Schema changes need to ship without downtime (live customers).
+- Reads and writes both matter (not write-only event store).
 
 ## Skip If (ANY kills it)
 
-- Move fast prototypes you will throw away in a week — SQLite + single table is fine.
-- Read-mostly content sites — a CMS or static generator covers it without a relational model.
-- Append-only event logs — use TimescaleDB or ClickHouse instead of fighting Postgres indexes.
-- Graph-heavy domains (recommendation, social) — relational JOIN explosions hurt; use Neo4j or dgraph.
-- When the team has no ops capacity for migrations / backups — a managed KV (DynamoDB, Firestore) trades schema rigour for zero-ops.
+- Storage is purely key-value or document (DynamoDB, MongoDB without joins) — different patterns.
+- Data is throw-away (test fixtures, ETL staging) where integrity is not enforced.
+- Table is single-row config (use file or env var).
+- OLAP / data-warehouse modelling (star schema needs warehouse-specific methodology).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Domain entity list + relationships | bullet list or ERD draft | product/domain |
+| Expected query patterns (top 5 reads, top 5 writes) | list | tech-lead |
+| Read/write QPS estimate + data volume per table | numbers | platform |
+| Existing schema if migration (DDL dump) | SQL file | DB owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[sql-optimization]] | Indexing rules consume this schema. |
+| [[api-versioning]] | Schema changes drive API version policy. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (FK + check at DB, 3NF default, index-after-plan, additive migration, naming convention, no-business-logic-in-DB) | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for schema spec artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: model → DDL → constraints → indexes → migration plan → review | 800 |
+| `content/05-examples.xml` | essential | Worked example: orders + line-items schema | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `entity_modeling` | opus | Domain-to-relational mapping needs deep synthesis. |
+| `constraint_authoring` | sonnet | Mechanical DDL emission once entities decided. |
+| `index_plan` | sonnet | Match indexes to query patterns from prereqs. |
+| `migration_plan` | opus | Expand-then-contract sequencing needs care. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/schema.sql` | Reference PostgreSQL schema (UUIDs, constraints, indexes, soft-delete, audit trigger) |
+| `templates/migration.py` | Alembic migration example: expand-contract pattern |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-database-design.py` | Validate the schema spec artefact metadata against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+- [[sql-optimization]]
+- [[api-versioning]]
+- [[logging-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps storage type, change cadence, and downtime tolerance to a rule from `01-core-rules.xml`, telling the agent whether to run the full schema spec methodology or skip when preconditions fail. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

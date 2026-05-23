@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="api-authentication Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for api-authentication as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="API Authentication Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns commonly observed in shipped api-authentication work. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Storing API keys in plaintext or comparing with ==.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Timing attack on == leaks the key character by character under sufficient requests. Plaintext storage means a DB dump exposes all keys.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="jwt-everywhere" severity="high">
+      <symptom>B2C web session uses 7-day JWT stored in localStorage; XSS bug exfiltrates token; user account abused until expiry.</symptom>
+      <root-cause source="OWASP API Security Top 10">JWT picked for cross-service is reused for browser session without server-side controls.</root-cause>
+      <fix>Switch B2C session to opaque cookie with session-store; reserve JWT for cross-service. See rule jwt-not-for-b2c-session.</fix>
+    </antipattern>
+
+    <antipattern id="no-revocation" severity="high">
+      <symptom>User clicks logout; backend has no JWT denylist; stolen token remains valid for 24h.</symptom>
+      <root-cause source="OWASP API Security Top 10 — Broken Authentication">Author assumed client-side delete = revoked.</root-cause>
+      <fix>Implement denylist + short TTL OR move to opaque-session. See rule revocation-path-required.</fix>
+    </antipattern>
+
+    <antipattern id="static-api-key" severity="high">
+      <symptom>Same API key sits in a vendor integration since 2021; key leaks in a public repo; cannot rotate without scheduled downtime.</symptom>
+      <root-cause source="NIST SP 800-57">No rotation cadence; no graceful overlap.</root-cause>
+      <fix>Set 90-day cadence + N+1 active keys window. See rule api-key-rotation-cadence.</fix>
+    </antipattern>
+
+    <antipattern id="mismatched-scheme" severity="medium">
+      <symptom>B2B partner forced to OAuth2 authorization-code-with-PKCE because that is what the team built for the web app; partner integration timeline doubles.</symptom>
+      <root-cause source="Internal — auth audit on 6 SaaS 2024-2025">One scheme for all audiences.</root-cause>
+      <fix>Pick per-audience: client-credentials for B2B partners; session for B2C; JWT for cross-service. See rule scheme-matches-audience.</fix>
+    </antipattern>
+
   </section>
 </text>

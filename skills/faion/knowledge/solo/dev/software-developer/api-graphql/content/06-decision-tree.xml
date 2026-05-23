@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="GraphQL API Design Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes by the observables defined in 02-output-contract.xml to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-prod">production deployment?</root-question>
+    <branch when="prod == false">
+      <conclusion ref="no-overfetch-by-default" verdict="staging mode; persisted queries optional"/>
+    </branch>
+    <branch when="prod == true">
+      <question id="q-persisted">persisted_queries_only == true?</question>
+      <branch when="persisted_off">
+        <conclusion ref="persisted-queries-only-in-prod" verdict="verdict=fail; enable persisted-query allowlist"/>
+      </branch>
+      <branch when="persisted_on">
+        <question id="q-caps">max_depth &lt;= 10 AND max_complexity &lt;= 1000?</question>
+        <branch when="caps_off">
+          <conclusion ref="depth-and-complexity-caps" verdict="verdict=fail; tighten caps"/>
+        </branch>
+        <branch when="caps_on">
+          <question id="q-n1">n_plus_1_hotspots == 0?</question>
+          <branch when="hotspots_present">
+            <conclusion ref="dataloader-on-1-to-n" verdict="verdict=fail; cover hotspots with DataLoader"/>
+          </branch>
+          <branch when="hotspots_clean">
+            <conclusion ref="error-extensions-rfc-7807" verdict="verdict=pass; publish schema-pack"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="gql-mobile-api">
+    prod=true → persisted_on=true → caps_on (10/1000) → hotspots=0 → conclusion error-extensions-rfc-7807 → pass.
+  </example>
+</text>

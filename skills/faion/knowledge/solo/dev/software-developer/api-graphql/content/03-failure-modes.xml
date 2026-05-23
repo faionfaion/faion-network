@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="api-graphql Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for api-graphql as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="GraphQL API Design Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns commonly observed in shipped api-graphql work. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Resolver that eagerly loads all relationships on the parent type, regardless of whether the client requested them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always-loaded relations execute queries even when the field is not selected, wasting DB resources on every request.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>List field that returns all items without pagination: async def users(self) -&gt; List[User].</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Could return millions of rows in a single request, causing full table scans and OOM errors. All list fields that could grow must use cursor-based pagination.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding a new sensitive field (email, apiKey, passwordHash) to a type without field-level authorization checks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any client that can query the parent type can retrieve the sensitive field. Auth audits should be automated via a schema lint rule.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Leaving GraphQL introspection enabled in production without authentication.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Introspection exposes the full schema to attackers, enabling targeted injection and DoS attacks. Gate it behind admin auth or disable it entirely.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="n-plus-1-explosion" severity="high">
+      <symptom>Query for 100 orders triggers 100 user lookups; p95 jumps from 80ms to 1.5s.</symptom>
+      <root-cause source="Facebook DataLoader original blog post">1-to-N resolver implemented as per-row fetch.</root-cause>
+      <fix>Wrap relation in DataLoader; batch+cache per request. See rule dataloader-on-1-to-n.</fix>
+    </antipattern>
+
+    <antipattern id="open-ad-hoc-queries" severity="high">
+      <symptom>Attacker sends nested query 25 levels deep; gateway OOMs.</symptom>
+      <root-cause source="Apollo Router security guidance">Production accepts arbitrary query strings + no depth cap.</root-cause>
+      <fix>Persisted-query allowlist + depth/complexity caps. See rules persisted-queries-only-in-prod + depth-and-complexity-caps.</fix>
+    </antipattern>
+
+    <antipattern id="non-null-everywhere" severity="medium">
+      <symptom>Server can no longer add an optional field without a major version bump because every field is non-null.</symptom>
+      <root-cause source="GraphQL spec authoring guidance">Author defaulted to non-null "for safety".</root-cause>
+      <fix>Nullable by default; non-null only with explicit use-case justification. See rule no-overfetch-by-default.</fix>
+    </antipattern>
+
+    <antipattern id="custom-error-shape" severity="medium">
+      <symptom>Mobile client has two error parsers (REST + GraphQL); bugs accumulate on the GraphQL path.</symptom>
+      <root-cause source="RFC 7807 + Apollo error extensions guidance">Author used Apollo default error shape; never aligned with REST.</root-cause>
+      <fix>Wrap formatError to emit extensions.problem with RFC 7807 fields. See rule error-extensions-rfc-7807.</fix>
+    </antipattern>
+
   </section>
 </text>

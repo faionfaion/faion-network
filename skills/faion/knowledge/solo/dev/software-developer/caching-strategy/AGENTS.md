@@ -3,77 +3,98 @@ slug: caching-strategy
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-net]
-summary: Multi-level caching (CDN to app in-memory to Redis/Valkey to DB) with explicit pattern selection (cache-aside, write-through, write-behind, SWR) and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring.
-content_id: "3f30675742851627"
-tags: [caching, redis, performance, database, cdn]
+summary: Picks one of four canonical cache patterns (cache-aside, write-through, write-behind, read-through), sizes the TTL + key strategy, and emits an invalidation contract with measurable hit-rate target.
+content_id: "2a8c3ba0f71d770b"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [caching, redis, cache-aside, ttl, invalidation, singleflight]
 ---
 # Caching Strategy
 
 ## Summary
 
-**One-sentence:** Multi-level caching (CDN to app in-memory to Redis/Valkey to DB) with explicit pattern selection (cache-aside, write-through, write-behind, SWR) and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring.
+**One-sentence:** Picks one of four canonical cache patterns (cache-aside, write-through, write-behind, read-through), sizes the TTL + key strategy, and emits an invalidation contract with measurable hit-rate target.
 
-**One-paragraph:** Multi-level caching (CDN to app in-memory to Redis/Valkey to DB) with explicit pattern selection (cache-aside, write-through, write-behind, SWR) and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring. Every cache layer requires a documented invalidation path and stampede protection for endpoints serving > 100 RPS.
+**One-paragraph:** Caches solve latency but introduce three new problems: staleness, stampedes, and key collisions. This methodology picks one of four patterns based on read/write ratio and consistency tolerance, sizes per-key TTL with jitter, declares an explicit invalidation contract (publish event / write-through / TTL-only), adds single-flight protection against stampedes, and sets a measurable hit-rate target with an alert below the floor.
+
+**Ефективно для:**
+
+- Solo dev adding Redis in front of a hot endpoint that does 12k QPS.
+- Replacing a write-through that turned every write into a P0 outage when Redis blipped.
+- Adding single-flight to stop thundering-herd on cache-miss for a popular key.
+- Setting an invalidation contract so other services know how to flush on data change.
 
 ## Applies If (ALL must hold)
 
-- Read-heavy endpoints with bounded staleness tolerance (product catalog, user profile, settings).
-- Expensive computations whose inputs repeat (LLM responses, image transforms, search aggregations).
-- Static or near-static API responses behind a CDN or edge cache.
-- Session storage, OAuth token cache, rate-limit counters — natural Redis fit.
-- Aggregation/dashboard responses where 30-60 s freshness is acceptable.
-- Reducing DB load when query plans are tuned but still slow under sustained traffic.
-- Idempotency: cache request hashes to deduplicate retries.
+- Hot path has a clear read/write ratio (&gt;5:1 reads).
+- Cache store available (Redis / Valkey / Memcached / in-memory).
+- Stale-tolerance budget is known (e.g. 30s acceptable, 5min not).
+- Author has authority to ship cache + invalidation on the same change.
 
 ## Skip If (ANY kills it)
 
-- Highly volatile data (live counts, current bid prices) where any staleness is unacceptable.
-- Per-user data with no reuse pattern (expected hit ratio less than 50% — wasted memory).
-- Strong-consistency requirements (financial ledger, inventory hold).
-- Small datasets that fit in app memory already (use a plain dict).
-- Without a measurement plan — caching without hit-rate monitoring is dead weight.
-- When cache invalidation logic is more complex than the underlying query.
+- Pure write workload (cache cost outweighs).
+- Hard real-time consistency requirements (e.g. payment authorisation).
+- Endpoint with &lt;10 RPS where DB round-trips are fine.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Endpoint + read/write ratio | QPS sample | APM |
+| Source-of-truth data store | Postgres / etc. | platform |
+| Cache store | Redis / Valkey | platform |
+| Stale-tolerance SLA | seconds | PM / architect |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-rate-limiting]] | Cache fronts the same endpoints; both share metrics. |
+| [[observability-architecture]] | Hit-rate + p95 alerts cross-reference. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signals to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `caching_strategy_draft` | sonnet | Bounded synthesis. |
+| `caching_strategy_validate` | haiku | Mechanical schema check. |
+| `caching_strategy_review` | sonnet | Judgement on borderline cases. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/cache-aside.py` | Stdlib cache-aside helper with jittered TTL + single-flight |
+| `templates/output-schema.json` | JSON Schema (draft-07) for the caching-strategy artefact |
+| `templates/_smoke-test.json` | Minimum viable filled-in caching-strategy artefact for validator round-trip |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-caching-strategy.py` | Validate caching-strategy artefact against schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.

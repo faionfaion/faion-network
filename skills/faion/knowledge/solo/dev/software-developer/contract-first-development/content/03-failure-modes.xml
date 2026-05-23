@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="contract-first-development Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for contract-first-development as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent modifies server code first, then back-fills the OpenAPI spec to match the implementation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Code-first produces inconsistent APIs across endpoints; the spec becomes documentation, not a contract. Invert the flow: spec changes only until spec is committed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Hand-editing generated server stubs "just this once" instead of modifying the spec and regenerating.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hand-edited generated code is overwritten on the next regen; the change is silently lost, causing a regression.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Copy-pasting schema definitions across paths instead of using $ref to components/schemas.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Duplicated schemas diverge; changing one definition does not update the others, creating inconsistent validation.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Contract-First Development Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying contract-first-development. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-code-first-spec-backfill" severity="high">
+      <symptom>Agent modifies server code first, then back-fills the OpenAPI spec to match the implementation.</symptom>
+      <root-cause source="Practitioner experience">No CI gate enforcing spec-before-code; "spec follows code" pattern becomes normal.</root-cause>
+      <fix>Add a pre-merge CI job that fails if any path in the diff is server code without an accompanying spec change. Invert the flow: spec edits only, until spec is committed.</fix>
+    </antipattern>
+    <antipattern id="fm-hand-edit-generated-stubs" severity="high">
+      <symptom>Hand-editing generated server stubs "just this once" instead of modifying the spec and regenerating.</symptom>
+      <root-cause source="Practitioner experience">Regenerate step is slow or destructive; engineer chooses local edit as a shortcut.</root-cause>
+      <fix>Generated dirs are in .gitignore-style exclusion; regen runs in CI from spec on every build. Local edits are wiped on next build, making the antipattern self-correcting.</fix>
+    </antipattern>
+    <antipattern id="fm-duplicated-inline-schemas" severity="medium">
+      <symptom>Copy-pasting schema definitions across paths instead of using $ref to components/schemas.</symptom>
+      <root-cause source="Practitioner experience">Author unfamiliar with $ref; generator output reads cleaner with inlined types until duplication compounds.</root-cause>
+      <fix>Add spectral rule `no-inline-schemas` rejecting inlined object types in path operations. Force every type ≥3 properties to live in components/schemas.</fix>
+    </antipattern>
+    <antipattern id="fm-silent-breaking-change" severity="high">
+      <symptom>Breaking change ships without consumer notification — clients crash on deploy.</symptom>
+      <root-cause source="Practitioner experience">No oasdiff gate; spec edits land alongside server changes with no detection.</root-cause>
+      <fix>Wire oasdiff into the pre-merge CI: fail on any ERR-level breaking change unless the commit body carries `BREAKING-CHANGE:` token. MAJOR version bump becomes mandatory before merge.</fix>
+    </antipattern>
   </section>
 </text>

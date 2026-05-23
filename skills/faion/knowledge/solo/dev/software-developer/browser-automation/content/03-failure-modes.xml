@@ -1,37 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="browser-automation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for browser-automation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Browser Automation Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns commonly observed in shipped browser-automation work. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using page.waitForTimeout(2000) or sleep() as the primary wait strategy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fixed timeouts are either too short (flaky on slow CI) or too long (slow overall); condition-based waits are correct and faster.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Generating selectors from imagined HTML without feeding the agent actual DOM or accessibility tree.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLMs invent plausible-looking selectors that don't match the real page; feeding page.content() prevents this.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Spawning N browsers in retry loops without a concurrency cap, causing OOM on the host.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each headless Chromium instance consumes ~50-100MB RAM; uncapped retries exhaust memory within minutes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using CSS class selectors (e.g., .bg-blue-600) in automation scripts on Tailwind-styled sites.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tailwind JIT classes change on refactors; role= and text= selectors survive styling changes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Reusing one browser context across multiple scraping tasks, causing auth state leakage.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cookies and localStorage persist; auth from task A bleeds into task B, causing wrong-user actions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Automating payment, account creation, or destructive form submission without human-in-the-loop confirmation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Irreversible actions must be confirmed by a human seeing the rendered form before submission.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="sleep-everywhere" severity="high">
+      <symptom>Every click followed by sleep(500); suite passes locally and fails on slow CI runners 30% of the time.</symptom>
+      <root-cause source="Playwright official docs">Author used sleep to wait for animations.</root-cause>
+      <fix>Replace each sleep with an explicit assertion on the next expected state. See rule no-sleep-only-waits.</fix>
+    </antipattern>
+
+    <antipattern id="css-selectors" severity="high">
+      <symptom>Designer updates Tailwind classes; 40 tests break the next morning.</symptom>
+      <root-cause source="Testing Library guidance">Selectors keyed on .btn-primary etc.</root-cause>
+      <fix>Add data-test-id on every interactive element; key selectors on test ids. See rule selector-priority.</fix>
+    </antipattern>
+
+    <antipattern id="no-page-objects" severity="high">
+      <symptom>Sign-up form rename forces edits across 12 test files.</symptom>
+      <root-cause source="Martin Fowler — Page Object pattern">Tests touch the DOM directly.</root-cause>
+      <fix>Introduce SignUpPage class; concentrate selectors there. See rule page-object-isolation.</fix>
+    </antipattern>
+
+    <antipattern id="no-flake-budget" severity="medium">
+      <symptom>Suite flake rate creeps from 1% to 8%; team treats CI red as random noise.</symptom>
+      <root-cause source="Google testing-on-the-toilet guidance">No automated tracking.</root-cause>
+      <fix>Track flake_rate; fail merge when &gt; 2% over a 100-run window. See rule flake-budget-enforced.</fix>
+    </antipattern>
+
   </section>
 </text>

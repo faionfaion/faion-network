@@ -1,3 +1,8 @@
+<!-- purpose: Markdown skeleton enforcing the six-section structure -->
+<!-- consumes: API surface inventory -->
+<!-- produces: Docs site page tree -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens when loaded -->
 # [API Name]
 
 ## Overview

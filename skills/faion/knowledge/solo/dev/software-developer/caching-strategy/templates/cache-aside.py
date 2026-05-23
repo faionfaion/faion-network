@@ -1,3 +1,8 @@
+# purpose: Stdlib cache-aside helper with jittered TTL + single-flight
+# consumes: key + loader fn
+# produces: cached value or fresh load
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~300 tokens when loaded
 """cache-aside.py — Cache-aside decorator backed by Redis with TTL, key builder, and invalidation.
 
 Usage:

@@ -3,71 +3,99 @@ slug: api-documentation
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-net]
-summary: Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog.
-content_id: "01de24b2a9730613"
-tags: [api-docs, openapi, swagger-ui, redoc, documentation]
+summary: Generates a six-section API reference (Overview, Auth, Quick Start, Endpoints, Error Codes, Changelog) with copy-paste curl examples and machine-readable OpenAPI alongside the prose.
+content_id: "d5e6de9d40e37521"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [api, documentation, openapi, docs, developer-experience]
 ---
 # API Documentation
 
 ## Summary
 
-**One-sentence:** Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog.
+**One-sentence:** Generates a six-section API reference (Overview, Auth, Quick Start, Endpoints, Error Codes, Changelog) with copy-paste curl examples and machine-readable OpenAPI alongside the prose.
 
-**One-paragraph:** Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog. Host interactive docs via Swagger UI (`/docs`) and readable reference via Redoc (`/redoc`).
+**One-paragraph:** Developers evaluate APIs in under 5 minutes; missing any of six canonical sections causes abandonment. This methodology emits an API reference scaffold with the six required sections, copy-paste curl examples per endpoint, an error-codes table linked to the Problem Details schema (RFC 7807), and a Changelog tied to spec version bumps. Output: docs-bundle ready for static-site rendering + OpenAPI cross-link.
+
+**Ефективно для:**
+
+- Solo dev publishing the first public API docs on docs.example.com.
+- Re-doing legacy docs that lost half their consumers due to missing Quick Start.
+- Wiring the docs site to OpenAPI so examples stay in sync with the contract.
+- Adding a Changelog so partners can plan around deprecations.
 
 ## Applies If (ALL must hold)
 
-- Publishing any API consumed by external developers or third-party integrations.
-- Setting up a new FastAPI or Django project where OpenAPI is auto-generated.
-- Adding examples and error tables to an existing, poorly documented API.
-- Preparing an API for SDK generation.
+- API has external consumers (B2B / public).
+- OpenAPI spec exists (api-contract-first or api-openapi-spec).
+- Docs site is rendered (Docusaurus / Mintlify / Redoc / homegrown).
+- Author has access to ship the docs site.
 
 ## Skip If (ANY kills it)
 
-- Internal micro-services with no external consumers — a brief AGENTS.md is enough.
-- Prototypes that will be redesigned before any consumer integrates.
-- CLI tools — man pages and --help flags are the right format.
+- Internal-only RPC documented in code comments.
+- Single-team API where Slack channel is the docs.
+- Generated SDK README only (no per-endpoint usage docs).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| OpenAPI spec | openapi.yaml | api-contract-first output |
+| Auth scheme | AUTH-* artefact | api-authentication output |
+| Error catalogue | Problem Details JSON | api-error-handling output |
+| Docs site stack | Docusaurus / Mintlify / Redoc | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-contract-first]] | Source of the spec the docs cross-link. |
+| [[api-error-handling]] | Source of the error-codes table. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signals to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `api_documentation_draft` | sonnet | Bounded synthesis. |
+| `api_documentation_validate` | haiku | Mechanical schema check. |
+| `api_documentation_review` | sonnet | Judgement on borderline cases. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/doc-structure.md` | Markdown skeleton enforcing the six-section structure |
+| `templates/openapi-examples.yaml` | OpenAPI examples block patterns used by the docs site |
+| `templates/output-schema.json` | JSON Schema (draft-07) for the api-documentation artefact |
+| `templates/_smoke-test.json` | Minimum viable filled-in api-documentation artefact for validator round-trip |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-documentation.py` | Validate api-documentation artefact against schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
+
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.

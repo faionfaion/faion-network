@@ -1,22 +1,144 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-rate-limiting Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Rate Limiting Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the api-rate-limiting artefact. Validator enforces the listed required fields + cross-field checks.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-rate-limiting.json",
+  "type": "object",
+  "required": [
+    "policy_id",
+    "algorithm",
+    "key_source",
+    "tiers",
+    "envelope_type_uri"
+  ],
+  "properties": {
+    "policy_id": {
+      "type": "string",
+      "pattern": "^RL-[A-Z0-9-]{2,40}$"
+    },
+    "algorithm": {
+      "type": "string",
+      "enum": [
+        "sliding-window",
+        "token-bucket",
+        "fixed-window",
+        "leaky-bucket"
+      ]
+    },
+    "key_source": {
+      "type": "string",
+      "enum": [
+        "jwt-sub",
+        "session-uid",
+        "api-key-id",
+        "oauth-client-id"
+      ]
+    },
+    "tiers": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "per_second",
+          "per_minute",
+          "per_hour"
+        ],
+        "properties": {
+          "per_second": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "per_minute": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "per_hour": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "envelope_type_uri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "metrics_emitted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "policy_id": "RL-PUBLIC-API",
+  "algorithm": "sliding-window",
+  "key_source": "jwt-sub",
+  "tiers": {
+    "free": {
+      "per_second": 5,
+      "per_minute": 60,
+      "per_hour": 1000
+    },
+    "paid": {
+      "per_second": 20,
+      "per_minute": 600,
+      "per_hour": 20000
+    },
+    "partner": {
+      "per_second": 50,
+      "per_minute": 1500,
+      "per_hour": 60000
+    }
+  },
+  "envelope_type_uri": "https://api.example.com/errors/rate-limited",
+  "metrics_emitted": [
+    "rate_limit_hits_total",
+    "rate_limit_rejected_total",
+    "rate_limit_latency_ms"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "policy_id": "x",
+  "algorithm": "fixed-window",
+  "key_source": "jwt-sub",
+  "tiers": {
+    "all": {
+      "per_second": 1,
+      "per_minute": 60,
+      "per_hour": 100
+    }
+  },
+  "envelope_type_uri": "bad"
+}
+]]></code>
+    <note>policy_id pattern fails; tiers has 1 entry; envelope_type_uri not a URI.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>tiers has &lt; 2 entries (per-tier-quotas).</item>
+      <item>key_source not derived from auth scheme.</item>
+      <item>envelope_type_uri not a URI.</item>
+      <item>any tier missing per_second OR per_minute OR per_hour (burst-and-sustained).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-api-rate-limiting.py">Validator script</reference>
 </text>

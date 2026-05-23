@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="database-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for database-design as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>God table: a single table with 50+ columns for loosely related entities.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Makes every query wide; most columns are NULL for any given row; adding indexes for different query patterns bloats write overhead. Normalize into focused tables and join when needed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using FLOAT or DOUBLE for monetary amounts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>IEEE 754 floating-point cannot represent most decimal fractions exactly. Repeated arithmetic accumulates rounding errors. Always use NUMERIC(12,2) or BIGINT cents for money.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Applying ON DELETE CASCADE to foreign keys without careful review of the deletion chain.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A cascade chain 3+ tables deep means a single parent delete wipes all descendant rows. A developer deleting a test user can wipe all their orders, payments, and shipments in a single query.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Database Design Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying database-design. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-app-only-constraints" severity="high">
+      <symptom>Service code enforces uniqueness or referential integrity that the DB schema does not.</symptom>
+      <root-cause source="Practitioner experience">Developer relied on ORM validations instead of DDL constraints; bulk import or admin tool bypasses ORM and corrupts data.</root-cause>
+      <fix>Add the constraint at DB layer (UNIQUE, FK, CHECK). Re-run the failing import to confirm rejection.</fix>
+    </antipattern>
+    <antipattern id="fm-speculative-index-bloat" severity="medium">
+      <symptom>Tables carry many indexes that no current query plan references.</symptom>
+      <root-cause source="Practitioner experience">Indexes added 'just in case' or by ORM auto-migration without measurement.</root-cause>
+      <fix>Drop unused indexes (pg_stat_user_indexes shows zero scans). Add a CI check that flags new indexes without a paired query in the workload list.</fix>
+    </antipattern>
+    <antipattern id="fm-destructive-migration-coupled-to-release" severity="high">
+      <symptom>DROP COLUMN and code change ship in one release; rollback requires both.</symptom>
+      <root-cause source="Practitioner experience">Author treats migration as part of feature, not infra.</root-cause>
+      <fix>Split into two releases: release N deploys additive migration + code that handles both shapes; release N+2 deploys destructive migration. Verify with rollback drill.</fix>
+    </antipattern>
+    <antipattern id="fm-trigger-as-business-logic" severity="medium">
+      <symptom>Critical business rule lives in a database trigger.</symptom>
+      <root-cause source="Practitioner experience">Author wanted an 'always-on' guarantee; trigger felt closer to data than service code.</root-cause>
+      <fix>Move logic to application service layer; trigger remains only for structural invariants (audit log, updated_at). Document the move in an ADR.</fix>
+    </antipattern>
   </section>
 </text>

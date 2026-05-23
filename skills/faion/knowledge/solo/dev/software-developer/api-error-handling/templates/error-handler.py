@@ -1,3 +1,8 @@
+# purpose: FastAPI middleware that wraps every error into RFC 7807 envelope with traceId
+# consumes: Raw exception + tracer
+# produces: RFC 7807 response body
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~350 tokens when loaded
 """Global exception handlers for FastAPI — RFC 7807 Problem Detail responses."""
 import uuid
 import logging

@@ -1,37 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="api-versioning Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for api-versioning as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="API Versioning Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns commonly observed in shipped api-versioning work. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Creating v2 by copying the entire v1 handler file and editing the copy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both copies diverge immediately. Bug fixes applied to v2 never reach v1. Shared behavior must live in a service layer, with handlers only handling version-specific formatting.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Introducing a new API version without adding Deprecation, Sunset, and Link headers to old version responses.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without machine-readable deprecation signals, client developers only learn about sunsets when their integration breaks. This creates support emergencies.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using ?v=1 or ?version=2 query parameters for public API versioning.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Query parameters invalidate CDN cache keys, cause logging blind spots, and are easily missed in SDK generation. Reserve query params for feature flags, not versions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using header-based versioning (Accept-Version) without adding Vary: Accept-Version to responses.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CDNs cache based on URL by default. Without Vary, v1 and v2 responses for the same URL are served interchangeably, causing cross-version response contamination.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Creating a new API version when the change is purely additive (new optional field, new endpoint).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Version bumps consume the support window budget. Additive changes are backward-compatible by definition. Signal them via OpenAPI changelog, not a new version.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Scheduling API version sunset based on time elapsed rather than measured consumer usage.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Consumers who call an API infrequently (monthly billing runs, annual reports) are invisible in daily traffic but break catastrophically on sunset. Require traffic-data approval for any sunset decision.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="silent-breaking-change" severity="high">
+      <symptom>Required field added in v1; existing clients fail validation; outage.</symptom>
+      <root-cause source="OpenAPI evolution guidance">Team thought "new field" is always additive; missed that required tightens contract.</root-cause>
+      <fix>Use oasdiff classifier; require major bump on any field-required addition. See rules breaking-change-classifier + semver-bump-on-breaking.</fix>
+    </antipattern>
+
+    <antipattern id="mixed-scheme" severity="medium">
+      <symptom>Some endpoints carry version in path, others in Accept header; partner SDK has to support both.</symptom>
+      <root-cause source="Stripe / GitHub versioning guidance">Versioning chosen ad-hoc per endpoint.</root-cause>
+      <fix>Pick one scheme in info.x-versioning; enforce via Spectral rule. See rule one-scheme-per-api.</fix>
+    </antipattern>
+
+    <antipattern id="no-sunset" severity="medium">
+      <symptom>v1 deprecated "soon"; six months later still in use; team afraid to remove.</symptom>
+      <root-cause source="RFC 8594 Sunset Header">No date in Sunset header; verbal commitments.</root-cause>
+      <fix>Add Sunset header on deprecated endpoints with ISO date; broadcast 90+ days ahead. See rule deprecation-window-declared.</fix>
+    </antipattern>
+
+    <antipattern id="body-version-flag" severity="medium">
+      <symptom>Client sets `version: "v2"` in request body; CDN cannot cache; proxy cannot route.</symptom>
+      <root-cause source="Internal — versioning audit">Author thought body-level flag was "flexible".</root-cause>
+      <fix>Move version to URL path or Accept header; deprecate body flag. See rule no-version-in-payload.</fix>
+    </antipattern>
+
   </section>
 </text>

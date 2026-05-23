@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-authentication Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="API Authentication Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the api-authentication artefact. Validator enforces the listed required fields + cross-field checks.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-authentication.json",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "scheme",
+    "audience",
+    "access_token_ttl_seconds",
+    "revocation_path"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^AUTH-[A-Z0-9-]{2,40}$"
+    },
+    "scheme": {
+      "type": "string",
+      "enum": [
+        "jwt",
+        "oauth2-client-credentials",
+        "api-key",
+        "mtls",
+        "opaque-session"
+      ]
+    },
+    "audience": {
+      "type": "string",
+      "enum": [
+        "b2c-browser",
+        "b2c-mobile",
+        "b2b-partner",
+        "server-to-server",
+        "iot"
+      ]
+    },
+    "access_token_ttl_seconds": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 86400
+    },
+    "refresh_token_rotates": {
+      "type": "boolean"
+    },
+    "revocation_path": {
+      "type": "string",
+      "minLength": 8
+    },
+    "key_rotation_cadence_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "AUTH-PARTNER-API",
+  "scheme": "oauth2-client-credentials",
+  "audience": "b2b-partner",
+  "access_token_ttl_seconds": 3600,
+  "refresh_token_rotates": false,
+  "revocation_path": "POST /oauth/revoke; client_id+client_secret; cascades to introspection cache eviction",
+  "key_rotation_cadence_days": 90
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "x",
+  "scheme": "jwt",
+  "audience": "b2c-browser",
+  "access_token_ttl_seconds": 604800,
+  "revocation_path": ""
+}
+]]></code>
+    <note>spec_id pattern fails; JWT for b2c-browser without denylist; 7-day TTL beyond cap; revocation_path empty.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>scheme=jwt + audience=b2c-browser without server-side denylist + ttl &lt;= 900 (jwt-not-for-b2c-session).</item>
+      <item>access_token_ttl_seconds &gt; 3600 for high-revocation-SLA workloads.</item>
+      <item>revocation_path empty for any scheme.</item>
+      <item>scheme=api-key without key_rotation_cadence_days &lt;= 90.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-api-authentication.py">Validator script</reference>
 </text>

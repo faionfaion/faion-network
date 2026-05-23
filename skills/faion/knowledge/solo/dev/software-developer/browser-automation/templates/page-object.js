@@ -1,3 +1,10 @@
+/*
+ * purpose: Generic Page Object base class with data-test-id helpers
+ * consumes: Per-screen DOM
+ * produces: Domain-method API
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: ~280 tokens when loaded
+ */
 // page-object.js — Page Object Model scaffold for Playwright.
 // Each page gets its own POM file; selectors never appear inline in tests.
 

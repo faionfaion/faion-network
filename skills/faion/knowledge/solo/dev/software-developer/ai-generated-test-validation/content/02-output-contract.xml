@@ -1,31 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Generated Test Validation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Generated Test Validation deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="AI-Generated Test Validation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the ai-generated-test-validation artefact. Validator enforces the listed required fields + cross-field checks.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-generated-test-validation.json",
+  "type": "object",
+  "required": [
+    "report_id",
+    "files_scanned",
+    "tests_inventoried",
+    "rejections",
+    "mutation_survival",
+    "verdict"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "pattern": "^TVR-[A-Z0-9-]{2,40}$"
+    },
+    "files_scanned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tests_inventoried": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rejections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "test",
+          "rule_violated",
+          "explanation"
+        ]
+      }
+    },
+    "mutation_survival": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "rework"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "TVR-PRICING-API-Q2",
+  "files_scanned": 6,
+  "tests_inventoried": 18,
+  "rejections": [
+    {
+      "test": "tests/test_pricing.py::test_compute_total_mirrors_impl",
+      "rule_violated": "no-mirror-test",
+      "explanation": "Asserts price = qty * unit by re-implementing the same multiplication."
+    },
+    {
+      "test": "tests/test_pricing.py::test_apply_discount_no_assert",
+      "rule_violated": "behavioural-assertion",
+      "explanation": "Calls apply_discount but asserts nothing."
+    }
+  ],
+  "mutation_survival": 0.78,
+  "verdict": "pass"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "x",
+  "files_scanned": 0,
+  "tests_inventoried": 18,
+  "rejections": [],
+  "mutation_survival": 0.4,
+  "verdict": "pass"
+}
+]]></code>
+    <note>report_id pattern fails; verdict=pass with mutation_survival=0.4 violates mutation-survival-floor; rejections empty despite 18 tests with known issues.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
+      <item>verdict=pass with mutation_survival &lt; 0.70.</item>
+      <item>verdict=pass with rejections empty when tests_inventoried &gt; 0 AND mutation_survival &lt; 0.85 (statistically implausible).</item>
+      <item>rule_violated outside the known rule ids.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-ai-generated-test-validation.py">Validator script</reference>
 </text>
