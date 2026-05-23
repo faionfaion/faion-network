@@ -3,77 +3,94 @@ slug: build-log-content-template-pack
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Build Log Content Template Pack: codified growth-marketing practice that turns the recurring 'p2-indie-hacker/Build-in-Public Weekly Cadence (X + IH + newsletter, single source)' decision into a repeatable, auditable artefact.
-content_id: "17b45fa6152b499a"
-tags: [build-log-content-template-pack, marketing, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a full template pack — weekly build log, monthly MRR report, milestone, pivot, sunset — across X / IH / newsletter / blog so build-in-public posts ship from a single source.
+content_id: "6808a0415373fcef"
+complexity: light
+produces: spec
+est_tokens: 4200
+tags: ["build-log", "template-pack", "indie-hacker", "marketing", "fan-out"]
 ---
 # Build Log Content Template Pack
 
 ## Summary
 
-**One-sentence:** Build Log Content Template Pack: codified growth-marketing practice that turns the recurring 'p2-indie-hacker/Build-in-Public Weekly Cadence (X + IH + newsletter, single source)' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a full template pack — weekly build log, monthly MRR report, milestone, pivot, sunset — across X / IH / newsletter / blog so build-in-public posts ship from a single source.
 
-**One-paragraph:** Build Log Content Template Pack addresses the gap identified by the p2-indie-hacker/Build-in-Public Weekly Cadence (X + IH + newsletter, single source) playbook: Indie hackers need repeatable templates: weekly build log, monthly MRR report, milestone celebration post, pivot announcement, sunset announcement. Templates dir under indiehackers strategy covers 3; need a full pack across X, IH, newsletter, blog. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Generates a full template pack — weekly build log, monthly MRR report, milestone, pivot, sunset — across X / IH / newsletter / blog so build-in-public posts ship from a single source.
+
+**Ефективно для:**
+
+- Indie hacker repeating the same 5 post types weekly/monthly.
+- Multi-channel fan-out where each channel needs format adaptation.
+- Pre-launch consolidation of post templates before the engine starts.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p2-indie-hacker/Build-in-Public Weekly Cadence (X + IH + newsletter, single source) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Founder publishes ≥1 build log / MRR report / milestone per month.
+- Channels include ≥2 of: X, IH, newsletter, blog.
+- Templates will be reused for ≥6 months.
+- Brand voice is documented (or will be before first publish).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off announcement — overhead exceeds value.
+- Founder writes everything fresh each time — preference, not gap.
+- Pre-product with no shipping — no build log to template.
 
 ## Prerequisites
 
-- recent context for the p2-indie-hacker/Build-in-Public Weekly Cadence (X + IH + newsletter, single source) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Channel inventory | list | X / IH / newsletter / blog handles |
+| Brand voice doc | path | brand-voice-consistency-system output |
+| Sample posts | list | ≥5 prior posts per format |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/marketing-manager` | parent role skill — provides the operating context for this methodology |
+| build-in-public-content-engine | Provides the engine these templates plug into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-five-canonical-templates, r2-per-channel-adaptation, r3-fill-slots-not-rewrite, r4-named-owner, r5-version-bumped-on-change | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Build Log Content Template Pack artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: freeform-rewrite, channel-monoculture, untracked-edits | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-build-log-content-template-pack` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-build-log-content-template-pack` | sonnet | Bounded structural check against the output contract. |
+| `review-build-log-content-template-pack` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/build-log-content-template-pack.json` | JSON schema for the Build Log Content Template Pack output contract |
-| `templates/build-log-content-template-pack.md` | Markdown skeleton with the required fields |
+| `templates/build-log-content-template-pack.json` | JSON skeleton matching the output contract. |
+| `templates/build-log-content-template-pack.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-build-log-content-template-pack.py` | Enforce Build Log Content Template Pack output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-build-log-content-template-pack.py` | Validate Build Log Content Template Pack output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- upstream playbook: `p2-indie-hacker/Build-in-Public Weekly Cadence (X + IH + newsletter, single source)`
+- [[build-in-public-content-engine]]
+- [[brand-voice-consistency-system]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

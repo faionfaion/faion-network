@@ -3,72 +3,97 @@ slug: docker-compose
 tier: solo
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-grade Docker Compose patterns for multi-container infrastructure stacks: no version: field, named volumes, custom networks with internal: true for database tiers, health checks on every service with depends_on: condition: service_healthy, resource limits via deploy.
-content_id: "c73dda5c7f775d91"
-tags: [docker, compose, infrastructure, networking, security]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a production-grade Compose stack — internal networks for DB tier, deploy.resources caps, restart unless-stopped, modern compose.yaml filename, named volumes.
+content_id: "8d3de55aa8886ad1"
+complexity: medium
+produces: config
+est_tokens: 4600
+tags: ["docker", "compose", "infrastructure", "networking", "security"]
 ---
 # Docker Compose (Infrastructure)
 
 ## Summary
 
-**One-sentence:** Production-grade Docker Compose patterns for multi-container infrastructure stacks: no version: field, named volumes, custom networks with internal: true for database tiers, health checks on every service with depends_on: condition: service_healthy, resource limits via deploy.
+**One-sentence:** Generates a production-grade Compose stack — internal networks for DB tier, deploy.resources caps, restart unless-stopped, modern compose.yaml filename, named volumes.
 
-**One-paragraph:** Production-grade Docker Compose patterns for multi-container infrastructure stacks: no version: field, named volumes, custom networks with internal: true for database tiers, health checks on every service with depends_on: condition: service_healthy, resource limits via deploy.resources, and restart: unless-stopped. The compose.yaml file (not docker-compose.yml) is the modern canonical name.
+**One-paragraph:** Generates a production-grade Compose stack — internal networks for DB tier, deploy.resources caps, restart unless-stopped, modern compose.yaml filename, named volumes.
+
+**Ефективно для:**
+
+- Solo team provisioning a VPS with shared infra (PG + Redis + RMQ).
+- Single-host staging or small prod (≤10 services).
+- Orchestrated restarts with healthcheck-gated ordering.
 
 ## Applies If (ALL must hold)
 
-- Defining multi-container application stacks (app + DB + cache + worker)
-- Provisioning shared infrastructure services on a VPS (PostgreSQL, Redis, RabbitMQ)
-- Setting up isolated per-project stacks with own networks, volumes, and resource limits
-- Rolling out infrastructure updates requiring orchestrated service restarts with health-check ordering
+- Defining multi-container application stacks (app + DB + cache + worker).
+- Provisioning shared infrastructure services on a VPS.
+- Setting up isolated per-project stacks with own networks, volumes, and resource limits.
+- Rolling out infrastructure updates requiring orchestrated service restarts.
 
 ## Skip If (ANY kills it)
 
-- Single-container deployments — docker run + systemd unit is simpler and more observable
-- Production at scale requiring multi-host orchestration — use Kubernetes or Docker Swarm
-- Zero-downtime blue-green deploys — Compose lacks traffic shifting; use Kubernetes or a load balancer pair
-- Stateless functions or serverless workloads
+- Single-container deployments — docker run + systemd is simpler.
+- Production at scale requiring multi-host orchestration.
+- Zero-downtime blue-green deploys — Compose lacks traffic shifting.
+- Stateless functions or serverless workloads.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service tier map | yaml | which services are app / db / cache |
+| Resource caps | yaml | cpu + mem per service |
+| Network topology | yaml | internal vs external networks |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| docker-compose-devops | Base Compose V2 rules. |
+| server-init-bootstrap | Hardened host. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-internal-network-for-db, r2-resource-limits, r3-restart-unless-stopped, r4-modern-filename, r5-named-volumes-only | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Docker Compose (Infrastructure) artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: flat-network-leak, no-resource-limits, legacy-filename | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-docker-compose` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-docker-compose` | sonnet | Bounded structural check against the output contract. |
+| `review-docker-compose` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/docker-compose.json` | JSON skeleton matching the output contract. |
+| `templates/docker-compose.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-compose.py` | Validate Docker Compose (Infrastructure) output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/infra/infrastructure-engineer/`
+- [[docker-compose-devops]]
+- [[docker-compose-cicd]]
+- [[server-init-bootstrap]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

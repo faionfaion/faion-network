@@ -3,73 +3,96 @@ slug: growth-newsletter-growth
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A systematic subscriber acquisition framework for newsletters: defining positioning, creating a lead magnet, optimizing signup forms, driving traffic (free + paid), and running a referral program.
-content_id: "5c089e136aae9a44"
-tags: [newsletter-growth, subscriber-acquisition, lead-magnet, positioning, referral-programs]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a newsletter-growth plan artefact (positioning + lead magnet + form + traffic + referral) gated by a one-sentence positioning lock."
+content_id: "22b9ff50f0a6597b"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["newsletter", "list-building", "lead-magnet", "referral", "solo"]
 ---
 # Newsletter Growth
 
 ## Summary
 
-**One-sentence:** A systematic subscriber acquisition framework for newsletters: defining positioning, creating a lead magnet, optimizing signup forms, driving traffic (free + paid), and running a referral program.
+**One-sentence:** Produces a newsletter-growth plan artefact (positioning + lead magnet + form + traffic + referral) gated by a one-sentence positioning lock.
 
-**One-paragraph:** A systematic subscriber acquisition framework for newsletters: defining positioning, creating a lead magnet, optimizing signup forms, driving traffic (free + paid), and running a referral program. Position the newsletter in one sentence before writing any copy: "[Name] is a [frequency] newsletter for [ICP] that helps them [outcome] through [format]" — without this, all growth tactics produce churn, not subscribers.
+**One-paragraph:** Solo operators chase newsletter subscribers without positioning, then watch churn outpace growth. This methodology pins a growth plan: one-sentence positioning (audience + outcome + frequency), lead-magnet paired form, above-fold placement, double opt-in, and at least one referral mechanism. Output: a newsletter-growth-plan spec gated by the positioning lock.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «growth-newsletter-growth» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Starting a newsletter from zero and needing a systematic subscriber acquisition plan
-- Stuck below 1,000 subscribers with inconsistent growth and no referral engine
-- Planning a cross-promotion or SparkLoop swap partnership
-- Redesigning signup forms and lead magnet to improve opt-in conversion rate
-- Writing newsletter positioning copy, welcome email, and form headline variants
+- Operator runs OR is launching a newsletter.
+- Operator owns or can edit the destination web property.
+- Operator has ≥1 newsletter draft to seed the welcome with.
 
 ## Skip If (ANY kills it)
 
-- No consistent publishing cadence — growth tactics without content quality create churn
-- No defined ICP or value proposition — positioning must precede growth tactics
-- Pure B2B enterprise where newsletter is not the primary sales motion
-- Heavily regulated verticals where lead magnet distribution has compliance requirements
+- No identified audience — pre-positioning work.
+- No web property to host signup form.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| One-sentence positioning candidate | doc | operator |
+| Lead-magnet asset | PDF / template | marketing drive |
+| Destination signup page wireframe | image / Figma | design |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/content-marketer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/growth-email-marketing` | Downstream consumer of the growing list. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the newsletter-growth-plan artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-newsletter-growth.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-newsletter-growth.json` | newsletter-growth-plan JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-newsletter-growth.py` | Validate the newsletter-growth-plan artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
+- [[growth-email-marketing]]
+- [[growth-podcast-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

@@ -3,73 +3,99 @@ slug: growth-copywriting-fundamentals
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A learnable persuasion framework for writing copy that converts: know your audience through Voice of Customer research, apply a proven formula (AIDA/PAS/BAB/4Ps), write headlines first (80% of effectiveness), translate features to benefits, handle objections, and drive one clear CTA.
-content_id: "96385b5dcf1a1be0"
-tags: [copywriting, persuasion, headlines, landing-pages, conversion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a copywriting spec — VoC research → formula (AIDA/PAS/BAB/4Ps) → 10 headline variants → benefit translation → CTA — so landing-page copy converts on persuasion fundamentals.
+content_id: "4cde0be560024a89"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: ["copywriting", "persuasion", "headlines", "landing-pages", "conversion"]
 ---
-# Copywriting Fundamentals
+# Growth Copywriting Fundamentals
 
 ## Summary
 
-**One-sentence:** A learnable persuasion framework for writing copy that converts: know your audience through Voice of Customer research, apply a proven formula (AIDA/PAS/BAB/4Ps), write headlines first (80% of effectiveness), translate features to benefits, handle objections, and drive one clear CTA.
+**One-sentence:** Generates a copywriting spec — VoC research → formula (AIDA/PAS/BAB/4Ps) → 10 headline variants → benefit translation → CTA — so landing-page copy converts on persuasion fundamentals.
 
-**One-paragraph:** A learnable persuasion framework for writing copy that converts: know your audience through Voice of Customer research, apply a proven formula (AIDA/PAS/BAB/4Ps), write headlines first (80% of effectiveness), translate features to benefits, handle objections, and drive one clear CTA. The core rule: write 10 headline variants minimum before selecting one — the first headline is almost never the best.
+**One-paragraph:** Generates a copywriting spec — VoC research → formula (AIDA/PAS/BAB/4Ps) → 10 headline variants → benefit translation → CTA — so landing-page copy converts on persuasion fundamentals.
+
+**Ефективно для:**
+
+- Solo founder writing or rewriting landing-page copy.
+- Ad / email campaign requiring headline variants at scale.
+- Feature-to-benefit translation pass before launch.
 
 ## Applies If (ALL must hold)
 
-- Writing or rewriting landing page copy (hero, benefits, CTA, objection handling)
-- Drafting email subject lines, ad copy, or social posts at scale
-- Converting feature lists into benefit-oriented messaging
-- Extracting VoC language patterns from customer reviews for copy
-- Applying a specific formula (AIDA, PAS, BAB) to a defined content piece
+- Writing or rewriting landing-page copy (hero, benefits, CTA, objection handling).
+- Drafting email subject lines, ad copy, or social posts at scale.
+- Converting feature lists into benefit-oriented messaging.
+- Applying a specific formula (AIDA, PAS, BAB) to a defined piece.
 
 ## Skip If (ANY kills it)
 
-- Brand voice is undefined — copy frameworks produce generic output without documented tone
-- Highly regulated content (pharma, legal, financial advice) — legal review required first
-- Target audience research is incomplete — formulas applied to wrong ICP produce polished but ineffective copy
-- Long-form editorial content — copywriting frameworks are for persuasion, not journalism
+- Brand voice is undefined — copy frameworks produce generic output without tone.
+- Highly regulated content (pharma, legal, financial advice) — legal review first.
+- Target audience research incomplete — copy applied to wrong ICP.
+- Long-form editorial — copywriting is for persuasion, not journalism.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| VoC research | json | customer review excerpts |
+| ICP description | md | ICP doc |
+| Brand voice doc | path | brand-voice-consistency-system output |
+| Feature list | yaml | features with benefits |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| brand-voice-consistency-system | Voice doc gates tone. |
+| growth-content-marketing | Distribution context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-ten-headline-variants, r2-voc-language, r3-feature-to-benefit, r4-one-cta-per-section, r5-named-owner | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Growth Copywriting Fundamentals artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: first-headline-ships, feature-soup, cta-fatigue | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-growth-copywriting-fundamentals` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-growth-copywriting-fundamentals` | sonnet | Bounded structural check against the output contract. |
+| `review-growth-copywriting-fundamentals` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-copywriting-fundamentals.json` | JSON skeleton matching the output contract. |
+| `templates/growth-copywriting-fundamentals.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-copywriting-fundamentals.py` | Validate Growth Copywriting Fundamentals output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
+- [[brand-voice-consistency-system]]
+- [[growth-content-marketing]]
+- [[ai-content-quality-review]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

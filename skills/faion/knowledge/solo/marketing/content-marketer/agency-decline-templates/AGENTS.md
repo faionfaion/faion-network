@@ -3,77 +3,93 @@ slug: agency-decline-templates
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for agency decline templates that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "2f09102bedaa4313"
-tags: [agency, marketing, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a graceful 'no' template pack — bad-fit, capacity, price, scope, timeline — so an indie consultant declines work in minutes while protecting positioning and seeding referrals.
+content_id: "8f97f9569e63727f"
+complexity: light
+produces: spec
+est_tokens: 4200
+tags: ["agency", "decline", "templates", "solo-consulting", "marketing"]
 ---
 # Agency Decline Templates
 
 ## Summary
 
-**One-sentence:** Reusable template for agency decline templates that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Generates a graceful 'no' template pack — bad-fit, capacity, price, scope, timeline — so an indie consultant declines work in minutes while protecting positioning and seeding referrals.
 
-**One-paragraph:** Reusable template for agency decline templates that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. Bad-fit-lead decline is a high-leverage moment and there is no methodology for graceful 'no' templates that protect positioning and seed referrals.
+**One-paragraph:** Generates a graceful 'no' template pack — bad-fit, capacity, price, scope, timeline — so an indie consultant declines work in minutes while protecting positioning and seeding referrals.
+
+**Ефективно для:**
+
+- Solo consultant getting bad-fit leads weekly.
+- Pre-launch positioning where decline emails shape the brand.
+- Capacity-throttled period where every 'no' must seed a referral.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by agency decline templates (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Operator receives ≥2 bad-fit leads / week.
+- Brand voice is documented.
+- Operator wants to maintain referral network with declined leads.
+- Decline volume justifies templates (>5/month).
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- First decline ever — write freeform, extract a template after.
+- One-off bespoke ask — template constrains the wrong axes.
+- Local cultural norms not encoded — start from local norms.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Lead inventory | list | last 90d declined leads |
+| Brand voice doc | path | brand-voice-consistency-system output |
+| Referral partner list | list | named partners for hand-offs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/content-marketer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| brand-voice-consistency-system | Voice doc gates each template. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-five-decline-templates, r2-protect-positioning, r3-seed-referral, r4-named-owner, r5-version-bumped | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Agency Decline Templates artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: just-not-fit, dead-end-decline, freeform-every-time | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `draft-agency-decline-templates` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-agency-decline-templates` | sonnet | Bounded structural check against the output contract. |
+| `review-agency-decline-templates` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/agency-decline-templates.json` | JSON skeleton matching the output contract. |
+| `templates/agency-decline-templates.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-decline-templates.py` | Validate Agency Decline Templates output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
-- peer methodologies: see siblings under `solo/marketing/content-marketer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[brand-voice-consistency-system]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

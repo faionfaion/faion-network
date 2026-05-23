@@ -3,36 +3,96 @@ slug: build-in-public-cadence
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Daily-to-weekly build-in-public rhythm (capture → hook → ship → log) plus a fan-out schedule across X, IH, and newsletter that prevents 6-8 week burnout cycles.
-content_id: 01702819d1fd3398
+summary: Generates a daily capture-hook-ship-log rhythm + weekly fan-out spec — X / IH / newsletter from a single source — so an indie hacker sustains build-in-public for >8 weeks.
+content_id: "b9560394d28c281e"
+complexity: light
+produces: spec
+est_tokens: 4200
+tags: ["build-in-public", "cadence", "indie-hacker", "twitter-x", "weekly-fan-out"]
 ---
-
 # Build In Public Cadence
 
 ## Summary
-An atomic daily build-in-public rhythm (capture work → write a hook → ship one post → log the result) plus a weekly fan-out across X, Indie Hackers, and newsletter from a single source. Outcome: a sustainable cadence skeleton an indie hacker can actually keep for >8 weeks — converting one capture into 3-5 distributed surfaces without doubling the writing time.
 
-## Applies If
-- You are building in public on X, IH, LinkedIn, or a newsletter
-- You have a shipped product or active build to talk about (no vapor)
-- You have ≤30 min/day for marketing on top of building
-- You have already burned out on irregular posting at least once
+**One-sentence:** Generates a daily capture-hook-ship-log rhythm + weekly fan-out spec — X / IH / newsletter from a single source — so an indie hacker sustains build-in-public for >8 weeks.
 
-## Skip If
-- You hate writing and refuse to delegate or template (cadence will not fix that)
-- You are building B2B enterprise where social is not your channel
-- You have a dedicated content marketer (use weekly-growth-review-rhythm instead)
-- You are pre-product (use distribution-first-ideation first)
+**One-paragraph:** Generates a daily capture-hook-ship-log rhythm + weekly fan-out spec — X / IH / newsletter from a single source — so an indie hacker sustains build-in-public for >8 weeks.
 
-## Content
-See `content/01-core-rules.xml`.
+**Ефективно для:**
+
+- Solo founder posting build-in-public daily.
+- Indie hacker who has previously burned out on irregular posting.
+- Multi-surface fan-out from a single weekly capture.
+
+## Applies If (ALL must hold)
+
+- Founder builds in public on X, IH, LinkedIn, or a newsletter.
+- Founder has a shipped product or active build to talk about (no vapor).
+- Founder has ≤30 min/day for marketing on top of building.
+- Founder has burned out on irregular posting at least once.
+
+## Skip If (ANY kills it)
+
+- Founder refuses to write — cadence will not fix that.
+- B2B enterprise where social is not the channel.
+- Founder has a dedicated content marketer — use weekly-growth-review-rhythm.
+- Pre-product — use distribution-first-ideation first.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Primary channel | string | X / IH / LinkedIn / newsletter |
+| Daily capture | min | ≤30 min/day commitment |
+| Single source doc | path | weekly capture document |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| build-in-public-content-engine | Provides the post formats this cadence consumes. |
+| content-atomization-engine | Atomization rules for fan-out. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-daily-capture-hook-ship-log, r2-single-source-fan-out, r3-30-min-cap, r4-named-owner, r5-weekly-fan-out-fixed-day | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Build In Public Cadence artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: irregular-posting, multi-source-writing, burnout-no-cap | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-build-in-public-cadence` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-build-in-public-cadence` | sonnet | Bounded structural check against the output contract. |
+| `review-build-in-public-cadence` | sonnet | Per-section critique against rules + failure modes. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/build-in-public-cadence.json` | JSON skeleton matching the output contract. |
+| `templates/build-in-public-cadence.md` | Markdown skeleton with required fields. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-build-in-public-cadence.py` | Validate Build In Public Cadence output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
 - [[build-in-public-content-engine]]
-- [[ih-build-update-template]]
 - [[content-atomization-engine]]
-- [[swipe-file-tweet-hooks]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
