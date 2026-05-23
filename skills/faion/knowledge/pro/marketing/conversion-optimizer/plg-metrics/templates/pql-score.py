@@ -1,3 +1,9 @@
+# purpose: PQL scoring model: weighted sum of activation + collaboration + usage signals
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~400-1000 tokens when loaded as context
+
 """Signal-weighted PQL scoring function.
 
 Input: dict of boolean signals from user event data (aggregated, no PII).

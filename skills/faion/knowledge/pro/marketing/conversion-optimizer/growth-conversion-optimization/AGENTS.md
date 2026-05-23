@@ -3,74 +3,97 @@ slug: growth-conversion-optimization
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A research-driven cycle for systematically improving conversion rates across web funnels: measure where users drop off, research why, form testable hypotheses, run A/B tests to statistical significance (95%+, 100+ conversions/variant, 2+ weeks), implement winners, and document learnings in a reusable library.
-content_id: "da1282b9067bb803"
-tags: [cro, conversion-rate-optimization, a-b-testing, research, funnel-optimization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Research-driven CRO cycle for web funnels: measure drop-off, research why, hypothesize testably, run A/B to statistical significance (\u2265 95%, \u2265 100 conv/variant, \u2265 2 weeks), implement winners, and curate a reusable learnings library."
+content_id: "b6a66eca006c1431"
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [cro, growth, a-b-testing, statistical-significance, marketing]
 ---
-# Conversion Rate Optimization (CRO)
+# Growth Conversion Optimization
 
 ## Summary
 
-**One-sentence:** A research-driven cycle for systematically improving conversion rates across web funnels: measure where users drop off, research why, form testable hypotheses, run A/B tests to statistical significance (95%+, 100+ conversions/variant, 2+ weeks), implement winners, and document learnings in a reusable library.
+**One-sentence:** Research-driven CRO cycle for web funnels: measure drop-off, research why, hypothesize testably, run A/B to statistical significance (≥ 95%, ≥ 100 conv/variant, ≥ 2 weeks), implement winners, and curate a reusable learnings library.
 
-**One-paragraph:** A research-driven cycle for systematically improving conversion rates across web funnels: measure where users drop off, research why, form testable hypotheses, run A/B tests to statistical significance (95%+, 100+ conversions/variant, 2+ weeks), implement winners, and document learnings in a reusable library. A 1% → 2% lift doubles effective marketing spend.
+**One-paragraph:** Research-driven CRO cycle for web funnels: measure drop-off, research why, hypothesize testably, run A/B to statistical significance (≥ 95%, ≥ 100 conv/variant, ≥ 2 weeks), implement winners, and curate a reusable learnings library. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Established traffic (≥5k unique visitors/page/month) with under-converting funnels.
-- Starting or running a structured A/B testing program.
-- Redesigning forms, pricing pages, checkout, or onboarding where research-driven hypotheses outperform opinion.
-- Quarterly CRO program reviews: wins, losses, learnings, next-cycle backlog.
-- Multi-page funnel diagnosis using heatmaps + session recordings + exit surveys together.
+- Team has ≥ 1000 users / week per variant cell.
+- Team has analytics + experiment infrastructure (GA + Optimizely / VWO / GrowthBook).
+- Named CRO owner can run the cycle end-to-end within 4-6 week windows.
 
 ## Skip If (ANY kills it)
 
-- Low-traffic pages (under ~5k uniques/month) — statistical significance is unreachable; use qualitative research instead.
-- Pre-PMF startups — optimizing the wrong funnel; nail message-market fit first.
-- Stable, mature funnels with sub-1% lift potential — resources better spent on acquisition or new product.
-- Major redesigns — run user research and prototype testing, not A/B tests.
-- Compliance-heavy flows (KYC, medical) where CRO levers conflict with required disclosures.
+- Traffic insufficient for A/B testing (< 500 users / week / variant) — apply qualitative research first.
+- No experiment infrastructure — set up tooling before running A/B tests.
+- Pre-PMF — focus on retention and qualitative product-fit research.
+
+**Ефективно для:**
+
+- Growth-команди з достатнім traffic для A/B testing (≥ 1000 users/wk на варіант).
+- CRO managers що будують першу learnings library після 5-10 експериментів.
+- Команди де experiment-discipline drift через 'looks like it's working' decisions без significance.
+- Аудит-ready середовища з вимогою statistical-rigour evidence на winners.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/conversion-optimizer` | Parent CRO context — funnel + activation discipline. |
+| `pro/marketing/growth-marketer` | Adjacent metric / experimentation context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-conversion-optimization.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/conversion-optimizer/`
+- [[funnel-basics-framework]]
+- [[growth-conversion-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

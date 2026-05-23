@@ -3,74 +3,98 @@ slug: plg-metrics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A metrics methodology for Product-Led Growth: the full funnel from acquisition through expansion, including activation rate, time-to-value (TTV), free-to-paid conversion, Product-Qualified Lead (PQL) scoring, net revenue retention (NRR), and cohort analysis.
-content_id: "f641c8b6fd29e42b"
-tags: [plg, metrics, activation, conversion, analytics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Metrics spec for PLG funnel: activation rate, TTV, free-to-paid conversion, PQL scoring, expansion revenue, NRR and cohort analysis \u2014 definitions, calculation, target ranges, named owner per metric."
+content_id: "f2cc956123d370d9"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [plg, metrics, activation, pql, retention, marketing]
 ---
-# PLG Metrics and Tracking
+# PLG Metrics
 
 ## Summary
 
-**One-sentence:** A metrics methodology for Product-Led Growth: the full funnel from acquisition through expansion, including activation rate, time-to-value (TTV), free-to-paid conversion, Product-Qualified Lead (PQL) scoring, net revenue retention (NRR), and cohort analysis.
+**One-sentence:** Metrics spec for PLG funnel: activation rate, TTV, free-to-paid conversion, PQL scoring, expansion revenue, NRR and cohort analysis — definitions, calculation, target ranges, named owner per metric.
 
-**One-paragraph:** A metrics methodology for Product-Led Growth: the full funnel from acquisition through expansion, including activation rate, time-to-value (TTV), free-to-paid conversion, Product-Qualified Lead (PQL) scoring, net revenue retention (NRR), and cohort analysis. Every metric must have a single owner, a machine-verifiable definition tied to a single event in a single table, and a "who acts and how" runbook line attached to each dashboard tile.
+**One-paragraph:** Metrics spec for PLG funnel: activation rate, TTV, free-to-paid conversion, PQL scoring, expansion revenue, NRR and cohort analysis — definitions, calculation, target ranges, named owner per metric. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Standing up a PLG dashboard with activation, conversion, expansion, and retention metrics in one place
-- Defining or refining the activation event ("aha moment") and time-to-value for a SaaS product
-- Designing a PQL scoring model from product behavior signals
-- Running cohort analysis for retention and free-to-paid conversion
-- Quarterly PLG strategy review where freemium vs. trial model and gating thresholds are on the table
+- Team runs PLG model (any: freemium / free-trial / reverse-trial).
+- Named data / analytics owner can ship + maintain the metrics dashboard.
+- Team has analytics infrastructure (Amplitude / Mixpanel / Heap / custom warehouse).
 
 ## Skip If (ANY kills it)
 
-- Sales-led motions where the buyer never logs in before purchase — PLG metrics produce noise
-- Pre-product-market-fit startups: vanity metrics dominate, PQL scoring overfits to a tiny sample
-- Self-hosted or single-tenant deployments where event telemetry is not centralized
-- Hardware or one-time-purchase products without recurring usage signals
-- Regulated industries where logging granular user behavior requires consent gates that break funnel completeness
+- Pre-PMF — focus on qualitative retention research.
+- Sales-led product — PLG metrics don't transfer cleanly.
+- No analytics infrastructure — instrument before defining the metric tree.
+
+**Ефективно для:**
+
+- PLG-команди що тільки впроваджують metrics-discipline (вперше structured tracking).
+- Data analysts що пишуть першу PLG-metrics dashboard.
+- Marketing leads що калібрують target ranges проти industry benchmarks.
+- Аудит-ready середовища з вимогою evidence-anchored metric definitions.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/conversion-optimizer` | Parent CRO context — funnel + activation discipline. |
+| `pro/marketing/growth-marketer` | Adjacent metric / experimentation context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-plg-metrics.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/conversion-optimizer/`
+- [[plg-basics]]
+- [[plg-implementation-guide]]
+- [[plg-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

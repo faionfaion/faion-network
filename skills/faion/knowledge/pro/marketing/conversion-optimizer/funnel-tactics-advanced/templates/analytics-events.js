@@ -1,3 +1,9 @@
+// purpose: canonical event-schema snippet for funnel tactic instrumentation
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~400-1000 tokens when loaded as context
+
 // Funnel Analytics Event Tracking
 // Instrument all 6 events before running any funnel optimization.
 

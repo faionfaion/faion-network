@@ -1,3 +1,9 @@
+# purpose: Day-N freemium-to-paid playbook generator with PQL gating
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~400-1000 tokens when loaded as context
+
 """
 day_n_playbook.py — schedule freemium-to-paid Day-N message queue.
 

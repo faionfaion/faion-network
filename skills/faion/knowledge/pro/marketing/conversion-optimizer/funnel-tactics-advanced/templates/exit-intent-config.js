@@ -1,3 +1,9 @@
+// purpose: exit-intent recovery configuration with 30-day cooldown enforcement
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~400-1000 tokens when loaded as context
+
 // Exit Intent Configuration Template
 // Trigger when user is about to leave without converting.
 // Recovery target: 5-15% of abandoning users.

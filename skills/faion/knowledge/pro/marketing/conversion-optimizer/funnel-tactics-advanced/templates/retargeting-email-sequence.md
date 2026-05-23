@@ -1,3 +1,9 @@
+<!-- purpose: retargeting email sequence with day-1 / day-3 / day-7 / day-14 cap -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
+
 # Retargeting Email Sequence: [Campaign Name]
 
 ## Email 1: Immediate (within 24 hours)

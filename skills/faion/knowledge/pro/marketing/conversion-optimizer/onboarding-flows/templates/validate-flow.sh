@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: shell validator: fail if any onboarding step has no event mapping
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~400-1000 tokens when loaded as context
+
 # validate-flow.sh — fail if any onboarding step has no event mapping.
 # Inputs:
 #   flow.yaml   — steps[].id, steps[].event, steps[].required

@@ -1,3 +1,9 @@
+<!-- purpose: ICE prioritisation worksheet with threshold bands (>= 24 / 18-23 / < 18) -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
+
 # Hypothesis Prioritization — ICE Framework
 
 | # | Hypothesis | Impact (1-10) | Confidence (1-10) | Ease (1-10) | ICE Score | Priority |

@@ -1,3 +1,9 @@
+# purpose: PLG-fit scorer: rate product shape against PLG model viability axes
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~400-1000 tokens when loaded as context
+
 """
 plg_fit_scorer.py — score a product against the PLG fit matrix.
 
