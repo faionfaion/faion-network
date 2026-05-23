@@ -3,83 +3,96 @@ slug: solo-lead-qualification-rubric
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces an ICE-style qualification score per lead (budget + authority + timeline + history) replacing BANT for one-person services."
 content_id: "fc5c4fc1c0c6b35b"
-summary: ICE-style qualification rubric tuned to solo freelance signals (budget clarity, decision authority on call, sane timeline, no scarring contractor history) that replaces BANT for one-person services.
-tags: [lead-qualification, freelance, discovery-call, ice-score, pipeline]
+complexity: medium
+produces: rubric
+est_tokens: 4900
+tags: ["lead-qualification", "freelance", "discovery-call", "ice-score", "pipeline", "solo"]
 ---
-
 # Solo Lead Qualification Rubric
 
 ## Summary
 
-**One-sentence:** ICE-style qualification rubric tuned to solo freelance signals (budget clarity, decision authority on call, sane timeline, no scarring contractor history) that replaces BANT for one-person services.
+**One-sentence:** Produces an ICE-style qualification score per lead (budget + authority + timeline + history) replacing BANT for one-person services.
 
-**One-paragraph:** BANT (Budget / Authority / Need / Timeline) was authored for IBM in 1956 for B2B field sales with quota-loaded reps and multi-stakeholder enterprise deals — and HubSpot has retired it from their own playbook because the framework misfires on inbound modern SaaS, let alone on a solo freelancer's pipeline of warm cold-DMs. This methodology gives the solo operator a 4-dimensional score (`Budget-clarity`, `Decision-on-call`, `Timeline-realism`, `Contractor-trauma-history`) on a 1-5 scale, with a hard pass / soft pass / decline threshold at 14 / 10 / <10 of 20. Output: structured `QualifiedLead` JSON record per inbound, drop-decision before any unpaid discovery time is burned.
+**One-paragraph:** Solo freelancers waste discovery time on no-budget leads or get scarred by serial contractor-churn clients. This methodology pins an ICE-style rubric tuned to solo signals: 4 axes (budget clarity / decision authority on call / sane timeline / no scarring contractor history), each scored 0-3, no-budget auto-decline, authority confirmed on call (not assumed from title), and an explicit scar flag for triage. Output: a lead qualification score artefact per lead.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «solo-lead-qualification-rubric» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- engagement_type ∈ {one-off-project, retainer, fixed-price-statement-of-work}
-- operator is solo (no business development / SDR seat)
-- lead source is inbound (LinkedIn DM, email reply, referral) — NOT outbound cold-email blast
-- prospect has had at least one reply exchange (1-line "interested" is not enough)
+- Operator runs ≥1 discovery call per week.
+- Operator can decline leads (not desperate for every closeable deal).
+- Pipeline tracking surface exists (CRM / spreadsheet / Notion).
 
 ## Skip If (ANY kills it)
 
-- this is a referral from a paying repeat client — referral signal dominates, qualify lightly
-- prospect is a friend / personal network introduction — relationship rules, not framework rules
-- engagement value < $500 — qualification cost exceeds project margin
-- you have empty calendar this week — pragmatic acceptance threshold drops; rubric becomes advisory only
+- Operator is in launch mode and cannot afford to decline any lead.
+- Operator runs only fixed-fee productised services with no discovery.
 
 ## Prerequisites
 
-- one full DM / email thread or one 15-min reply ladder with the prospect
-- written offer or service menu the prospect responded to (anchors "Budget-clarity")
-- list of red-flag patterns from your last three failed projects (anchors "Contractor-trauma" detection)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Lead intake fields | form / spreadsheet | intake |
+| Discovery-call notes template | doc | operator |
+| Pipeline tracking surface | Notion / sheet | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager/solo-rate-floor-calculator` | Provides the floor rate below which the rubric automatically marks `Budget-clarity = 1` |
-| `solo/comms/communicator/solo-testimonial-extraction-script` | Sister methodology used post-engagement; qualified-lead score predicts testimonial harvest success |
-| `pro/marketing/conversion-optimizer/lead-magnet-design` | Upstream — feeds the kind of inbound this rubric scores |
+| `solo/marketing/conversion-optimizer/` | Parent role / operating context. |
+| `solo/marketing/conversion-optimizer/testimonial-harvest-sop` | Post-engagement methodology for qualified-and-closed leads. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4-dimensional scoring rubric, threshold rules, and the rate-floor coupling rule | ~900 |
-| `content/02-output-contract.xml` | essential | `QualifiedLead` JSON schema, required fields, forbidden patterns (e.g. score without evidence) | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known scoring failures: optimism bias, single-signal scoring, hallucinated authority, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the lead-qualification-score artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract_signals_from_thread` | haiku | Quote extraction; mechanical |
-| `score_per_dimension` | sonnet | Bounded judgment against rubric anchors |
-| `compose_qualified_lead_record` | sonnet | Schema-bound output, no creative synthesis |
-| `borderline_case_review` | opus | Pass/decline decision when total ∈ [9, 12] |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/qualified-lead.json` | Output JSON Schema |
-| `templates/discovery-thread-rubric.md` | Operator-side scoring sheet |
+| `templates/solo-lead-qualification-rubric.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/solo-lead-qualification-rubric.json` | lead-qualification-score JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/score-lead.py` | Apply rubric to a transcript file → emit `QualifiedLead` JSON | After thread is closed, before deciding to book discovery call |
+| `scripts/validate-solo-lead-qualification-rubric.py` | Validate the lead-qualification-score artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/conversion-optimizer/`
-- peer methodologies: `solo-rate-floor-calculator`, `solo-testimonial-extraction-script`
-- external: [HubSpot — Why BANT Is Broken](https://blog.hubspot.com/sales/bant) · [Sean Ellis ICE scoring](https://growthhackers.com/articles/the-ice-score) · [Patrick McKenzie — Don't Call Yourself A Programmer (rate-floor logic)](https://www.kalzumeus.com/2011/10/28/dont-call-yourself-a-programmer/)
+- [[testimonial-harvest-sop]]
+- [[indie-mini-crm-notion]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

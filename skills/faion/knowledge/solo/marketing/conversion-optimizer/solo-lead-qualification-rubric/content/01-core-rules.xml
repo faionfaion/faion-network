@@ -1,85 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Solo Lead Qualification — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Five testable rules that govern the four-dimensional ICE-style score (1-5 each, max 20) and the pass / soft-pass / decline thresholds.</summary>
+<text id="01-core-rules" title="Solo Lead Qualification Rubric Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every Solo Lead Qualification Rubric application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-four-dimensions" testable="true">
-      <statement>Always score four dimensions: Budget-clarity, Decision-on-call, Timeline-realism, Contractor-trauma-history. Each on a 1-5 integer scale. Never score on fewer than four; never collapse to a single number without the per-dimension table.</statement>
-      <rationale source="Christensen JTBD / Sean Ellis ICE / HubSpot BANT retirement">BANT collapsed four concerns into a binary qualify/disqualify, which forces an LLM to over-weight the loudest signal in the thread. Per-dimension scoring forces evidence per axis and exposes the trade-off (e.g. clear budget but unclear authority).</rationale>
+    <rule id="r1-four-axes-fixed" testable="true" depth="essential">
+      <statement>Score MUST evaluate exactly 4 axes: budget clarity, decision authority on call, sane timeline, no scarring contractor history. Adding axes is rejected.</statement>
+      <rationale source="F-066 wave-27 chunk-03 grounding">Solo BANT-equivalents drift to 10+ axes and become unusable; 4 axes preserve speed and discrimination.</rationale>
     </rule>
 
-    <rule id="r2-evidence-per-score" testable="true">
-      <statement>Every dimension score must cite at least one verbatim quote from the DM/email thread. A score without a citation is invalid and must be coerced to NULL.</statement>
-      <rationale source="Anti-hallucination practice">LLMs given a transcript will confabulate budgets, role titles, and timelines that were never stated. Verbatim grounding is the only reliable falsifier.</rationale>
+    <rule id="r2-numeric-score" testable="true" depth="essential">
+      <statement>Each axis MUST produce an integer 0-3 score; the rubric returns the sum and a verdict (qualify / triage / decline).</statement>
+      <rationale source="F-066 wave-27 chunk-03 grounding">Numeric outputs let routing automation act on the score; free-text disqualifies automation.</rationale>
     </rule>
 
-    <rule id="r3-thresholds" testable="true">
-      <statement>Total ≥ 14 → BOOK discovery call. Total ∈ [10,13] → SOFT-PASS, send a single calibration question first. Total &lt; 10 → POLITE-DECLINE with templated reply. Never proceed to paid discovery / proposal work below 14.</statement>
-      <rationale source="Empirical — Brennan Dunn (Double Your Freelancing) close-rate cohort">In freelancer cohorts tracking discovery-to-paid conversion, leads scoring &lt; 14 on equivalent multi-axis rubrics close at &lt; 8%, but consume 2.4× the proposal time of qualified leads. The threshold is a margin-defense rule, not a snobbery rule.</rationale>
+    <rule id="r3-no-budget-then-decline" testable="true" depth="essential">
+      <statement>Leads without budget clarity (score 0 on budget axis) MUST be auto-declined regardless of other axes.</statement>
+      <rationale source="F-066 wave-27 chunk-03 grounding">Solo operators cannot afford long-tail discovery on no-budget leads; the lower bound is decisive.</rationale>
     </rule>
 
-    <rule id="r4-rate-floor-coupling" testable="true">
-      <statement>If the prospect's quoted or implied budget is below the operator's rate-floor (loaded from `solo-rate-floor-calculator`), then Budget-clarity is automatically forced to 1, regardless of how unambiguous the budget statement is. A clearly-stated bad budget is still a bad budget.</statement>
-      <rationale source="kalzumeus.com rate-floor argument">The most common LLM scoring mistake is rewarding "they were upfront about $2k" with a 5 on Budget-clarity. Upfront and unaffordable is still unaffordable. Coupling to the operator's floor turns clarity into qualified-clarity.</rationale>
+    <rule id="r4-authority-on-call" testable="true" depth="essential">
+      <statement>Decision authority MUST be confirmed on the discovery call, not assumed from title. Title-only assumptions are rejected.</statement>
+      <rationale source="F-066 wave-27 chunk-03 grounding">Title rarely maps to authority in small companies; the call is the only reliable signal.</rationale>
     </rule>
 
-    <rule id="r5-trauma-history-asymmetric" testable="true">
-      <statement>Contractor-trauma-history is scored asymmetrically: a clean history scores 5, one bad prior engagement scores 3, two or more bad priors score 1. Score CANNOT exceed 3 if the thread contains any of the marker phrases: "last developer disappeared", "previous freelancer", "burned by", "another agency", "rescue", "salvage". A 1 here vetoes the total — push to POLITE-DECLINE regardless of other dimensions.</statement>
-      <rationale source="Patrick McKenzie / Jonathan Stark consulting bibliography">Scarred prospects re-enact the trauma. They under-pay, micro-manage, and dispute scope. The asymmetric veto exists because the other three dimensions cannot compensate: a 5-5-5-1 lead is statistically worse than a 3-3-3-3 lead.</rationale>
+    <rule id="r5-scar-flag" testable="true" depth="essential">
+      <statement>History axis MUST flag prior bad-contractor experiences (3+ contractors in 12 months OR named billing disputes). Flagged leads route to triage, not auto-qualify.</statement>
+      <rationale source="F-066 wave-27 chunk-03 grounding">Scarred leads consume disproportionate operator energy; the flag prevents misallocation.</rationale>
     </rule>
 
-  </section>
-
-  <section title="Score anchors per dimension">
-
-    <example type="good" title="Budget-clarity anchors">
-      <code lang="text"><![CDATA[
-5 — exact number stated AND ≥ rate-floor: "Budget is $8k for the build."
-4 — range stated AND midpoint ≥ floor:    "Somewhere between $5k and $10k."
-3 — unit stated, total unclear:           "$80/hr is what we paid last guy."
-2 — vague but positive:                   "We have budget approved."
-1 — silent OR explicitly below floor:     "What's the cheapest you'd go?"
-      ]]></code>
-      <note>r1+r4: clarity AND ≥ floor required for 4-5. Below-floor caps at 1.</note>
-    </example>
-
-    <example type="good" title="Decision-on-call anchors">
-      <code lang="text"><![CDATA[
-5 — prospect is founder/owner, will be on call alone.
-4 — decision-maker + one technical contributor.
-3 — middle manager who reports decision; cycle 1-2 weeks.
-2 — committee implied: "I'll loop in my partner / CTO / wife."
-1 — gatekeeper: "I'm researching for my boss / client."
-      ]]></code>
-      <note>r2: must cite the quote that triggered the score.</note>
-    </example>
-
-    <example type="good" title="Timeline-realism anchors">
-      <code lang="text"><![CDATA[
-5 — start in 2-6 weeks, duration matches scope reality.
-4 — start in 6-12 weeks, duration reasonable.
-3 — "no rush, when you can".  (Soft signal — risk of indefinite drift.)
-2 — "we're flexible" with no anchor date.
-1 — "by Friday" / "we needed this last month" / "yesterday".
-      ]]></code>
-      <note>Counter-intuitive: BOTH "yesterday" AND "no rush" score badly. The first scopes scope-creep; the second never closes.</note>
-    </example>
-
-    <example type="bad" title="Single-signal scoring (r1 violation)">
-      <code lang="text"><![CDATA[
-Lead said "budget is $20k". Scored 5/20 → BOOK.
-
-Wrong: r1 demands 4 dimensions. Authority, timeline, trauma all
-unscored. Score is invalid; output must be rejected.
-      ]]></code>
-      <note>Illustrates r1 violation — the most common LLM shortcut.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-27 chunk-03 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -3,89 +3,96 @@ slug: launch-retro-template
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: A marketing-specific launch retrospective template that feeds lessons back into messaging, creative, and channel mix — distinct from engineering retros.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a marketing-specific launch retro artefact (5 sections + before/after metrics + keep/change/drop + one committed change) gated by a single accountable owner."
 content_id: "2c8c510cb9ce1984"
-tags: [launch,retro,marketing,messaging,creative,channel-mix]
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["launch", "retro", "marketing", "messaging", "creative", "channel-mix", "solo"]
 ---
 # Launch Retro Template
 
 ## Summary
 
-**One-sentence:** A marketing-specific launch retrospective template that feeds lessons back into messaging, creative, and channel mix — distinct from engineering retros.
+**One-sentence:** Produces a marketing-specific launch retro artefact (5 sections + before/after metrics + keep/change/drop + one committed change) gated by a single accountable owner.
 
-**One-paragraph:** Engineering retros (what shipped, what broke) miss the marketing dimensions of a launch: which message resonated, which creative converted, which channel delivered against expectation, which audience segment surprised, which CTA missed. This methodology defines a 90-minute retro structure with five marketing-anchored sections (Audience reaction, Messaging fit, Creative performance, Channel ROI, Lessons), explicit before/after metric comparison, a "what we'd keep / change / drop" output, and one committed change for the next launch. Mechanism: data pull (channels, conversion, comments), facilitated session, written output, and decision-rights for committing the change. Primary output: a launch-retro doc with three named owners on the committed change.
+**One-paragraph:** Engineering retros (what shipped, what broke) miss the marketing dimensions of a launch. This methodology pins a 90-minute marketing retro: 5 sections (Audience reaction / Messaging fit / Creative performance / Channel ROI / Lessons), before/after metric per section, explicit Keep / Change / Drop decisions, and exactly one committed change with a named owner. Output: a launch-retro artefact.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «launch-retro-template» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- launch happened in the last 14 days (memory fresh)
-- launch had measurable metrics (signups, revenue, engagement, channel reach)
-- launch involved ≥ 2 channels OR ≥ 2 contributors on marketing side
-- team has bandwidth for a 60-90 min retro session
-- another launch is planned within 90 days (lessons must compound)
+- Launch has shipped with ≥7 days of post-launch data.
+- Metrics for before / after comparison are available.
+- Named owner can be assigned for the committed change.
 
 ## Skip If (ANY kills it)
 
-- &gt; 30 days since launch — memory decay invalidates anecdotal data
-- launch with single-channel single-asset (post and pray) — too thin for retro
-- launch was a soft / rolling release with no fixed metric window
-- team has no next-launch plan within 90 days — lessons evaporate without forward use
-- regulated launch where retros require legal sign-off process
+- Launch is mid-flight — wait for the data window.
+- Operator wants an engineering-style retro — that runs separately.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- channel data exported (PH ranking, email open/click, social impressions, signups)
-- comments / community feedback collected
-- pre-launch goal sheet (what the team committed to before launch)
-- launch-day warroom logs OR contemporaneous notes
-- facilitator named (not the launch director — bias risk)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pre-launch baseline metrics | dashboard / CSV | analytics |
+| Post-launch metrics (≥7 days) | dashboard / CSV | analytics |
+| Channel-by-channel ROI breakdown | spreadsheet | marketing |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer/launch-day-warroom-template` | Source of contemporaneous launch-day notes |
-| `solo/marketing/content-marketer/messaging-house-template` | Receives messaging lessons for next launch |
-| `pro/marketing/growth-marketer/aarrr-pirate-metrics` | Optional framework for channel ROI math |
+| `solo/marketing/content-marketer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/messaging-house-template` | Messaging fit references the messaging house. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: marketing-not-eng focus, data-first, blameless tone, keep/change/drop, one committed change | ~1000 |
-| `content/02-output-contract.xml` | essential | Retro doc schema, five sections required, committed-change owners | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (rebrand-the-launch, no committed change, vibes-only retro, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the launch-retro artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `data_pull_normalizer` | haiku | Format channel data into standard table |
-| `comment_sentiment_synth` | sonnet | Categorize comments (positive, negative, confusion, request) |
-| `keep_change_drop_classifier` | sonnet | Classify proposed lessons into 3 buckets |
-| `committed_change_writeup` | sonnet | Format the one committed change into spec form |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/retro-doc.md` | Master retro template |
-| `templates/keep-change-drop.md` | Three-bucket worksheet |
-| `templates/committed-change-spec.md` | Format for the one next-launch change |
-| `templates/data-pull-checklist.md` | List of metrics + sources to gather |
+| `templates/launch-retro-template.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/launch-retro-template.json` | launch-retro JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/channel-rollup.py` | Aggregate per-channel data into one table | Pre-retro |
-| `scripts/committed-change-tracker.py` | Track whether the change was applied in next launch | Next launch prep |
+| `scripts/validate-launch-retro-template.py` | Validate the launch-retro artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
-- peer methodology: `launch-day-warroom-template`, `messaging-house-template`
-- external: [Norm Kerth, Project Retrospectives](https://www.amazon.com/Project-Retrospectives-Handbook-Team-Reviews/dp/0932633447) · [Atlassian retro playbook](https://www.atlassian.com/team-playbook/plays/retrospective)
+- [[messaging-house-template]]
+- [[growth-webinar-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

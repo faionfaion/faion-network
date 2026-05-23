@@ -3,73 +3,96 @@ slug: growth-youtube-strategy
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A content-discovery loop for building a YouTube channel around a product or personal brand: niche positioning, searchable video formats, hook-first structure, thumbnail + title optimization, and a sustainable publishing cadence.
-content_id: "5f55ac92ee814d4f"
-tags: [youtube, video-content, search-traffic, content-marketing, publishing-cadence]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a YouTube channel plan artefact (niche + format mix + hook structure + cadence) gated by search-intent priority and hook-first structure."
+content_id: "a2b9ff50f0a6597b"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: ["youtube", "niche", "search-intent", "hook", "cadence", "solo"]
 ---
 # YouTube Strategy
 
 ## Summary
 
-**One-sentence:** A content-discovery loop for building a YouTube channel around a product or personal brand: niche positioning, searchable video formats, hook-first structure, thumbnail + title optimization, and a sustainable publishing cadence.
+**One-sentence:** Produces a YouTube channel plan artefact (niche + format mix + hook structure + cadence) gated by search-intent priority and hook-first structure.
 
-**One-paragraph:** A content-discovery loop for building a YouTube channel around a product or personal brand: niche positioning, searchable video formats, hook-first structure, thumbnail + title optimization, and a sustainable publishing cadence. The core rule: optimize for search intent videos first (tutorials, how-to) before attempting discovery content (opinion, commentary).
+**One-paragraph:** Solo operators chase YouTube with generic channels and discovery-only content; the channel stalls. This methodology pins a plan: niche positioning sentence, search-intent first (tutorials / how-to), hook-first structure within 15 seconds, sustainable cadence (≤1/week for solos), and thumbnail-title pair tested as a unit. Output: a YouTube plan spec.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «growth-youtube-strategy» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Building a content marketing channel around a technical or educational product.
-- Generating search-driven top-of-funnel awareness where blog SEO is too competitive.
-- Repurposing existing written content (blog posts, docs) into video format.
-- Adding a YouTube component to an existing content distribution stack.
-- Brand authority building for a solopreneur or technical founder.
+- Operator can sustain ≥1 video / 2 weeks for ≥6 months.
+- Niche positioning achievable (audience + topic + angle).
+- Operator has access to keyword research (Ahrefs / TubeBuddy / VidIQ).
 
 ## Skip If (ANY kills it)
 
-- No defined niche or ICP — generalist channels rarely grow; algorithm rewards niche focus.
-- No commitment to at least 2 videos/month for 6+ months — YouTube is compounding, not quick.
-- Audience is not on YouTube (e.g., B2B enterprise compliance buyers).
-- Production bottleneck is unresolved — inconsistency kills momentum faster than poor quality.
+- Operator cannot sustain consistent cadence — burnout will drop the channel.
+- Refuses to narrow to a niche — generic channels do not break threshold.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Niche positioning sentence | doc | operator |
+| Search-intent keyword shortlist (≥20) | spreadsheet | research tool |
+| Thumbnail style guide | image | design |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/content-marketer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/search-everywhere-optimization` | Search-everywhere companion methodology. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the youtube-plan artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-youtube-strategy.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-youtube-strategy.json` | youtube-plan JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-youtube-strategy.py` | Validate the youtube-plan artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
+- [[search-everywhere-optimization]]
+- [[growth-podcast-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

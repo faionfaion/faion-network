@@ -1,62 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Testimonial Harvest — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `HarvestRecord` covering written, video, and metric artifacts per engagement.</summary>
+<text id="02-output-contract" title="Testimonial Harvest SOP Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid testimonial-harvest artefact. Subagents validate against this before returning.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`engagement_id` — string</item>
-      <item>`customer` — object {name, role, company, anon_pref}</item>
-      <item>`triggers_fired` — array of `{trigger ∈ {T1, T2, T3}, fired_at, ack_received}`</item>
-      <item>`artifacts.written_quote` — object referencing `Testimonial` from 3Q script (or NULL)</item>
-      <item>`artifacts.loom_video` — object `{url, duration_s, transcript_url, recorded_at}` (or NULL)</item>
-      <item>`artifacts.outcome_metric` — object `{value, unit, period, verbatim_source_quote}` (or NULL)</item>
-      <item>`consent_matrix` — array of `{artifact, usage ∈ {site, social, ads, case-study, sales-deck}, granted: bool, granted_at}`</item>
-      <item>`harvest_status` — enum {pending, complete, partial, lost}</item>
-      <item>`closed_at` — ISO date when harvest window opened</item>
-      <item>`nps_at_close` — integer 0-10 (gate per r4)</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/testimonial-harvest-sop.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "findings",
+    "decision",
+    "rationale"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"]
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "summary", "severity"]
+      }
+    },
+    "decision": { "type": "string", "minLength": 5 },
+    "rationale": { "type": "string", "minLength": 20 }
+  }
+}
+]]></code>
+    </schema>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>`harvest_status: complete` with no `written_quote` artifact.</description>
-      <reason>Written quote is the only mandatory artifact. Without it, status is `partial` at best.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`consent_matrix` uses blanket "all uses" grant without per-usage breakdown.</description>
-      <reason>Violates r5 consent layering.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`nps_at_close &lt; 7` AND harvest_status != skipped.</description>
-      <reason>Violates r4. Skip harvest, route to post-mortem.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Outreach attempts &gt; 3 OR window &gt; 90 days from closed_at.</description>
-      <reason>Violates r3 kill criterion.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Metric `value` populated without `verbatim_source_quote`.</description>
-      <reason>Unsourced metrics invite fabrication. Source quote anchors the number.</reason>
-    </antipattern>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "testimonial-harvest-sop-acme-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    { "name": "engagement charter", "source": "docs/charters/acme.md" }
+  ],
+  "findings": [
+    { "id": "f1", "summary": "rule r1-trigger-at-handover held", "severity": "high" }
+  ],
+  "decision": "Apply the methodology and ship the artefact.",
+  "rationale": "Finding f1 anchored to inputs; all hard rules pass and the schema validates."
+}
+]]></code>
+  </example>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Anonymise customer.company to industry+size for case studies (with consent).</item>
-      <item>Round metrics to 2 significant figures for sharing.</item>
-      <item>Re-encode Loom video for site embedding (preserve original Loom URL).</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "findings": [],
+  "rationale": "obvious"
+}
+]]></code>
+    <note>Owner is plural pronoun; required fields empty or missing.</note>
+  </example>
 
-  <reference path="templates/harvest-record.json">HarvestRecord JSON Schema.</reference>
+  <forbidden>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`, `everyone`, `engineering`) or empty string</pattern>
+    <pattern id="inputs-empty">`inputs_used` is empty</pattern>
+    <pattern id="version-not-semver">`version` does not match `^[0-9]+\.[0-9]+\.[0-9]+$`</pattern>
+  </forbidden>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>NPS gate passed (≥ 7) or status explicitly `skipped`.</item>
-      <item>All three triggers logged (even if no reply).</item>
-      <item>Consent matrix populated per (artifact, usage) pair.</item>
-      <item>Metric (if present) cites verbatim source.</item>
-      <item>Harvest closed by T+90 (status lost OR complete).</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-testimonial-harvest-sop.py">Stdlib-only validator implementing this schema.</reference>
 </text>

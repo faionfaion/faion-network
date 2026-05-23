@@ -3,72 +3,96 @@ slug: growth-reddit-marketing
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A long-game community marketing approach for Reddit: lurk for 2–4 weeks, build 100+ karma and account age of 30+ days through genuine participation, then post high-value educational content (guides, case studies, AMAs) with a 10:1 value-to-promo ratio.
-content_id: "8d2bfe9377271cc5"
-tags: [reddit, community-marketing, content-marketing, organic-growth]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a Reddit-marketing plan artefact (subreddit shortlist + lurk plan + posting plan) gated by a 10:1 value-to-promo ratio and a karma-history threshold."
+content_id: "52b9ff50f0a6597b"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["reddit", "long-game", "karma", "subreddit-rules", "solo"]
 ---
-# Reddit Marketing
+# Long-Game Reddit Marketing
 
 ## Summary
 
-**One-sentence:** A long-game community marketing approach for Reddit: lurk for 2–4 weeks, build 100+ karma and account age of 30+ days through genuine participation, then post high-value educational content (guides, case studies, AMAs) with a 10:1 value-to-promo ratio.
+**One-sentence:** Produces a Reddit-marketing plan artefact (subreddit shortlist + lurk plan + posting plan) gated by a 10:1 value-to-promo ratio and a karma-history threshold.
 
-**One-paragraph:** A long-game community marketing approach for Reddit: lurk for 2–4 weeks, build 100+ karma and account age of 30+ days through genuine participation, then post high-value educational content (guides, case studies, AMAs) with a 10:1 value-to-promo ratio. Direct self-promotion without established history results in permanent bans. Reddit communities are dense concentrations of highly engaged niche audiences — a well-received post in r/SaaS or r/entrepreneur can drive thousands of targeted visitors. The mechanism: karma and account age bypass spam filters; genuine participation builds trust with moderators and members; value-first posts generate upvotes and stay visible for months, delivering ongoing organic traffic.
+**One-paragraph:** Solo operators drop launch posts in target subreddits from day-1 accounts and get banned. This methodology pins a long-game Reddit plan: ≥30 days of organic comments + ≥100 karma before any promo, 10:1 value-to-promo ratio per subreddit, per-subreddit rule sheets, no link-only posts, and a single named brand account. Output: a Reddit plan spec.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «growth-reddit-marketing» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Product serves a niche with active subreddits (10K–500K members, daily posts).
-- Content team can commit to 4–8 weeks of participation before any promotion.
-- Have substantive educational content (case studies, guides, hard-won lessons) to share.
-- Milestone achieved (first $10K MRR, 1,000 users) that makes an AMA credible.
+- Operator has ≥30 days runway to lurk before promoting.
+- Target subreddits exist with active moderation.
+- Operator can commit to a single account (not a throwaway).
 
 ## Skip If (ANY kills it)
 
-- Needing fast results — Reddit requires 1–3 months before any promotional return.
-- Product has no natural subreddit community (niche is too narrow or offline).
-- Brand cannot handle public criticism — Reddit feedback is unfiltered and permanent.
-- No authentic story or credentials to anchor an AMA — fake credibility is immediately exposed.
+- Operator wants results within 7 days — Reddit is not a fast channel.
+- Target subreddits explicitly ban any commercial mention.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Subreddit shortlist | list | operator research |
+| Brand account profile | Reddit account URL | ops |
+| Value-post backlog (≥10) | drafts | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/content-marketer/` | Parent role / operating context. |
+| `solo/marketing/conversion-optimizer/growth-landing-page-design` | Destination LP for the eventual promo posts. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the reddit-plan artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-reddit-marketing.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-reddit-marketing.json` | reddit-plan JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-reddit-marketing.py` | Validate the reddit-plan artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
+- [[growth-landing-page-design]]
+- [[dm-personalisation-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

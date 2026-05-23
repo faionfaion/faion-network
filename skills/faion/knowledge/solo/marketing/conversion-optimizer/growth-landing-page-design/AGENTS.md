@@ -3,74 +3,96 @@ slug: growth-landing-page-design
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: AIDA-structured landing page copy methodology: Attention (hero captures interest in 5 seconds), Interest (benefits not features), Desire (social proof), Action (single CTA per section).
-content_id: "4404c3de1fab556d"
-tags: [landing-pages, copywriting, conversion-rate, aida, cta-optimization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a landing-page copy artefact (headline + AIDA flow + single CTA per section + social proof below CTA) gated by headline structure and one-CTA rule."
+content_id: "e2b9ff50f0a6597b"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["landing-page", "aida", "copywriting", "cvr", "solo"]
 ---
-# Landing Page Design
+# AIDA-Structured Landing Page
 
 ## Summary
 
-**One-sentence:** AIDA-structured landing page copy methodology: Attention (hero captures interest in 5 seconds), Interest (benefits not features), Desire (social proof), Action (single CTA per section).
+**One-sentence:** Produces a landing-page copy artefact (headline + AIDA flow + single CTA per section + social proof below CTA) gated by headline structure and one-CTA rule.
 
-**One-paragraph:** AIDA-structured landing page copy methodology: Attention (hero captures interest in 5 seconds), Interest (benefits not features), Desire (social proof), Action (single CTA per section). Headline formula: [Outcome] + [Timeframe] + [Without Pain Point]. One primary CTA per page. Social proof placed directly below the hero CTA increases CVR by 10-15%.
+**One-paragraph:** Solo operators ship hero copy as clever phrases with multi-CTA sections and social proof above the fold; CVR sits at floor. This methodology pins AIDA-structured copy: [Outcome] + [Timeframe] + [Without Pain] headline, Attention / Interest / Desire / Action section order, exactly one CTA per section, social proof below the primary CTA, and a mobile-first 375px fold. Output: a landing-page copy artefact.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «growth-landing-page-design» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Writing multiple headline variations for A/B testing (5-10 per session).
-- Drafting full landing page copy: hero, problem agitation, benefits, how-it-works, FAQ, final CTA.
-- Auditing existing copy against the conversion checklist (above-fold, copy, trust, technical).
-- Generating testimonial rewrites: transforming generic quotes into specific-result format.
-- Applying the "So what?" test to a feature list to produce benefit copy.
+- Landing page exists or is being designed.
+- Conversion goal is defined and tracked.
+- Operator has authority over copy + design decisions.
 
 ## Skip If (ANY kills it)
 
-- Visual design and layout decisions — agent produces copy; Figma/Webflow work is separate.
-- A/B test execution — agent writes variants but cannot run tests (use Optimizely or VWO).
-- Page speed optimization — a technical task outside copy scope; run Lighthouse separately.
-- Generating fake testimonials — fabricated quotes are FTC violations.
-- Final CVR prediction — agent-estimated ranges are benchmarks, not guarantees.
+- Page is for a free content piece with no conversion goal — AIDA overhead beats payoff.
+- Regulated industry requiring clinical-claim review of every line.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing page wireframe | Figma / image | design |
+| Conversion goal definition | tracked event | analytics |
+| Customer outcome data for headline | doc | research / CS |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/conversion-optimizer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/growth-customer-testimonials` | Social proof source. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the landing-page-copy artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-landing-page-design.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-landing-page-design.json` | landing-page-copy JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-landing-page-design.py` | Validate the landing-page-copy artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/conversion-optimizer/`
+- [[growth-customer-testimonials]]
+- [[messaging-house-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

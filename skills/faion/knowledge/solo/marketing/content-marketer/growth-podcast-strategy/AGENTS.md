@@ -3,74 +3,96 @@ slug: growth-podcast-strategy
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Two-track podcast strategy: being a guest on others' shows (faster ROI) and hosting your own show (long-term authority asset).
-content_id: "b9a4f3408df97f56"
-tags: [podcast, guest-marketing, content-marketing, authority-building]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a two-track podcast plan artefact (guest appearances + owned show) gated by a 3-episode launch buffer and a niche-positioning lock."
+content_id: "42b9ff50f0a6597b"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["podcast", "guest-strategy", "owned-show", "repurpose", "solo"]
 ---
-# Podcast Strategy
+# Two-Track Podcast Strategy
 
 ## Summary
 
-**One-sentence:** Two-track podcast strategy: being a guest on others' shows (faster ROI) and hosting your own show (long-term authority asset).
+**One-sentence:** Produces a two-track podcast plan artefact (guest appearances + owned show) gated by a 3-episode launch buffer and a niche-positioning lock.
 
-**One-paragraph:** Two-track podcast strategy: being a guest on others' shows (faster ROI) and hosting your own show (long-term authority asset). Guest appearances require no equipment investment and reach existing audiences; hosting builds a compounding owned asset. The core rule: record 3+ episodes before launching a hosted show — publishing day-one without a backlog leads to missed schedules that permanently damage algorithm placement.
+**One-paragraph:** Solo operators launch a podcast with one episode, miss week 2, and watch the algorithm drop the show. This methodology pins two named tracks (guest appearances for faster ROI + owned show for authority), a 3-episode launch buffer, a niche positioning lock, per-guest prep doc with CTA placement, and a repurpose pipeline producing ≥3 derivative assets per episode. Output: a podcast plan spec.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «growth-podcast-strategy» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Drafting personalized podcast pitch emails for guest appearance outreach at scale.
-- Generating episode question sets from a guest's bio, past interviews, and show topic.
-- Writing episode show notes, chapter markers, and SEO-optimized descriptions.
-- Creating a media kit (bio, topic angles, previous appearances) for outreach campaigns.
-- Researching target podcasts (topic fit, audience size, booking frequency) from a keyword list.
+- Operator has authority / budget for ≥3 recorded episodes before launch.
+- Niche positioning sentence exists or is achievable in 1 session.
+- Repurposing capacity (clip + transcript + post) exists.
 
 ## Skip If (ANY kills it)
 
-- Recording, editing, or audio post-production — requires human operation of audio software.
-- Live interview facilitation — depends on human listening and improvisation.
-- Deciding whether to host vs. guest-first without knowledge of current audience size.
-- Pitching to podcasts with 1M+ listeners as a first step — requires established credentials.
-- Estimating show growth without historical listener data.
+- Operator cannot commit to ≥3 buffer episodes — schedule will collapse.
+- Generic 'business podcast' positioning operator refuses to narrow.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Niche positioning sentence | doc | operator |
+| Guest shortlist (≥5) | spreadsheet | operator |
+| Show artwork + description | image + markdown | designer / operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/content-marketer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/search-everywhere-optimization` | Repurpose pipeline feeds search-everywhere distribution. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the podcast-plan artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-podcast-strategy.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-podcast-strategy.json` | podcast-plan JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-podcast-strategy.py` | Validate the podcast-plan artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
+- [[growth-youtube-strategy]]
+- [[search-everywhere-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

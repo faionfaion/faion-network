@@ -3,78 +3,96 @@ slug: dm-personalisation-template
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a cold-DM outreach artefact (10 prospects + 1-line personalisation each + ask + tracking) gated by the no-SDR-script rule and a per-prospect citation."
 content_id: "d46ab504649285a0"
-summary: Dm Personalisation Template delivers a concrete, testable methodology that turns the recurring task of 'Cold DM outreach batch (10 prospects)' into an auditable artefact, addressing the gap: growth-cold-outreach is high-level; indie DM batches need a per-prospect 1-line personali
-tags: [marketing, solo, template, methodology]
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["dm", "cold-outreach", "personalisation", "indie", "solo"]
 ---
-# Dm Personalisation Template
+# DM Personalisation Template
 
 ## Summary
 
-**One-sentence:** Dm Personalisation Template delivers a concrete, testable methodology that turns the recurring task of 'Cold DM outreach batch (10 prospects)' into an auditable artefact, addressing the gap: growth-cold-outreach is high-level; indie DM batches need a per-prospect 1-line personalisation pattern that doesn't read like a SDR script.
+**One-sentence:** Produces a cold-DM outreach artefact (10 prospects + 1-line personalisation each + ask + tracking) gated by the no-SDR-script rule and a per-prospect citation.
 
-**One-paragraph:** growth-cold-outreach is high-level; indie DM batches need a per-prospect 1-line personalisation pattern that doesn't read like a SDR script. Dm Personalisation Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Cold DM outreach batch (10 prospects)' (p2-indie-hacker, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Solo operators blast 50-prospect cold DMs with SDR-cliché openers and get filtered as spam. This methodology pins a per-prospect personalisation pattern: batches of 10, each DM carries a 1-line personalisation citing a specific public artefact, no SDR clichés, one explicit ask matching relationship stage, and per-prospect response tracking. Output: a DM-batch artefact for ongoing iteration.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «dm-personalisation-template» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Cold DM outreach batch (10 prospects)' (role: p2-indie-hacker) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Operator has access to ≥10 public-artefact-rich prospect profiles per batch.
+- Operator can commit to ≤10 DMs per batch (not bulk).
+- Operator has a tracking surface for response status.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Operator's audience has zero public footprint — personalisation impossible.
+- Operator wants 100+/day volume — wrong methodology.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prospect shortlist (10 with public artefacts) | spreadsheet | research |
+| DM opener pattern (non-cliché) | doc | operator |
+| Response tracking column | spreadsheet / CRM | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/marketing/` | Parent group / operating context. |
+| `solo/marketing/content-marketer/indie-mini-crm-notion` | CRM substrate tracking the batches. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the dm-personalisation artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `dm_personalisation_template_template_fill` | haiku | Template fill, no judgment |
-| `dm_personalisation_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `dm_personalisation_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/dm-personalisation-template.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/dm-personalisation-template.json` | dm-personalisation JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-dm-personalisation-template.py` | Validate the dm-personalisation artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `p2-indie-hacker/Cold DM outreach batch (10 prospects)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[indie-mini-crm-notion]]
+- [[growth-reddit-marketing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

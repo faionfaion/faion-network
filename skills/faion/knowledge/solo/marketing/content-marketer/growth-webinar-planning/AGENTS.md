@@ -3,74 +3,96 @@ slug: growth-webinar-planning
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured framework for planning and promoting webinars to generate leads and demonstrate expertise.
-content_id: "9088cc3d3a3e316e"
-tags: [webinar, planning, promotion, lead-generation, strategy]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a webinar-planning artefact (format + content outline + 3-week promo plan + registration page) gated by promo-start lead time and registration page completeness."
+content_id: "92b9ff50f0a6597b"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["webinar", "planning", "promo", "registration-page", "solo"]
 ---
-# Webinar Planning and Promotion
+# Webinar Planning
 
 ## Summary
 
-**One-sentence:** A structured framework for planning and promoting webinars to generate leads and demonstrate expertise.
+**One-sentence:** Produces a webinar-planning artefact (format + content outline + 3-week promo plan + registration page) gated by promo-start lead time and registration page completeness.
 
-**One-paragraph:** A structured framework for planning and promoting webinars to generate leads and demonstrate expertise. Covers format selection, content structure, multi-channel promotion timeline, registration page copy, and slide deck outline. The core rule: start promotion 3 weeks before the event with a multi-channel sequence; last-minute promotion is the single biggest cause of low attendance.
+**One-paragraph:** Solo operators decide to host a webinar 5 days out and watch attendance collapse. This methodology pins planning: ≥3-week promo window, named format chosen before content, ≥3 promo channels, registration-page checklist (outcome + bio + agenda + social proof + signup), and slide outline locked ≥2 weeks prior. Output: a webinar plan spec.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «growth-webinar-planning» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Generating registration page copy and email promotion sequences for a planned webinar
-- Creating a full slide deck outline from a topic brief and defined audience
-- Drafting a multi-channel promotion timeline for a specific event date
-- Selecting the best webinar format (educational/demo/panel/workshop) for a given objective
-- Writing speaker/co-host outreach emails for panel or interview-style webinars
+- Operator has ≥3 weeks of runway before target webinar date.
+- Target audience size + channel mix is known.
+- Operator has ≥3 promo channels available.
 
 ## Skip If (ANY kills it)
 
-- Picking the webinar topic — topic validation requires ICP interviews, not synthesis
-- Technical platform setup (Zoom/Demio/Livestorm account configuration)
-- Real-time webinar moderation or chat management
-- Estimating registrations without historical benchmark data from prior webinars
-- When the product has no established audience to promote to
+- Webinar date is <3 weeks out — accept reduced fill or delay.
+- No registration platform available (Zoom / Demio / Crowdcast).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Webinar topic + outcome | doc | operator |
+| Audience profile + size estimate | doc | marketing |
+| Promo channel list with reach estimates | doc | marketing |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/content-marketer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/growth-webinar-delivery` | Downstream delivery runbook. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the webinar-plan artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-webinar-planning.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-webinar-planning.json` | webinar-plan JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-webinar-planning.py` | Validate the webinar-plan artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/content-marketer/`
+- [[growth-webinar-delivery]]
+- [[messaging-house-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

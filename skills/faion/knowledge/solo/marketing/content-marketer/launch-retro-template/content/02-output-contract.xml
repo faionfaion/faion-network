@@ -1,59 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Launch Retro Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of the launch-retro doc. Subagent must satisfy this before committing the next-launch change.</summary>
+<text id="02-output-contract" title="Launch Retro Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid launch-retro artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="launch_reference" type="object"
-             required_keys="launch_name,launch_date,goals_committed_before_launch"/>
-      <field name="sections" type="exact_set"
-             value="audience_reaction,messaging_fit,creative_performance,channel_roi,lessons"/>
-      <field name="per_section_data" type="object"
-             value_type="data_table_with_units"
-             constraint="every section opens with numbers, not narrative"/>
-      <field name="keep_change_drop" type="object"
-             required_keys="keep,change,drop"
-             constraint="each list has ≥ 1 entry across the full retro"/>
-      <field name="committed_change" type="object"
-             required_keys="change_summary,driver,reviewer,deadline_keeper,applies_to_next_launch_id"
-             constraint="exactly ONE committed change object per retro"/>
-      <field name="participants" type="array_object"
-             item_required_keys="name,role"
-             constraint="participants &gt;= 2 (single-person retro is not a retro)"/>
-      <field name="facilitator" type="string"
-             constraint="facilitator != launch_director"/>
-      <field name="retro_date" type="date"
-             constraint="retro_date - launch_date &lt;= 14 days"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">Sections collapse engineering-incident discussion into marketing retro (violates r1)</pattern>
-      <pattern id="f2">Sections opening with narrative before data (violates r2)</pattern>
-      <pattern id="f3">Blame language present: "X failed", "Y dropped the ball" (violates r3)</pattern>
-      <pattern id="f4">keep_change_drop entries with vague language ("think about", "consider", "explore") (violates r4)</pattern>
-      <pattern id="f5">committed_change count != 1 (violates r5)</pattern>
-      <pattern id="f6">facilitator == launch_director (bias risk)</pattern>
-      <pattern id="f7">retro_date older than launch_date + 14 days (memory decayed)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Add a "celebrate" section before the 5 standard ones; celebration is a marker, not a substitute for the rules.</transformation>
-      <transformation>Defer one big lesson to the NEXT retro if the team needs more data; document the defer explicitly.</transformation>
-      <transformation>Cross-link to engineering incident retro for context, but do not absorb its content.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/retro-doc.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Five sections covered with marketing focus</item>
-      <item>Every section opens with data, not narrative</item>
-      <item>No blame language detected</item>
-      <item>keep / change / drop entries are concrete</item>
-      <item>Exactly one committed change with 3 named owners</item>
-      <item>Facilitator ≠ launch director</item>
-      <item>Retro held within 14 days of launch</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/launch-retro-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "findings",
+    "decision",
+    "rationale"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"]
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "summary", "severity"]
+      }
+    },
+    "decision": { "type": "string", "minLength": 5 },
+    "rationale": { "type": "string", "minLength": 20 }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "launch-retro-template-acme-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    { "name": "engagement charter", "source": "docs/charters/acme.md" }
+  ],
+  "findings": [
+    { "id": "f1", "summary": "rule r1-five-marketing-sections held", "severity": "high" }
+  ],
+  "decision": "Apply the methodology and ship the artefact.",
+  "rationale": "Finding f1 anchored to inputs; all hard rules pass and the schema validates."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "findings": [],
+  "rationale": "obvious"
+}
+]]></code>
+    <note>Owner is plural pronoun; required fields empty or missing.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`, `everyone`, `engineering`) or empty string</pattern>
+    <pattern id="inputs-empty">`inputs_used` is empty</pattern>
+    <pattern id="version-not-semver">`version` does not match `^[0-9]+\.[0-9]+\.[0-9]+$`</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-launch-retro-template.py">Stdlib-only validator implementing this schema.</reference>
 </text>

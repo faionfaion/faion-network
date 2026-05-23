@@ -3,86 +3,96 @@ slug: testimonial-harvest-sop
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces an end-of-engagement harvest artefact (written quote + Loom video + outcome metric) gated by the 3-question script and project-handover trigger."
 content_id: "420c0cfd196d72b4"
-summary: End-of-engagement standard operating procedure that yields a written quote, a Loom video, and one outcome metric from every closed service engagement — built on the 3-question script with project-handover triggers.
-tags: [testimonials, sop, freelance, case-study, social-proof]
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["testimonials", "sop", "freelance", "case-study", "social-proof", "solo"]
 ---
-
 # Testimonial Harvest SOP
 
 ## Summary
 
-**One-sentence:** End-of-engagement standard operating procedure that yields a written quote, a Loom video, and one outcome metric from every closed service engagement — built on the 3-question script with project-handover triggers.
+**One-sentence:** Produces an end-of-engagement harvest artefact (written quote + Loom video + outcome metric) gated by the 3-question script and project-handover trigger.
 
-**One-paragraph:** Solo service operators typically ask for testimonials weeks or months after closure, when memory has decayed and the customer has moved on. This SOP wires testimonial harvest into the handover ritual itself: 3 trigger events (final deliverable shipped, invoice paid, 30-day check-in), 3 outputs per engagement (written quote, 60-90s Loom, one metric), and a kill criterion (no harvest after 90 days). Output: `HarvestRecord` for every closed engagement with consent flags, plus an aggregate dashboard. Built on top of `solo-testimonial-extraction-script` for the actual elicitation language.
+**One-paragraph:** Solo operators ask for testimonials weeks after handover and get generic praise without metrics. This methodology pins an SOP: trigger at handover (final deliverable accepted), 3-question script (before-state / outcome / what-changed), both written quote AND Loom video captured, ≥1 outcome metric, and explicit publication consent with usage rights scope. Output: a harvest artefact per closed engagement.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «testimonial-harvest-sop» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- service engagement (freelance, consulting, agency) just closed OR will close within 14 days
-- engagement value &gt; $1000 OR runtime &gt; 4 weeks (smaller is too low yield)
-- customer relationship is healthy (NPS ≥ 7 OR no documented friction)
-- operator has the bandwidth to do 3 outreach attempts within 30 days
+- Engagement has reached final-deliverable acceptance.
+- Customer relationship is intact (no dispute / refund).
+- Operator has Loom or equivalent recording capacity.
 
 ## Skip If (ANY kills it)
 
-- engagement was rocky (NPS &lt; 6) — pulling a testimonial forces a lie
-- customer has an NDA forbidding public attribution — request named-anonymous instead
-- product engagement (SaaS) — use product-flavoured testimonial methodology, not this service SOP
-- &gt; 90 days since closure — memory decay; route to "old-customer outreach" SOP instead
+- Engagement ended in dispute or refund — no harvest.
+- Customer is under NDA preventing any public quote.
 
 ## Prerequisites
 
-- engagement records with paid date, deliverables, customer contact
-- access to Loom / a video tool the customer can record into
-- the 3-question script template loaded (`solo-testimonial-extraction-script`)
-- a case-study page or carousel where output will land
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Engagement-close trigger event | tracked event | ops |
+| 3-question script template | doc | this methodology |
+| Consent + usage-rights template | doc | legal / ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/comms/communicator/solo-testimonial-extraction-script` | Provides the 3-question elicitation language this SOP triggers |
-| `pro/marketing/growth-marketer/case-study-anatomy` | Downstream consumer of harvested artifacts |
-| `solo/marketing/conversion-optimizer/solo-lead-qualification-rubric` | Confirms NPS ≥ 7 / no-rocky gate before harvest fires |
+| `solo/marketing/conversion-optimizer/` | Parent role / operating context. |
+| `solo/marketing/content-marketer/growth-customer-testimonials` | Downstream placement methodology. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 3 triggers, 3 outputs, kill at 90d, NPS gate, consent layering | ~900 |
-| `content/02-output-contract.xml` | essential | `HarvestRecord` + per-artifact schemas with consent + display rights | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: forced ask, video pressure, metric fabrication, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the testimonial-harvest artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `handover_trigger_check` | haiku | Filesystem / CRM scan |
-| `outreach_compose` | sonnet | Template fill calling 3Q script |
-| `loom_request_compose` | sonnet | Different ask, different language |
-| `harvest_record_assemble` | sonnet | Aggregation with consent layering |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/harvest-record.json` | Output schema |
-| `templates/loom-request.md` | Video-request email template |
-| `templates/metric-extraction-prompt.md` | Numeric-metric ask |
+| `templates/testimonial-harvest-sop.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/testimonial-harvest-sop.json` | testimonial-harvest JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/trigger-on-handover.py` | Detects handover, fires 3Q outreach | Project-close webhook |
-| `scripts/30day-followup.py` | Sends 30-day check-in / Loom request | Cron 30 days after close |
+| `scripts/validate-testimonial-harvest-sop.py` | Validate the testimonial-harvest artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/conversion-optimizer/`
-- peer methodologies: `solo-testimonial-extraction-script`, `case-study-anatomy`
-- external: [Sean D'Souza — Brain Audit](https://www.psychotactics.com/brain-audit-book/) · [Patrick Campbell — testimonial-as-funnel](https://www.profitwell.com/) · [Loom for SaaS / agencies](https://www.loom.com/use-case/agencies)
+- [[growth-customer-testimonials]]
+- [[solo-lead-qualification-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
