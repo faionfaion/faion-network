@@ -3,86 +3,94 @@ slug: engagement-pattern-memory
 tier: solo
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: A per-client / per-engagement memory layer that captures repo conventions, reviewer preferences, deploy quirks, and recurring patterns so freelancers juggling multiple clients don't re-learn each one every sprint.
-content_id: "b13e1f9b319b7901"
-tags: [sdd, memory, freelance, client-engagement, pattern-memory, repo-conventions]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a per-engagement memory file (repo conventions + reviewer preferences + deploy quirks + recurring traps + glossary + resolved questions) so freelancers juggling multiple clients don't re-learn each one every session."
+content_id: "6cb3b0a1171bfa13"
+complexity: light
+produces: config
+est_tokens: 2800
+tags: [memory, freelance, client-engagement, pattern-memory, repo-conventions]
 ---
 
 # Engagement Pattern Memory
 
 ## Summary
 
-**One-sentence:** A per-engagement memory file (one per active client / repo) that records repo conventions, reviewer preferences, deploy quirks, recurring traps, and resolved questions, replacing the daily re-learn that drains freelancer / contractor time.
+**One-sentence:** Produces a per-engagement memory file (repo conventions + reviewer preferences + deploy quirks + recurring traps + glossary + resolved questions) so freelancers juggling multiple clients don't re-learn each one every session.
 
-**One-paragraph:** Existing `pattern-memory` and `mistake-memory` methodologies are scoped to a single product / brain. Freelancers and contractors with 2-3 concurrent clients need memory layers SCOPED PER ENGAGEMENT so the wrong client's conventions don't leak. Mechanism: a per-engagement file (e.g., `~/engagements/client-X/memory.md`) updated after each session with structured sections (repo conventions, reviewer preferences per person, deploy quirks, recurring traps, glossary terms, resolved-questions log). Files are versioned, indexed, and surfaced to the LLM agent on session start. Primary output: a memory file per engagement + a session-start hook that loads the relevant memory + a session-end discipline of writing back any new patterns observed.
+**Ефективно для:** Freelancers with 2-3 active clients who keep spending the first hour of every session re-learning what they already knew last week.
+
+**One-paragraph:** Generic pattern-memory leaks one client's conventions into another. This methodology pins a per-engagement memory file (one per active client / repo) updated after each session with structured sections (repo conventions, reviewer preferences, deploy quirks, recurring traps, glossary, resolved questions). Files are versioned, indexed, and surfaced to the LLM agent on session start. Output is consumed by daily-ship-rubric and pattern-memory.
 
 ## Applies If (ALL must hold)
 
-- contractor / freelancer working on >= 2 active engagements
-- each engagement has distinct repo conventions, reviewer preferences, or deploy paths
-- contractor uses an LLM agent (Claude Code, Cursor, etc.) where pre-session context matters
-- memory write discipline is realistic (10-15 min at session end)
+- Contractor / freelancer with ≥2 active engagements.
+- Each engagement has distinct repo conventions or reviewer preferences.
+- Operator uses an LLM agent where pre-session context matters.
+- Memory write discipline is realistic (10-15 min at session end).
 
 ## Skip If (ANY kills it)
 
-- single-client / employee with one codebase — single pattern-memory file is sufficient
-- engagement is &lt;= 1-2 sessions total — overhead exceeds value
-- contractor doesn't use an LLM agent — written memory still valuable but the wiring is different
-- engagement has no reviewer / convention drift across sessions (rare)
+- Single-client operator — generic pattern-memory suffices.
+- Engagements with identical conventions — no separation value.
+- Operator already maintains per-client docs elsewhere with no LLM gap.
 
 ## Prerequisites
 
-- defined location for engagement files (e.g., `~/engagements/<client>/memory.md`)
-- session-start practice: agent loads the engagement's memory before any code work
-- session-end practice: contractor reviews session for new patterns, writes back
-- glossary discipline (terms specific to this engagement, distinct from other engagements)
+| Artefact | Format | Source |
+|---|---|---|
+| list of active engagements | array | operator |
+| memory file location convention | path | operator |
+| session-start hook | tool config | operator |
+| session-end discipline | habit | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/sdd/sdd/pattern-memory` | Generic pattern memory; this methodology scopes patterns per-engagement |
-| `solo/sdd/sdd/mistake-memory` | Same; per-engagement mistakes are tracked here, not in a shared mistake file |
-| `pro/ba/business-analyst/glossary-management-living-doc` | Per-engagement glossary uses lifecycle rules from this methodology |
+|---|---|
+| `solo/sdd/sdd/pattern-memory` | Parent — engagement memory is a per-client variant. |
+| `solo/sdd/sdd/mistake-memory` | Sibling — engagement-scoped mistakes feed back into client memory. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: per-engagement-scope, session-end-write-discipline, glossary-isolated-per-engagement, decay-cleanup-quarterly, no-cross-engagement-leak | ~1000 |
-| `content/02-output-contract.xml` | essential | Memory file shape + session-update contract + forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (memory bleed, write-skip, stale-entries, etc.) with detector + repair | ~1000 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `session_start_summary` | haiku | Load engagement memory + recent commits, produce 1-page brief |
-| `pattern_extraction_from_session` | sonnet | At session-end, scan transcript for new repo patterns / reviewer comments / glossary additions |
-| `cross_engagement_consistency_audit` | sonnet | Monthly: detect patterns that show up across multiple engagements (signal of cross-leak) |
-| `memory_cleanup_quarterly` | sonnet | Prune stale entries; merge near-duplicates |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/engagement-memory.md` | Per-engagement file skeleton (sections: conventions, reviewers, deploy, traps, glossary, resolved-q-log) |
-| `templates/session-end-checklist.md` | Quick checklist for writing back patterns at session end |
+|---|---|
+| `templates/engagement-pattern-memory.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/engagement-pattern-memory.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/load-engagement-memory.sh` | Shell hook: load the relevant memory file at session start | Session start (cd into engagement workspace) |
-| `scripts/audit-memory-leak.py` | Compares engagement memory files for unintended overlap | Monthly |
-| `scripts/decay-cleanup.py` | Flags entries older than 90 days with no reference for cleanup | Quarterly |
+|---|---|---|
+| `scripts/validate-engagement-pattern-memory.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
-- peer methodologies: `pattern-memory`, `mistake-memory`, `session-state`
-- external: [GTD Contexts (Allen)](https://gettingthingsdone.com/) · [Memory pattern in workflows (Anthropic Memory tool docs)](https://docs.anthropic.com/) · [Conway's Law](https://en.wikipedia.org/wiki/Conway%27s_law)
+- [[pattern-memory]] — related methodology.
+- [[mistake-memory]] — related methodology.
+- [[daily-ship-rubric]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

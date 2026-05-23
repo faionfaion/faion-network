@@ -1,32 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Validation Paralysis Breaker Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+<text id="02-output-contract" title="Validation Paralysis Breaker Output Contract" version="1.1.0" est_tokens="800" depth="essential">
   <summary>Pins the shape of a valid Validation Paralysis Breaker output. Subagent must satisfy this before returning to the caller.</summary>
 
   <output-contract>
     <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      <field name="hypothesis" type="string" required="true">one-line statement</field>
+      <field name="falsification_trigger" type="string" required="true">observable that would falsify</field>
+      <field name="budget_start" type="datetime" required="true">ISO datetime</field>
+      <field name="budget_end" type="datetime" required="true">budget_start + 72h</field>
+      <field name="verdict" type="string" required="true">ship | park | extend-once</field>
+      <field name="named_risk" type="string" required="true">the risk being taken or carried</field>
+      <field name="owner" type="string" required="true">named owner</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f1">budget_end &gt; budget_start + 72h (unless extend-once verdict logged)</pattern>
+      <pattern id="f2">verdict ∈ {'continue', 'tbd', ''}</pattern>
+      <pattern id="f3">falsification_trigger empty</pattern>
+      <pattern id="f4">named_risk empty</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Allowed to extend budget by +48h ONCE per hypothesis with logged rationale.</transformation>
+      <transformation>Allowed to swap ship verdict for park when a new tier-1 signal arrives during the budget window.</transformation>
     </allowed-transformations>
 
     <schema-reference path="templates/validation-paralysis-breaker.json"/>
   </output-contract>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "hypothesis": "sample-hypothesis",
+  "falsification_trigger": "sample-falsification_trigger",
+  "budget_start": "2026-05-23T12:00:00Z",
+  "budget_end": "2026-05-23T12:00:00Z",
+  "verdict": "sample-verdict",
+  "named_risk": "sample-named_risk",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>

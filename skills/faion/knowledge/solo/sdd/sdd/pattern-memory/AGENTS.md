@@ -3,73 +3,96 @@ slug: pattern-memory
 tier: solo
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A system for capturing, storing, and retrieving proven solutions from development sessions so LLM agents apply consistent patterns across tasks and projects.
-content_id: "83e040d73d37548d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a pattern-memory config (confidence-graduated entries + \u22652 distinct contexts to capture + CLAUDE.md sync at \u22650.8 confidence) so LLM agents apply consistent proven solutions across tasks and projects."
+content_id: "e4bad7eff73a0048"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [pattern-memory, learning, reflexion, agent-memory, knowledge-capture]
 ---
+
 # Pattern Memory
 
 ## Summary
 
-**One-sentence:** A system for capturing, storing, and retrieving proven solutions from development sessions so LLM agents apply consistent patterns across tasks and projects.
+**One-sentence:** Produces a pattern-memory config (confidence-graduated entries + ≥2 distinct contexts to capture + CLAUDE.md sync at ≥0.8 confidence) so LLM agents apply consistent proven solutions across tasks and projects.
 
-**One-paragraph:** A system for capturing, storing, and retrieving proven solutions from development sessions so LLM agents apply consistent patterns across tasks and projects. Patterns are stored in `.aidocs/memory/patterns.md` with a confidence score (0.5 initial → 0.9+ proven), graduated by number of successful uses. High-confidence patterns (0.8+) are synced to `CLAUDE.md` for immediate availability in new sessions. The rule: capture when a non-obvious solution works in 2+ distinct contexts; never capture obvious best practices or one-off fixes.
+**Ефективно для:** Solo devs whose LLM agents keep re-inventing the same regex / retry / migration pattern in different ways because no memory layer carries the win forward.
+
+**One-paragraph:** Patterns evaporate when not captured. This methodology pins .aidocs/memory/patterns.md with a confidence score (0.5 initial → 0.9+ proven), graduated by successful uses. Capture rule: solution works in ≥2 distinct contexts; obvious best-practices and one-off fixes rejected. High-confidence patterns (≥0.8) sync to CLAUDE.md for immediate availability in new sessions. Output is consumed by code-review-cycle and engagement-pattern-memory.
 
 ## Applies If (ALL must hold)
 
-- After a successful task execution where a non-obvious solution was applied — capture before the session ends
-- When the same problem appears for the second time in a different context — that is a pattern, not a one-off
-- Before starting a new task wave — inject high-confidence patterns (0.8+) into the task context header
-- During CLAUDE.md maintenance: sync established patterns (0.9+) into the project rules file
-- When onboarding a new agent session that lacks project history — load `patterns.md` as working memory
+- Repo has .aidocs/memory/ directory.
+- Operator uses an LLM agent with session-start context.
+- Solutions recur across distinct contexts within the codebase.
+- Confidence-graduation discipline is realistic at session end.
 
 ## Skip If (ANY kills it)
 
-- Capturing well-known best practices already in framework docs (e.g., "use async/await")
-- One-off fixes specific to a single file or edge case
-- Patterns with confidence below 0.5 (only one use, unverified) — capture as candidate, do not promote
-- Project-specific configuration values (API keys, URLs) — those go in `.env`, not patterns
+- One-shot scripts with no future reuse.
+- Obvious best-practices already enforced by linter.
+- Patterns that have worked exactly once — wait for the second context.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| .aidocs/memory/patterns.md | markdown | repo |
+| CLAUDE.md sync target | markdown | repo |
+| confidence-graduation rule | spec | team |
+| session-start hook | tool config | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/sdd/sdd/mistake-memory` | Sibling — mistake memory captures failures; pattern memory captures successes. |
+| `solo/sdd/sdd/engagement-pattern-memory` | Variant — per-client scoping for freelancers. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/pattern-memory.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/pattern-memory.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-pattern-memory.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[mistake-memory]] — related methodology.
+- [[engagement-pattern-memory]] — related methodology.
+- [[code-review-cycle]] — related methodology.
+- [[daily-ship-rubric]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

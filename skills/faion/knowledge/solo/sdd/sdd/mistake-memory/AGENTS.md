@@ -3,71 +3,96 @@ slug: mistake-memory
 tier: solo
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Mistake Memory is the SDD practice of documenting failures in `.
-content_id: "e05f7288f7f29d6e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a mistake-memory config (severity + Five Whys \u22653 levels + concrete prevention + pre-task injection) so failures get documented immediately and recurring mistakes auto-promote to CI rules."
+content_id: "483a34b280aac178"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [learning, mistakes, quality-gates, prevention, memory]
 ---
+
 # Mistake Memory
 
 ## Summary
 
-**One-sentence:** Mistake Memory is the SDD practice of documenting failures in `.
+**One-sentence:** Produces a mistake-memory config (severity + Five Whys ≥3 levels + concrete prevention + pre-task injection) so failures get documented immediately and recurring mistakes auto-promote to CI rules.
 
-**One-paragraph:** Mistake Memory is the SDD practice of documenting failures in `.aidocs/memory/mistakes.md` immediately after they occur and injecting relevant warnings into agent context before similar tasks. Each entry requires: severity, what happened, root cause (Five Whys chain, min 3 levels), and one concrete prevention step. Generic preventions ("be more careful") are not acceptable.
+**Ефективно для:** Solo devs who keep stepping on the same bug every six weeks because the mistakes file is a graveyard, not a guardrail.
+
+**One-paragraph:** Mistakes recur when not documented or when documentation lacks Five-Whys depth. This methodology pins each entry to .aidocs/memory/mistakes.md immediately after failure, requires severity + Five Whys root-cause chain (≥3 levels) + ONE concrete prevention step. Relevant warnings are injected into agent context before similar tasks. Second occurrence triggers automatic CI rule creation. Output is consumed by code-review-cycle and pattern-memory.
 
 ## Applies If (ALL must hold)
 
-- Before starting any task: load `.aidocs/memory/mistakes.md` and filter entries matching the task's domain keywords
-- After a task fails (CI failure, production bug, review rejection): append a new MIS-NNN entry within 24 hours
-- When the same failure pattern occurs a second time: escalate to an automated prevention rule in CI
-- When onboarding a new agent: include mistakes.md in the project context handoff
+- Repo has .aidocs/memory/ directory.
+- Operator runs SDD loops where pre-task context matters.
+- Mistakes recur frequently enough to justify the writeback overhead.
+- CI pipeline available for auto-rule creation on second occurrence.
 
 ## Skip If (ANY kills it)
 
-- For tracking product bugs in a bug tracker — mistakes.md captures LLM/agent execution patterns, not feature defects
-- When the project has fewer than 3 completed tasks — corpus too thin for useful patterns
-- As a replacement for post-mortems on infrastructure incidents (mistakes.md is development-workflow scoped)
+- One-shot scripts with no future runs.
+- Throwaway experiments where mistakes don't propagate.
+- Pre-product phase with no production exposure.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| .aidocs/memory/mistakes.md | markdown | repo |
+| Five Whys protocol | spec | team |
+| session-start hook | tool config | operator |
+| CI auto-rule scaffolding | yaml | engineer |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/sdd/sdd/pattern-memory` | Sibling — pattern memory captures successes; mistake memory captures failures. |
+| `solo/sdd/sdd/engagement-pattern-memory` | Sibling — per-engagement variant for freelancers. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/mistake-memory.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/mistake-memory.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-mistake-memory.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[pattern-memory]] — related methodology.
+- [[code-review-cycle]] — related methodology.
+- [[engagement-pattern-memory]] — related methodology.
+- [[daily-ship-rubric]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

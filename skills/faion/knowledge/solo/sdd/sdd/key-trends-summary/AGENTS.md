@@ -3,74 +3,96 @@ slug: key-trends-summary
 tier: solo
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Orientation reference covering six major shifts relevant to SDD practitioners: SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); docs-as-code and LLM-optimized documentation; ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; LLM-first workflows (context packing, spec-first, agentic MCP); platform engineering growth (45% → 80% of large orgs by 2026); OpenTelemetry as the #2 CNCF project for observability.
-content_id: "957157a8f69bccfc"
-tags: [sdd, trends, architecture, platform-engineering, observability]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces an orientation report on 6 SDD shifts (SDD-as-paradigm + docs-as-code + ADRs + LLM-first + platform engineering + OpenTelemetry) so planning sessions start with shared 2025-2026 context."
+content_id: "349c003da9da5779"
+complexity: light
+produces: report
+est_tokens: 3400
+tags: [trends, architecture, platform-engineering, observability, sdd]
 ---
+
 # Key Trends Summary 2025-2026
 
 ## Summary
 
-**One-sentence:** Orientation reference covering six major shifts relevant to SDD practitioners: SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); docs-as-code and LLM-optimized documentation; ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; LLM-first workflows (context packing, spec-first, agentic MCP); platform engineering growth (45% → 80% of large orgs by 2026); OpenTelemetry as the #2 CNCF project for observability.
+**One-sentence:** Produces an orientation report on 6 SDD shifts (SDD-as-paradigm + docs-as-code + ADRs + LLM-first + platform engineering + OpenTelemetry) so planning sessions start with shared 2025-2026 context.
 
-**One-paragraph:** Orientation reference covering six major shifts relevant to SDD practitioners: SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); docs-as-code and LLM-optimized documentation; ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; LLM-first workflows (context packing, spec-first, agentic MCP); platform engineering growth (45% → 80% of large orgs by 2026); OpenTelemetry as the #2 CNCF project for observability. Load at the start of architectural planning sessions, not per-task.
+**Ефективно для:** Solo PMs and architects whose planning sessions stall on outdated assumptions because nobody re-read the trend map this year.
+
+**One-paragraph:** Architectural planning starts from stale context when the trend map isn't refreshed. This methodology pins the 2025-2026 orientation: SDD as the dominant paradigm, docs-as-code, ADRs as standard at AWS/GCP/Azure, LLM-first workflows, platform-engineering adoption (45%→80%), OpenTelemetry as the #2 CNCF project. Load once per planning cycle, not per task. Output is consumed by design-docs-patterns and architecture-decision-records.
 
 ## Applies If (ALL must hold)
 
-- At the start of an architectural planning session, before drafting constitution.md, roadmap.md, or any new spec.md
-- When a human asks what tools to use for SDD/documentation in 2025-2026 (Kiro, Tessl, Spec Kit, MCP, Backstage, Port, Cortex)
-- As context before quarterly roadmap or constitution-revision sessions
-- When evaluating whether to adopt a new tool category (developer portal, observability stack, LLM workflow)
-- When an ADR cites a market-share or adoption claim — load this doc to verify the claim has a recorded source date
+- Quarterly architectural planning session.
+- Onboarding new contributor to architecture decisions.
+- Pre-RFC orientation before drafting cross-org docs.
+- Annual roadmap review.
 
 ## Skip If (ANY kills it)
 
-- As a replacement for methodology-specific docs — use dedicated methodology folders for actionable guidance
-- For time-sensitive tool decisions — this is a snapshot; verify market share data currency before committing
-- For domains not covered here (the doc covers SDD, ADRs, living docs, platform engineering, observability)
-- When the agent already has current context from a more specific source loaded this session
-- Per-task — loading on every TASK_ execution wastes tokens; load once per session and rely on planning-time context
+- Per-task work — load is per-planning-cycle, not per-task.
+- Operations / incident response — different context.
+- Operator already loaded the report within 90 days.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| planning session scheduled | calendar slot | operator |
+| trend report source | doc/url | repo |
+| audience role list | array | operator |
+| last_loaded_at timestamp | datetime | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/sdd/sdd/design-docs-big-tech` | Sibling — surveys company practices. |
+| `solo/sdd/sdd/design-docs-patterns` | Downstream — uses trend context for format selection. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/key-trends-summary.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/key-trends-summary.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-key-trends-summary.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[design-docs-patterns]] — related methodology.
+- [[design-docs-big-tech]] — related methodology.
+- [[architecture-decision-records]] — related methodology.
+- [[living-documentation]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

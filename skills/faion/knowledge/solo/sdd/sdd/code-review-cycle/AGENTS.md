@@ -3,73 +3,97 @@ slug: code-review-cycle
 tier: solo
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report.
-content_id: "84ffc4248a451289"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a unified code-review report (AI pre-screen + parallel BLOCK/WARN/NOTE finding lists + deduplicated merge + reflexion writeback) so human-AI review catches the right things and the team learns from each PR."
+content_id: "ee0ae10090178b28"
+complexity: medium
+produces: report
+est_tokens: 4100
 tags: [code-review, quality-gates, ai-assistance, sdd, reflexion]
 ---
+
 # Code Review Cycle
 
 ## Summary
 
-**One-sentence:** A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report.
+**One-sentence:** Produces a unified code-review report (AI pre-screen + parallel BLOCK/WARN/NOTE finding lists + deduplicated merge + reflexion writeback) so human-AI review catches the right things and the team learns from each PR.
 
-**One-paragraph:** A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report. Humans address BLOCK items; reflexion feeds review findings back into patterns.md and mistakes.md. AI assists but never replaces human judgment on business logic, architecture decisions, and security context.
+**Ефективно для:** Solo devs who either skip review entirely or get drowned in noisy AI nit-picks that don't catch the real bug.
+
+**One-paragraph:** Code review collapses to either no review or noisy AI lint. This methodology pins a 3-step pipeline: AI pre-screen flags style / anti-patterns / missing tests; parallel review agents (Claude + cross-model) emit structured BLOCK/WARN/NOTE findings; a merge step deduplicates and produces a unified report. Reflexion feeds findings back to patterns.md and mistakes.md. Output is consumed by reflexion-learning and mistake-memory.
 
 ## Applies If (ALL must hold)
 
-- After any SDD task execution, before marking the task done — run AI pre-screen + human spot-check
-- When PRs consistently exceed 300 lines — AI pre-review reduces noise before human review
-- Setting up a multi-model review pipeline (write with Claude, review with a separate model)
-- Integrating SDD reflexion: post-review findings feed into patterns.md and mistakes.md
-- After detecting a spike in change failure rates — add AI review as a quality gate in CI/CD
+- PRs touch production code with paying users.
+- Operator wants human-AI collaboration, not AI replacement.
+- Repo has a tests/ suite that runs in CI.
+- Reflexion memory layer exists (patterns.md + mistakes.md).
 
 ## Skip If (ANY kills it)
 
-- Single-file configuration changes — linter is sufficient
-- Trivial one-line bug fixes — peer review + merge is faster
-- First pass in a new codebase where patterns are not yet established — establish patterns first
-- When the human reviewer has deep domain knowledge and AI review produces high false positives
+- Throwaway scripts in research/ folders.
+- Documentation-only changes (rely on docs CI).
+- Single-person hobby project with no users.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| PR diff | git diff | developer |
+| AI review agent config | yaml | engineer |
+| BLOCK/WARN/NOTE rubric | spec | team |
+| .aidocs/memory/ directory | folder | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/sdd/sdd/pattern-memory` | Sibling — review findings feed pattern memory. |
+| `solo/sdd/sdd/mistake-memory` | Sibling — BLOCK findings feed mistake memory. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/code-review-cycle.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/code-review-cycle.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-code-review-cycle.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[pattern-memory]] — related methodology.
+- [[mistake-memory]] — related methodology.
+- [[design-docs-patterns]] — related methodology.
+- [[living-documentation]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

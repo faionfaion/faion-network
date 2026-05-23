@@ -3,74 +3,97 @@ slug: value-proposition-design
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Value Proposition Design answers "Why should I choose you over alternatives?" by mapping customer jobs, pains, and gains against your product's pain relievers and gain creators using the Value Proposition Canvas.
-content_id: "7ebc8fd1babade87"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a value-proposition-canvas spec (customer profile jobs/pains/gains + value map relievers/creators + alignment-gap list) so positioning is anchored on evidence, not adjective stacking."
+content_id: "572024187cf4be1c"
+complexity: medium
+produces: spec
+est_tokens: 4100
 tags: [value-proposition, positioning, canvas, customer-research, product-market-fit]
 ---
+
 # Value Proposition Design
 
 ## Summary
 
-**One-sentence:** Value Proposition Design answers "Why should I choose you over alternatives?" by mapping customer jobs, pains, and gains against your product's pain relievers and gain creators using the Value Proposition Canvas.
+**One-sentence:** Produces a value-proposition-canvas spec (customer profile jobs/pains/gains + value map relievers/creators + alignment-gap list) so positioning is anchored on evidence, not adjective stacking.
 
-**One-paragraph:** Value Proposition Design answers "Why should I choose you over alternatives?" by mapping customer jobs, pains, and gains against your product's pain relievers and gain creators using the Value Proposition Canvas. The canvas is a two-sided diagram (customer profile vs. value map) that reveals alignment gaps and guides positioning, messaging, and feature prioritization.
+**Ефективно для:** Solo founders whose pitch deck still describes 'faster, easier, better' instead of named customer jobs.
+
+**One-paragraph:** Value propositions written without explicit customer-jobs anchoring drift to adjective stacking. This methodology pins each value-prop draft to Osterwalder's two-sided canvas: customer profile (jobs / pains / gains) on one side, value map (products / pain-relievers / gain-creators) on the other, with an explicit alignment-gap list for every mismatch. Output is consumed by launch-comms-kit and positioning iterations.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch: drafting positioning before landing-page copy, ad copy, or sales decks.
-- Repositioning: when conversion is low and copy reads generic ("AI-powered platform for businesses").
-- New segment expansion: same product, new audience needs a new value prop.
-- Competitive shift: a major competitor changes pricing or positioning and you must respond.
-- Low market traction or weak product adoption despite feature completeness.
+- Pre-launch positioning needs grounding in customer language.
+- Pivoting positioning after low conversion or message rejection.
+- Adjacent-segment expansion needs a fresh value map.
+- Pitch deck or landing page draft missing customer-job anchor.
 
 ## Skip If (ANY kills it)
 
-- Before talking to users: you'll guess pains and gains without evidence.
-- For mature products with established positioning where the cost of churn from rebrand is high.
-- For internal tools where the "value" question is irrelevant.
-- As a substitute for messaging tests: the canvas is a draft, not final positioning.
-- When no primary customer research exists (interviews, JTBD studies, personas): the canvas requires validated inputs.
+- When no customer interviews are accessible — canvas without evidence is fiction.
+- Commodity products competing on price only.
+- Internal tools with one captive user base.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| customer interview transcripts | files | user-interviews output |
+| current product feature list | array | PM |
+| competitor positioning grid | spec | researcher |
+| draft value-prop statement (if any) | string | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/research/researcher/user-interviews` | Upstream — interview data feeds the customer profile. |
+| `solo/research/researcher/jobs-to-be-done` | Upstream — JTBD output feeds the 'jobs' field. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/value-proposition-design.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/value-proposition-design.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-value-proposition-design.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
+- [[user-interviews]] — related methodology.
+- [[problem-validation-2026]] — related methodology.
+- [[jobs-to-be-done]] — related methodology.
+- [[use-case-mapping]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

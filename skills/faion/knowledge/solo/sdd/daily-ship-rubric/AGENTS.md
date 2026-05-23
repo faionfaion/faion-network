@@ -3,80 +3,95 @@ slug: daily-ship-rubric
 tier: solo
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Daily Ship Rubric: codified sdd practice that turns the recurring 'p1-solo-saas-builder/Daily SDD spec → vibe-code → review cycle' decision into a repeatable, auditable artefact.
-content_id: "784d2d32b9dd4b9e"
-tags: [daily-ship-rubric, sdd, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a daily-ship rubric (definition of 'shipped today' + 5 binary gates + named owner + 24h checkpoint) so solo SaaS builders exit the SDD spec \u2192 code \u2192 review loop with a real artefact every working day."
+content_id: "813738fb0a7ac6b5"
+complexity: light
+produces: rubric
+est_tokens: 2800
+tags: [daily-ship, sdd, rubric, solo, ship-discipline]
 ---
+
 # Daily Ship Rubric
 
 ## Summary
 
-**One-sentence:** Daily Ship Rubric: codified sdd practice that turns the recurring 'p1-solo-saas-builder/Daily SDD spec → vibe-code → review cycle' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a daily-ship rubric (definition of 'shipped today' + 5 binary gates + named owner + 24h checkpoint) so solo SaaS builders exit the SDD spec → code → review loop with a real artefact every working day.
 
-**One-paragraph:** Daily Ship Rubric addresses the gap surfaced by 'p1-solo-saas-builder/Daily SDD spec → vibe-code → review cycle'. What 'shipped today' means for a one-person SaaS; current quality-gates-confidence is generic. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Solo SaaS builders whose 'today' keeps ending without a merged commit because the daily ship definition is fuzzy.
+
+**One-paragraph:** What 'shipped today' means for a one-person SaaS is ambiguous; generic quality-gates miss the solo cadence. This methodology pins a daily binary rubric (spec written / code committed / tests green / deploy attempted / customer-visible change) with a 24h checkpoint and a named owner (the operator). Output is consumed by daily review cycles and reflexion learning.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p1-solo-saas-builder/Daily SDD spec → vibe-code → review cycle' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- One-person SaaS with daily commit cadence as the goal.
+- Operator runs the SDD spec → vibe-code → review loop daily.
+- Output will be reviewed by the operator at end of day.
+- Tier solo or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Multi-person team — generic quality-gates apply.
+- Research/exploration days where no ship is expected.
+- Calendar-blocked maintenance days where rubric overhead exceeds value.
 
 ## Prerequisites
 
-- recent context for the 'p1-solo-saas-builder/Daily SDD spec → vibe-code → review cycle' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|---|---|---|
+| named operator | string | single human |
+| backlog item under work | task id | backlog |
+| deployment target reachable | url/host | infra |
+| test suite that runs in <5 min | ci config | engineer |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/sdd/sdd` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `solo/sdd/sdd/sdd-workflow-overview` | Parent — daily rubric is a checkpoint within the SDD loop. |
+| `solo/sdd/sdd/pattern-memory` | Sibling — daily-ship outcomes feed pattern memory. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/daily-ship-rubric.json` | JSON schema for the Daily Ship Rubric output contract |
-| `templates/daily-ship-rubric.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/daily-ship-rubric.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/daily-ship-rubric.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-daily-ship-rubric.py` | Enforce Daily Ship Rubric output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-daily-ship-rubric.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
-- upstream playbook: `p1-solo-saas-builder/Daily SDD spec → vibe-code → review cycle`
-- methodology family: `solo/sdd/` (gap-p2 batch, F-059-063)
+- [[pattern-memory]] — related methodology.
+- [[mistake-memory]] — related methodology.
+- [[code-review-cycle]] — related methodology.
+- [[engagement-pattern-memory]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

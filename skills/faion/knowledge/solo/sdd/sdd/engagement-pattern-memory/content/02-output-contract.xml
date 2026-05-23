@@ -1,54 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Engagement Pattern Memory — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the engagement memory file shape + session-update record. Contractor (or supporting agent) must satisfy these contracts.</summary>
+<text id="02-output-contract" title="Engagement Pattern Memory Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Engagement Pattern Memory output. Subagent must satisfy this before returning to the caller.</summary>
 
   <output-contract>
     <required>
-      <field name="engagement_id" format="slug_matching_dir_name"/>
-      <field name="last_updated" format="ISO-8601_date"/>
-      <field name="active_since" format="ISO-8601_date"/>
-      <field name="sections" required_keys="repo_conventions,reviewer_preferences,deploy_quirks,recurring_traps,glossary,resolved_q_log"/>
-      <field name="reviewer_preferences" required_keys="reviewer_name,preferences_bullets"/>
-      <field name="glossary_entries" required_keys="term,definition,scope_marker"/>
-      <field name="session_updates" type="array" required_keys="session_date,additions,modifications,removals"/>
+      <field name="engagement_id" type="string" required="true">client / repo identifier</field>
+      <field name="memory_file_path" type="string" required="true">path to memory.md</field>
+      <field name="repo_conventions" type="object" required="true">linting / naming / commit format</field>
+      <field name="reviewer_preferences" type="object" required="true">per-named-reviewer preferences</field>
+      <field name="deploy_quirks" type="array" required="true">non-obvious deploy gotchas</field>
+      <field name="recurring_traps" type="array" required="true">≥1 trap with detector + fix</field>
+      <field name="glossary" type="object" required="true">client-specific terms</field>
+      <field name="resolved_questions" type="array" required="true">questions + resolution dates</field>
+      <field name="owner" type="string" required="true">named contractor</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">memory file shared across multiple engagements (path / filename does not include engagement_id) (r1)</pattern>
-      <pattern id="f2">glossary entries that lack scope_marker or that explicitly state cross-engagement applicability (r3)</pattern>
-      <pattern id="f3">session_updates field empty for a session where work was done (r2 — write discipline skipped)</pattern>
-      <pattern id="f4">entries older than 90 days without a "still current" annotation OR archive flag (r4)</pattern>
-      <pattern id="f5">reviewer_preferences entries that name a reviewer but lack any concrete preference bullets</pattern>
-      <pattern id="f6">recurring_traps without a date + fix-or-workaround status</pattern>
-      <pattern id="f7">memory file loaded into the wrong engagement's context (mixed-context session) (r5)</pattern>
+      <pattern id="f1">engagement_id shared across files</pattern>
+      <pattern id="f2">memory_file_path missing</pattern>
+      <pattern id="f3">any section absent</pattern>
+      <pattern id="f4">client PII beyond engagement_id</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Cluster near-duplicate convention entries (e.g., two mentions of the same lint rule).</transformation>
-      <transformation>Move retired-pattern entries to an "archive" section instead of deleting (audit trail).</transformation>
-      <transformation>Reference an engagement-shared parent if the engagement is part of a multi-project client portfolio (rare; documented at top of file).</transformation>
+      <transformation>Allowed to archive a memory file when engagement ends; archive MUST be tagged with end date.</transformation>
+      <transformation>Allowed to extract glossary entries into a shared cross-engagement file when terminology is industry-standard.</transformation>
     </allowed-transformations>
 
-    <schema-reference path="templates/engagement-memory.md"/>
+    <schema-reference path="templates/engagement-pattern-memory.json"/>
   </output-contract>
 
-  <section title="Self-check (run at session end)">
-    <list>
-      <item>File path includes engagement_id (r1)</item>
-      <item>last_updated reflects today's session (r2)</item>
-      <item>Glossary entries are scope_marker-tagged (r3)</item>
-      <item>Session updates list at least one observation OR an explicit "no new patterns" entry (r2)</item>
-      <item>No glossary or convention text references "all my clients" / "across projects" (r1, r3)</item>
-      <item>Memory file size &lt;= 4000 tokens (load-efficient); if larger, run scripts/decay-cleanup.py (r4)</item>
-      <item>Output validates against templates/engagement-memory.md structure</item>
-    </list>
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "engagement_id": "sample-engagement_id",
+  "memory_file_path": "sample-memory_file_path",
+  "repo_conventions": {
+    "k": "v"
+  },
+  "reviewer_preferences": {
+    "k": "v"
+  },
+  "deploy_quirks": [
+    {
+      "k": "v"
+    }
+  ],
+  "recurring_traps": [
+    {
+      "k": "v"
+    }
+  ],
+  "glossary": {
+    "k": "v"
+  },
+  "resolved_questions": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
   </section>
 
-  <section title="Session-start contract">
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
+  </section>
+
+  <section title="Self-check checklist">
     <list>
-      <item>Hook script loads ONLY the active engagement's memory (r5)</item>
-      <item>Agent confirms engagement identity at start of session ("loaded engagement X memory; active since DATE")</item>
-      <item>If contractor switches engagement mid-day, session restarts with new memory loaded</item>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/engagement-pattern-memory.json</item>
     </list>
   </section>
 </text>
