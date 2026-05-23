@@ -1,31 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Call Site Inventory Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Call Site Inventory deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="AI Call Site Inventory Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the report artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-call-site-inventory.json",
+  "type": "object",
+  "required": ["report_id", "as_of", "findings", "recommendations", "author"],
+  "properties": {
+    "report_id": {"type": "string"},
+    "as_of": {"type": "string", "format": "date"},
+    "findings": {"type": "array", "items": {"type": "object", "required": ["id", "summary"], "properties": {"id": {"type": "string"}, "summary": {"type": "string"}, "evidence": {"type": "string"}}}, "minItems": 1},
+    "recommendations": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "author": {"type": "string"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "ai-call-site-inventory-2026Q2",
+  "as_of": "2026-05-23",
+  "findings": [{"id": "f1", "summary": "main finding", "evidence": "link/to/data"}],
+  "recommendations": ["recommendation-1"],
+  "author": "analyst@example.com"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "ai-call-site-inventory-2026Q2"
+}
+]]></code>
+    <note>Missing required fields per the schema above.</note>
+  </example>
+
   <output-contract>
-    <required>
-      <field name="prompt_path" format="git_path_with_sha" />
-      <field name="model_id" format="provider_model_version" />
-      <field name="budget" type="object" schema="{tokens_in,tokens_out,cost_usd}" />
-      <field name="eval_reference" format="test_file_or_id" />
-      <field name="output_schema" format="json_schema_path_or_inline" />
-    </required>
     <forbidden>
-      <pattern id="f1">untracked prompt edits (chat-tab only)</pattern>
-      <pattern id="f2">free-text output where downstream parses</pattern>
-      <pattern id="f3">missing eval_reference</pattern>
-      <pattern id="f4">budget unset</pattern>
+      <pattern id="f1">report without findings array</pattern>
+      <pattern id="f2">recommendations empty</pattern>
+      <pattern id="f3">as_of missing or stale (&gt;30 days)</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Pin to provider quirk only when documented in metadata.</transformation>
+      <transformation>Auto-populate timestamps from the validation moment.</transformation>
+      <transformation>Normalise enum casing to schema lowercase.</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Prompt versioned</item>
-      <item>Eval linked</item>
-      <item>Budget set</item>
-      <item>Schema present</item>
-    </list>
-  </section>
+
+  <reference path="scripts/validate-ai-call-site-inventory.py">Validator script</reference>
 </text>

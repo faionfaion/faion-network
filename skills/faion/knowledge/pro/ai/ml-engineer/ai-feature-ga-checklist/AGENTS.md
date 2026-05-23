@@ -3,77 +3,103 @@ slug: ai-feature-ga-checklist
 tier: pro
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Concrete operating checklist covering ai feature ga checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
-content_id: "50b1e91fedd7077c"
-tags: [ai, checklist]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pre-GA checklist for an AI feature — eval gate green, observability live, cost cap enforced, refusal policy tested, rollout plan + kill switch in place.
+content_id: "28cddbf8e86eff40"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: [ga-checklist, ai-launch, production-readiness, kill-switch]
 ---
+
 # AI Feature GA Checklist
 
 ## Summary
 
-**One-sentence:** Concrete operating checklist covering ai feature ga checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
+**One-sentence:** Pre-GA checklist for an AI feature — eval gate green, observability live, cost cap enforced, refusal policy tested, rollout plan + kill switch in place.
 
-**One-paragraph:** Concrete operating checklist covering ai feature ga checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped. A canonical 'ready for GA' checklist for an AI feature: eval threshold met, cost ceiling validated, SLOs defined, kill-switch tested, guardrails active, incident runbook signed off, compliance reviewed. Today these live as folk knowledge.
+**One-paragraph:** Pre-GA checklist for an AI feature — eval gate green, observability live, cost cap enforced, refusal policy tested, rollout plan + kill switch in place. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a checklist produced by an agent applying ai feature ga checklist. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible checklist for ai feature ga checklist across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- You operate the recurring activity addressed by ai feature ga checklist at least once per cycle (weekly, sprint, quarter, or annual).
-- You have authority to act on each item — checklist items without owners or budget are deferred.
-- Skipped items must be auditable: a written reason replaces the action.
-- Time-box: full pass completes within the cycle window (e.g., 30-90 min for weekly, 1-2 days for annual).
+- AI feature is preparing to leave beta / EAP and serve general traffic
+- the team owns prompt + model + retrieval + tool surfaces end-to-end
+- the launch will be reviewed by leadership and tracked against KRs
 
 ## Skip If (ANY kills it)
 
-- One-off events with no recurrence — checklist value is in the rhythm.
-- Activities without a named owner — items will not be done, only ticked.
-- Teams running a more granular checklist already — adding a meta-layer creates conflict.
+- feature is staying in beta / EAP — use beta-readiness methodology instead
+- feature is a non-AI ship-as-is move — use ordinary feature GA checklist
+- feature is a hot-fix re-launch of an existing GA feature — use incident-runbook instead
 
 ## Prerequisites
 
-- Calendar slot dedicated to the cycle (recurring meeting / focus block).
-- Read-access to the source systems each item inspects (analytics, billing, repo).
-- Last cycle's output filed where current cycle can compare year-over-year.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Eval suite + green run | ml-engineering | ml-engineering |
+| Observability dashboard (quality + cost + latency + drift) | platform | ml-engineering |
+| Cost cap + alert | finops | finance + ml-engineering |
+| Refusal + safety policy + tests | trust & safety | trust & safety |
+| Rollout plan + kill switch | rollout doc | ml-engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ai/ml-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[eval-driven-development-tdd-for-ai]] | Eval gate |
+| [[ai-feature-observability-four-pillars]] | Observability |
+| [[ai-feature-progressive-rollout]] | Rollout plan |
+| [[ai-feature-incident-runbook]] | Kill switch + runbook |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `checklist_dry_run` | haiku | Template walk, no judgment needed |
-| `anomaly_flag` | sonnet | Compare current cycle vs prior, flag deltas |
-| `decision_synthesis` | opus | Consolidate flags into a corrective-action list |
+| `checklist_walk` | sonnet | Walk each item with evidence pointer. |
+| `evidence_audit` | sonnet | Verify cited evidence is real and dated. |
+| `sign_off_routing` | sonnet | Route to required signers per org policy. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ga-checklist.md` | Checklist artefact skeleton |
+| `templates/evidence-table.json` | Evidence table JSON schema |
+| `templates/_smoke-test.md` | Minimum viable filled-in GA checklist |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-feature-ga-checklist.py` | Validate the checklist artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `pro/ai/ml-engineer/`
-- peer methodologies: see siblings under `pro/ai/ml-engineer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-feature-observability-four-pillars]]
+- [[ai-feature-progressive-rollout]]
+- [[ai-feature-incident-runbook]]
+- [[eval-driven-development-tdd-for-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

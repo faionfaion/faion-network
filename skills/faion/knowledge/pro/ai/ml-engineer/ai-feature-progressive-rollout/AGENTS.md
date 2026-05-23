@@ -3,77 +3,101 @@ slug: ai-feature-progressive-rollout
 tier: pro
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Evaluation method for ai feature progressive rollout that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs.
-content_id: "f280df396319c135"
-tags: [ai, eval]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Playbook step that scales AI feature traffic by ring (1% → 10% → 50% → 100%) gated on eval delta + observability pillars + customer-comm checkpoints.
+content_id: "271de7c11e5acbfb"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [progressive-rollout, canary, feature-flag, ai-launch, ring-deployment]
 ---
+
 # AI Feature Progressive Rollout
 
 ## Summary
 
-**One-sentence:** Evaluation method for ai feature progressive rollout that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs.
+**One-sentence:** Playbook step that scales AI feature traffic by ring (1% → 10% → 50% → 100%) gated on eval delta + observability pillars + customer-comm checkpoints.
 
-**One-paragraph:** Evaluation method for ai feature progressive rollout that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs. 1%→10%→50%→100% rollout with quality-regression auto-rollback — AI-specific because the rollback signal is not a 5xx rate but an eval-score delta. No coverage today.
+**One-paragraph:** Playbook step that scales AI feature traffic by ring (1% → 10% → 50% → 100%) gated on eval delta + observability pillars + customer-comm checkpoints. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a playbook-step produced by an agent applying ai feature progressive rollout. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible playbook-step for ai feature progressive rollout across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- You are stabilizing or comparing the AI feature behavior described by ai feature progressive rollout across model, prompt, or retrieval versions.
-- A ground-truth set ≥30 examples exists OR can be assembled in one work-cycle.
-- Eval results gate at least one production decision (deploy, rollback, freeze).
-- Cost ceiling per eval run is defined before the first run.
+- AI feature is launching new or rolling out a material change (prompt overhaul, model migration)
+- the platform supports per-user / per-cohort feature flags
+- observability pillars (quality / latency / cost / drift) are live for the feature
 
 ## Skip If (ANY kills it)
 
-- Pre-MVP exploration where output quality is judged by founders eyeballing.
-- Features so niche that authoring a ground-truth set takes longer than 3 sprints.
-- Cost-prohibitive evals when cheaper proxies (regression of intermediate metric) cover risk.
+- change is a hot-fix to restore a green state — rollout-as-fast-as-safe-allows, not progressive
+- platform cannot do per-cohort flagging — fix that first or use big-bang with explicit acceptance of risk
+- feature is internal-only with <50 users — progressive rollout overhead exceeds value
 
 ## Prerequisites
 
-- Ground-truth set with ≥30 examples and a versioned identifier.
-- Run-isolation: same eval can be replayed on different model / prompt versions.
-- Cost dashboard or per-run budget enforced.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature flag platform with cohorts | platform | engineering |
+| Observability pillars live | ml-engineering | ml-engineering |
+| Eval gate green for current change | ml-engineering | ml-engineering |
+| Customer comm template (if external) | trust & safety | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ai/ml-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[ai-feature-observability-four-pillars]] | Observability gates rollout |
+| [[eval-driven-development-tdd-for-ai]] | Eval gates rollout |
+| [[ai-feature-incident-runbook]] | Roll-back path |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `eval_runner_orchestration` | haiku | Test harness driver |
-| `judge_scoring` | sonnet | LLM-as-judge per rubric |
-| `regression_diagnosis` | opus | Cross-version drift analysis |
+| `ring_plan` | sonnet | Specify rings + traffic % + dwell time per ring. |
+| `gate_check` | sonnet | Verify gates per ring transition. |
+| `comm_handling` | sonnet | Customer comm at material transitions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/rollout-plan.md` | Rollout playbook-step skeleton |
+| `templates/ring-config.json` | Ring config JSON schema |
+| `templates/_smoke-test.md` | Minimum viable filled-in rollout plan |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-feature-progressive-rollout.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `pro/ai/ml-engineer/`
-- peer methodologies: see siblings under `pro/ai/ml-engineer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-feature-observability-four-pillars]]
+- [[eval-driven-development-tdd-for-ai]]
+- [[ai-feature-incident-runbook]]
+- [[ai-feature-ga-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

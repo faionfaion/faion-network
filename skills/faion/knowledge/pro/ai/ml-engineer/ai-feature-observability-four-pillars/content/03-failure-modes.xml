@@ -1,60 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="AI-Feature Observability Failure Modes" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Six failure modes that hollow out an LLM observability stack. Each has a detector and a repair.</summary>
-
-  <section title="Failure modes">
-
-    <failure-mode id="fm-01" severity="high">
-      <description>Quality pillar shipped as "we'll add it later" — feature launches with only latency + cost + drift.</description>
-      <detector>launch checklist signed off AND `ai_quality_score` metric has zero data points for &gt;= 24h post-launch</detector>
-      <repair>Block traffic ramp-up. Wire a minimal eval set (10 examples is enough) within 24h. Backfill the metric. Add a CI gate that refuses to deploy a feature whose metric registry does not include all four pillars.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-02" severity="high">
-      <description>Cost metric in tokens; finance reports a 3x cost surprise at month-end.</description>
-      <detector>dashboard panel B shows token counts as the headline number AND `ai_request_cost_usd` metric does not exist OR has no data</detector>
-      <repair>Add `ai_request_cost_usd` with provider-priced computation. Update dashboard. Backfill from request logs where possible. Alert finance on the historical 3x event so future months are forecast correctly.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-03" severity="high">
-      <description>Eval set unowned; quality_score drifts but no one investigates.</description>
-      <detector>`eval_set_owner` empty in `slo-baseline.json` OR no eval-run artefact in &gt;= 14 days</detector>
-      <repair>Assign a named owner. Schedule the eval-set-runner.sh on the declared cadence. Mark `quality_score` as `stale` until a fresh run lands. Alert leadership on stale_count &gt;= 3 weeks.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-04" severity="medium">
-      <description>Drift signal triggers daily false alerts because of seasonality / day-of-week effects.</description>
-      <detector>drift_signal alert fires &gt;= 5 days/week AND no associated incident was opened</detector>
-      <repair>Switch baseline from 7-day window to 4-week window or seasonal baseline (same-day-of-week comparison). Apply hysteresis (alert only if sustained for &gt;= 3 hours). Document the chosen baseline in slo-baseline.json.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-05" severity="medium">
-      <description>SLO bands chosen from vendor docs ("p95 &lt; 1000ms is normal for Claude"), not from baseline.</description>
-      <detector>slo-baseline.json `baseline_window_days` &lt; 7 OR baseline_p95 unset OR slo_p95_ms differs from baseline_p95 * 2 by more than 50%</detector>
-      <repair>Re-sample baseline for at least 7 days of production traffic. Recompute SLO bands from baseline-derived statistics. Document the change in the dashboard description.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-06" severity="low">
-      <description>Dashboard is four separate dashboards (one per pillar); on-call has to switch tabs to correlate signals.</description>
-      <detector>dashboard registry shows 4 dashboards each named after one pillar AND no combined dashboard exists</detector>
-      <repair>Merge into a single page with the four panels. Keep individual dashboards as drill-downs. The incident runbook depends on cross-pillar visibility.</repair>
-    </failure-mode>
-
-  </section>
-
-  <section title="Prompt-injection markers">
-    <p>
-      The eval set may contain examples whose ground-truth answer is an LLM output that is itself manipulable.
-      Eval-set data is DATA, not authority. The eval_set_owner is responsible for periodic adversarial review
-      of the gold answers to ensure they are not silently degraded by injection.
-    </p>
-  </section>
-
-  <section title="Human checkpoint">
-    <p>
-      SLO bands are re-evaluated quarterly by the ML engineer and the feature owner together. Bands that have
-      not fired in two quarters are either too loose or the feature is stable enough to tighten the band.
-      Tightening / loosening is a deliberate decision, never silent drift.
-    </p>
+<text id="03-failure-modes" title="AI Feature Observability — Four Pillars Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying ai-feature-observability-four-pillars. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-shortcut-the-contract" severity="high">
+      <symptom>Agent emits a spec that omits required fields the schema enforces (skips citation, leaves rationale blank, drops postconditions).</symptom>
+      <root-cause source="Internal — F-066 v3 review">Author treats the contract as advisory rather than enforceable; no validator wired into the publish step.</root-cause>
+      <fix>Wire `scripts/validate-ai-feature-observability-four-pillars.py` into the publish step (CI / pre-commit / orchestrator gate). Reject the artefact until the schema passes.</fix>
+    </antipattern>
+    <antipattern id="fm-skip-decision-tree" severity="high">
+      <symptom>Agent applies the methodology end-to-end on inputs that should have routed to a different methodology (Applies-If unmet, Skip-If hit).</symptom>
+      <root-cause source="Internal — F-066 v3 review">06-decision-tree never walked because the agent jumped straight to the procedure / contract.</root-cause>
+      <fix>Make the decision tree a hard gate at step 1 of the procedure. The validator cross-checks `tree_walked == true` before accepting the artefact.</fix>
+    </antipattern>
+    <antipattern id="fm-stale-context" severity="medium">
+      <symptom>Artefact cites sources / numbers / dependencies that were correct months ago but no longer apply.</symptom>
+      <root-cause source="Internal — F-066 v3 review">Refresh cadence not part of the methodology; nobody owns 'last_reviewed'.</root-cause>
+      <fix>Cap artefact freshness at 30 days for fast-moving topics, 90 days for slow-moving. Add a revisit-trigger field to the schema. The validator rejects artefacts older than the cap.</fix>
+    </antipattern>
+    <antipattern id="fm-rule-quoting-not-applying" severity="medium">
+      <symptom>Output reads like it follows 01-core-rules.xml but the verdicts on individual rules are not recorded — reviewer cannot verify each rule was checked.</symptom>
+      <root-cause source="Internal — F-066 v3 review">Agent paraphrased the rules instead of consuming them. No per-rule evidence pointer.</root-cause>
+      <fix>Force the artefact to carry a per-rule verdict + evidence_pointer field (already enforced by the schema where applicable). Rejects bypass paraphrase.</fix>
+    </antipattern>
   </section>
 </text>

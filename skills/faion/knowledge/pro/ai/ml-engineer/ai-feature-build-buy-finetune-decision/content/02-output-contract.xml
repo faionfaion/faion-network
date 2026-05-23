@@ -1,30 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Feature Build Buy Finetune Decision Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Feature Build Buy Finetune Decision deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="AI Feature Build vs Buy vs Finetune Decision Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the decision-record artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-feature-build-buy-finetune-decision.json",
+  "type": "object",
+  "required": ["adr_id", "title", "status", "context", "decision", "consequences", "signers", "decided_at"],
+  "properties": {
+    "adr_id": {"type": "string"},
+    "title": {"type": "string"},
+    "status": {"enum": ["proposed", "accepted", "rejected", "superseded"]},
+    "context": {"type": "string", "minLength": 40},
+    "decision": {"type": "string", "minLength": 20},
+    "consequences": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "signers": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "decided_at": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "ai-feature-build-buy-finetune-decision-001",
+  "title": "Sample ADR",
+  "status": "accepted",
+  "context": "Why this decision was needed and what trade-offs we faced.",
+  "decision": "What we chose and why.",
+  "consequences": ["positive", "negative"],
+  "signers": ["lead@example.com"],
+  "decided_at": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "ai-feature-build-buy-finetune-decision-001",
+  "status": "accepted"
+}
+]]></code>
+    <note>Missing required fields per the schema above.</note>
+  </example>
+
   <output-contract>
-    <required>
-      <field name="steps" type="list" min="4" schema="{id,input,owner,exit_criterion,output_location}" />
-      <field name="decision_branches" type="list" />
-      <field name="owner_of_playbook" type="string" />
-      <field name="deviation_log_reference" format="url_or_path" />
-    </required>
     <forbidden>
-      <pattern id="f1">step without exit_criterion</pattern>
-      <pattern id="f2">playbook without named owner</pattern>
-      <pattern id="f3">decision branch without explicit signal</pattern>
-      <pattern id="f4">deviation log missing</pattern>
+      <pattern id="f1">ADR without consequences</pattern>
+      <pattern id="f2">context too short (&lt;40 chars)</pattern>
+      <pattern id="f3">signers empty</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Reorder steps as long as input/output graph stays acyclic.</transformation>
+      <transformation>Auto-populate timestamps from the validation moment.</transformation>
+      <transformation>Normalise enum casing to schema lowercase.</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has exit_criterion</item>
-      <item>Owner named</item>
-      <item>Branches explicit</item>
-      <item>Deviation log exists</item>
-    </list>
-  </section>
+
+  <reference path="scripts/validate-ai-feature-build-buy-finetune-decision.py">Validator script</reference>
 </text>

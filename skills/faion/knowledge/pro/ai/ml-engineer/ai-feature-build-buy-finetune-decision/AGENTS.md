@@ -3,77 +3,99 @@ slug: ai-feature-build-buy-finetune-decision
 tier: pro
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for ai feature build buy finetune decision that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "a64c924008f5e105"
-tags: [ai, playbook]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: ADR-style decision record selecting among build-from-scratch / buy-vendor-API / finetune-existing for a specific AI feature, scored on cost, quality, control, time-to-market.
+content_id: "60e1e7881b07c26d"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
+tags: [build-buy-finetune, adr, vendor-decision, finetune, ml-engineering]
 ---
-# AI Feature Build Buy Finetune Decision
+
+# AI Feature Build vs Buy vs Finetune Decision
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for ai feature build buy finetune decision that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** ADR-style decision record selecting among build-from-scratch / buy-vendor-API / finetune-existing for a specific AI feature, scored on cost, quality, control, time-to-market.
 
-**One-paragraph:** End-to-end playbook for ai feature build buy finetune decision that walks an operator from trigger to closed outcome with named artefacts at each step. There is llm-decision-framework but no opinionated playbook scoring build vs buy vs prompt vs RAG vs finetune for a single feature with cost/quality/latency/lock-in axes. Engineers fall into the 'finetune everything' or 'prompt everything' traps.
+**One-paragraph:** ADR-style decision record selecting among build-from-scratch / buy-vendor-API / finetune-existing for a specific AI feature, scored on cost, quality, control, time-to-market. This methodology codifies the rules, output contract, failure modes, and decision tree needed for a decision-record produced by an agent applying ai feature build vs buy vs finetune decision. The deliverable is validated against an explicit JSON Schema and routed through a decision tree that maps observable signals to rule ids in `01-core-rules.xml`.
+
+**Ефективно для:**
+
+- Building a reproducible decision-record for ai feature build vs buy vs finetune decision across teams.
+- Reviewing AI-or-human work against an explicit contract instead of vibes.
+- Wiring the output into downstream automation (CI gates, observability, post-mortems).
+- Avoiding the failure modes listed in `03-failure-modes.xml`.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by ai feature build buy finetune decision end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- team is deciding how to deliver a new AI feature (build, buy, finetune)
+- decision will cost > $10k/yr or affect a user-visible surface
+- decision will be revisited yearly and needs to be auditable
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- decision was made <90 days ago for an adjacent feature with the same constraints — reuse it
+- feature is exploratory only with no shipping plan — wait for the ship decision
+- vendor is fixed by org policy (sole-source contract) — record that fact, skip the comparison
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec (inputs, outputs, success metric) | product spec | product |
+| Quality + cost + latency targets | perf doc | engineering |
+| Vendor shortlist (≥2) | research | ml-engineering |
+| Internal training-data availability | data team | data engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ai/ml-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[inference-cost-unit-economics]] | Cost-per-outcome math |
+| [[ai-feature-progressive-rollout]] | Rollout shape per option |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `option_specification` | sonnet | Spec the 3 options in concrete terms. |
+| `scoring` | opus | Score on cost / quality / control / time-to-market. |
+| `risk_weighting` | opus | Weight scores by org risk profile. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/decision-record.md` | ADR skeleton |
+| `templates/scoring-matrix.json` | Scoring matrix JSON skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled-in ADR |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-feature-build-buy-finetune-decision.py` | Validate the decision-record artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
 
-- parent skill: `pro/ai/ml-engineer/`
-- peer methodologies: see siblings under `pro/ai/ml-engineer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[inference-cost-unit-economics]]
+- [[ai-feature-progressive-rollout]]
+- [[ai-call-site-inventory]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.

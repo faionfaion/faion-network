@@ -1,63 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI-Feature Observability Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the dashboard layout, metric names, and alert-rule defaults for the four pillars.</summary>
+<text id="02-output-contract" title="AI Feature Observability — Four Pillars Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the spec artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
 
-  <section title="Required metric names + units">
-    <list>
-      <item><code>ai_request_latency_ms</code> (histogram, p50/p95/p99 derived; labels: feature, model, route)</item>
-      <item><code>ai_request_cost_usd</code> (histogram, breakdown labels: feature, model, direction in {input,cached_input,output,thinking})</item>
-      <item><code>ai_quality_score</code> (gauge, 0-1 or 0-5; labels: feature, eval_set_id, run_id, stale: bool)</item>
-      <item><code>ai_drift_signal</code> (gauge; labels: feature, drift_kind in {input_token_mean, refusal_rate, semantic_cluster}, baseline_window)</item>
-    </list>
-    <reference path="templates/metric-definitions.yaml">Authoritative metric naming + units.</reference>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-feature-observability-four-pillars.json",
+  "type": "object",
+  "required": ["spec_id", "version", "scope", "constraints", "acceptance_criteria", "owner"],
+  "properties": {
+    "spec_id": {"type": "string"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "scope": {"type": "string", "minLength": 20},
+    "constraints": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "acceptance_criteria": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "owner": {"type": "string"},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Dashboard required panels">
-    <list>
-      <item>Panel A: latency with p50/p95/p99 lines and SLO band shaded.</item>
-      <item>Panel B: cost histogram + cumulative-cost-today; tooltip breaks down by model and direction.</item>
-      <item>Panel C: quality_score time-series with `stale` flag overlay; eval-set run markers.</item>
-      <item>Panel D: drift_signal value with baseline distribution overlay; alert threshold line.</item>
-    </list>
-    <p>All four panels MUST be on a single page, visible together. Separate dashboards per pillar are REJECTED.</p>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "ai-feature-observability-four-pillars-001",
+  "version": "1.0.0",
+  "scope": "Defines the methodology output for the canonical happy path.",
+  "constraints": ["constraint-1", "constraint-2"],
+  "acceptance_criteria": ["validator passes", "decision tree consumed"],
+  "owner": "design@example.com",
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
 
-  <section title="Alert-rule defaults">
-    <list>
-      <item><code>latency</code>: page when p95 &gt; SLO_band for 10 consecutive minutes.</item>
-      <item><code>cost</code>: notify on Slack when daily cumulative cost exceeds baseline_daily_mean * 1.5; page when * 3.</item>
-      <item><code>quality</code>: page when quality_score drops by &gt;= 0.5 (on 0-5 scale) OR &gt;= 0.1 (on 0-1 scale) versus baseline_mean; notify if `stale: true` for 2 consecutive runs.</item>
-      <item><code>drift</code>: page when drift_signal exceeds 0.2 (KL or PSI) sustained over baseline_window.</item>
-    </list>
-    <reference path="templates/alert-rules.yaml">Default alert rules YAML.</reference>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "ai-feature-observability-four-pillars-001",
+  "scope": "too short"
+}
+]]></code>
+    <note>Missing required fields per the schema above.</note>
+  </example>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Cost dashboard expressed only in token counts.</description>
-      <reason>r3 violation. Stakeholders cannot read tokens; currency is the floor.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Quality_score with no `eval_set_id` label.</description>
-      <reason>r4 violation. Eval-set provenance is required.</reason>
-    </antipattern>
-    <antipattern>
-      <description>drift_signal emitted without `drift_kind` label.</description>
-      <reason>r5 violation. Drift definition must be explicit.</reason>
-    </antipattern>
-    <antipattern>
-      <description>SLO band hardcoded from vendor docs ("p95 should be &lt; 500ms").</description>
-      <reason>r2 violation. SLO must derive from baseline traffic.</reason>
-    </antipattern>
-  </section>
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">spec without acceptance_criteria</pattern>
+      <pattern id="f2">scope &lt; 20 chars (under-specified spec)</pattern>
+      <pattern id="f3">version not semver</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Auto-populate timestamps from the validation moment.</transformation>
+      <transformation>Normalise enum casing to schema lowercase.</transformation>
+    </allowed-transformations>
+  </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>All four metric series emit data in the last 5 min.</item>
-      <item>SLO bands recorded in `slo-baseline.json` with baseline window.</item>
-      <item>eval_set_owner is a named individual, not a team.</item>
-      <item>Dashboard has all four panels on one page.</item>
-      <item>Alert rules wired to a paging channel, not just Slack.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-ai-feature-observability-four-pillars.py">Validator script</reference>
 </text>

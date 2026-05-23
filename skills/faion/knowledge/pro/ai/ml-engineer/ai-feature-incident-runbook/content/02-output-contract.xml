@@ -1,68 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI-Feature Incident Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the incident-record shape, the mitigation log, and the postmortem-draft sections.</summary>
+<text id="02-output-contract" title="AI Feature Incident Runbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the playbook-step artefact this methodology produces. The validator script enforces this contract before the artefact is accepted.</summary>
 
-  <section title="Required incident-record fields">
-    <list>
-      <item><code>incident_id</code> (string, deterministic ID)</item>
-      <item><code>opened_at_utc</code> (ISO timestamp)</item>
-      <item><code>class</code> (enum: hallucination_spike, jailbreak_observed, refusal_rate_anomaly, quality_regression, unknown)</item>
-      <item><code>class_confirmed_at_utc</code> (ISO timestamp; MUST be set within 10 min of open if class != unknown)</item>
-      <item><code>sli_signals</code> (object: latency_p99, refusal_rate, quality_score, hallucination_flag_rate, with deltas from 7-day baseline)</item>
-      <item><code>model_version</code> (string, from registry)</item>
-      <item><code>prompt_version</code> (commit SHA from `prompts/`)</item>
-      <item><code>mitigations</code> (array of objects: kind, applied_at_utc, by_user, reversal_command, observed_effect)</item>
-      <item><code>resolved_at_utc</code> (ISO timestamp or null)</item>
-      <item><code>severity</code> (enum: SEV1, SEV2, SEV3)</item>
-      <item><code>postmortem_due_by_utc</code> (5 business days after resolved_at_utc for SEV1/SEV2)</item>
-    </list>
-    <reference path="templates/incident-record.json">Authoritative JSON Schema for the incident record.</reference>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-feature-incident-runbook.json",
+  "type": "object",
+  "required": ["step_id", "preconditions", "actions", "postconditions", "exit_signal"],
+  "properties": {
+    "step_id": {"type": "string"},
+    "preconditions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "actions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "postconditions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "exit_signal": {"type": "string"},
+    "owner": {"type": "string"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Required mitigation log entries">
-    <list>
-      <item>Every mitigation appended in order with timestamp, command run, reversal command, and 5-min-post observation.</item>
-      <item>Mitigations that did not work MUST stay in the log with `observed_effect: no_change` or `worse` — never deleted.</item>
-      <item>Reversal command for every applied mitigation MUST be valid and tested in the staging registry before incident time.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "step_id": "ai-feature-incident-runbook-step-1",
+  "preconditions": ["upstream artefact present"],
+  "actions": ["apply rule set"],
+  "postconditions": ["validated output emitted"],
+  "exit_signal": "downstream step trigger",
+  "owner": "team@example.com"
+}
+]]></code>
+  </example>
 
-  <section title="Postmortem-draft required sections">
-    <list>
-      <item><code>which_class</code>: which of the four AI-incident classes fired, with the SLI delta that triggered it.</item>
-      <item><code>which_signal_fired</code>: which observability pillar (latency / cost / quality / drift) first surfaced the issue and at what timestamp.</item>
-      <item><code>which_root_cause_branch</code>: model version drift, prompt drift, retrieval drift, eval-set staleness, upstream provider change, or other (named).</item>
-      <item><code>which_harden_step</code>: the persistent fix that closes this class going forward (new eval, new filter, new alert, new test).</item>
-    </list>
-    <reference path="templates/postmortem.md">Authoritative postmortem template.</reference>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "step_id": "ai-feature-incident-runbook-step-1"
+}
+]]></code>
+    <note>Missing required fields per the schema above.</note>
+  </example>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Incident-record `class` stays `unknown` past 10 minutes without an escalation entry.</description>
-      <reason>r1 violation. Forces accountability when class is unclear.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Mitigation entry without a reversal_command.</description>
-      <reason>r2 violation. All mitigations must be reversible by single command.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Postmortem auto-published without team review signature.</description>
-      <reason>r5 / sibling-rule violation. Postmortem is reviewed before publish.</reason>
-    </antipattern>
-    <antipattern>
-      <description>quality_regression declared with no eval-set run referenced in the last 48h.</description>
-      <reason>r3 violation. Eval-set freshness is required.</reason>
-    </antipattern>
-  </section>
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">playbook step without preconditions or postconditions</pattern>
+      <pattern id="f2">exit_signal missing — downstream agent cannot know when to start</pattern>
+      <pattern id="f3">actions empty</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Auto-populate timestamps from the validation moment.</transformation>
+      <transformation>Normalise enum casing to schema lowercase.</transformation>
+    </allowed-transformations>
+  </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>incident_id populated.</item>
-      <item>class confirmed within 10 min of open.</item>
-      <item>Every mitigation has a reversal_command.</item>
-      <item>postmortem_due_by_utc set for SEV1 / SEV2.</item>
-      <item>Postmortem draft includes the four required sections.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-ai-feature-incident-runbook.py">Validator script</reference>
 </text>
