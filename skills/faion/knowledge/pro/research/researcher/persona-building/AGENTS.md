@@ -3,73 +3,104 @@ slug: persona-building
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A 5-step process for creating semi-fictional buyer archetypes grounded in real interview data: gather data (minimum 10 interviews), cluster patterns, define 1-3 segments (primary / secondary / negative), build the persona with cited traits, then validate by showing the doc to actual customers.
-content_id: "4ef4672f15a1227f"
-tags: [personas, user-research, segmentation, buyer-archetypes, interviews]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces 3 personas (primary + secondary + negative), each backed by >=5 interview citations, JTBD statements, top-3 pains, and a kill-criteria block; refuses single-source personas.
+content_id: "a34ba87e3b0b3f0d"
+complexity: medium
+produces: report
+est_tokens: 5200
+tags: [persona, icp, jtbd, segmentation, user-research]
 ---
 # Persona Building
 
 ## Summary
 
-**One-sentence:** A 5-step process for creating semi-fictional buyer archetypes grounded in real interview data: gather data (minimum 10 interviews), cluster patterns, define 1-3 segments (primary / secondary / negative), build the persona with cited traits, then validate by showing the doc to actual customers.
+**One-sentence:** Produces 3 personas (primary + secondary + negative), each backed by >=5 interview citations, JTBD statements, top-3 pains, and a kill-criteria block; refuses single-source personas.
 
-**One-paragraph:** A 5-step process for creating semi-fictional buyer archetypes grounded in real interview data: gather data (minimum 10 interviews), cluster patterns, define 1-3 segments (primary / secondary / negative), build the persona with cited traits, then validate by showing the doc to actual customers. Outputs user-personas.md in .aidocs/product_docs/.
+**One-paragraph:** Persona authoring methodology that ships exactly 3 personas (primary, secondary, negative) per product, each grounded in >=5 cited interview quotes, with explicit Jobs-to-Be-Done statements, top-3 pains, and a 'kill criteria' block naming the trait that disqualifies a user from this persona. Refuses single-source / single-interview personas.
+
+**Ефективно для:**
+
+- Pre-MVP: треба зафіксувати ICP перед feature greenlight.
+- GTM сегментація для emails / ads / landing pages.
+- Onboarding flow design - persona визначає first-run experience.
+- Founder говорить про 'наших users' без конкретики - треба primary + secondary.
+- Negative persona: окреслити, кого ми НЕ обслуговуємо (зменшує churn).
 
 ## Applies If (ALL must hold)
 
-- Raw transcripts from 8+ customer interviews exist and need clustering into buyer archetypes before writing positioning or landing copy.
-- Landing page has poor conversion and the team disagrees on "who this is for".
-- Sales closes one segment 3x faster than others — codify that segment as primary persona.
-- Pivoting into an adjacent market and needing a new primary persona before rewriting home page and pricing tiers.
-- A multi-agent pipeline needs a shared persona artifact as input (faion-research-agent → faion-marketing-manager → faion-content-marketer).
+- Pre-MVP ICP lock before feature greenlight.
+- GTM segmentation for emails, ads, landing pages.
+- Onboarding flow design (persona drives first-run experience).
+- Founder talks about 'our users' generically; needs primary + secondary.
+- Negative persona work to reduce churn by naming the customer we do NOT serve.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF / pre-interview: zero customer conversations — run user-interviews and pain-point-research first.
-- B2B enterprise with named-account selling and fewer than 20 logos — use account profiles and buying-committee maps.
-- Highly heterogeneous marketplaces where the segmentation axis is transactional behavior — use audience-segmentation instead.
-- Single-feature internal tools where the user is unambiguous — a 1-line role description beats a 2-page persona doc.
+- Pre-PMF zero users; do customer-development first, not personas.
+- Internal tool with one user type (employees).
+- Hardware / regulated medical (use clinical-trial cohorts, not personas).
+- B2B enterprise with one buyer per account (build a buying committee map instead).
+- Stable mature product where personas have not changed in 24 months.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Interview transcripts | markdown / Otter / Looppanel | user research ops |
+| Quantitative segment data | PostHog / Amplitude cohorts | analytics |
+| Tag library | JTBD + pain + segment | Dovetail / manual |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[user-research-at-scale]] | supplies the transcript volume and tagging that personas summarise |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `cluster-segments` | sonnet | Cluster transcripts into 2-4 candidate segments. |
+| `write-persona-cards` | sonnet | Compose persona-lean and persona-full per segment. |
+| `negative-persona` | sonnet | Identify the user type the product must reject. |
+| `citation-check` | haiku | Mechanical check that every persona has >=5 cited quotes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/persona-lean.md` | Lean persona card (1-page) for ad/landing copy |
+| `templates/persona-full.md` | Full persona doc with JTBD + pains + day-in-the-life + kill criteria |
+| `templates/persona-negative.md` | Negative persona template (who we do not serve) |
+| `templates/cluster-personas.py` | Cluster transcripts by JTBD tags; print top-K segments |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-persona-building.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[user-research-at-scale]]
+- [[continuous-discovery]]
+- [[market-research-tam-sam-som]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.

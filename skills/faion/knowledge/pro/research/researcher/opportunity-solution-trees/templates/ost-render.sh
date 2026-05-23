@@ -1,3 +1,8 @@
+# purpose: Render OST YAML to a Markdown tree visualisation
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 #!/usr/bin/env bash
 # ost-render.sh — convert ost.yaml to Mermaid diagram and render to SVG
 # Requires: yq, jq, mmdc (npm i -g @mermaid-js/mermaid-cli)

@@ -3,73 +3,102 @@ slug: methodologies-index
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Routing table mapping 22 research methodology slugs to one of 5 topic files (idea-generation, market-analysis, user-research, business-model-planning, naming-and-domains) and to the corresponding faion-research-agent mode.
-content_id: "2240d98bb7d9e509"
-tags: [research, index, routing, methodology, agent-mode]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Authors the L2 INDEX.xml for the research domain: groups methodologies into 3-8 sub-clusters, attaches complexity + produces + summary, keeps the list sorted and count-correct.
+content_id: "f3d8f3d0bed10c86"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [docs, l2-index, domain-index, authoring]
 ---
 # Methodologies Index
 
 ## Summary
 
-**One-sentence:** Routing table mapping 22 research methodology slugs to one of 5 topic files (idea-generation, market-analysis, user-research, business-model-planning, naming-and-domains) and to the corresponding faion-research-agent mode.
+**One-sentence:** Authors the L2 INDEX.xml for the research domain: groups methodologies into 3-8 sub-clusters, attaches complexity + produces + summary, keeps the list sorted and count-correct.
 
-**One-paragraph:** Routing table mapping 22 research methodology slugs to one of 5 topic files (idea-generation, market-analysis, user-research, business-model-planning, naming-and-domains) and to the corresponding faion-research-agent mode. Use this index as the O(1) entry point: resolve slug, open the topic file, then read the canonical per-folder methodology if depth is needed.
+**One-paragraph:** Authoring methodology for the per-domain L2 INDEX.xml. Partitions research methodologies into 3-8 sub-clusters (e.g., market-sizing, competitor-intel, user-research, discovery-ops, framework-routing), attaches `complexity` + `produces` attributes to every row, keeps each `<group>` alphabetically sorted by slug, and validates the index against the F-066 A2 checklist.
+
+**Ефективно для:**
+
+- Додано нову методологію - треба її вмонтувати в INDEX.xml правильної групи.
+- Перейменування / переміщення методології - оновити slug у L2.
+- Поява нової sub-cluster (наприклад, 'forecasting' як окремий cluster).
+- Аудит: чи всі methodologies мають complexity + produces attrs.
+- Перегляд count attr після додавання нових methodologies.
 
 ## Applies If (ALL must hold)
 
-- Resolving a slug (e.g. jobs-to-be-done) to its topic file (user-research.md) before reading.
-- Routing an orchestrator to the correct topic file before spawning a research subagent.
-- Mapping a methodology slug to the matching faion-research-agent mode (ideas, market, competitors, validate, personas, pains, niche, pricing, names).
-- Discovering peer methodologies inside the same topic group when planning a multi-step research task.
-- Sanity-checking that a slug still exists before referencing it from a spec or plan document.
+- Adding a new methodology to the research domain L2 index.
+- Renaming or moving an existing methodology (slug update).
+- Introducing a new sub-cluster (group) inside the domain.
+- Audit: do all methodologies carry complexity + produces attrs?
+- Updating the count attr after methodology additions/removals.
 
 ## Skip If (ANY kills it)
 
-- As the source of truth for methodology content — fields here are abridged stubs; open the referenced topic file or canonical per-folder methodology.xml for the full body.
-- For agent-integration patterns per methodology — those live in each methodology's own folder under pro/research/researcher/ and pro/research/market-researcher/.
-- For mode routing in orchestrators — the canonical mode table is in ../CLAUDE.md (## Research Modes); this index mirrors it for read-only lookup, not mutation.
-- For methodologies outside the 22 covered here (e.g. opportunity-solution-trees, audience-segmentation) — those are tracked in their own per-folder methodology.xml files.
+- Editing a methodology's body (this is INDEX-only; edit AGENTS.md or content/ directly).
+- Authoring the L1 domains.xml (use domains-index methodology).
+- One-off methodology audit (use validate-domain-index.py + a manual diff).
+- Tier promotion (free -> solo) - separate workflow.
+- Renaming the whole domain - run a domain-rename migration first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Updated AGENTS.md for new/renamed methodology | markdown | authoring step |
+| Existing INDEX.xml | XML | knowledge/<domain>/INDEX.xml |
+| Decision on sub-cluster | label | domain editor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[methodologies-detail]] | ensures every linked methodology has its detail page authored |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `slot-into-group` | sonnet | Decide which group the new methodology belongs to. |
+| `alphabetize` | haiku | Mechanical alpha-sort within group. |
+| `count-and-attrs` | haiku | Update count attr; assert complexity + produces present on every row. |
+| `validate` | haiku | Run validate-domain-index.py and report violations. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/INDEX.xml` | Skeleton L2 INDEX with <groups> partition |
+| `templates/index-checklist.md` | Author / audit checklist for INDEX.xml against F-066 A2 |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-methodologies-index.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[methodologies-detail]]
+- [[frameworks]]
+- [[workflows]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.

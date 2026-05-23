@@ -1,22 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="competitive-intelligence Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Competitive Intelligence Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/competitive-intelligence.json",
+  "type": "object",
+  "required": [
+    "artifact",
+    "generated_at",
+    "events",
+    "claims",
+    "fact_checker_passed"
+  ],
+  "properties": {
+    "artifact": {
+      "enum": [
+        "weekly_digest",
+        "monthly_threat_assessment",
+        "battlecard",
+        "quarterly_strategic_report"
+      ]
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "ttl_days": {
+      "type": "integer",
+      "maximum": 14
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1
+    },
+    "claims": {
+      "type": "array"
+    },
+    "fact_checker_passed": {
+      "type": "boolean"
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artifact": "weekly_digest",
+  "generated_at": "2026-05-23T08:00:00Z",
+  "ttl_days": 7,
+  "events": [
+    {
+      "event_id": "evt-001",
+      "competitor": "Acme",
+      "signal_type": "pricing",
+      "url": "https://acme.example/pricing",
+      "fetched_at": "2026-05-22T07:55:00Z",
+      "delta_summary": "Pro plan $49 -> $59"
+    }
+  ],
+  "claims": [
+    {
+      "claim": "Acme raised Pro plan 20% on 2026-05-22.",
+      "event_ids": [
+        "evt-001"
+      ]
+    }
+  ],
+  "fact_checker_passed": true
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artifact": "battlecard",
+  "ttl_days": 30,
+  "events": []
+}
+]]></code>
+    <note>ttl_days exceeds the 14-day cap; events array empty (no provenance); claims and fact_checker_passed missing; generated_at absent.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="unsourced-claim">Any claim without an event_id reference.</pattern>
+      <pattern id="aggregated-collector-event">Collector emits a synthesised multi-change event instead of one per delta.</pattern>
+      <pattern id="expired-battlecard">Distributed battlecard with generated_at + ttl_days &lt; now().</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-competitive-intelligence.py">Validator script (see scripts/).</reference>
 </text>

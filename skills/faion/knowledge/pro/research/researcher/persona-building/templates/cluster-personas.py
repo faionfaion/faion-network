@@ -1,3 +1,8 @@
+# purpose: Cluster transcripts by JTBD tags; print top-K segments
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 #!/usr/bin/env python3
 """
 cluster-personas.py — first-draft persona trait clustering from a directory of interview transcripts.

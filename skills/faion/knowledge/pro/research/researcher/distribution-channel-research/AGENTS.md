@@ -3,73 +3,103 @@ slug: distribution-channel-research
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A 5-step process for identifying and prioritizing customer acquisition channels: map customer discovery sources, score channels on a weighted fit matrix (audience/cost/time/scale/capability), model economics per channel (LTV:CAC > 3:1 as Phase-2 gate), design micro-tests ($100-500, 4-6 weeks, pre-registered kill criteria), and build a phased channel mix (1 channel first, expand after $10K MRR).
-content_id: "02c18f90ef03cd2a"
-tags: [distribution-channels, customer-acquisition, gtm, growth, channel-economics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Bullseye-style channel evaluation: shortlist 3 of 19 channels, run small-budget tests (<=$500 each), score on CAC + reach + time-to-signal, lock the top 1-2 channels with stop-loss tripwires.
+content_id: "7fd83cacf0ed982a"
+complexity: medium
+produces: report
+est_tokens: 5200
+tags: [distribution, channels, bullseye, growth, cac]
 ---
 # Distribution Channel Research
 
 ## Summary
 
-**One-sentence:** A 5-step process for identifying and prioritizing customer acquisition channels: map customer discovery sources, score channels on a weighted fit matrix (audience/cost/time/scale/capability), model economics per channel (LTV:CAC > 3:1 as Phase-2 gate), design micro-tests ($100-500, 4-6 weeks, pre-registered kill criteria), and build a phased channel mix (1 channel first, expand after $10K MRR).
+**One-sentence:** Bullseye-style channel evaluation: shortlist 3 of 19 channels, run small-budget tests (<=$500 each), score on CAC + reach + time-to-signal, lock the top 1-2 channels with stop-loss tripwires.
 
-**One-paragraph:** A 5-step process for identifying and prioritizing customer acquisition channels: map customer discovery sources, score channels on a weighted fit matrix (audience/cost/time/scale/capability), model economics per channel (LTV:CAC > 3:1 as Phase-2 gate), design micro-tests ($100-500, 4-6 weeks, pre-registered kill criteria), and build a phased channel mix (1 channel first, expand after $10K MRR).
+**One-paragraph:** Methodology to evaluate distribution channels (Traction's 19 + AI-era variants) without spreading budget thin. Shortlist 3 channels with the highest fit signal, run bounded small-budget tests (<=$500 each), score each on CAC + reach + time-to-signal + retention-of-channel-customers, and lock the top 1-2 with explicit stop-loss tripwires. Output: channel-report.md with the picked channels + tripwires + test results.
+
+**Ефективно для:**
+
+- Pre-launch або post-PMF: треба обрати 1-2 канали з 19 кандидатів без розпорошення бюджету.
+- Бюджет на тестування <= $5k загалом; на канал <= $500.
+- Сегмент ICP стабільний (не міняється кожного тижня).
+- Маркетинговий найм або agency selection - треба обґрунтувати канал чисельно.
+- Channel fatigue: один канал давав CAC, тепер CAC виріс 3x - треба перетестувати.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch GTM planning: product hypothesis exists but no validated path to first 100 users.
-- Post-launch when primary channel CAC is climbing and adjacent channels must be researched.
-- B2B/B2C pivots where the buyer or buying motion changes (PLG → sales-led or vice versa).
-- Solopreneur projects where bandwidth requires mastering 1 channel, not dabbling in 5.
-- Periodic audit (every 2 quarters) of the active channel mix against actual customer-source data.
+- Pre-launch or post-PMF: must select 1-2 channels from 19 candidates without budget spread.
+- Test budget <= $5k total, <=$500 per channel.
+- Stable ICP segment (does not change weekly).
+- Marketing hire or agency selection requires a numeric channel justification.
+- Channel fatigue: one channel that delivered CAC X now delivers 3x; retest needed.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF — channels do not fix a broken product; tests produce misleading CAC.
-- Products with strong existing organic pull (60%+ direct traffic) — formal research adds no signal.
-- One-off campaigns (event launch, single press hit) where the question is creative, not channel.
-- When customer interviews and attribution analytics do not exist and cannot be collected — any output is conjecture.
+- Pre-MVP with no product to attribute conversion to.
+- Single channel mandated by the platform (e.g., Shopify App Store).
+- Regulated industry where most channels are off-limits.
+- Pure organic / word-of-mouth strategy that does not pay for acquisition.
+- Investor-driven 'spend the round in 90 days' mandate - run a different playbook.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Persona doc | markdown | persona-building output |
+| ARPU + payback target | CSV | business-model-research output |
+| Test budget cap | decimal USD | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[persona-building]] | supplies the ICP that filters channel fit signals |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `channel-shortlist` | sonnet | Score 19 channels against persona + product shape. |
+| `test-design` | sonnet | Design <=$500 test per channel with explicit stop-loss. |
+| `results-score` | haiku | Mechanical CAC + reach + time-to-signal calculation. |
+| `verdict` | sonnet | Pick top 1-2 with tripwires. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/channels.yaml` | Channel catalog with fit signals and tooling notes |
+| `templates/channel-fit-scorer.py` | Score each channel on fit + cost + speed + measurability |
+| `templates/channel-report.md` | Channel-evaluation report skeleton: shortlist + tests + tripwires |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-distribution-channel-research.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[business-model-research]]
+- [[persona-building]]
+- [[market-research-tam-sam-som]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.

@@ -1,3 +1,8 @@
+# purpose: Score each channel on fit + cost + speed + measurability
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 # channel_fit_scorer.py — score channels vs fixed weights, emit ranked markdown table
 # Input: channels.yaml with channel scores per criterion
 # Output: ranked markdown table to stdout

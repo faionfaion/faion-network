@@ -1,3 +1,8 @@
+# purpose: Daily watcher: PostHog + tickets -> insight-log.md
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 # analytics-watcher.py — daily analytics watcher (Agent SDK pattern)
 # Input: PostHog export + support ticket list since last run
 # Output: appends one InsightLogEntry to .aidocs/product_docs/discovery/insight-log.md

@@ -1,3 +1,8 @@
+# purpose: Bash scraper: homepage + pricing + G2 + Wayback for one competitor
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 #!/usr/bin/env bash
 # scrape-competitor.sh — fetch homepage, pricing, G2, and Wayback for one competitor.
 # Usage: ./scrape-competitor.sh <name> <homepage_url> [pricing_url]

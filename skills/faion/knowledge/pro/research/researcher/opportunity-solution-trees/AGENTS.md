@@ -3,74 +3,103 @@ slug: opportunity-solution-trees
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A visual discovery framework (Teresa Torres) that connects a single business Outcome to Opportunities (customer needs, grounded in evidence), Solutions (3+ per opportunity for compare-and-contrast), and Assumption Tests (one falsifiable experiment per solution).
-content_id: "2f1833818d3a6aa3"
-tags: [discovery, ost, framework, research, torres]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Builds and maintains a Torres-style OST with one outcome at the root, opportunities scored on freq x sev x addressability, and solutions branching only off opportunities with falsifiable assumptions.
+content_id: "d972eebdc598bca7"
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: [opportunity-solution-tree, ost, torres, discovery, prioritization]
 ---
 # Opportunity Solution Trees
 
 ## Summary
 
-**One-sentence:** A visual discovery framework (Teresa Torres) that connects a single business Outcome to Opportunities (customer needs, grounded in evidence), Solutions (3+ per opportunity for compare-and-contrast), and Assumption Tests (one falsifiable experiment per solution).
+**One-sentence:** Builds and maintains a Torres-style OST with one outcome at the root, opportunities scored on freq x sev x addressability, and solutions branching only off opportunities with falsifiable assumptions.
 
-**One-paragraph:** A visual discovery framework (Teresa Torres) that connects a single business Outcome to Opportunities (customer needs, grounded in evidence), Solutions (3+ per opportunity for compare-and-contrast), and Assumption Tests (one falsifiable experiment per solution). Stored as YAML/JSON in git; visual tools (Vistaly, Miro) are render targets only.
+**One-paragraph:** Authoring + maintenance methodology for Opportunity Solution Trees (Teresa Torres). One outcome at the root; opportunities (unmet user needs) branch off; solutions (only) branch off opportunities, each carrying at least one falsifiable assumption test. Scoring is numeric (frequency x severity x addressability) with week-over-week deltas. Lives as YAML in .aidocs/product_docs/discovery/opportunity-solution-tree.md.
+
+**Ефективно для:**
+
+- Свіжий продукт без discovery infra - треба завести OST.
+- Discovery працює, але без єдиного root outcome - треба зафіксувати метрику.
+- Накопичились opportunities без рангу - треба numeric scoring.
+- Solutions з'являлись без opportunities - треба rewire.
+- Monthly review: pruning + kill list для OST.
 
 ## Applies If (ALL must hold)
 
-- Translating a single business outcome (KPI, OKR) into a discovery backlog of customer-rooted opportunities.
-- Synthesising raw user-research artefacts (interview notes, JTBD, support tickets, NPS verbatims) into a navigable structure.
-- Aligning PM/design/engineering on which sub-problems are in scope before any solution is committed.
-- Deciding between competing solution ideas under a fixed opportunity ("compare and contrast" via experiments).
-- Maintaining a living artefact during continuous discovery cycles (weekly interviews, ongoing experiments).
+- Fresh product with no discovery infrastructure; OST is being stood up.
+- Discovery is running but no single root outcome was ever pinned.
+- Opportunity backlog grew without ranking; numeric scoring is needed.
+- Solutions appeared without parent opportunities; tree must be rewired.
+- Monthly review: pruning + kill list maintenance.
 
 ## Skip If (ANY kills it)
 
-- Pure delivery / sprint planning — use a roadmap, Now/Next/Later, or Jira board instead.
-- Compliance, regulatory, or contract-driven work where the "opportunity" is fixed and only execution remains.
-- Single-developer side projects where outcome ↔ solution distance is trivial (the tree adds ceremony, not insight).
-- Crisis / incident response where speed beats discovery rigour.
-- When you have zero customer evidence — building an OST from "what we think users want" produces a confident-looking lie.
+- Pre-PMF with no users to interview.
+- Hardware / regulated medical where solution iteration is months, not weeks.
+- Crisis mode (outage / churn cliff) - skip OST hygiene; do root-cause first.
+- OST already healthy with <30 nodes and active pruning.
+- Team rejects continuous discovery framing; pick a different methodology.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Root outcome metric | name + current value + target | product strategy |
+| Existing opportunities (or empty) | markdown / YAML | discovery output |
+| Open assumptions register | markdown | previous cycle |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[continuous-discovery]] | supplies the cadence that feeds opportunities into the OST |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-opportunities` | sonnet | Apply freq x sev x addr scoring with deltas. |
+| `rewire-orphans` | sonnet | Move dangling solutions under correct opportunities. |
+| `prune` | sonnet | Identify dead branches; emit kill list. |
+| `audit-falsifiable` | haiku | Mechanical check: every solution has a falsifiable assumption. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ost.yaml` | Canonical OST YAML structure (outcome -> opportunities -> solutions -> assumptions) |
+| `templates/ost-render.sh` | Render OST YAML to a Markdown tree visualisation |
+| `templates/ost-audit-checklist.md` | OST hygiene audit (8 binary checks) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-opportunity-solution-trees.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[continuous-discovery]]
+- [[persona-building]]
+- [[risk-assessment]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
