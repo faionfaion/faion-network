@@ -1,43 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Production Trace Mining For Training Data — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Production Trace Mining Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the trace-mining-spec artefact + valid/invalid examples + forbidden patterns.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/production-trace-mining-for-training-data.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "trigger", "scrub_spec_ref", "label_inference", "capabilities", "retention_days", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]{3,64}$"},
+    "owner": {"type": "string", "minLength": 3, "not": {"enum": ["team", "we", "us", "engineering"]}},
+    "trigger": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": {"enum": ["event", "threshold", "schedule"]},
+        "value": {"type": "string", "minLength": 2}
+      }
+    },
+    "scrub_spec_ref": {"type": "string", "pattern": "^(git|warehouse|s3)://"},
+    "label_inference": {
+      "type": "object",
+      "required": ["mode", "rules_ref"],
+      "properties": {
+        "mode": {"enum": ["heuristic", "llm_judge", "heuristic_plus_judge"]},
+        "rules_ref": {"type": "string", "minLength": 3}
+      }
+    },
+    "capabilities": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "retention_days": {"type": "integer", "minimum": 1, "maximum": 3650},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
+      <item id="f1">trigger.value contains "when needed" / "as required" / "ad hoc" (rule r1)</item>
+      <item id="f2">scrub_spec_ref missing or empty (PII risk)</item>
+      <item id="f3">owner forbidden value</item>
+      <item id="f4">label_inference.rules_ref unreachable URI</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "trace-mining-support-bot-2026q2",
+  "owner": "ruslan@faion.net",
+  "trigger": {"kind": "schedule", "value": "monthly: 1st"},
+  "scrub_spec_ref": "git://faion/specs/eval-set-support-bot-2026q2.json",
+  "label_inference": {"mode": "heuristic_plus_judge", "rules_ref": "git://faion/labels/support.yaml"},
+  "capabilities": ["intent_classification", "tool_call_routing"],
+  "retention_days": 365,
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "trigger": {"kind": "event", "value": "when needed"},
+  "scrub_spec_ref": "",
+  "label_inference": {"mode": "heuristic", "rules_ref": ""},
+  "capabilities": [],
+  "retention_days": -1,
+  "version": "v1",
+  "last_reviewed": "yesterday"
+}
+]]></code>
+    <note>trigger 'when needed' (f1); scrub_spec_ref empty (f2); owner=team (f3); rules_ref empty (f4); retention negative; version not semver.</note>
+  </example>
+
+  <reference path="scripts/validate-production-trace-mining-for-training-data.py">Validator script</reference>
 </text>

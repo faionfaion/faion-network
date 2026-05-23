@@ -1,35 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="voice-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for voice-implementation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Voice Implementation Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules grounding the production voice-agent implementation. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD before any production deployment in non-silent environments.</statement>
-      <rationale source="v1-source">Energy-based VAD triggers on HVAC noise, keyboard clicks, and background music. Silero VAD and WebRTC VAD use learned speech models and work reliably in real environments.</rationale>
+    <rule id="r1-silero-vad" testable="true" depth="essential">
+      <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD for any production deployment outside a silent recording booth.</statement>
+      <rationale source="Internal — voice-agent post-mortems 2026-Q1">Energy/RMS-threshold VAD triggers on HVAC, keyboard, music. Silero/WebRTC use learned speech models that work in real environments.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD for any production deployment outside of silent environments.</statement>
-      <rationale source="v1-source">Energy-based VAD (RMS threshold) triggers on HVAC noise, keyboard sounds, and background music. Silero and WebRTC VAD use speech-specific models that work reliably in real-world environments.</rationale>
+    <rule id="r2-async-tool-executor" testable="true" depth="essential">
+      <statement>Run blocking tool functions in a thread executor (`asyncio.to_thread` / `run_in_executor`); never call them on the event loop directly.</statement>
+      <rationale source="Python asyncio docs">Sync tool functions block the loop — no audio is sent or received during the blocking call, the user hears dead air.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Run tool functions in a thread executor to avoid blocking the async event loop during voice turns.</statement>
-      <rationale source="v1-source">Synchronous tool functions that call external APIs block asyncio's event loop - no audio can be received or sent during the blocking call.</rationale>
+    <rule id="r3-strip-markdown" testable="true" depth="essential">
+      <statement>Strip markdown from LLM responses before TTS: `re.sub(r'[*_`#&gt;]', '', text)`. Never feed raw LLM output to TTS.</statement>
+      <rationale source="Internal — TTS audit">TTS reads markdown literally — "**bold**" becomes "asterisk asterisk bold asterisk asterisk".</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Strip markdown from all LLM responses before TTS synthesis: re.sub(r'[*_`#&gt;]', '', text).</statement>
-      <rationale source="v1-source">TTS reads markdown symbols literally - "**bold**" becomes "asterisk asterisk bold asterisk asterisk". Markdown must be removed before the text reaches TTS.</rationale>
+    <rule id="r4-context-window" testable="true" depth="essential">
+      <statement>Apply sliding window to `conversation_history`: keep system prompt + last N turns + relevant tool results. Cap `max_response_tokens` at 150–200.</statement>
+      <rationale source="Internal — context-overflow incidents">Voice responses &gt;200 tokens take too long to TTS. Unbounded history overflows context at ~50 turns and silently truncates.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Cap max_response_tokens at 150-200. Implement sliding window on conversation_history: keep system prompt + last N turns + tool results.</statement>
-      <rationale source="v1-source">max_response_tokens=200 is too low for complex tool responses but correct for voice output length. Context overflow at 50 turns causes silent truncation. Sliding window prevents both problems.</rationale>
+    <rule id="r5-realtime-api-threshold" testable="true" depth="essential">
+      <statement>Use OpenAI Realtime API for deployments requiring &lt;300ms end-to-end latency. STT+LLM+TTS chain minimum is 650–1900ms.</statement>
+      <rationale source="OpenAI Realtime API docs">Native WebSocket protocol bypasses serial pipeline stages; chain latency is structural.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use OpenAI Realtime API for deployments requiring under 300ms end-to-end latency. Use Groq Whisper for STT-only latency reduction (10x faster than OpenAI, approximately 80ms vs approximately 800ms).</statement>
-      <rationale source="v1-source">The standard STT+LLM+TTS chain has a 650-1900ms minimum. The Realtime API bypasses this with a native WebSocket protocol, delivering approximately 200ms end-to-end.</rationale>
+    <rule id="r6-per-turn-audit" testable="true" depth="essential">
+      <statement>Log each turn with: `input_transcript`, `llm_response`, `tool_calls`, `audio_duration`, `turn_latency_ms`.</statement>
+      <rationale source="Internal — debug-voice-quality runbook">Without per-turn logs, debugging tool failures or truncation requires replaying the exact conversation — usually impossible.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Log each turn with: input_transcript, llm_response, tool_calls, audio_duration, and turn_latency.</statement>
-      <rationale source="v1-source">Without per-turn logs, debugging voice quality issues (truncation, tool failures, state machine errors) requires reproducing the exact conversation - expensive and often impossible.</rationale>
+    <rule id="r7-ws-error-routing" testable="true" depth="essential">
+      <statement>Handle `WebSocketDisconnect` separately from generic `Exception` in the WS endpoint; never wrap both in bare `except Exception`.</statement>
+      <rationale source="FastAPI WebSocket docs">Disconnect is expected, errors are not. Conflating them suppresses real failures and pages the on-call for normal client exits.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Preconditions hold → wire the production voice agent per procedure.</statement>
+      <rationale source="self">Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>No conversational loop required or batch-only audio → use `speech-to-text-basics` + `tts-implementation` directly.</statement>
+      <rationale source="self">Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

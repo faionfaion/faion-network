@@ -1,4 +1,10 @@
 """
+purpose: Production TranscriptionService — multi-provider router + diarisation + word ts + vocab + post-process.
+consumes: audio path + advanced-stt-config + provider clients
+produces: diarised transcript with per-word timestamps + speaker labels + audit row
+depends-on: content/01-core-rules.xml r1, r2, r3, r5, r6
+token-budget-impact: per-minute provider cost; zero LLM tokens consumed for the transcription itself
+
 Production transcription service: OpenAI Whisper, LongAudioTranscriber, SpeakerDiarizer.
 All known template bugs are fixed here.
 """

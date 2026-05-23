@@ -1,22 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="speech-to-text-advanced Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Speech-to-Text Advanced Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for advanced-stt-config + diarised transcript shape.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Config schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/stt-advanced-config",
+  "type": "object",
+  "required": ["provider", "language", "diarisation", "word_timestamps", "post_process"],
+  "properties": {
+    "provider": {"enum": ["deepgram", "assemblyai", "openai-whisper-api", "faster-whisper-local", "azure-realtime"]},
+    "language": {"type": "string", "minLength": 2},
+    "diarisation": {"type": "boolean"},
+    "speaker_hint": {"type": "integer", "minimum": 1, "maximum": 20},
+    "word_timestamps": {"type": "boolean"},
+    "vocab_boost": {"type": "array", "items": {"type": "string"}},
+    "streaming": {"type": "boolean"},
+    "post_process": {
+      "type": "object",
+      "required": ["punctuation_restore", "filler_removal"],
+      "properties": {
+        "punctuation_restore": {"type": "boolean"},
+        "filler_removal": {"type": "boolean"},
+        "abbreviation_expand": {"type": "boolean"}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Diarised transcript shape">
+    <code lang="json"><![CDATA[{
+  "segments": [
+    {"speaker": "Speaker 1", "start_s": 0.12, "end_s": 5.78, "text": "..."},
+    {"speaker": "Speaker 2", "start_s": 5.82, "end_s": 9.10, "text": "..."}
+  ],
+  "words": [
+    {"speaker": "Speaker 1", "start_s": 0.12, "end_s": 0.42, "word": "Hello"}
+  ]
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "provider": "deepgram",
+  "language": "uk",
+  "diarisation": true,
+  "speaker_hint": 2,
+  "word_timestamps": true,
+  "vocab_boost": ["faion", "NERO"],
+  "streaming": false,
+  "post_process": {"punctuation_restore": true, "filler_removal": true, "abbreviation_expand": false}
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"provider": "openai-whisper-api", "diarisation": true, "word_timestamps": true, "post_process": {}}]]></code>
+      <note>Fails: Whisper API doesn't support native diarisation; post_process missing required fields.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>provider supports requested capabilities (rule r1, r2, r3, r4).</item>
+      <item>If diarisation=true → speaker_hint present (rule r5).</item>
+      <item>vocab_boost (if non-empty) is passed as param, not in prompt (rule r3).</item>
+      <item>post_process.punctuation_restore + filler_removal set (rule r6).</item>
     </list>
   </section>
 </text>

@@ -1,22 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="voice-implementation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Voice Implementation Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the voice-agent-config artefact. Validator enforces VAD choice, latency budget, tool-executor wiring, audit fields.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/voice-implementation.json",
+  "type": "object",
+  "required": ["vad", "stack", "latency_budget_ms", "tool_executor", "context", "audit"],
+  "properties": {
+    "vad": {"enum": ["silero", "webrtc", "energy"]},
+    "stack": {"enum": ["stt_llm_tts", "openai_realtime"]},
+    "latency_budget_ms": {"type": "integer", "minimum": 50, "maximum": 5000},
+    "tool_executor": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {"mode": {"enum": ["thread", "async_native", "process"]}}
+    },
+    "context": {
+      "type": "object",
+      "required": ["sliding_window_turns", "max_response_tokens"],
+      "properties": {
+        "sliding_window_turns": {"type": "integer", "minimum": 2, "maximum": 50},
+        "max_response_tokens": {"type": "integer", "minimum": 50, "maximum": 400}
+      }
+    },
+    "tts_markdown_stripped": {"type": "boolean", "const": true},
+    "audit": {
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {"enum": ["input_transcript", "llm_response", "tool_calls", "audio_duration", "turn_latency_ms"]},
+          "minItems": 5
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "vad": "silero",
+  "stack": "stt_llm_tts",
+  "latency_budget_ms": 2500,
+  "tool_executor": {"mode": "thread"},
+  "context": {"sliding_window_turns": 12, "max_response_tokens": 180},
+  "tts_markdown_stripped": true,
+  "audit": {"fields": ["input_transcript", "llm_response", "tool_calls", "audio_duration", "turn_latency_ms"]}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "vad": "energy",
+  "stack": "stt_llm_tts",
+  "latency_budget_ms": 250,
+  "tool_executor": {"mode": "async_native"},
+  "context": {"sliding_window_turns": 100, "max_response_tokens": 500},
+  "tts_markdown_stripped": false,
+  "audit": {"fields": ["input_transcript"]}
+}
+]]></code>
+    <note>energy VAD in production (r1); 250ms budget on STT+LLM+TTS chain (r5 → wrong stack); sliding-window out of range; max_response_tokens above ceiling; markdown not stripped; audit incomplete.</note>
+  </example>
+
+  <reference path="scripts/validate-voice-implementation.py">Validator script</reference>
 </text>

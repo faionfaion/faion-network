@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedding-caching Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedding-caching as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Embedding Caching Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns from caching deployments.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Cache keys that include only text hash without model name: emb:{sha256-of-text}.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When a pipeline switches models (e.g., text-embedding-3-small to text-embedding-3-large), existing cache entries for the old model are returned for the new model's requests. The vectors are from different spaces — retrieval produces wrong results silently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>No TTL on Redis cache keys.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Embedding vectors for deleted or updated documents accumulate indefinitely. Redis memory grows unbounded. Cache key space becomes stale over time.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="md5-collision-silent" severity="high">
+      <symptom>RAG recall drops 0.1–0.5% over time; no error in logs.</symptom>
+      <root-cause source="Cryptographic hash literature">MD5 collision returns the wrong embedding silently; rate scales with collection size.</root-cause>
+      <fix>Switch to SHA-256. Re-ingest collection; old cache entries remain harmless (different namespace).</fix>
+    </antipattern>
+
+    <antipattern id="version-not-in-key" severity="high">
+      <symptom>After provider model bump, retrieval quality regresses; same texts return old embeddings.</symptom>
+      <root-cause source="OpenAI silent-versioning">Key derived from text only; new model_version cannot invalidate old entries.</root-cause>
+      <fix>Include `model_version` in key. On provider version bump, old entries simply miss → re-embed on access.</fix>
+    </antipattern>
+
+    <antipattern id="no-ttl-stale-vectors" severity="medium">
+      <symptom>Vectors against deprecated model served for months.</symptom>
+      <root-cause source="Cache design oversight">TTL set to "forever".</root-cause>
+      <fix>Cap TTL at min(model_deprecation_days, 365). Flush on deprecation event.</fix>
+    </antipattern>
+
+    <antipattern id="no-hit-metric" severity="medium">
+      <symptom>Cache layer adds latency on misses but no one knows the hit rate.</symptom>
+      <root-cause source="Observability gap">Cache wrapped without metric instrumentation.</root-cause>
+      <fix>Emit `embedding_cache.hit` / `.miss` per call to observability. Alert if hit_rate &lt; 5% over 30 days.</fix>
+    </antipattern>
+
   </section>
 </text>

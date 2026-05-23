@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedding-cost-optimization Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedding-cost-optimization as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Embedding Cost Optimization Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns observed in cost-optimization rollouts.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Treating TF-IDF near-duplicate removal as semantic deduplication.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>TF-IDF operates on surface token overlap. Two texts expressing the same fact with different vocabulary score low similarity. Semantic dedup requires embedding the texts first — the opposite of what you want for cost reduction.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="dim-reduce-without-bench" severity="high">
+      <symptom>Recall@10 drops 5–10pp after switching to Matryoshka dim 256; no early warning.</symptom>
+      <root-cause source="Optimization rollout audit">Dim reduced "to save storage" without running the bench gate.</root-cause>
+      <fix>Always bench Recall@10 at candidate dim before promotion; gate at ≤1pp from baseline.</fix>
+    </antipattern>
+
+    <antipattern id="cache-on-non-recurrent" severity="medium">
+      <symptom>Cache infra cost exceeds savings; hit_rate &lt;5%.</symptom>
+      <root-cause source="Internal — cache-hit audits">Cache wired on a one-shot ingest with no overlap.</root-cause>
+      <fix>Only enable cache when recurrence ≥5% per `[[embedding-caching]]` decision tree.</fix>
+    </antipattern>
+
+    <antipattern id="too-aggressive-near-dup" severity="medium">
+      <symptom>Information loss in retrieval; eval shows missing-evidence regressions.</symptom>
+      <root-cause source="Near-dup audits">Near-dup threshold set too low (e.g., 0.85), collapsing distinct docs.</root-cause>
+      <fix>Set near-dup threshold ≥0.98 cosine. Verify on bench before promotion.</fix>
+    </antipattern>
+
+    <antipattern id="two-stage-on-small-corpus" severity="low">
+      <symptom>Latency overhead from rerank exceeds search-time savings on &lt;100k vector corpus.</symptom>
+      <root-cause source="Two-stage cost model">Two-stage adds overhead that only pays off at scale.</root-cause>
+      <fix>Enable two-stage only when corpus &gt;1M vectors OR per-query cost dominates.</fix>
+    </antipattern>
+
   </section>
 </text>

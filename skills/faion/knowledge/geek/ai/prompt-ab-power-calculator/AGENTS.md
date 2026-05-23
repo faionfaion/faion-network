@@ -3,82 +3,103 @@ slug: prompt-ab-power-calculator
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Computes per-arm sample sizes and significance thresholds for weekly prompt-version A/B reviews so solo agent builders stop running under-powered tests.
 content_id: "c4ae3652cce5def7"
-summary: Prompt AB Power Calculator — pinned calculator for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so weekly prompt-version a/b review stops being folklore and starts being a reviewable operating tool.
-tags: [ai, geek, calculator, prompt, power]
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [ab-testing, power-analysis, prompt-engineering, eval, statistics]
 ---
-# Prompt AB Power Calculator
+# Prompt A/B Power Calculator
 
 ## Summary
 
-**One-sentence:** Prompt AB Power Calculator — pinned calculator for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so weekly prompt-version a/b review stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Computes per-arm sample sizes and significance thresholds for weekly prompt-version A/B reviews so solo agent builders stop running under-powered tests.
 
-**One-paragraph:** In AI / agent engineering, the LLM-agent developer runs weekly prompt-version a/b review on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Solo agent builders chronically under-power their A/Bs. A simple per-arm sample-size + significance walkthrough closes the gap to rag-eval-ab-testing which assumes RAG-shaped traffic. `prompt-ab-power-calculator` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the LLM-agent developer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored calculator committed to the team's knowledge space.
+**One-paragraph:** Solo prompt iterators chronically under-power their A/Bs — they ship a variant after 12 traffic samples and call the regression a "model drift". This methodology produces a `power-calc-spec.json` artefact pinning baseline rate, MDE (minimum detectable effect), alpha, target power, and computed per-arm n. Downstream A/B harness consumes the spec; the calculator refuses to run under-powered configurations.
+
+**Ефективно для:**
+
+- Weekly prompt-version A/B review (recurring cadence).
+- Solo agent builders, що pushуть variants without power calculation.
+- Малий або середній traffic — точно знати, скільки треба зібрати.
+- Bridge between prompt-engineering and rag-eval-ab-testing.
+- Audit trail: spec versioned + owned + reviewed.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p7-llm-agent-developer/Weekly prompt-version A/B review`
-- the LLM-agent developer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Recurring A/B review on the operating cadence.
+- Baseline metric defined and measurable.
+- Named accountable owner.
+- Repository / wiki hosts the versioned spec.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot prompt change without recurrence.
+- No baseline metric defined yet — block on baseline definition first.
+- Fewer than 3 instances per year.
+- No named owner.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the LLM-agent developer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Baseline rate (current variant) | float ∈ [0,1] | eval harness |
+| Minimum detectable effect (MDE) | float | product target |
+| Alpha (significance) | float ∈ (0,0.5) | stats policy |
+| Target power | float ∈ (0.5,0.99) | stats policy |
+| Traffic per day | int | analytics |
+| Named accountable owner | string | ownership log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `geek/ai/ml-engineer` | parent role skill |
+| `[[prompt-pr-review-checklist]]` | downstream gate |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules + run/skip terminals | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for power-calc-spec + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 5-step: collect inputs → compute n → write spec → audit → commit | ~700 |
+| `content/05-examples.xml` | essential | Worked example: baseline 0.62, MDE 0.04 → n per arm | ~600 |
+| `content/06-decision-tree.xml` | essential | Routes traffic volume + MDE to feasibility | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `collect-inputs` | haiku | Form fill. |
+| `compute-n` | sonnet | Closed-form formula + sanity checks. |
+| `feasibility-review` | opus | Traffic vs sample size trade-off. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/power-calc-spec.json` | JSON skeleton matching 02-output-contract. |
+| `templates/power-calc-spec.md` | Narrative review draft. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-prompt-ab-power-calculator.py` | Validate power-calc-spec; also computes per-arm n via two-proportion z-test | Pre-commit + before A/B start |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[prompt-pr-review-checklist]]
+- [[prompt-portability-audit]]
+- [[production-trace-mining-for-training-data]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes to the calculator if baseline rate and MDE are pinned; refuses if traffic-per-day cannot reach the computed n within the review cadence. Walk it before scheduling the A/B; running an under-powered test wastes the cadence slot.

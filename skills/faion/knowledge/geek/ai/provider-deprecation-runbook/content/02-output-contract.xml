@@ -1,45 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Provider Deprecation Runbook — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A runbook artefact comprising: a step list (preconditions, action, actor, artefact, rollback), a wall-clock budget per phase, and a post-run record committed to the agreed evidence folder.</summary>
+<text id="02-output-contract" title="Provider Deprecation Runbook Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the provider-deprecation-runbook artefact + run-record.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>step.precondition (state, alert, ticket, signal)</item>
-      <item>step.actor (role + system)</item>
-      <item>step.action (verb + object + parameters)</item>
-      <item>step.artefact (link / id of produced artefact)</item>
-      <item>step.rollback OR step.stop_branch</item>
-      <item>phase.budget (wall-clock minutes)</item>
-      <item>run-record (start_ts, end_ts, branches, exceptions, links)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/provider-deprecation-runbook.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "on_call", "deprecation_date", "phases", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]{3,64}$"},
+    "owner": {"type": "string", "minLength": 3, "not": {"enum": ["team", "we", "us", "engineering"]}},
+    "on_call": {"type": "string", "minLength": 3},
+    "deprecation_date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "budget_min", "steps"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "budget_min": {"type": "integer", "minimum": 1, "maximum": 720},
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "actor", "action", "artefact"],
+              "properties": {
+                "id": {"type": "string"},
+                "precondition": {"type": "string"},
+                "actor": {"type": "string", "minLength": 3},
+                "action": {"type": "string", "minLength": 5},
+                "artefact": {"type": "string", "minLength": 3},
+                "rollback": {"type": "string"},
+                "stop_branch": {"type": "string"}
+              }
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>vague actors (&quot;someone notifies&quot;)</description>
-      <reason>Vague actors fail under stress.</reason>
-    </antipattern>
-    <antipattern>
-      <description>side-effect steps without rollback or STOP branch</description>
-      <reason>Operator gets stuck mid-procedure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no phase budgets</description>
-      <reason>Window-blowing runs go undetected until the second alarm.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing run-record after execution</description>
-      <reason>Without records the runbook cannot improve.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Every step has precondition + actor + artefact + rollback.</item>
-      <item>Each phase carries a wall-clock budget.</item>
-      <item>Run record committed after execution.</item>
-      <item>Escalation criteria explicit.</item>
-      <item>Runbook owner named in header.</item>
+      <item id="f1">side-effect step without rollback or stop_branch (rule r2)</item>
+      <item id="f2">vague actors ("someone notifies") (rule r1)</item>
+      <item id="f3">phase without budget_min (rule r3)</item>
+      <item id="f4">owner forbidden value or on_call empty (rule r5)</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "deprecate-claude-opus-3x-2026-09",
+  "owner": "ruslan@faion.net",
+  "on_call": "ml-oncall-rotation",
+  "deprecation_date": "2026-09-01",
+  "phases": [
+    {
+      "name": "canary",
+      "budget_min": 60,
+      "steps": [
+        {"id": "s1", "actor": "ml-engineer:platform", "action": "flip 1% traffic to claude-opus-4-7", "artefact": "ops-dashboard-url", "rollback": "set traffic_share=0; clear cache"}
+      ]
+    },
+    {
+      "name": "5pct",
+      "budget_min": 240,
+      "steps": [
+        {"id": "s2", "actor": "ml-engineer:platform", "action": "raise to 5% traffic", "artefact": "ops-dashboard-url", "rollback": "rollback to 1%"}
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "on_call": "",
+  "deprecation_date": "soon",
+  "phases": [{"name": "canary", "steps": [{"id": "s1", "actor": "someone", "action": "do it", "artefact": "x"}]}],
+  "version": "v1",
+  "last_reviewed": "yesterday"
+}
+]]></code>
+    <note>owner=team (f4); on_call empty (f4); deprecation_date not ISO; phase missing budget_min (f3); actor=someone (f2); step without rollback or stop_branch (f1).</note>
+  </example>
+
+  <reference path="scripts/validate-provider-deprecation-runbook.py">Validator script</reference>
 </text>

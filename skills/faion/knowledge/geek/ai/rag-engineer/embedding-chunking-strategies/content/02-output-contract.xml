@@ -1,22 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="embedding-chunking-strategies Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Embedding Chunking Strategies Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the chunking-config artefact + examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/embedding-chunking-strategies.json",
+  "type": "object",
+  "required": ["strategy", "size_unit", "chunk_size", "overlap_tokens", "min_tokens", "max_tokens", "bench_recall10"],
+  "properties": {
+    "strategy": {"enum": ["fixed_token", "sentence_aware", "recursive", "semantic", "structural", "header_aware", "per_doc_route"]},
+    "size_unit": {"const": "tokens"},
+    "chunk_size": {"type": "integer", "minimum": 64, "maximum": 4096},
+    "overlap_tokens": {"type": "integer", "minimum": 0, "maximum": 1024},
+    "min_tokens": {"type": "integer", "minimum": 50},
+    "max_tokens": {"type": "integer", "minimum": 100, "maximum": 8192},
+    "bench_recall10": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item id="f1">size_unit != 'tokens' (rule r1)</item>
+      <item id="f2">overlap_tokens / chunk_size &lt; 0.10 on prose strategy (rule r2)</item>
+      <item id="f3">min_tokens &lt;50 (rule r5)</item>
+      <item id="f4">bench_recall10 below baseline (rule r4) — checked at gate stage</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "strategy": "recursive",
+  "size_unit": "tokens",
+  "chunk_size": 512,
+  "overlap_tokens": 64,
+  "min_tokens": 60,
+  "max_tokens": 1024,
+  "bench_recall10": 0.78
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "strategy": "fixed_token",
+  "size_unit": "chars",
+  "chunk_size": 10,
+  "overlap_tokens": 0,
+  "min_tokens": 5,
+  "max_tokens": 100000,
+  "bench_recall10": 0.0
+}
+]]></code>
+    <note>size_unit=chars (f1); zero overlap on prose (f2); min_tokens &lt;50 (f3); max_tokens out of range; bench_recall10=0 (f4).</note>
+  </example>
+
+  <reference path="scripts/validate-embedding-chunking-strategies.py">Validator script</reference>
 </text>

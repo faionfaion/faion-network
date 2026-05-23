@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedding-chunking-strategies Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedding-chunking-strategies as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Embedding Chunking Strategies Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns from chunking-strategy deployments.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Passing raw documents (entire PDFs, large HTML pages) directly to the embedding API without chunking or token counting.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>OpenAI silently truncates at 8191 tokens. The resulting vector represents only the beginning of the document. Retrieval on long documents fails silently.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="char-based-chunking" severity="high">
+      <symptom>CJK / RTL corpus retrieval underperforms by 15+ pp Recall@10; Latin corpus has 60-token chunks.</symptom>
+      <root-cause source="Token-vs-char audits">chunk_size measured in characters; effective token count varies 2-4x across alphabets.</root-cause>
+      <fix>Use the embedder's tokenizer to count tokens. `len(tokenizer.encode(text))`. Set unit=`tokens`.</fix>
+    </antipattern>
+
+    <antipattern id="zero-overlap-on-prose" severity="high">
+      <symptom>Boundary-split sentences become unsearchable; 5-8% Recall@10 lost on prose corpora.</symptom>
+      <root-cause source="Internal — boundary audits">overlap=0 chosen "to save cost".</root-cause>
+      <fix>Set overlap ≥10% of chunk_size on prose strategies. Token cost rises ~10% but recall recovers.</fix>
+    </antipattern>
+
+    <antipattern id="code-with-recursive-splitter" severity="medium">
+      <symptom>Functions split mid-body; retrieval returns half-functions; generator hallucinates the rest.</symptom>
+      <root-cause source="Strategy mismatch">recursive splitter doesn't understand AST.</root-cause>
+      <fix>Use structural strategy (function-boundary) for code: split at top-level def/class only.</fix>
+    </antipattern>
+
+    <antipattern id="oversized-chunks" severity="medium">
+      <symptom>Silent truncation by embedder; recall on long docs degrades.</symptom>
+      <root-cause source="Embedder context limit">max_tokens &gt; embedder context window.</root-cause>
+      <fix>Set max_tokens ≤ embedder context - 64 (safety margin). Reject configs that exceed.</fix>
+    </antipattern>
+
   </section>
 </text>

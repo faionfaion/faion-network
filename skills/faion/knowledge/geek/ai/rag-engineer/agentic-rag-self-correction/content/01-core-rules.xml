@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agentic-rag-self-correction Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agentic-rag-self-correction. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Agentic RAG Self-Correction Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>2 testable rules + 2 terminal conclusions every self-correction loop must enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The faithfulness verifier MUST use a different model (or at minimum a different temperature/run) from the generator. When faithfulness_verifier returns more than 2 ungrounded claims, do NOT surface the answer to the user — either retrieve more context or escalate to human review.</statement>
-      <rationale source="v1-source">The same model tends to confirm its own outputs — a generator that hallucinated will call its own answer faithful. Using a different model (or temperature) for verification breaks this confirmation bias and catches the hallucinations the generator missed.</rationale>
+    <rule id="r1-different-verifier" testable="true" depth="essential">
+      <statement>Faithfulness verifier MUST use a different model than the generator (or different temperature with explicit prompt distancing). When verifier reports &gt;2 ungrounded claims, block surfacing the answer.</statement>
+      <rationale source="Internal — confirmation bias audit">Same model confirms its own outputs; using a different model catches hallucinations the generator missed.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Cap self-correction at max_corrections (recommended 2). When the cap is reached without a verified answer, log all iteration traces and route to human review.</statement>
-      <rationale source="v1-source">Self-correction loops can amplify hallucinations if the verification LLM uses the same model as the generator. A hard cap prevents runaway cost and surfaces persistent failures for corpus review.</rationale>
+
+    <rule id="r2-hard-correction-cap" testable="true" depth="essential">
+      <statement>Self-correction capped at `max_corrections` (default 2). On cap reached without verified answer, log full iteration trace and escalate to human review.</statement>
+      <rationale source="Internal — runaway-correction incidents">Uncapped loops drift and burn budget; humans must see traces.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Hallucination &gt;3% AND distinct verifier available AND latency budget supports 1–3s overhead → wire self-correct.</statement>
+      <rationale source="self">Positive-branch conclusion target.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Hallucination &lt;1% OR only one model available OR latency &lt;2s → skip; verifier overhead exceeds gain.</statement>
+      <rationale source="self">Negative-branch conclusion target.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

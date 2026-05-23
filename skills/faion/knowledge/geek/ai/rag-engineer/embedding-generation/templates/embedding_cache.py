@@ -1,11 +1,9 @@
-"""
-EmbeddingCache — file-based cache for embeddings keyed by SHA-256(model + text).
-
-Usage:
-    cache = EmbeddingCache(cache_dir=".embedding_cache")
-    vec = cache.get("hello world", "text-embedding-3-small")  # None if miss
-    cache.set("hello world", "text-embedding-3-small", [0.1, 0.2, ...])
-"""
+# purpose: EmbeddingCache — file-based cache keyed by SHA-256(model + text).
+# consumes: cache_dir path + (text, model_name) pairs
+# produces: cached embedding vectors persisted to disk
+# depends-on: content/01-core-rules.xml r3 (SHA-256 keys mandatory)
+# token-budget-impact: 0 LLM tokens; disk I/O only
+"""EmbeddingCache — file-based fallback when Redis/Valkey unavailable."""
 from __future__ import annotations
 
 import hashlib

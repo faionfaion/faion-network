@@ -3,77 +3,100 @@ slug: pii-scrubbing-recipe-for-eval-sets
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Pii Scrubbing Recipe For Eval Sets: codified ai practice that turns the recurring 'role-ml-engineer/Build a production eval harness from scratch' decision into a repeatable, auditable artefact.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Codified recipe to convert raw production traffic into a safe evaluation set — PII scrub rules, consent labels, retention window, audit trail.
 content_id: "fbfed86b43e6f3ea"
-tags: [pii-scrubbing-recipe-for-eval-sets, ai, geek]
+complexity: medium
+produces: spec
+est_tokens: 3600
+tags: [pii, eval-set, privacy, gdpr, retention]
 ---
-# Pii Scrubbing Recipe For Eval Sets
+# PII Scrubbing Recipe for Eval Sets
 
 ## Summary
 
-**One-sentence:** Pii Scrubbing Recipe For Eval Sets: codified ai practice that turns the recurring 'role-ml-engineer/Build a production eval harness from scratch' decision into a repeatable, auditable artefact.
+**One-sentence:** Codified recipe to convert raw production traffic into a safe evaluation set — PII scrub rules, consent labels, retention window, audit trail.
 
-**One-paragraph:** Pii Scrubbing Recipe For Eval Sets addresses the gap identified by the role-ml-engineer/Build a production eval harness from scratch playbook: How to safely turn raw prod traffic into an evaluation set (PII scrub, consent, retention). Required for any harness drawing from real users. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Building an eval harness from real user traffic exposes the team to PII, consent, and retention risk. This methodology produces a versioned spec that names the scrub strategy (regex + ML detector + human review), the consent label per row, the retention window, and the audit trail. Output is a `pii-scrub-spec.json` artefact that downstream eval-harness builds consume; without it the eval set is GDPR-noncompliant and untraceable.
+
+**Ефективно для:**
+
+- Production eval harness, що споживає реальний user traffic.
+- GDPR / CCPA-regulated context з vague legal guidance.
+- Долі consent labels + retention window треба зафіксувати перед індексацією.
+- Audit trail для downstream reviewers (security, legal, ML-ops).
+- Версіонування scrub-recipe — щоб updates були diff-able and reversible.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ml-engineer/Build a production eval harness from scratch OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Eval harness will draw from production traffic (not synthetic).
+- Team has a named accountable owner (handle / role-with-rotation).
+- Repository / wiki space хранить the versioned artefact.
+- Tier ≥ geek (manifest enforces).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- All eval data is synthetic — no PII risk, no scrub recipe needed.
+- Working eval-set spec already exists — update in place, do not duplicate.
+- Regulator mandates a different template — defer to legal.
+- Greenfield prototype без real users.
 
 ## Prerequisites
 
-- recent context for the role-ml-engineer/Build a production eval harness from scratch task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Sample of production traffic (≥100 rows, redactable copy) | JSONL | data warehouse |
+| Consent dictionary (user_id → consent flags) | YAML | consent service |
+| Retention policy (days, per-row class) | YAML | legal repo |
+| PII regex catalog (emails / phones / addresses / IDs) | YAML | platform security |
+| Named accountable owner | string (handle) | ownership log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+| `geek/ai/ml-engineer` | parent role skill — provides ML-engineer operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 hard rules + run-checklist + skip terminal | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for pii-scrub-spec + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: sample → classify → scrub → consent → audit | ~800 |
+| `content/05-examples.xml` | essential | Worked example: 500-row sample → final spec | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes traffic-class + consent state to scrub strategy | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-spec` | haiku | Template fill, bounded. |
+| `pick-scrub-strategy` | sonnet | Per-row judgment: regex enough vs ML detector. |
+| `legal-review-synthesis` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pii-scrubbing-recipe-for-eval-sets.json` | JSON schema for the Pii Scrubbing Recipe For Eval Sets output contract |
-| `templates/pii-scrubbing-recipe-for-eval-sets.md` | Markdown skeleton with the required fields |
+| `templates/pii-scrub-spec.json` | JSON skeleton matching 02-output-contract schema. |
+| `templates/pii-scrub-spec.md` | Markdown skeleton for narrative review draft. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pii-scrubbing-recipe-for-eval-sets.py` | Enforce Pii Scrubbing Recipe For Eval Sets output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-pii-scrubbing-recipe-for-eval-sets.py` | Validate pii-scrub-spec against 02-output-contract schema | Pre-commit + before downstream eval-harness build |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- upstream playbook: `role-ml-engineer/Build a production eval harness from scratch`
+- [[production-trace-mining-for-training-data]]
+- [[rag-corpus-discovery-interview]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree decides between regex-only scrub (low PII density, well-known formats) vs ML-detector + human review (high PII density or free-form). It also routes consent-missing rows out of the eval set entirely. Walk it before drafting the spec; choosing regex on free-form text leaks PII.

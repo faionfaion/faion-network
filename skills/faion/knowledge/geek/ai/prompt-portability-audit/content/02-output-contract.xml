@@ -1,44 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Prompt Portability Audit — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>An audit report: bounded scope, criterion-tagged findings, severity + owner + deadline per finding, and a reproducible evidence package.</summary>
+<text id="02-output-contract" title="Prompt Portability Audit Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the portability-audit-report artefact + valid/invalid examples.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>scope.artefact_set (paths / repos / ids)</item>
-      <item>finding.criterion (rule_id / policy_line)</item>
-      <item>finding.severity (low|medium|high)</item>
-      <item>finding.owner + finding.deadline</item>
-      <item>finding.evidence (query / screenshot / link)</item>
-      <item>report.followup_backlog_link</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/prompt-portability-audit.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "scope_paths", "findings", "followup_backlog_link", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]{3,64}$"},
+    "owner": {"type": "string", "minLength": 3, "not": {"enum": ["team", "we", "us", "engineering"]}},
+    "scope_paths": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "criterion", "severity", "owner", "deadline", "evidence", "description"],
+        "properties": {
+          "id": {"type": "string"},
+          "criterion": {"type": "string", "minLength": 2},
+          "severity": {"enum": ["low", "medium", "high"]},
+          "owner": {"type": "string", "minLength": 3},
+          "deadline": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+          "evidence": {"type": "string", "minLength": 3},
+          "description": {"type": "string", "minLength": 5}
+        }
+      },
+      "minItems": 1
+    },
+    "followup_backlog_link": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>findings without criterion</description>
-      <reason>Devolves into debate.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner / deadline missing</description>
-      <reason>Becomes organisational debt.</reason>
-    </antipattern>
-    <antipattern>
-      <description>evidence not reproducible</description>
-      <reason>Cannot be verified at remediation.</reason>
-    </antipattern>
-    <antipattern>
-      <description>self-attested closure without auditor verification</description>
-      <reason>Findings reopen later.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Scope frozen before audit start.</item>
-      <item>Every finding cites a criterion.</item>
-      <item>Severity + owner + deadline on every finding.</item>
-      <item>Evidence reproducible by second auditor.</item>
-      <item>Follow-up backlog linked.</item>
+      <item id="f1">findings without criterion (rule r2)</item>
+      <item id="f2">findings without owner or deadline (rule r3)</item>
+      <item id="f3">evidence not reproducible (e.g. "I saw it once") (rule r4)</item>
+      <item id="f4">no followup_backlog_link (rule r5)</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "portability-audit-support-bot-2026q2",
+  "owner": "ruslan@faion.net",
+  "scope_paths": ["git://faion/prompts/support-bot.yaml@a1b2c3d"],
+  "findings": [
+    {
+      "id": "f1",
+      "criterion": "claude-xml-thinking-tag",
+      "severity": "high",
+      "owner": "viktoria@faion.net",
+      "deadline": "2026-07-01",
+      "evidence": "git://faion/prompts/support-bot.yaml@a1b2c3d#L42",
+      "description": "Uses <thinking> XML tag — OpenAI does not support; refusal-style differs."
+    }
+  ],
+  "followup_backlog_link": "https://github.com/faion/issues?q=label:portability",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "scope_paths": [],
+  "findings": [{"id": "f1", "description": "something"}],
+  "followup_backlog_link": "",
+  "version": "v1",
+  "last_reviewed": "yesterday"
+}
+]]></code>
+    <note>owner=team; scope empty; finding missing criterion+severity+owner+deadline+evidence (f1, f2, f3); no backlog link (f4).</note>
+  </example>
+
+  <reference path="scripts/validate-prompt-portability-audit.py">Validator script</reference>
 </text>

@@ -3,82 +3,101 @@ slug: rag-bench-harness-template
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Spec for a reusable RAG bench harness — corpus snapshot, query set, retriever runners, eval metrics, leaderboard schema — so chunking-strategy comparisons stop being hand-wave.
 content_id: "f322cb606e103006"
-summary: RAG Bench Harness Template — pinned template for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so rag chunking strategy bench stops being folklore and starts being a reviewable operating tool.
-tags: [ai, geek, template, rag, bench, harness]
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [rag, bench-harness, chunking, eval, leaderboard]
 ---
 # RAG Bench Harness Template
 
 ## Summary
 
-**One-sentence:** RAG Bench Harness Template — pinned template for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so rag chunking strategy bench stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Spec for a reusable RAG bench harness — corpus snapshot, query set, retriever runners, eval metrics, leaderboard schema — so chunking-strategy comparisons stop being hand-wave.
 
-**One-paragraph:** In AI / agent engineering, the LLM-agent developer runs rag chunking strategy bench on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Existing RAG eval methodologies are atomic; a wire-it-together harness (corpus snapshot, queries, runners, leaderboard) is missing. `rag-bench-harness-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the LLM-agent developer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Existing RAG eval methodologies are atomic (rag-eval-metrics, rag-eval-ab-testing). A wire-it-together harness that runs a chunking experiment end-to-end is missing. This methodology produces a `rag-bench-spec.json` artefact pinning corpus snapshot, query set, retriever runners, eval metrics (Recall@k, MRR, faithfulness), and a leaderboard schema. Output is a versioned harness consumed by chunking-strategy A/Bs.
+
+**Ефективно для:**
+
+- Chunking strategy bench (recurring, weekly or quarterly).
+- Compare retrievers (BM25 vs dense vs hybrid) on the same corpus.
+- Reproducible eval — corpus snapshot pinned by sha.
+- Leaderboard schema для cross-strategy comparison.
+- Bridge до downstream `[[prompt-ab-power-calculator]]` для chunking A/B.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p7-llm-agent-developer/RAG chunking strategy bench`
-- the LLM-agent developer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Recurring RAG bench on the operating cadence.
+- Corpus + query set committable to repo.
+- Named accountable owner.
+- Eval metrics agreed (Recall@k / MRR / faithfulness).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot bench without recurrence.
+- No corpus snapshot can be committed (purely-live or licensed-only data).
+- Fewer than 3 instances per year.
+- No named owner.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the LLM-agent developer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Corpus snapshot | sha-pinned dataset | warehouse |
+| Query set with gold labels | JSONL | eval repo |
+| Retriever runner catalog (BM25, dense, hybrid) | YAML | service repo |
+| Eval metric definitions | YAML | eval repo |
+| Named accountable owner | string | ownership log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `[[prompt-ab-power-calculator]]` | Computes sample size for A/B variants. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules + run/skip terminals | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for rag-bench-spec + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns | ~900 |
+| `content/04-procedure.xml` | essential | 5-step: snapshot → query set → runners → metrics → leaderboard | ~700 |
+| `content/05-examples.xml` | essential | Worked example: chunking-bench on 50k doc corpus | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes corpus type to retriever set | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `snapshot-corpus` | haiku | Mechanical. |
+| `pick-runners` | sonnet | Per-corpus judgment. |
+| `metric-validation` | opus | Cross-metric reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/rag-bench-spec.json` | JSON skeleton matching 02-output-contract. |
+| `templates/rag-bench-spec.md` | Narrative review draft. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-rag-bench-harness-template.py` | Validate rag-bench-spec | Pre-commit + before bench run |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[prompt-ab-power-calculator]]
+- [[rag-corpus-discovery-interview]]
+- [[production-trace-mining-for-training-data]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree picks retriever set based on corpus type (free-form prose, structured docs, code) and metric set based on task (retrieval vs generation). Walk it before drafting the spec.

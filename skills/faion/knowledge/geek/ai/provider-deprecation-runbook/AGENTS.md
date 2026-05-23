@@ -3,82 +3,103 @@ slug: provider-deprecation-runbook
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Runbook for safe LLM provider/model deprecation — phased rollout, canaries, kill-switch, run-record so deprecation becomes a calendar item, not a fire.
 content_id: "2f08662260332adc"
-summary: Provider Deprecation Runbook — pinned runbook for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so model / provider upgrade safety pass stops being folklore and starts being a reviewable operating tool.
-tags: [ai, geek, runbook, provider, deprecation]
+complexity: medium
+produces: playbook-step
+est_tokens: 3500
+tags: [runbook, deprecation, llm-ops, canary, rollback]
 ---
 # Provider Deprecation Runbook
 
 ## Summary
 
-**One-sentence:** Provider Deprecation Runbook — pinned runbook for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so model / provider upgrade safety pass stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Runbook for safe LLM provider/model deprecation — phased rollout, canaries, kill-switch, run-record so deprecation becomes a calendar item, not a fire.
 
-**One-paragraph:** In AI / agent engineering, the ML engineer runs model / provider upgrade safety pass on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Providers deprecate on their schedule; teams need a runbook so deprecation is a calendar item, not a fire. `provider-deprecation-runbook` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the ML engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored runbook committed to the team's knowledge space.
+**One-paragraph:** Providers deprecate on their own schedule (Anthropic retires models, OpenAI sunsets endpoints, Gemini bumps versions). Without a runbook, teams discover the deprecation at the 4xx error rate spike. This methodology produces a `provider-deprecation-runbook.json` artefact with phased steps (precondition / actor / action / artefact / rollback / phase budget) and a run-record schema. Output is consumable by ops automation; deprecation becomes a calendar event.
+
+**Ефективно для:**
+
+- Plan model deprecation як calendar item, не fire.
+- Phased rollout: canary → 5% → 50% → 100%.
+- Kill-switch + rollback path explicit на кожному step'у.
+- Run-record schema для post-run audit.
+- Coordinate cross-team handoffs (ML-eng → on-call → product).
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ml-engineer/Model / provider upgrade safety pass`
-- the ML engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Production AI feature relies on a single provider/model.
+- Deprecation calendar known (date or signalled).
+- Named accountable owner + on-call escalation path.
+- Repo hosts the versioned runbook.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Multi-provider portability already locked (use rollback path of the portability spec).
+- Provider has not announced deprecation AND no quarterly drill needed.
+- Single-person team without on-call rotation.
+- No named owner.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the ML engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Deprecation announcement / date | text + url | provider docs |
+| Current provider config | YAML | service repo |
+| Replacement provider config (drafted) | YAML | service repo |
+| Eval harness baseline | JSON | eval repo |
+| Kill-switch hook | code reference | platform |
+| Named accountable owner + on-call | strings | ownership log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `[[prompt-portability-across-providers]]` | Spec defines the abstracted interface. |
+| `[[prompt-portability-audit]]` | Pre-migration audit feed. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules + run/skip terminals | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for runbook + run-record | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns | ~900 |
+| `content/04-procedure.xml` | essential | 5-step: announce → canary → 5% → 50% → 100% with kill-switch | ~800 |
+| `content/05-examples.xml` | essential | Worked example: Claude Opus 3.x → 4.7 deprecation | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes deprecation state to phase | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-runbook` | sonnet | Step-list judgment with rollback per step. |
+| `compute-phase-budgets` | haiku | Mechanical timing. |
+| `incident-response` | opus | Live triage under stress. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/provider-deprecation-runbook.json` | JSON skeleton matching 02-output-contract. |
+| `templates/provider-deprecation-runbook.md` | Narrative runbook template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-provider-deprecation-runbook.py` | Validate runbook | Pre-commit + before deprecation day |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[prompt-portability-across-providers]]
+- [[prompt-portability-audit]]
+- [[prompt-pr-review-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree picks the current phase (precondition / canary / 5% / 50% / 100%) based on canary-eval delta + error rate. Walk it before every phase transition.

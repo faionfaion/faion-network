@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Embedding Caching Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure from backend pick to deployed cache.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="pick-backend">
+      <input>infra catalog (Redis/Valkey/Dynamo/memory)</input>
+      <action>Pick backend matching latency + persistence needs. Multi-tenant → shared backend.</action>
+      <output>backend choice + connection</output>
+    </step>
+    <step n="2" name="define-key">
+      <input>model_name + model_version + text</input>
+      <action>Compose key `f"{model_name}:{model_version}:{sha256(text)}"`. MD5 rejected.</action>
+      <output>key generator</output>
+    </step>
+    <step n="3" name="set-ttl">
+      <input>model deprecation calendar</input>
+      <action>TTL = min(days_to_deprecation, 365). Bind hook to deprecation event for full flush.</action>
+      <output>TTL config + flush hook</output>
+      <decision-gate>ttl_days ≤365 (rule r3)</decision-gate>
+    </step>
+    <step n="4" name="instrument-metric">
+      <input>observability platform</input>
+      <action>Emit `embedding_cache.hit` / `.miss` per call. Set alert at hit_rate &lt; 5% over 30 days.</action>
+      <output>metric pipeline</output>
+    </step>
+    <step n="5" name="validate-and-deploy">
+      <input>config + smoke test</input>
+      <action>Run validator; smoke-test (same text twice → second hits cache); deploy.</action>
+      <output>deployed cache</output>
+    </step>
+  </section>
+</text>

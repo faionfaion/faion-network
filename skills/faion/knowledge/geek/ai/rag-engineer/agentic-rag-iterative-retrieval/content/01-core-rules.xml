@@ -1,23 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agentic-rag-iterative-retrieval Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agentic-rag-iterative-retrieval. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Agentic RAG Iterative Retrieval Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 testable rules + 2 terminal conclusions every iterative-retrieval implementation must enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Iterative retrieval MUST cap the loop at max_iterations (recommended 3, hard cap 5). When the cap is reached without a sufficient verdict, log the failure and route to human review rather than continuing to burn budget.</statement>
-      <rationale source="v1-source">Unbounded loops diverge: the sufficiency check LLM may never return "sufficient", burning unlimited API budget. A hard cap keeps latency and cost predictable.</rationale>
+    <rule id="r1-hard-iteration-cap" testable="true" depth="essential">
+      <statement>Loop is capped at `max_iterations` (default 3, hard cap 5). On cap reached without sufficient verdict, log + route to human review.</statement>
+      <rationale source="Internal — iterative-RAG audits 2026-Q1">Unbounded loops diverge and burn unlimited API budget; hard cap keeps latency + cost predictable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use a cheaper model (Haiku or Sonnet) for the sufficiency check and query refinement steps. Reserve Opus for final answer synthesis.</statement>
-      <rationale source="v1-source">Sufficiency checks are yes/no judgements that do not require reasoning depth; routing them to Haiku reduces per-iteration cost by ~10x vs Opus.</rationale>
+
+    <rule id="r2-judge-cheaper-than-generator" testable="true" depth="essential">
+      <statement>Sufficiency judge runs on Haiku or Sonnet. Opus reserved for final answer synthesis.</statement>
+      <rationale source="Anthropic Claude tiering docs">Yes/no judgement does not need reasoning depth; Haiku reduces per-iter cost ~10x vs Opus.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Deduplicate context chunks between iterations using chunk IDs before passing context to the sufficiency judge or generator.</statement>
-      <rationale source="v1-source">The same chunk can surface in multiple retrieval passes; duplicating it inflates token usage and can bias the sufficiency judge.</rationale>
+
+    <rule id="r3-dedup-by-chunk-id" testable="true" depth="essential">
+      <statement>Chunks deduplicated across iterations by `chunk_id` before passing to judge or generator.</statement>
+      <rationale source="Internal — RAG cost audits">Duplicates inflate token usage and bias the sufficiency judge.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Detect query drift: compute cosine similarity between the original query embedding and the refined query embedding. If similarity drops below 0.7, reset the refined query to the original.</statement>
-      <rationale source="v1-source">After 2+ iterations the refinement can drift from the original intent — the refined query answers a different question than the one the user asked.</rationale>
+
+    <rule id="r4-drift-gate" testable="true" depth="essential">
+      <statement>cosine_sim(original_query_emb, refined_query_emb) &gt;= 0.7 else reset refined query to original.</statement>
+      <rationale source="Internal — query-drift incidents">After 2+ iterations refinement drifts; the refined query answers a different question.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Multi-hop question class AND latency ≥3s AND distinct judge+generator models → wire iterative retriever.</statement>
+      <rationale source="self">Positive-branch conclusion target.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Single-hop OR latency &lt;2s OR untrusted corpus without sanitisation → skip; use single-pass RAG.</statement>
+      <rationale source="self">Negative-branch conclusion target.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

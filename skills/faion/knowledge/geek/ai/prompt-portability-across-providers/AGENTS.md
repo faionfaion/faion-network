@@ -3,82 +3,102 @@ slug: prompt-portability-across-providers
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Spec to rewrite a prompt suite for cross-provider portability — Anthropic + OpenAI + Gemini — without breaking users on the next model upgrade.
 content_id: "bb830042e5c5a40f"
-summary: Prompt Portability Across Providers — pinned method for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so migrate an ai feature across a model upgrade without breaking users stops being folklore and starts being a reviewable operating tool.
-tags: [ai, geek, method, prompt, portability, across, providers]
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [portability, claude, openai, gemini, multi-provider, prompt-engineering]
 ---
 # Prompt Portability Across Providers
 
 ## Summary
 
-**One-sentence:** Prompt Portability Across Providers — pinned method for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so migrate an ai feature across a model upgrade without breaking users stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Spec to rewrite a prompt suite for cross-provider portability — Anthropic + OpenAI + Gemini — without breaking users on the next model upgrade.
 
-**One-paragraph:** In AI / agent engineering, the ML engineer runs migrate an ai feature across a model upgrade without breaking users on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Engineers building AI INTO products often need provider redundancy (Anthropic primary + OpenAI fallback). No methodology covers how prompts must be rewritten/abstracted to stay portable (tool-use schemas, system-prompt placement, reasoning blocks, refusal styles). `prompt-portability-across-providers` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the ML engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Production AI features need provider redundancy (Anthropic primary + OpenAI fallback, Gemini Pro for vision). Prompts encode provider-specific structure: Claude's XML tags, OpenAI's developer/user roles, Gemini's safety blocks, refusal styles. This methodology produces a `portability-spec.json` artefact pinning the abstraction layer (system prompt placement, tool-call schema, reasoning-block strategy, refusal handler) so the same prompt suite runs on any of N providers. Output is versioned + owned + reviewed.
+
+**Ефективно для:**
+
+- AI features з multi-provider redundancy (Anthropic + OpenAI + Gemini).
+- Migrate AI feature across model upgrade without breaking users.
+- Strip provider-specific tags from existing prompts.
+- Abstract tool-call schemas через a common adapter.
+- Refusal-style normalisation across providers.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ml-engineer/Migrate an AI feature across a model upgrade without breaking users`
-- the ML engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Recurring need to migrate prompts across providers / model generations.
+- ≥2 provider runtimes in production OR planned within the quarter.
+- Named accountable owner.
+- Repository hosts the versioned spec.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Single-provider product without redundancy plans.
+- One-shot migration with no recurrence.
+- Fewer than 3 instances per year.
+- No named owner.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the ML engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Current prompt suite | Markdown / YAML | git |
+| Provider matrix (which providers + which features) | YAML | platform |
+| Tool catalog (functions + schemas) | YAML | service repo |
+| Refusal-style policy | Markdown | safety repo |
+| Named accountable owner | string | ownership log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `[[prompt-portability-audit]]` | Pre-migration audit. |
+| `[[prompt-pr-review-checklist]]` | Downstream review gate. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules + run/skip terminals | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for portability-spec + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns | ~900 |
+| `content/04-procedure.xml` | essential | 5-step: pick providers → audit → abstract → test → commit | ~800 |
+| `content/05-examples.xml` | essential | Worked example: Claude+OpenAI dual stack | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes provider matrix to abstraction strategy | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `audit-current` | sonnet | Per-prompt judgment. |
+| `abstract-tool-schemas` | opus | Multi-provider abstraction reasoning. |
+| `refusal-normalize` | sonnet | Per-style rewrite. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/portability-spec.json` | JSON skeleton matching 02-output-contract. |
+| `templates/portability-spec.md` | Narrative review draft. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-prompt-portability-across-providers.py` | Validate portability-spec | Pre-commit + before migration job |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[prompt-portability-audit]]
+- [[provider-deprecation-runbook]]
+- [[prompt-pr-review-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes to a single-provider exit if no redundancy is planned; otherwise picks the abstraction layer (tool-schema adapter vs system-prompt rewrite vs both) based on the provider matrix. Walk it before opening the migration PR.

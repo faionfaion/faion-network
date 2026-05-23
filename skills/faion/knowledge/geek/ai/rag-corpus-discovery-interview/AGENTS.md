@@ -3,82 +3,101 @@ slug: rag-corpus-discovery-interview
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Structured SME interview that audits the corpus (sources, freshness, sensitivity, licensing) before any embedding choice — five-interview minimum before synthesis.
 content_id: "ee543e0bd8ba9c0b"
-summary: RAG Corpus Discovery Interview — pinned interview for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so embed rag into an existing product stops being folklore and starts being a reviewable operating tool.
-tags: [ai, geek, interview, rag, corpus, discovery]
+complexity: medium
+produces: report
+est_tokens: 3500
+tags: [discovery, interview, rag, sme, corpus]
 ---
 # RAG Corpus Discovery Interview
 
 ## Summary
 
-**One-sentence:** RAG Corpus Discovery Interview — pinned interview for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so embed rag into an existing product stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Structured SME interview that audits the corpus (sources, freshness, sensitivity, licensing) before any embedding choice — five-interview minimum before synthesis.
 
-**One-paragraph:** In AI / agent engineering, the ML engineer runs embed rag into an existing product on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Before any embedding choice, the ML engineer needs a structured way to interview SMEs and audit the corpus (sources, freshness, sensitivity, licensing). Current rag-architecture jumps straight to design. `rag-corpus-discovery-interview` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the ML engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored interview committed to the team's knowledge space.
+**One-paragraph:** Current rag-architecture methodology jumps to chunking + embedding without auditing the corpus. Wrong corpus → wrong embeddings → wrong retriever. This methodology produces a `corpus-discovery-report.json` based on ≥5 SME interviews (past-behaviour anchored, non-leading prompts) with full transcripts and tagged-quote evidence. Output: a versioned interview bundle the RAG engineer consumes before picking chunking strategy.
+
+**Ефективно для:**
+
+- Embed RAG в existing product — audit corpus state перед wiring.
+- 5+ SME interviews для розуміння corpus realities.
+- Non-leading prompts; past-behaviour anchored questions.
+- Transcripts + tagged-quote evidence для synthesis.
+- Bridge до downstream [[rag-bench-harness-template]] спеку.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ml-engineer/Embed RAG into an existing product`
-- the ML engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- RAG project planning kickoff — pre-architecture phase.
+- ≥5 SMEs available within the review window.
+- Recording + transcript pipeline available.
+- Named accountable owner.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Corpus already documented in a recent (≤6mo) audit.
+- &lt;5 SMEs available (would-be synthesis premature).
+- One-shot prototype with no production stakes.
+- No recording / transcript capability (notes-only is rejected).
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the ML engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| SME roster (≥5 names + roles) | YAML | platform |
+| Interview guide template | Markdown | research repo |
+| Recording + transcript tools | tool config | research repo |
+| Consent forms | PDF | legal |
+| Named accountable owner | string | ownership log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `[[rag-bench-harness-template]]` | Downstream consumer of corpus audit findings. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules + run/skip terminals | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for corpus-discovery-report + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns | ~900 |
+| `content/04-procedure.xml` | essential | 5-step: roster → schedule → interview → transcribe → synthesise | ~700 |
+| `content/05-examples.xml` | essential | Worked example: 7-SME KB audit | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes interview count + consent state to synthesis | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-guide` | sonnet | Anti-leading-question rewriting. |
+| `tag-quotes` | sonnet | Per-quote evidence tagging. |
+| `synthesise-findings` | opus | Cross-interview pattern detection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/corpus-discovery-report.json` | JSON skeleton matching 02-output-contract. |
+| `templates/corpus-discovery-report.md` | Narrative interview-bundle template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-rag-corpus-discovery-interview.py` | Validate corpus-discovery-report | Pre-commit + before rag-bench spec |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[rag-bench-harness-template]]
+- [[production-trace-mining-for-training-data]]
+- [[pii-scrubbing-recipe-for-eval-sets]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree blocks synthesis if interview count &lt;5 or consent missing; routes to rag-bench spec on green. Walk it before claiming "we know the corpus".

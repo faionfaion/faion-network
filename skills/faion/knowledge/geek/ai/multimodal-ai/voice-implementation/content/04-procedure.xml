@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Voice Implementation Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six-step procedure from latency-budget assessment to deployed WebSocket endpoint with per-turn audit.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="pick-stack">
+      <input>latency_budget_ms, privacy constraints, microphone environment</input>
+      <action>If budget &lt;300ms and provider acceptable → choose `openai_realtime`. Else choose `stt_llm_tts`.</action>
+      <output>`stack` value in config</output>
+      <decision-gate>budget &lt; 300 → realtime; else chain</decision-gate>
+    </step>
+    <step n="2" name="pick-vad">
+      <input>microphone environment (silent booth vs office vs mobile)</input>
+      <action>Default Silero (`torch.hub.load('snakers4/silero-vad', 'silero_vad')`). Use WebRTC if torch dependency unwanted.</action>
+      <output>`vad` value in config + initialised VAD client</output>
+      <decision-gate>energy VAD blocked unless silent booth</decision-gate>
+    </step>
+    <step n="3" name="wire-state-machine">
+      <input>VAD client, STT/Realtime endpoint, LLM client, TTS client</input>
+      <action>Build state machine IDLE → LISTENING → PROCESSING → SPEAKING → IDLE with explicit transition guards.</action>
+      <output>`ProductionVoiceAgent` class</output>
+    </step>
+    <step n="4" name="register-tools">
+      <input>tool catalog (sync + async)</input>
+      <action>For each tool: if blocking, wrap call with `asyncio.to_thread`; if async, await directly. Reject mixing sync registration with async tools.</action>
+      <output>tool dispatcher with explicit executor mode</output>
+      <decision-gate>any registered tool must have a declared execution mode</decision-gate>
+    </step>
+    <step n="5" name="post-process-output">
+      <input>raw LLM text</input>
+      <action>Strip markdown (`re.sub(r'[*_`#&gt;]', '', text)`); cap output to `max_response_tokens`. Apply sliding window to history before next turn.</action>
+      <output>cleaned text → TTS</output>
+    </step>
+    <step n="6" name="wrap-ws-endpoint">
+      <input>agent instance, FastAPI app</input>
+      <action>Mount `/ws/voice` endpoint. Catch `WebSocketDisconnect` separately; on every turn write audit row with all 5 fields.</action>
+      <output>FastAPI WebSocket route + audit log writer</output>
+      <decision-gate>audit row must contain all 5 fields or the turn is rejected</decision-gate>
+    </step>
+  </section>
+</text>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="PII Scrubbing Recipe Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure from traffic sample to validated pii-scrub-spec artefact.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="sample-and-classify">
+      <input>≥100 production rows + PII regex catalog</input>
+      <action>Classify each row's PII density (none / low / high) using regex hit count.</action>
+      <output>per-row classification table</output>
+      <decision-gate>if &gt;30% rows classified `high` → scrub mode must include ML detector</decision-gate>
+    </step>
+    <step n="2" name="pick-scrub-strategy">
+      <input>classification table + consent dictionary</input>
+      <action>Choose `regex_only` (low density + structured formats) or `regex_plus_ml` (mixed) or `ml_plus_human_review` (free-form / regulated).</action>
+      <output>`scrub_strategy.mode` + rules list</output>
+    </step>
+    <step n="3" name="bind-consent">
+      <input>consent dictionary path + consent flag field name</input>
+      <action>Pin `consent_label_field`. Drop rows where flag missing.</action>
+      <output>`consent_label_field` value + drop-count</output>
+      <decision-gate>any row entering eval set must have consent flag = true</decision-gate>
+    </step>
+    <step n="4" name="set-retention">
+      <input>legal retention policy YAML</input>
+      <action>Pick `retention_days` matching the strictest applicable class.</action>
+      <output>`retention_days` integer</output>
+    </step>
+    <step n="5" name="audit-and-commit">
+      <input>draft pii-scrub-spec.json</input>
+      <action>Run `validate-pii-scrubbing-recipe-for-eval-sets.py`. Commit on green.</action>
+      <output>validated `pii-scrub-spec.json` artefact + version bump</output>
+      <decision-gate>validator must exit 0 before commit</decision-gate>
+    </step>
+  </section>
+</text>

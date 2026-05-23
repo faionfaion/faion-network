@@ -1,22 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="embedding-applications Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Embedding Applications Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the embedding-pipeline-config artefact + examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/embedding-applications.json",
+  "type": "object",
+  "required": ["model_name", "model_version", "provider", "batch_size", "normalize", "metric", "domain_bench_path", "recall10_threshold", "vector_metadata_fields"],
+  "properties": {
+    "model_name": {"type": "string", "minLength": 2},
+    "model_version": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["openai", "cohere", "voyage", "google", "azure", "local"]},
+    "batch_size": {"type": "integer", "minimum": 32, "maximum": 2048},
+    "normalize": {"type": "boolean", "const": true},
+    "metric": {"enum": ["cosine", "dot_product", "l2"]},
+    "domain_bench_path": {"type": "string", "minLength": 3},
+    "recall10_threshold": {"type": "number", "minimum": 0.5, "maximum": 1.0},
+    "vector_metadata_fields": {"type": "array", "items": {"enum": ["model_name", "model_version", "created_at"]}, "minItems": 3}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item id="f1">batch_size &lt;32 or &gt;2048 (rule r5)</item>
+      <item id="f2">normalize=false with metric=cosine (rule r3)</item>
+      <item id="f3">domain_bench_path empty (rule r1)</item>
+      <item id="f4">vector_metadata_fields missing model_name OR model_version (rule r7)</item>
+      <item id="f5">recall10_threshold &lt;0.5 (rule r4)</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "model_name": "text-embedding-3-large",
+  "model_version": "2026-04",
+  "provider": "openai",
+  "batch_size": 256,
+  "normalize": true,
+  "metric": "cosine",
+  "domain_bench_path": "git://faion/eval/embed-bench-q2.jsonl",
+  "recall10_threshold": 0.7,
+  "vector_metadata_fields": ["model_name", "model_version", "created_at"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "model_name": "x",
+  "model_version": "",
+  "provider": "unknown",
+  "batch_size": 5000,
+  "normalize": false,
+  "metric": "cosine",
+  "domain_bench_path": "",
+  "recall10_threshold": 0.1,
+  "vector_metadata_fields": []
+}
+]]></code>
+    <note>batch_size&gt;2048 (f1); normalize=false with cosine (f2); domain_bench_path empty (f3); metadata fields missing (f4); recall threshold too low (f5).</note>
+  </example>
+
+  <reference path="scripts/validate-embedding-applications.py">Validator script</reference>
 </text>

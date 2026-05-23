@@ -1,44 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Prompt PR Review Checklist — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A pause-point structured checklist (5–9 items per pause-point), each item with named executor and completion artefact, owned and quarterly-reviewed.</summary>
+<text id="02-output-contract" title="Prompt PR Review Checklist Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the prompt-pr-checklist artefact + valid/invalid examples.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>header.owner</item>
-      <item>header.mode (READ-DO or DO-CONFIRM per pause-point)</item>
-      <item>header.last_reviewed (≤ 90 days)</item>
-      <item>item.executor (role)</item>
-      <item>item.artefact (link / screenshot / sign-off id)</item>
-      <item>item.killer_anchor (incident_id / policy / postmortem) for every item</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/prompt-pr-review-checklist.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "mode", "pause_points", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]{3,64}$"},
+    "owner": {"type": "string", "minLength": 3, "not": {"enum": ["team", "we", "us", "engineering"]}},
+    "mode": {"enum": ["READ-DO", "DO-CONFIRM"]},
+    "pause_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "items"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "items": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 9,
+            "items": {
+              "type": "object",
+              "required": ["id", "statement", "executor", "artefact", "killer_anchor"],
+              "properties": {
+                "id": {"type": "string"},
+                "statement": {"type": "string", "minLength": 5},
+                "executor": {"type": "string", "minLength": 2},
+                "artefact": {"type": "string", "minLength": 2},
+                "killer_anchor": {"type": "string", "minLength": 3}
+              }
+            }
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>items without a killer-anchor</description>
-      <reason>Decorative items rot the checklist.</reason>
-    </antipattern>
-    <antipattern>
-      <description>pause-point &gt; 9 items</description>
-      <reason>Working memory cap exceeded; items get skipped.</reason>
-    </antipattern>
-    <antipattern>
-      <description>anonymous items</description>
-      <reason>Owner-less items become &apos;somebody else&apos;s job&apos;.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing or stale last_reviewed</description>
-      <reason>Drift from operating reality.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Mode (READ-DO / DO-CONFIRM) named at header.</item>
-      <item>Each pause-point sized 5–9 items.</item>
-      <item>Every item ties to an executor + artefact + killer-anchor.</item>
-      <item>Owner + last_reviewed populated and current.</item>
-      <item>Quarterly review scheduled.</item>
+      <item id="f1">items without killer_anchor (rule r1)</item>
+      <item id="f2">pause-point items.length &lt;5 or &gt;9 (rule r2)</item>
+      <item id="f3">mode missing (rule r4)</item>
+      <item id="f4">last_reviewed older than 90 days (rule r5)</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "prompt-pr-checklist-2026q2",
+  "owner": "ruslan@faion.net",
+  "mode": "READ-DO",
+  "pause_points": [
+    {
+      "name": "pre-merge",
+      "items": [
+        {"id": "i1", "statement": "Power-calc spec attached", "executor": "author", "artefact": "git://faion/specs/power-calc.json", "killer_anchor": "incident-2026-03-17-under-powered"},
+        {"id": "i2", "statement": "Refusal-style policy unchanged", "executor": "reviewer", "artefact": "diff-comment", "killer_anchor": "policy-line:safety.md#L34"},
+        {"id": "i3", "statement": "Eval delta within tolerance", "executor": "ci", "artefact": "ci-run-url", "killer_anchor": "incident-2026-01-09-eval-drift"},
+        {"id": "i4", "statement": "Tool-schema unchanged or migrated", "executor": "reviewer", "artefact": "schema-diff", "killer_anchor": "incident-2025-12-04-broken-tools"},
+        {"id": "i5", "statement": "Production rollout plan attached", "executor": "author", "artefact": "rollout-doc", "killer_anchor": "postmortem-2026-02-04"}
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "pause_points": [{"name": "merge", "items": [{"id": "i1", "statement": "looks good"}]}],
+  "version": "v1",
+  "last_reviewed": "2025-01-01"
+}
+]]></code>
+    <note>owner=team; mode missing (f3); item missing executor/artefact/killer_anchor (f1); items.length=1 (f2); last_reviewed stale (f4); version not semver.</note>
+  </example>
+
+  <reference path="scripts/validate-prompt-pr-review-checklist.py">Validator script</reference>
 </text>

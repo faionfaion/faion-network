@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="voice-implementation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for voice-implementation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Voice Implementation Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns from voice-agent post-mortems. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Registering async def tool functions in the tool_functions dict.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ProductionVoiceAgent calls tool functions synchronously. Async functions return coroutine objects, not results. Use sync implementations or wrap with asyncio.run().</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using bare except Exception in the WebSocket endpoint.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>WebSocketDisconnect must be handled separately from actual errors - they require different logging and response behavior. Catch WebSocketDisconnect first, then generic exceptions.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="energy-vad-in-prod" severity="high">
+      <symptom>Voice agent triggers on background noise (HVAC fan, keyboard, music). User frustrated, transcripts full of nonsense.</symptom>
+      <root-cause source="Internal — voice-agent post-mortems">Energy/RMS VAD has no notion of speech vs noise; any signal above threshold fires.</root-cause>
+      <fix>Replace with Silero VAD (`torch.hub.load('snakers4/silero-vad', 'silero_vad')`) or WebRTC VAD (`webrtcvad.Vad(3)`). Both use learned speech models.</fix>
+    </antipattern>
+
+    <antipattern id="async-tool-registered-sync" severity="high">
+      <symptom>Tool calls return coroutine objects instead of values; LLM sees `&lt;coroutine&gt;` as the tool result and hallucinates around it.</symptom>
+      <root-cause source="Internal — async-tool incident 2026-03">Author registered `async def` tools in the sync tool dispatcher without awaiting them.</root-cause>
+      <fix>Either: keep tools sync and offload via `asyncio.to_thread(tool_fn, *args)`; OR: switch to a fully async tool dispatcher that awaits each call.</fix>
+    </antipattern>
+
+    <antipattern id="bare-except-on-ws" severity="medium">
+      <symptom>On-call paged for every browser tab closure; real errors swallowed silently.</symptom>
+      <root-cause source="FastAPI WebSocket docs">`except Exception` catches both `WebSocketDisconnect` (expected) and runtime errors (unexpected) — logs and alerting cannot distinguish them.</root-cause>
+      <fix>Catch `WebSocketDisconnect` first with a debug-level log; let other `Exception` propagate or log at error level with traceback.</fix>
+    </antipattern>
+
+    <antipattern id="no-markdown-strip" severity="medium">
+      <symptom>TTS reads "asterisk asterisk hello asterisk asterisk world" instead of "hello world".</symptom>
+      <root-cause source="Internal — TTS audit">Author piped LLM markdown output to TTS without stripping.</root-cause>
+      <fix>Strip with `re.sub(r'[*_`#&gt;]', '', text)` and optionally `re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)` for links before TTS synthesis.</fix>
+    </antipattern>
+
   </section>
 </text>

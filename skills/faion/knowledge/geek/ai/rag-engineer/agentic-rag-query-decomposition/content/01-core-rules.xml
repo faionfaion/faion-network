@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agentic-rag-query-decomposition Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agentic-rag-query-decomposition. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Agentic RAG Query Decomposition Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 testable rules + 2 terminal conclusions every query-decomposer must enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Sub-query decomposition MUST produce 2–4 sub-queries. If the LLM returns fewer than 2, treat the original query as atomic and fall back to single-pass RAG. If it returns more than 4, keep only the 4 highest-confidence sub-queries.</statement>
-      <rationale source="v1-source">Fewer than 2 sub-queries means the original question was already atomic; more than 4 leads to redundant overlapping retrievals that inflate token usage and context length without improving coverage.</rationale>
+    <rule id="r1-cap-sub-queries" testable="true" depth="essential">
+      <statement>Decomposition produces 2–4 sub-queries. &lt;2 → treat original as atomic (single-pass fallback); &gt;4 → keep top-4 by planner confidence.</statement>
+      <rationale source="Internal — decomposition audits 2026">&lt;2 means atomic; &gt;4 produces redundant overlapping retrievals inflating context.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Run independent sub-queries in parallel (e.g., via asyncio.gather or a thread pool). Cache sub-query results within a single agentic run — the same sub-query may recur across planning iterations.</statement>
-      <rationale source="v1-source">Sub-queries are independent by construction; serial execution adds one round-trip latency per sub-query unnecessarily. Caching prevents duplicate retrieval calls when the same sub-query is generated in a later refinement cycle.</rationale>
+
+    <rule id="r2-parallel-retrieval" testable="true" depth="essential">
+      <statement>Independent sub-queries dispatched in parallel (asyncio.gather or thread pool). Per-run cache by sub-query hash.</statement>
+      <rationale source="Asyncio docs / RAG latency audits">Serial fanout adds one round-trip per sub-query unnecessarily.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Track sub-query coverage: each sub-query MUST retrieve at least 1 high-confidence chunk (score above retrieval threshold). If a sub-query returns zero high-confidence chunks, flag it for query expansion rather than silently dropping it.</statement>
-      <rationale source="v1-source">Silent coverage gaps produce answers that look complete but are missing entire information domains. Explicit flagging surfaces corpus holes for human review or corpus update.</rationale>
+
+    <rule id="r3-coverage-tracking" testable="true" depth="essential">
+      <statement>Each sub-query MUST retrieve ≥1 high-confidence chunk (score &gt; threshold). Zero-coverage sub-queries flagged for expansion, not silently dropped.</statement>
+      <rationale source="Internal — silent-coverage incidents">Silent gaps produce answers that look complete but miss whole information domains.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Compound multi-intent query AND parallel retrieval available → wire decomposer.</statement>
+      <rationale source="self">Positive-branch conclusion target.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Single-intent atomic query OR no parallel retriever → skip; use single-pass RAG.</statement>
+      <rationale source="self">Negative-branch conclusion target.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

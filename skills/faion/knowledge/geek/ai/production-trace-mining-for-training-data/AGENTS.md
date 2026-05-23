@@ -3,82 +3,102 @@ slug: production-trace-mining-for-training-data
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Pinned method to mine PII-scrubbed production traces into a fine-tune candidate dataset — labels inferred, capability stratified, owner and review cadence locked in.
 content_id: "4a845e781866133e"
-summary: Production Trace Mining For Training Data — pinned method for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so fine-tune vs prompt-engineer decision flow (4 weeks worst case) stops being folklore and starts being a reviewable operating tool.
-tags: [ai, geek, method, production, trace, mining, for, training]
+complexity: medium
+produces: spec
+est_tokens: 3600
+tags: [trace-mining, fine-tune, training-data, dataset, llm-ops]
 ---
-# Production Trace Mining For Training Data
+# Production Trace Mining for Training Data
 
 ## Summary
 
-**One-sentence:** Production Trace Mining For Training Data — pinned method for the LLM-agent developer: fixed shape + named owner + evidence anchors + outcome review, so fine-tune vs prompt-engineer decision flow (4 weeks worst case) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned method to mine PII-scrubbed production traces into a fine-tune candidate dataset — labels inferred, capability stratified, owner and review cadence locked in.
 
-**One-paragraph:** In AI / agent engineering, the LLM-agent developer runs fine-tune vs prompt-engineer decision flow (4 weeks worst case) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Mining production traces (with PII redaction, label inference, capability stratification) for fine-tune data is a distinct discipline, not covered by current data-prep methodologies which assume a static dataset. `production-trace-mining-for-training-data` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the LLM-agent developer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Production traffic is the richest source of training data for any deployed LLM-agent, but most teams either ignore it (and stay stuck on prompt engineering) or dump it raw into a fine-tune (and leak PII, overfit on noise). This methodology turns the recurring "fine-tune vs prompt-engineer" decision into a reviewable spec: which traces qualify, how labels are inferred, how capabilities are stratified, who owns the dataset, when it expires. Output is a `trace-mining-spec.json` artefact downstream fine-tune jobs consume without re-deriving rationale.
+
+**Ефективно для:**
+
+- "Fine-tune vs prompt-engineer" decision (4-week worst-case cadence).
+- Перетворити stale prompt-eng practice на data-driven cycle.
+- PII-scrub + label inference + capability strat в одному spec'у.
+- Versioned dataset з owner + retention + outcome review.
+- Команда вже має eval harness, але fine-tune ще ні.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p7-llm-agent-developer/Fine-tune vs prompt-engineer decision flow (4 weeks worst case)`
-- the LLM-agent developer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Recurring "fine-tune vs prompt-engineer" decision on the operating cadence.
+- Production traces are PII-scrubbed (see `pii-scrubbing-recipe-for-eval-sets`).
+- Named accountable owner exists.
+- Repository / wiki space hosts the versioned spec.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Greenfield prototype без production users.
+- Fewer than 3 instances per year — review cadence costs more than it returns.
+- Regulator mandates a different template — defer to legal.
+- No PII-scrub recipe locked — block on `pii-scrubbing-recipe-for-eval-sets` first.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the LLM-agent developer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| PII-scrubbed traces (≥1000 rows) | JSONL | warehouse |
+| Capability taxonomy | YAML | platform |
+| Label inference rules (heuristic + LLM judge) | YAML | ML repo |
+| Named accountable owner | string | ownership log |
+| Retention window (days) | int | legal repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `[[pii-scrubbing-recipe-for-eval-sets]]` | PII scrub precondition. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules + run/skip terminals | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: scrub → stratify → label → audit → commit | ~800 |
+| `content/05-examples.xml` | essential | Worked example: 5000-trace sample → spec | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes traffic volume + label confidence to mining strategy | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `scaffold-spec` | haiku | Template fill. |
+| `infer-labels` | sonnet | Per-row judgment with heuristic + LLM-judge. |
+| `outcome-review` | opus | Cross-cycle synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/trace-mining-spec.json` | JSON skeleton matching 02-output-contract. |
+| `templates/trace-mining-spec.md` | Narrative skeleton for human review. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-production-trace-mining-for-training-data.py` | Validate trace-mining-spec | Pre-commit + before fine-tune job |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[pii-scrubbing-recipe-for-eval-sets]]
+- [[prompt-ab-power-calculator]]
+- [[rag-corpus-discovery-interview]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree decides between high-volume heuristic labeling and low-volume LLM-judge labeling, and routes out if PII-scrub is not yet locked. Walk it before drafting the spec; mining without a scrub recipe leaks PII into the training set.

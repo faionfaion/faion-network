@@ -1,22 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="embedding-caching Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Embedding Caching Output Contract" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for the cache-config artefact + examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/embedding-caching.json",
+  "type": "object",
+  "required": ["backend", "hash_algo", "key_components", "ttl_days", "emit_hit_metric"],
+  "properties": {
+    "backend": {"enum": ["redis", "valkey", "dynamodb", "memory"]},
+    "hash_algo": {"const": "sha256"},
+    "key_components": {"type": "array", "items": {"enum": ["model_name", "model_version", "text"]}, "minItems": 3},
+    "ttl_days": {"type": "integer", "minimum": 1, "maximum": 365},
+    "emit_hit_metric": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item id="f1">hash_algo != 'sha256' (rule r1)</item>
+      <item id="f2">key_components missing model_version (rule r2)</item>
+      <item id="f3">ttl_days &gt;365 (rule r3)</item>
+      <item id="f4">emit_hit_metric=false (rule r4)</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "backend": "valkey",
+  "hash_algo": "sha256",
+  "key_components": ["model_name", "model_version", "text"],
+  "ttl_days": 90,
+  "emit_hit_metric": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "backend": "redis",
+  "hash_algo": "md5",
+  "key_components": ["text"],
+  "ttl_days": 9999,
+  "emit_hit_metric": false
+}
+]]></code>
+    <note>md5 hash (f1); missing model_name/model_version (f2); ttl &gt;365 (f3); metric off (f4).</note>
+  </example>
+
+  <reference path="scripts/validate-embedding-caching.py">Validator script</reference>
 </text>

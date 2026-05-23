@@ -1,11 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="embedding-caching Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for embedding-caching. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Embedding Caching Core Rules" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 testable rules + 2 terminal conclusions every embedding-cache implementation must enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-sha256-keys" testable="true" depth="essential">
+      <statement>Cache key uses SHA-256 of `model_name + ":" + model_version + ":" + text`. MD5 rejected.</statement>
+      <rationale source="Cryptographic hash literature">MD5 collisions exist in practice; at billion-doc scale a collision returns the wrong embedding silently.</rationale>
+    </rule>
+
+    <rule id="r2-version-in-key" testable="true" depth="essential">
+      <statement>`model_version` is part of the key. Provider model bumps invalidate old cache entries automatically.</statement>
+      <rationale source="OpenAI versioning practice">Providers silently update weights; un-versioned keys serve stale vectors.</rationale>
+    </rule>
+
+    <rule id="r3-ttl-aligned-deprecation" testable="true" depth="essential">
+      <statement>TTL ≤ days-to-model-deprecation (or 365 days, whichever is shorter). On model deprecation event, full cache flush for that model.</statement>
+      <rationale source="Provider deprecation incidents">Cache outliving the model serves vectors against a deleted decoder; correctness bug.</rationale>
+    </rule>
+
+    <rule id="r4-hit-rate-metric" testable="true" depth="essential">
+      <statement>Per-call cache_hit metric emitted. Cache_hit_rate &lt; 5% over 30 days triggers re-evaluation of caching.</statement>
+      <rationale source="Internal — cost-audit practice">Low hit rate = cache overhead exceeds savings.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Repeated-text rate &gt;5% AND backend available → wire cache.</statement>
+      <rationale source="self">Positive-branch conclusion target.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>One-shot embed OR &lt;5% repeat rate OR no backend → skip; direct embed.</statement>
+      <rationale source="self">Negative-branch conclusion target.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

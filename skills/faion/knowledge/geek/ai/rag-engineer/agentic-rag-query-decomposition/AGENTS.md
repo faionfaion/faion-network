@@ -3,71 +3,100 @@ slug: agentic-rag-query-decomposition
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A planning agent decomposes a complex query into 2–4 atomic sub-queries that can each be answered with a single retrieval call.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Decomposes complex queries into 2–4 atomic sub-queries, retrieves in parallel, tracks coverage; falls back to single-pass when decomposition collapses to 1 sub-query.
 content_id: "532be04b3a0ede2b"
+complexity: medium
+produces: code
+est_tokens: 3500
 tags: [rag, agentic, query-decomposition, multi-hop, planning]
 ---
 # Agentic RAG — Query Decomposition
 
 ## Summary
 
-**One-sentence:** A planning agent decomposes a complex query into 2–4 atomic sub-queries that can each be answered with a single retrieval call.
+**One-sentence:** Decomposes complex queries into 2–4 atomic sub-queries, retrieves in parallel, tracks coverage; falls back to single-pass when decomposition collapses to 1 sub-query.
 
-**One-paragraph:** A planning agent decomposes a complex query into 2–4 atomic sub-queries that can each be answered with a single retrieval call. Independent sub-queries run in parallel; results are merged and passed to the generator. This pattern maps directly to the "plan" node in a LangGraph agentic RAG workflow.
+**One-paragraph:** Complex queries with multiple intents waste retrieval budget when run as a single embedding. This methodology produces a `QueryDecomposer` class: a planning LLM emits 2–4 atomic sub-queries; each is retrieved in parallel via asyncio.gather; results merged with coverage tracking. If decomposition returns &lt;2 sub-queries, the original is treated atomic. If &gt;4, only the top-4 by confidence kept. Coverage gaps surfaced for review.
+
+**Ефективно для:**
+
+- Complex compound queries з ≥2 distinct intents.
+- Latency budget allows parallel sub-query fanout.
+- Track coverage gaps (sub-query without high-confidence chunk).
+- Sub-query cache within one agentic run.
+- Bridge from `[[agentic-rag-iterative-retrieval]]` for compound questions.
 
 ## Applies If (ALL must hold)
 
-- The user query contains multiple distinct information needs (comparison, multi-part, "and also" structure).
-- Multi-hop QA: the answer requires combining facts from disjoint documents.
-- Research synthesis where the question has a known structure (e.g., compare A vs B across dimensions C, D, E).
-- Legal compliance or fact-checking where exhaustive coverage of multiple sub-topics is required.
+- Question class includes multi-intent compound queries.
+- Parallel retrieval supported by infra.
+- Planning LLM available distinct from generator.
+- Coverage-gap surfacing acceptable (vs silent drops).
 
 ## Skip If (ANY kills it)
 
-- Simple factual lookups — decomposition adds an extra LLM call with no benefit.
-- Queries with a single clear information need — decompose into one sub-query is a no-op and wastes a round-trip.
-- When the sub-queries are not known upfront but emerge from retrieved context — use iterative retrieval instead.
+- Single-intent atomic queries — decomposition adds no value.
+- Sequential-only retriever (no parallel infra).
+- Cost budget cannot absorb planning + N retrieval rounds.
+- No coverage-gap consumer (gaps would be ignored).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Planning model client | provider client | platform |
+| Retriever runner | python | service repo |
+| Parallel executor (asyncio / pool) | runtime | platform |
+| Confidence threshold | float | retrieval policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[agentic-rag-iterative-retrieval]]` | Iterative loop methodology. |
+| `[[embedding-generation]]` | Shared embedder. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 3 rules + run/skip terminals | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for decomposer-config | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with detector + repair | ~700 |
+| `content/04-procedure.xml` | essential | 5-step: plan → cap → parallel retrieve → coverage → merge | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes question class to decomposition vs atomic | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `plan-sub-queries` | sonnet | Planning judgment. |
+| `score-sub-query-confidence` | haiku | Numeric scoring. |
+| `merge-context` | sonnet | Multi-result synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/query_decomposer.py` | QueryDecomposer class with parallel fanout + coverage. |
+| `templates/decomposer-config.json` | Config skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agentic-rag-query-decomposition.py` | Validate decomposer-config | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[agentic-rag-iterative-retrieval]]
+- [[agentic-rag-self-correction]]
+- [[rag-bench-harness-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes to decomposition when question class is compound + parallel retrieval available. Atomic queries fall back to single-pass.

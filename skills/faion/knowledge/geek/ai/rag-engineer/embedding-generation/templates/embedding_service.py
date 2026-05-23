@@ -1,107 +1,97 @@
-"""
-EmbeddingService — production-ready provider-dispatching embedding service.
-
-Usage:
-    config = EmbeddingConfig(provider="openai", model="text-embedding-3-small")
-    svc = EmbeddingService(config)
-    vec = svc.embed("hello world")
-    vecs = svc.embed_batch(["hello", "world"])
-    score = svc.similarity("cat", "feline")
-"""
+# purpose: EmbeddingService — batched, cached, normalized, guarded embed pipeline.
+# consumes: embedder-config.json + provider client + tokenizer + cache backend (optional)
+# produces: list[list[float]] unit-normalized vectors + per-text audit (skipped/cached/embedded)
+# depends-on: content/01-core-rules.xml r1, r2, r3, r4, r5, r6
+# token-budget-impact: provider embedding API only; 0 LLM tokens for the wiring
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
-import logging
-import numpy as np
+import hashlib
+import math
+from dataclasses import dataclass
+from typing import Any, Callable
+
+PROVIDER_CAPS = {"openai": 2048, "cohere": 96, "voyage": 128, "google": 250, "azure": 2048, "local": 1024}
 
 
 @dataclass
-class EmbeddingConfig:
-    provider: str = "openai"          # openai | local | ollama | cohere
-    model: str = "text-embedding-3-small"
-    dimensions: Optional[int] = None  # only for text-embedding-3 models
-    batch_size: int = 100
-    cache_enabled: bool = True
+class EmbedderConfig:
+    model_name: str
+    model_version: str
+    provider: str
+    batch_size: int = 256
+    normalize: bool = True
+    cache_hash_algo: str = "sha256"
+    max_input_tokens: int = 8191
+    input_type_index: str = "n/a"
+    input_type_query: str = "n/a"
 
 
+def _normalize(v: list[float]) -> list[float] | None:
+    n = math.sqrt(sum(x * x for x in v))
+    if n < 1e-9:
+        return None
+    return [x / n for x in v]
+
+
+@dataclass
 class EmbeddingService:
-    def __init__(self, config: Optional[EmbeddingConfig] = None) -> None:
-        self.config = config or EmbeddingConfig()
-        self.logger = logging.getLogger(__name__)
-        self.cache = None
-        if self.config.cache_enabled:
-            from .embedding_cache import EmbeddingCache  # type: ignore[import]
-            self.cache = EmbeddingCache()
-        self._init_model()
+    config: EmbedderConfig
+    embed_provider: Callable[[list[str], dict[str, Any]], list[list[float]]]
+    tokenize: Callable[[str], list[str]]
+    cache_get: Callable[[str], list[float] | None] | None = None
+    cache_set: Callable[[str, list[float]], None] | None = None
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    def __post_init__(self) -> None:
+        if self.config.batch_size > PROVIDER_CAPS.get(self.config.provider, 2048):
+            raise ValueError("batch_size > provider cap (rule r2)")
+        if self.config.cache_hash_algo != "sha256":
+            raise ValueError("cache_hash_algo must be sha256 (rule r3)")
+        if self.config.provider == "cohere":
+            if not self.config.input_type_index or not self.config.input_type_query:
+                raise ValueError("Cohere requires input_type_index + input_type_query (rule r6)")
 
-    def embed(self, text: str) -> np.ndarray:
-        """Return a 1-D numpy array for one text."""
-        if self.cache:
-            cached = self.cache.get(text, self.config.model)
-            if cached is not None:
-                return np.array(cached)
-        vec = self._generate(text)
-        if self.cache:
-            self.cache.set(text, self.config.model, vec.tolist())
-        return vec
+    def _key(self, text: str) -> str:
+        h = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        return f"{self.config.model_name}:{self.config.model_version}:{h}"
 
-    def embed_batch(self, texts: list[str]) -> np.ndarray:
-        """Return a 2-D numpy array (N, D) for multiple texts."""
-        if self.config.provider == "openai":
-            return self._embed_batch_openai(texts)
-        if self.config.provider == "local":
-            return self._model.encode(texts, batch_size=self.config.batch_size)  # type: ignore[union-attr]
-        return np.array([self.embed(t) for t in texts])
+    def _safe(self, text: str) -> bool:
+        if not text or not text.strip():
+            return False
+        if len(self.tokenize(text)) > self.config.max_input_tokens:
+            return False
+        return True
 
-    def similarity(self, text1: str, text2: str) -> float:
-        e1, e2 = self.embed(text1), self.embed(text2)
-        return float(np.dot(e1, e2) / (np.linalg.norm(e1) * np.linalg.norm(e2)))
-
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-
-    def _init_model(self) -> None:
-        if self.config.provider == "openai":
-            from openai import OpenAI
-            self._client = OpenAI()
-        elif self.config.provider == "local":
-            from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self.config.model)
-        elif self.config.provider == "ollama":
-            import ollama as _ollama
-            self._ollama = _ollama
-        elif self.config.provider == "cohere":
-            import cohere
-            self._cohere = cohere.Client()
-
-    def _generate(self, text: str) -> np.ndarray:
-        if self.config.provider == "openai":
-            kw: dict = {"input": text, "model": self.config.model}
-            if self.config.dimensions:
-                kw["dimensions"] = self.config.dimensions
-            r = self._client.embeddings.create(**kw)
-            return np.array(r.data[0].embedding)
-        if self.config.provider == "local":
-            return self._model.encode(text)  # type: ignore[union-attr]
-        if self.config.provider == "ollama":
-            r = self._ollama.embeddings(model=self.config.model, prompt=text)
-            return np.array(r["embedding"])
-        raise ValueError(f"Unknown provider: {self.config.provider}")
-
-    def _embed_batch_openai(self, texts: list[str]) -> np.ndarray:
-        all_embs: list = []
-        for i in range(0, len(texts), self.config.batch_size):
-            batch = texts[i : i + self.config.batch_size]
-            kw: dict = {"input": batch, "model": self.config.model}
-            if self.config.dimensions:
-                kw["dimensions"] = self.config.dimensions
-            r = self._client.embeddings.create(**kw)
-            sorted_data = sorted(r.data, key=lambda x: x.index)
-            all_embs.extend([e.embedding for e in sorted_data])
-        return np.array(all_embs)
+    def embed_batch(self, texts: list[str], *, is_query: bool = False) -> dict[str, Any]:
+        valid: list[tuple[int, str]] = [(i, t) for i, t in enumerate(texts) if self._safe(t)]
+        cached: dict[int, list[float]] = {}
+        misses: list[tuple[int, str]] = []
+        for i, t in valid:
+            if self.cache_get is not None:
+                v = self.cache_get(self._key(t))
+                if v is not None:
+                    cached[i] = v
+                    continue
+            misses.append((i, t))
+        cap = PROVIDER_CAPS.get(self.config.provider, 2048)
+        new_vectors: dict[int, list[float]] = {}
+        for start in range(0, len(misses), min(self.config.batch_size, cap)):
+            chunk = misses[start : start + min(self.config.batch_size, cap)]
+            kwargs: dict[str, Any] = {}
+            if self.config.provider == "cohere":
+                kwargs["input_type"] = self.config.input_type_query if is_query else self.config.input_type_index
+            vectors = self.embed_provider([t for _, t in chunk], kwargs)
+            for (i, t), v in zip(chunk, vectors, strict=True):
+                if self.config.normalize:
+                    nv = _normalize(v)
+                    if nv is None:
+                        continue
+                    v = nv
+                new_vectors[i] = v
+                if self.cache_set is not None:
+                    self.cache_set(self._key(t), v)
+        result: list[list[float] | None] = [None] * len(texts)
+        for i, v in cached.items():
+            result[i] = v
+        for i, v in new_vectors.items():
+            result[i] = v
+        return {"vectors": result, "cache_hits": len(cached), "embedded": len(new_vectors), "skipped": len(texts) - len(valid)}

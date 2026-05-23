@@ -3,73 +3,101 @@ slug: embedding-generation
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Converts text chunks into dense vectors using an embedding model so they can be stored in a vector database and retrieved by semantic similarity.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Generates embedding pipeline — same-model index/query, batched calls (OpenAI ≤2048), SHA-256 cache keys, unit normalization, empty/overlong guards, provider-specific tuning.
 content_id: "8ee3fcacee25f7f6"
+complexity: medium
+produces: code
+est_tokens: 3700
 tags: [embeddings, vectors, semantic-search, rag, indexing]
 ---
 # Embedding Generation
 
 ## Summary
 
-**One-sentence:** Converts text chunks into dense vectors using an embedding model so they can be stored in a vector database and retrieved by semantic similarity.
+**One-sentence:** Generates embedding pipeline — same-model index/query, batched calls (OpenAI ≤2048), SHA-256 cache keys, unit normalization, empty/overlong guards, provider-specific tuning.
 
-**One-paragraph:** Converts text chunks into dense vectors using an embedding model so they can be stored in a vector database and retrieved by semantic similarity. The indexing step takes {id, text} chunk dicts, batches them, and returns {id, embedding, model, dimensions} dicts. The query step embeds the user query with the same model and measures cosine similarity against the stored vectors.
+**One-paragraph:** Wrong embedding generation produces silent recall regressions. This methodology produces an `EmbeddingService` that pins model+version, batches with provider-correct caps, normalizes to unit length for cosine, caches by SHA-256(model+version+text), rejects empty/overlong texts, and applies provider-specific tuning (Cohere input_type, OpenAI dimensions, single-process SentenceTransformer). Output is a code class consumed by the broader embedding-applications pipeline.
+
+**Ефективно для:**
+
+- New RAG project — embed indexing step.
+- Replace per-text loop with batched calls (10–50x speedup).
+- Add SHA-256 cache to recurring ingest.
+- Migrate Ollama loop → SentenceTransformer for local.
+- Cohere input_type compliance (5–10% quality boost).
 
 ## Applies If (ALL must hold)
 
-- Building the indexing step of any RAG pipeline (chunks to vectors).
-- Implementing semantic search over a document corpus.
-- Text clustering, deduplication by semantic similarity, or recommendation systems.
-- Evaluating embedding model options for a new project before committing to a provider.
-- Optimizing an existing embedding pipeline for cost, latency, or quality.
+- Embedding new corpus OR rewriting existing pipeline.
+- Same embedder used for both indexing AND querying.
+- Vector DB available.
+- Named owner.
 
 ## Skip If (ANY kills it)
 
-- Exact-string keyword search is sufficient — embeddings add cost/latency with no precision gain for exact matches.
-- Very short texts (less than 10 tokens) — BM25 outperforms semantic similarity at this scale.
-- Corpus is in a low-resource language without a multilingual model — embeddings may produce near-random vectors.
-- Storage budget is constrained and 1536-3072 dimension vectors would overflow it — benchmark with reduced dimensions first.
+- Pure keyword search (no embeddings needed).
+- &lt;10-token average texts (BM25 outperforms).
+- Low-resource language без multilingual model.
+- Existing pipeline validated &lt;90 days.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Embedding model name + version | YAML | service repo |
+| Provider client | client | platform |
+| Tokenizer (for guard checks) | tokenizer | platform |
+| Cache backend (optional) | client | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[embedding-models]]` | Provider-specific quirks. |
+| `[[embedding-caching]]` | Cache layer. |
+| `[[embedding-applications]]` | Parent pipeline. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules + run/skip terminals | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for embedder-config | ~700 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 5-step: pin model → wire batch → cache → normalize → guards | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes provider + corpus to embedder config | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pin-model-version` | haiku | Config write. |
+| `tune-provider-params` | sonnet | Per-provider judgment. |
+| `audit-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/embedding_service.py` | EmbeddingService class with batching + cache + guards. |
+| `templates/embedder-config.json` | Config skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-embedding-generation.py` | Validate embedder-config | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[embedding-models]]
+- [[embedding-caching]]
+- [[embedding-cost-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by provider + corpus class to embedder config. Walk before wiring.
