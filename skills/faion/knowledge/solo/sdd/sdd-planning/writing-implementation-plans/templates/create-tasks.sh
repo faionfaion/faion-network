@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: Stub empty TASK_*.md files for a wave under a feature directory.
+# consumes: feature directory path + list of task ids (e.g., 001 002 003)
+# produces: one TASK_<id>.md stub per id under <feature_dir>/todo/
+# depends-on: bash + filesystem; no LLM tokens
+# token-budget-impact: zero — shell script
+#
 # create-tasks.sh — create empty TASK_*.md stubs for a wave
 # Usage: create-tasks.sh FEATURE_DIR TASK_IDS...
 # Example: create-tasks.sh .aidocs/features/in-progress/user-auth 001 002 003

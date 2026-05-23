@@ -4,72 +4,94 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Six sequential quality gate levels (L1-L6) prevent defects from propagating through SDD phases.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Six sequential quality-gate levels (L1 lint → L6 stakeholder sign-off) with an explicit confidence score per gate, so defects are caught at the earliest cheap stage rather than at the end of the SDD pipeline.
 content_id: "b93c384fef5e89ea"
+complexity: medium
+produces: report
+est_tokens: 3800
 tags: [quality-gates, testing, validation, confidence, ci-cd]
 ---
-# Quality Gates & Confidence Checks
+# Quality Gates and Confidence Checks
 
 ## Summary
 
-**One-sentence:** Six sequential quality gate levels (L1-L6) prevent defects from propagating through SDD phases.
+**One-sentence:** Six sequential quality-gate levels (L1 lint → L6 stakeholder sign-off) with an explicit confidence score per gate, so defects are caught at the earliest cheap stage rather than at the end of the SDD pipeline.
 
-**One-paragraph:** Six sequential quality gate levels (L1-L6) prevent defects from propagating through SDD phases. Each gate has a minimum confidence threshold that blocks progression when not met: L1 syntax/format (95%), L2 unit tests (90%), L3 integration tests (85%), L4 code review (80%), L5 staging (85%), L6 production (90%). Confidence score = Automated_Pass × 0.4 + Coverage × 0.2 + Risk_Mitigation × 0.2 + Traceability × 0.2. LLM-generated code enters the L1→L2 validation pipeline immediately after generation; failures trigger targeted re-prompt loops capped at 3 attempts before human escalation.
+**One-paragraph:** Six sequential quality-gate levels (L1 lint → L6 stakeholder sign-off) with an explicit confidence score per gate, so defects are caught at the earliest cheap stage rather than at the end of the SDD pipeline. The methodology pins the artefact: every gate has a binary pass/fail signal, a numeric confidence, an owner, and a documented escalation path when confidence is below threshold.
+
+**Ефективно для:**
+
+- SDD batch runs that need a halt rule before promoting to the next phase.
+- Solo operators who want a 'red light / green light' summary instead of a noisy CI log.
+- Reviewers who need a single decision artefact instead of trawling through diffs.
+- Audit surface: every promotion between phases has a recorded gate result.
 
 ## Applies If (ALL must hold)
 
-- Before any phase transition in the SDD workflow — confidence check gates progression
-- After LLM-generated code is produced — run L1 and L2 before human review
-- Setting up CI/CD for an LLM-assisted project — quality gates are the automated enforcement layer
-- When using LLM-as-judge to evaluate AI output before integration
-- When change failure rate spikes — tighten gate enforcement (soft block → hard block)
+- An SDD pipeline runs multiple phases (spec → design → impl-plan → code → review).
+- More than one agent or human contributes artefacts that must be promoted.
+- Defect cost rises sharply across phases (cheap at lint, expensive at production).
 
 ## Skip If (ANY kills it)
 
-- Trivial configuration changes — full L1-L6 wastes time
-- Exploratory prototypes that will be discarded — gate overhead exceeds learning value
-- When gate tooling is not set up (no linter config, no test suite) — set up tooling first
-- L5/L6 for local development — these are deployment gates, not development gates
+- Throwaway prototype / spike — gating overhead exceeds the value of the artefact.
+- Pipeline has a single trusted reviewer who already gates manually.
+- Project does not run automated checks; gating without instrumentation is theatre.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Per-phase artefacts | files | SDD lifecycle |
+| CI run output | log | CI provider |
+| Reviewer roster | list | Team config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd/sdd-workflow-overview` | Defines which phases the gates promote between. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-quality-gates-confidence` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-quality-gates-confidence` | haiku | Schema check + threshold checks; deterministic. |
+| `review-quality-gates-confidence` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/quality-gates-confidence.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/quality-gates-confidence.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-quality-gates-confidence.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[sdd-workflow-overview]]
+- [[reflexion-learning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

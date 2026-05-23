@@ -4,20 +4,30 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured 9-phase process for writing spec.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: A 9-phase process producing spec.md with SMART functional requirements, personas, user stories, Given-When-Then acceptance criteria, and explicit scope boundaries before any design or code is written.
 content_id: "4a0eca19120a99d7"
+complexity: deep
+produces: spec
+est_tokens: 4500
 tags: [specification, requirements, sdd, smart-criteria, user-stories]
 ---
 # Writing Specifications
 
 ## Summary
 
-**One-sentence:** A structured 9-phase process for writing spec.
+**One-sentence:** A 9-phase process producing spec.md with SMART functional requirements, personas, user stories, Given-When-Then acceptance criteria, and explicit scope boundaries before any design or code is written.
 
-**One-paragraph:** A structured 9-phase process for writing spec.md — the document that answers "WHAT are we building and WHY?" before design or implementation begins. Covers problem analysis, user personas, user story mapping, SMART functional and non-functional requirements, Given-When-Then acceptance criteria, and explicit scope boundaries.
+**One-paragraph:** A 9-phase process producing spec.md with SMART functional requirements, personas, user stories, Given-When-Then acceptance criteria, and explicit scope boundaries before any design or code is written. The methodology pins the artefact: stable IDs (FR-X, US-X, AC-X), traceability between layers, a versioned header, and an out-of-scope list that prevents later scope creep.
+
+**Ефективно для:**
+
+- Solo founders codifying feature intent before they start coding.
+- Teams who keep diverging on WHAT a feature is supposed to do.
+- Spec-driven workflows where downstream design and tasks must trace back to a single artefact.
+- Audit / hand-off surface: every requirement has an ID, an AC, and a known status.
 
 ## Applies If (ALL must hold)
 
@@ -25,51 +35,68 @@ tags: [specification, requirements, sdd, smart-criteria, user-stories]
 - Existing feature needs scope expansion and the current spec is absent or too vague to drive design.
 - Stakeholder and developer have different mental models of what the feature does.
 - Requirements exist informally (Slack messages, verbal agreements) and need to be formalized.
-- Constitution is new and needs to capture tech decisions before development begins.
 
 ## Skip If (ANY kills it)
 
 - Bug report with a clear reproduction path — write a task directly, not a spec.
-- Infrastructure change (server config, deployment pipeline) with no user-visible behavior.
+- Infrastructure change with no user-visible behavior — record it in constitution.md instead.
 - Feature already has an approved spec — open and amend it rather than rewriting from scratch.
-- Experiment/spike where the output will determine whether to proceed at all.
+- Experiment/spike whose output will determine whether to proceed at all.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| constitution.md | markdown | Repo root |
+| done/ feature specs | markdown | SDD archive |
+| Problem statement | text | Stakeholder interview |
+| Persona list (≥2) | markdown | Research notes |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd/sdd-workflow-overview` | Names the phase order and gating between spec/design/impl-plan. |
+| `solo/sdd/sdd/yaml-frontmatter` | Defines the metadata schema embedded at the top of spec.md. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-writing-specifications` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-writing-specifications` | haiku | Schema check + threshold checks; deterministic. |
+| `review-writing-specifications` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/writing-specifications.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/writing-specifications.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-writing-specifications.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[sdd-workflow-overview]]
+- [[writing-design-documents]]
+- [[writing-implementation-plans]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

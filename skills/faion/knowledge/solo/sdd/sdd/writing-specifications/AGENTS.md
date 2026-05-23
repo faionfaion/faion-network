@@ -4,71 +4,95 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A specification answers WHAT to build and WHY.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Author spec.md as the canonical WHAT/WHY artefact for an SDD feature — SMART functional requirements, Given-When-Then acceptance criteria, explicit scope boundaries, and a versioned header — written for LLM agent consumption.
 content_id: "4a0eca19120a99d7"
+complexity: deep
+produces: spec
+est_tokens: 4400
 tags: [specification, requirements, acceptance-criteria, llm-execution]
 ---
-# Writing Specifications
+# Writing Specifications (SDD core)
 
 ## Summary
 
-**One-sentence:** A specification answers WHAT to build and WHY.
+**One-sentence:** Author spec.md as the canonical WHAT/WHY artefact for an SDD feature — SMART functional requirements, Given-When-Then acceptance criteria, explicit scope boundaries, and a versioned header — written for LLM agent consumption.
 
-**One-paragraph:** A specification answers WHAT to build and WHY. It functions as the anti-hallucination anchor for LLM execution agents: every FR-X must be a SHALL statement meeting SMART criteria, and every acceptance criterion must use concrete values in Given-When-Then format. The spec is not considered complete until a second, fresh-context agent outputs "SPEC APPROVED" after running the AC coverage checklist (happy path, error handling, boundary conditions, security, performance, accessibility).
+**One-paragraph:** Author spec.md as the canonical WHAT/WHY artefact for an SDD feature — SMART functional requirements, Given-When-Then acceptance criteria, explicit scope boundaries, and a versioned header — written for LLM agent consumption. The methodology pins the artefact: stable FR-X / NFR-X / AC-X / US-X identifiers, an explicit out-of-scope list, and a one-paragraph problem statement that downstream design and impl-plan must honour verbatim.
+
+**Ефективно для:**
+
+- SDD pipelines feeding spec to design + impl-plan + pool executors.
+- Solo founders writing spec for an LLM agent to design and implement.
+- Reviewers checking that what was promised matches what is built.
+- Audit surface: every FR has an id, an AC, and a status.
 
 ## Applies If (ALL must hold)
 
-- Before any LLM-assisted implementation: the spec is the primary context document
-- When requirements come as vague requests — transform them into structured FR-X + AC-X artifacts
-- Writing CLAUDE.md or project rules using the three-tier boundary system (Always / Ask First / Never)
-- Any feature affecting multiple files, teams, or external APIs
+- A new SDD feature is being started.
+- Spec.md does not yet exist or is too vague to drive design.
+- Downstream agents (design, impl-plan) will consume the spec verbatim.
 
 ## Skip If (ANY kills it)
 
-- Bug fix with a known root cause and clear fix — write the fix, not a spec
-- Configuration-only change — no functional requirements to specify
-- One-off script or throwaway prototype — overhead exceeds value
-- When requirements are so volatile they will change before implementation starts
+- Bug fix with clear repro — write a task, not a spec.
+- Infra change with no user-visible surface.
+- Feature already has an approved spec.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| constitution.md | markdown | Repo root |
+| Problem statement | text | Stakeholder |
+| Persona list (≥2) | markdown | Research notes |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd/sdd-workflow-overview` | Defines where spec sits in the SDD lifecycle. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-writing-specifications` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-writing-specifications` | haiku | Schema check + threshold checks; deterministic. |
+| `review-writing-specifications` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/writing-specifications.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/writing-specifications.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-writing-specifications.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[sdd-workflow-overview]]
+- [[writing-design-documents]]
+- [[writing-implementation-plans]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

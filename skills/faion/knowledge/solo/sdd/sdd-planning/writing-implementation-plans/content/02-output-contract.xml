@@ -1,22 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="writing-implementation-plans Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Writing Implementation Plans Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of the implementation-plan.md frontmatter + section index for writing-implementation-plans. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/writing-implementation-plans.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "feature", "status", "design_ref", "tasks", "waves", "critical_path", "risks", "rollout", "rollback"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "feature": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["Draft", "Accepted", "Superseded"]},
+    "design_ref": {"type": "string", "minLength": 5},
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "files", "est_tokens", "depends_on", "traces_to"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^TASK_[0-9]{3}$"},
+          "title": {"type": "string", "minLength": 5},
+          "files": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "est_tokens": {"type": "integer", "minimum": 1, "maximum": 100000},
+          "depends_on": {"type": "array", "items": {"type": "string", "pattern": "^TASK_[0-9]{3}$"}},
+          "traces_to": {
+            "type": "object",
+            "required": ["ad"],
+            "properties": {
+              "ad": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^AD-[0-9]+$"}}
+            }
+          }
+        }
+      }
+    },
+    "waves": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["n", "tasks"],
+        "properties": {
+          "n": {"type": "integer", "minimum": 1},
+          "tasks": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^TASK_[0-9]{3}$"}}
+        }
+      }
+    },
+    "critical_path": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^TASK_[0-9]{3}$"}},
+    "risks": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}},
+    "rollout": {"type": "string", "minLength": 10},
+    "rollback": {"type": "string", "minLength": 10}
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "plan-jwt-refresh",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "feature": "jwt-refresh",
+  "status": "Accepted",
+  "design_ref": ".aidocs/features/in-progress/jwt-refresh/design.md",
+  "tasks": [
+    {"id": "TASK_001", "title": "Add refresh view + rotation logic", "files": ["apps/auth/views/refresh.py"], "est_tokens": 45000, "depends_on": [], "traces_to": {"ad": ["AD-2"]}},
+    {"id": "TASK_002", "title": "Wire URL + integration tests", "files": ["apps/auth/urls.py", "apps/auth/tests/test_refresh.py"], "est_tokens": 30000, "depends_on": ["TASK_001"], "traces_to": {"ad": ["AD-2"]}}
+  ],
+  "waves": [
+    {"n": 1, "tasks": ["TASK_001"]},
+    {"n": 2, "tasks": ["TASK_002"]}
+  ],
+  "critical_path": ["TASK_001", "TASK_002"],
+  "risks": ["Token-rotation race condition under concurrent refresh requests"],
+  "rollout": "Feature-flagged behind FF_JWT_REFRESH; canary at 5% traffic for 24h before full rollout.",
+  "rollback": "Disable FF_JWT_REFRESH flag; old endpoint remains live as fallback for 7 days."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "status": "Draft",
+  "tasks": [{"id": "TASK_001", "title": "do everything", "files": ["various"], "est_tokens": 250000, "depends_on": [], "traces_to": {"ad": []}}],
+  "waves": [],
+  "critical_path": [],
+  "risks": [],
+  "rollout": "",
+  "rollback": ""
+}
+]]></code>
+    <note>Owner plural; status Draft passed downstream; single task over 100k; no traces_to.ad; rollback empty.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="task-over-token-cap">A task with `est_tokens` &gt; 100000 — split before scheduling.</pattern>
+    <pattern id="task-no-ad-trace">`tasks[].traces_to.ad` empty — task drifted from design.</pattern>
+    <pattern id="empty-rollback">`rollback` empty or under 10 chars — plan is irreversible by design.</pattern>
+    <pattern id="draft-promoted-downstream">Status `Draft` passed to template-task — must be Accepted first.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-writing-implementation-plans.py">Stdlib-only validator implementing this schema.</reference>
 </text>

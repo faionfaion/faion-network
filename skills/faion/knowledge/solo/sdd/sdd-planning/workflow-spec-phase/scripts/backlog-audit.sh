@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: Print feature status table across all SDD lifecycle stages.
+# consumes: .aidocs/features/{backlog,todo,in-progress,done}/*/{spec,design,implementation-plan}.md
+# produces: markdown table on stdout with per-feature, per-stage doc statuses
+# depends-on: bash + grep + sed (POSIX); no LLM tokens
+# token-budget-impact: zero — shell script
+#
 # backlog-audit.sh — Print feature status table across all SDD lifecycle stages.
 # Usage: ./backlog-audit.sh [aidocs-dir]
 # Default aidocs-dir: .aidocs

@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: Move a task file between todo / in-progress / done dirs, validating required sections.
+# consumes: a TASK_*.md file authored from templates/task.md
+# produces: a moved task file in the target lifecycle directory
+# depends-on: filesystem layout .aidocs/features/<feature>/{todo,in-progress,done}/
+# token-budget-impact: zero — shell script, no LLM tokens
+#
 # task-lifecycle.sh
 #
 # Move a task file through its lifecycle states.

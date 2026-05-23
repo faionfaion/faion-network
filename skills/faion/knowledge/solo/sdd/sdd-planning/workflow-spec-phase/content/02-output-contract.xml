@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="workflow-spec-phase Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Workflow Spec Phase Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of the spec.md frontmatter + body index for workflow-spec-phase. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/workflow-spec-phase.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "feature", "status", "functional_requirements", "non_functional_requirements", "in_scope", "out_of_scope", "success_criteria", "glossary"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "feature": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["Draft", "Accepted", "Superseded"]},
+    "functional_requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^FR-[0-9]+$"},
+          "statement": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "non_functional_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^NFR-[0-9]+$"},
+          "statement": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "in_scope": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}},
+    "out_of_scope": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 5}},
+    "success_criteria": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}},
+    "glossary": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 5}
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "spec-jwt-refresh",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "feature": "jwt-refresh",
+  "status": "Draft",
+  "functional_requirements": [
+    {"id": "FR-3", "statement": "System SHALL rotate the refresh token on every successful POST /api/v1/auth/refresh."}
+  ],
+  "non_functional_requirements": [
+    {"id": "NFR-2", "statement": "Refresh endpoint p95 latency SHALL be under 200ms at 100 RPS."}
+  ],
+  "in_scope": ["JWT refresh endpoint", "rotation logic", "tests for rotation"],
+  "out_of_scope": ["OAuth federation", "session-based fallback"],
+  "success_criteria": ["≥99% successful refresh in production over 7 days", "p95 latency < 200ms"],
+  "glossary": {"refresh token": "Long-lived token used to obtain a new short-lived access token via /auth/refresh."}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "status": "Accepted",
+  "functional_requirements": [{"id": "1", "statement": "system should be nice"}],
+  "in_scope": ["everything"],
+  "out_of_scope": [],
+  "success_criteria": ["users find it useful"],
+  "glossary": {}
+}
+]]></code>
+    <note>Owner plural; status auto-Accepted by agent (forbidden); FR id format wrong + soft language; out_of_scope empty; success not measurable.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="soft-fr-language">FR statement contains "should be nice" / "would be great" / lacks SHALL or MUST.</pattern>
+    <pattern id="empty-out-of-scope">`out_of_scope` has fewer than 2 entries — scope is unbounded.</pattern>
+    <pattern id="adjective-success">Success criterion is an adjective ("useful", "smooth"); no measurable number or observable outcome.</pattern>
+    <pattern id="agent-accepted-spec">Subagent emitted `status: Accepted` — only a named human owner promotes.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-workflow-spec-phase.py">Stdlib-only validator implementing this schema.</reference>
 </text>

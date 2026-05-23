@@ -4,72 +4,96 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: SDD workflows guide the progression from idea to deployed code through structured phases.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Reusable end-to-end SDD workflow templates (spec-workflow, design-workflow, implementation-workflow, review-workflow) that bind phase methodologies to a runnable orchestration with named owners and gate hand-offs.
 content_id: "5855a9b1517a6537"
+complexity: medium
+produces: spec
+est_tokens: 4000
 tags: [sdd, workflows, phases, llm, agents]
 ---
 # SDD Workflows
 
 ## Summary
 
-**One-sentence:** SDD workflows guide the progression from idea to deployed code through structured phases.
+**One-sentence:** Reusable end-to-end SDD workflow templates (spec-workflow, design-workflow, implementation-workflow, review-workflow) that bind phase methodologies to a runnable orchestration with named owners and gate hand-offs.
 
-**One-paragraph:** SDD workflows guide the progression from idea to deployed code through structured phases. Each workflow includes decision points, state transitions, quality gates, and LLM prompts covering spec, design, implementation, and review phases.
+**One-paragraph:** Reusable end-to-end SDD workflow templates (spec-workflow, design-workflow, implementation-workflow, review-workflow) that bind phase methodologies to a runnable orchestration with named owners and gate hand-offs. The methodology pins the artefact: a workflows.json catalog of available workflows, each with input artefacts, output artefacts, agents involved, and the gate that closes the workflow.
+
+**Ефективно для:**
+
+- Operators standing up SDD on a new project — pick a workflow, get a phase delivery loop.
+- Reviewers who need to know which workflow produced an artefact.
+- Pool executors that pick a workflow by name and execute it deterministically.
+- Audit surface: every artefact knows which workflow produced it.
 
 ## Applies If (ALL must hold)
 
-- Starting a new multi-day feature that needs structured progression from idea to deployed code.
-- An agent needs to orchestrate multiple sub-agents across spec → design → implementation → review phases.
-- The codebase already has `.aidocs/` structure and the team follows SDD lifecycle.
-- Resuming mid-session work: agent reads `session.md` to restore state and continue from last checkpoint.
-- Producing auditable artifacts: regulated domains, client deliverables, or systems requiring traceability.
+- Project uses SDD lifecycle and needs a runnable orchestration per phase.
+- Workflow catalog is shared across multiple features.
+- An executor / agent pool consumes workflow definitions.
 
 ## Skip If (ANY kills it)
 
-- Task estimated at under 2 hours — direct implementation is faster than full SDD overhead.
-- Pure bug fix with a known root cause — fix + test is sufficient without spec and design phases.
-- Exploratory spike or prototype — throwaway code does not benefit from full SDD overhead.
-- Configuration-only change — editing a config file needs no spec or design phase.
+- Ad-hoc one-off feature with no need for a reusable workflow.
+- Team prefers per-feature bespoke orchestration.
+- Workflow definitions cannot be persisted (no place to store catalog).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Phase methodology list | list | SDD docs |
+| Agent / model roster | yaml | Pool config |
+| Gate definitions | yaml | quality-gates-confidence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd/sdd-workflow-overview` | Defines the phase model that each workflow implements. |
+| `solo/sdd/sdd/quality-gates-confidence` | Provides the gate definitions consumed by every workflow. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-workflows` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-workflows` | haiku | Schema check + threshold checks; deterministic. |
+| `review-workflows` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/workflows.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/workflows.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-workflows.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[sdd-workflow-overview]]
+- [[quality-gates-confidence]]
+- [[task-creation-parallelization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

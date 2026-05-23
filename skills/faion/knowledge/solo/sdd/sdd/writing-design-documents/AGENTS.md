@@ -4,71 +4,95 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A design document answers HOW to build a feature by recording architectural decisions (AD-X), file structure, data models, and API contracts before implementation begins.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Author design.md that answers HOW to build the feature via numbered architectural decisions (AD-X), file structure, data models, sequence diagrams, and API contracts — all linked back to the spec's FR-X requirements.
 content_id: "2c73123f27f6b9f6"
+complexity: deep
+produces: spec
+est_tokens: 4300
 tags: [design, architecture, sdd, decisions]
 ---
 # Writing Design Documents
 
 ## Summary
 
-**One-sentence:** A design document answers HOW to build a feature by recording architectural decisions (AD-X), file structure, data models, and API contracts before implementation begins.
+**One-sentence:** Author design.md that answers HOW to build the feature via numbered architectural decisions (AD-X), file structure, data models, sequence diagrams, and API contracts — all linked back to the spec's FR-X requirements.
 
-**One-paragraph:** A design document answers HOW to build a feature by recording architectural decisions (AD-X), file structure, data models, and API contracts before implementation begins. Required when a feature touches 5+ files, changes a DB schema, modifies an API contract, or introduces cross-service dependencies. Every FR-X must trace to at least one AD-X, and every AD-X must list alternatives considered.
+**One-paragraph:** Author design.md that answers HOW to build the feature via numbered architectural decisions (AD-X), file structure, data models, sequence diagrams, and API contracts — all linked back to the spec's FR-X requirements. The methodology pins the artefact: every AD-X has an alternative + tradeoff + chosen option + traced requirement; every API contract has an example request, example response, and error matrix.
+
+**Ефективно для:**
+
+- Engineers committing to an approach before writing code.
+- Reviewers verifying that design covers every spec requirement.
+- Hand-off to impl-plan: design.md is the contract that impl-plan decomposes.
+- Audit surface: every architectural decision has a recorded alternative + rationale.
 
 ## Applies If (ALL must hold)
 
-- After spec.md is approved and before writing implementation-plan.md.
-- Feature touches 5+ files, changes a DB schema, modifies an API contract, or has cross-service dependencies.
-- When the team needs an explicit record of alternatives considered to prevent re-litigating decisions.
-- When onboarding a new agent into an existing codebase — design.md gives full architectural context.
+- Spec is approved and locked.
+- Implementation choices are non-trivial (multiple valid options).
+- Multiple developers or agents will consume the design.
 
 ## Skip If (ANY kills it)
 
-- Bug fixes touching 1-2 files with no architectural impact.
-- Small refactors with no interface changes.
-- Features whose entire scope fits in a single task under ~5k tokens.
-- Greenfield experiments or spikes where the design is deliberately exploratory.
+- Trivial implementation with one obvious approach.
+- Spec already names the implementation in detail (rare and discouraged).
+- Throwaway prototype.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Approved spec.md | markdown | Spec phase |
+| Constitution.md | markdown | Repo root |
+| Existing module map | tree | Codebase |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/writing-specifications` | Provides the FR-X / NFR-X / AC-X identifiers that this design traces against. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-writing-design-documents` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-writing-design-documents` | haiku | Schema check + threshold checks; deterministic. |
+| `review-writing-design-documents` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/writing-design-documents.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/writing-design-documents.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-writing-design-documents.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[writing-specifications]]
+- [[writing-implementation-plans]]
+- [[sdd-workflow-overview]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

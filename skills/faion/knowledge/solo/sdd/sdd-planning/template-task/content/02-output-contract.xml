@@ -1,22 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="template-task Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Template Task Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid task-file artefact for template-task. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/template-task.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "task_id", "feature", "status", "objective", "acceptance_criteria", "files", "estimated_tokens", "traces_to"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "task_id": {"type": "string", "pattern": "^TASK_[0-9]{3}$"},
+    "feature": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["todo", "in-progress", "done"]},
+    "objective": {"type": "string", "minLength": 10},
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "given", "when", "then"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^AC-[0-9]+\\.[0-9]+$"},
+          "given": {"type": "string", "minLength": 3},
+          "when": {"type": "string", "minLength": 3},
+          "then": {"type": "string", "minLength": 3}
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["action", "path"],
+        "properties": {
+          "action": {"type": "string", "enum": ["CREATE", "MODIFY", "DELETE"]},
+          "path": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "estimated_tokens": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "traces_to": {
+      "type": "object",
+      "required": ["fr", "ad"],
+      "properties": {
+        "fr": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^FR-[0-9]+$"}},
+        "ad": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^AD-[0-9]+$"}}
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "task-jwt-refresh-001",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "task_id": "TASK_001",
+  "feature": "jwt-refresh",
+  "status": "todo",
+  "objective": "Add POST /api/v1/auth/refresh endpoint that rotates the refresh token.",
+  "acceptance_criteria": [
+    {"id": "AC-1.1", "given": "valid refresh token", "when": "POST /api/v1/auth/refresh", "then": "HTTP 200 with new access+refresh pair"}
+  ],
+  "files": [
+    {"action": "CREATE", "path": "apps/auth/views/refresh.py"},
+    {"action": "MODIFY", "path": "apps/auth/urls.py"}
+  ],
+  "estimated_tokens": 45000,
+  "traces_to": {"fr": ["FR-3"], "ad": ["AD-2"]}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "task_id": "001",
+  "objective": "do stuff",
+  "acceptance_criteria": [],
+  "estimated_tokens": 250000
+}
+]]></code>
+    <note>Owner plural; task_id wrong shape; objective vague; AC empty; token budget over 100k.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="vague-objective">Objective contains "and" joining two verbs — split into two tasks.</pattern>
+    <pattern id="no-traces">`traces_to.fr` OR `traces_to.ad` empty — task has no spec/design backing.</pattern>
+    <pattern id="ac-without-then">An acceptance criterion missing the `then` clause — outcome not observable.</pattern>
+    <pattern id="token-over-cap">`estimated_tokens` &gt; 100000 — exceeds single-session executor budget.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-template-task.py">Stdlib-only validator implementing this schema.</reference>
 </text>

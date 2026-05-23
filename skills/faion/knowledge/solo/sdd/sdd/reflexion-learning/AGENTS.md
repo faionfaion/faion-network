@@ -4,71 +4,94 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Reflexion (NeurIPS 2023) is a verbal reinforcement learning paradigm where LLM agents improve through accumulated episodic memory rather than weight updates.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Reflexion verbal reinforcement loop: after each SDD iteration the agent writes a structured episodic note (failure, root cause, corrective rule), appends it to memory, and the next iteration consumes it as a hard prompt constraint — no weight updates required.
 content_id: "1fdb37776dcbcf80"
-tags: [reflexion, reinforcement-learning, memory-architecture, sdd, pdca]
+complexity: medium
+produces: report
+est_tokens: 3600
+tags: [reflexion, verbal-rl, memory-architecture, sdd, pdca]
 ---
 # Reflexion Learning
 
 ## Summary
 
-**One-sentence:** Reflexion (NeurIPS 2023) is a verbal reinforcement learning paradigm where LLM agents improve through accumulated episodic memory rather than weight updates.
+**One-sentence:** Reflexion verbal reinforcement loop: after each SDD iteration the agent writes a structured episodic note (failure, root cause, corrective rule), appends it to memory, and the next iteration consumes it as a hard prompt constraint — no weight updates required.
 
-**One-paragraph:** Reflexion (NeurIPS 2023) is a verbal reinforcement learning paradigm where LLM agents improve through accumulated episodic memory rather than weight updates. Applied to SDD, it maps to the PDCA cycle: Plan (load patterns.md + mistakes.md), Do (execute with context), Check (evaluate against AC, generate verbal reflection), Act (write new PAT-NNN or MIS-NNN entries). External feedback signals — tests, linter, type checker — are mandatory; self-evaluation alone has a 64.5% blind-spot rate.
+**One-paragraph:** Reflexion verbal reinforcement loop: after each SDD iteration the agent writes a structured episodic note (failure, root cause, corrective rule), appends it to memory, and the next iteration consumes it as a hard prompt constraint — no weight updates required. The methodology pins the artefact: a JSON episode with fixed schema, indexed by attempt number, with explicit corrective_rule that the next attempt MUST honour.
+
+**Ефективно для:**
+
+- Long-running SDD loops where the same class of mistake repeats across attempts.
+- Solo agents that lack a separate reward signal and need a textual proxy for feedback.
+- Pipelines that must survive context resets — episodes are durable, model weights are not.
+- Audit surface: every failed attempt has a written reason and a corrective rule.
 
 ## Applies If (ALL must hold)
 
-- Any multi-task SDD workflow where agent quality must improve across tasks within a project
-- When an agent has failed the same task type more than once
-- Setting up a new project's `.aidocs/memory/` structure — Reflexion defines the memory architecture
-- Unattended overnight agent batches where no human is available to correct mid-task failures
+- An iterative agent loop attempts the same task ≥2 times.
+- Each attempt produces an evaluable signal (test pass/fail, validator output, reviewer note).
+- There is somewhere durable to store episodes (filesystem, DB) across attempts.
 
 ## Skip If (ANY kills it)
 
-- Single-shot one-off tasks with no follow-up — no memory to accumulate
-- Tasks where external ground truth is unavailable (no tests, no linter, no type checker) — self-evaluation degrades quality
-- Projects under 1 week old with fewer than 10 completed tasks — corpus too thin
-- When PDCA overhead exceeds the value of the learning loop (very small tasks under ~5k tokens)
+- Single-shot task with no retry budget.
+- No evaluable signal; reflexion needs ground truth to write episodes against.
+- Memory store is volatile or wiped between attempts — episodes will not survive.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Attempt result | json | Validator / test runner |
+| Memory store path | filesystem path | Pipeline config |
+| Original task brief | markdown | Caller |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd/quality-gates-confidence` | Provides the pass/fail signal Reflexion writes episodes against. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-reflexion-learning` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-reflexion-learning` | haiku | Schema check + threshold checks; deterministic. |
+| `review-reflexion-learning` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/reflexion-learning.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/reflexion-learning.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-reflexion-learning.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
+- [[quality-gates-confidence]]
+- [[sdd-workflow-overview]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="writing-implementation-plans Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for writing-implementation-plans. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Writing Implementation Plans Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every writing-implementation-plans application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-design-accepted" testable="true" depth="essential">
+      <statement>The plan MUST NOT be authored until design.md frontmatter shows `status: Accepted`. Plans built on Draft designs re-shard mid-wave when an AD-X changes. The Accepted-design gate is non-negotiable.</statement>
+      <rationale source="SDD design-plan hand-off research">Re-sharding mid-execution is the most expensive recovery operation in SDD. The Accepted-design gate prevents it.</rationale>
     </rule>
+
+    <rule id="r2-tasks-from-file-table" testable="true" depth="essential">
+      <statement>Every task in the plan MUST trace to ≥1 file_table row from design.md. New files appearing in the plan but not in design's file_table are forbidden — they indicate scope drift past the design gate.</statement>
+      <rationale source="SDD traceability research">Untraced files become forgotten dependencies. The file_table is the contract; the plan honors it.</rationale>
+    </rule>
+
+    <rule id="r3-wave-token-budget" testable="true" depth="essential">
+      <statement>Each task in a wave MUST have an `est_tokens` budget under 100000. Tasks exceeding this MUST be split before the wave is scheduled. The aggregate of parallel tasks in one wave SHOULD NOT exceed 5x single-task budget on a single executor stream.</statement>
+      <rationale source="Claude Code execution telemetry, wave-orchestrator data">Tasks over 100k tokens hit context limits mid-execution; aggregate-overrun waves swamp the executor pool. Pre-split + budget-cap protects throughput.</rationale>
+    </rule>
+
+    <rule id="r4-explicit-deps-and-fs" testable="true" depth="essential">
+      <statement>Inter-task dependencies MUST be modelled as Finish-to-Start (FS) edges and listed explicitly per task. Implicit deps via shared-file modifications MUST be surfaced (run `find-shared-files.py` from `workflow-design-phase` scripts) and either de-duplicated or modelled as explicit FS.</statement>
+      <rationale source="Project-scheduling research, SDD merge-conflict audit">Implicit shared-file deps are the leading cause of failed waves: two tasks land on the same file, second blows up on merge. Explicit FS edges + dedup are the cheap fix.</rationale>
+    </rule>
+
+    <rule id="r5-rollout-and-rollback" testable="true" depth="essential">
+      <statement>The plan MUST include a Rollout section naming feature-flag, canary, or staged-release strategy AND a Rollback section naming the reversal procedure for the last wave. Plans missing rollback are forbidden — irreversible by design.</statement>
+      <rationale source="SRE incident-response data, deployment-safety research">Plans without a rollback path produce incidents that cannot be resolved without forward-only fixes. The Rollback section is the cheap insurance.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-31 chunk-00 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

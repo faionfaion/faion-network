@@ -1,3 +1,10 @@
+<!--
+purpose: Canonical TASK_NNN.md skeleton; one atomic executor unit.
+consumes: implementation-plan.md row, spec.md FR-X, design.md AD-X
+produces: a template-task artefact validating against scripts/validate-template-task.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~5-10k once filled
+-->
 # TASK_{NNN}: {Short Name}
 
 **Feature:** {feature-name}

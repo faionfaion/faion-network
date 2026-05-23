@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: Detect implicit Finish-to-Start deps from files modified by multiple TASK files.
+# consumes: directory of TASK_*.md files with "| CREATE|MODIFY|DELETE | `path` |" rows
+# produces: JSON mapping shared file path → list of task ids (only when >=2 tasks touch a file)
+# depends-on: stdlib only (re, sys, json, pathlib)
+# token-budget-impact: zero — local script, no LLM tokens
 """find-shared-files.py — Detect implicit task dependencies from shared file modifications.
 
 Files touched by multiple tasks create implicit Finish-to-Start dependencies even when
