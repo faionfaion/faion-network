@@ -3,58 +3,95 @@ slug: scope-creep-firewall
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Scope-Creep Firewall: an explicit per-engagement change-request methodology tuned for solo operators that converts incoming asks into typed change orders instead of absorbed work.
-content_id: "f3a78df578243016"
-tags: [scope-creep-firewall, ba, pro]
+summary: Per-engagement intake-and-classify gate that converts every new ask into change-order, no-op, in-scope-clarified, or backlog — never silently absorbed.
+content_id: "f5ce4c7ca95577aa"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [scope-creep, firewall, freelance, change-control, ba]
 ---
 # Scope-Creep Firewall
 
 ## Summary
 
-**One-sentence:** A per-engagement methodology that stands up an explicit "everything new lands here" intake, classifies each ask in 5 minutes, and routes it to either no-op (already in scope), change-order, or backlog — so a solo operator never absorbs a creep silently.
+**One-sentence:** Per-engagement intake-and-classify gate that converts every new ask into change-order, no-op, in-scope-clarified, or backlog — never silently absorbed.
 
-**One-paragraph:** Scope creep is the #1 freelancer profit leak. Existing methodologies cover request impact rubrics and email phrasings, but a solo operator needs a single named gate — the firewall — that every new ask passes through, with a fixed time budget per classification and a strict default of "this is a change order until proven otherwise". This methodology defines the firewall's three-question intake, the classification SLA (≤5 minutes per ask), the four routing outcomes (in-scope-clarified, no-op-already-delivered, change-order-required, backlog-deferred), and the weekly summary report sent to the client. Output is a per-ask firewall record and a per-engagement creep-trend that tells the operator whether this engagement is healthy, slipping, or terminal.
+**One-paragraph:** Per-engagement intake-and-classify gate that converts every new ask into change-order, no-op, in-scope-clarified, or backlog — never silently absorbed. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned playbook-step artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- соло-оператор тримає один named «gate» для всіх нових запитів.
+- ≤5-хвилинний triage кожного запиту з фіксованим default «change-order».
+- weekly creep summary до клієнта → попередження замість скандалу.
+- creep-trend per engagement → ранній сигнал нездорового контракту.
+- інтеграція з email-pack для outbound фраз і з impact rubric для accepted CR.
 
 ## Applies If (ALL must hold)
 
-- the engagement has a written scope (SOW, proposal, statement of work)
-- the operator is solo or works with ≤2 collaborators (no PMO buffer between client and delivery)
-- engagement length 4 weeks or longer (shorter engagements use a lighter intake)
-- tier == pro or higher
+- the engagement has a written scope (SOW, proposal, statement of work).
+- the operator is solo or works with ≤2 collaborators (no PMO buffer).
+- engagement length 4 weeks or longer.
+- tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the engagement is explicitly time-and-materials with no scope cap and unlimited budget — there is no scope to defend
-- the operator's client uses a formal change-control process the operator is participating in — adopt that, do not parallel
-- the operator is in the final 5 business days of the engagement — switch to handover mode
+- engagement is explicitly time-and-materials with no scope cap and unlimited budget.
+- client uses a formal change-control process the operator is already participating in.
+- operator is in the final 5 business days of the engagement — switch to handover mode.
 
 ## Prerequisites
 
-- the engagement SOW reference
-- a single inbound channel declared as the firewall (a tag in the ticket tracker, an email rule, a Slack channel — pick one)
-- the change-order rate card or template
-- 5 minutes per business day reserved for firewall triage
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill |
-| `pro/ba/change-request-impact-rubric` | downstream rubric for accepted change orders |
-| `pro/ba/scope-creep-email-language-pack` | phrasing pack for the outbound side of routing |
+| `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: single-intake, three-question-classifier, 5min-triage-budget, change-order-default, weekly-summary-to-client, creep-trend-tracked | ~1200 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the playbook-step artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/scope-creep-firewall.md` | Working playbook-step skeleton with 5-line header |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-scope-creep-firewall.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst`
-- upstream playbook: `p3-technical-freelancer/Project kickoff to handover (typical 6-12 week engagement)`
-- companion methodology: `pro/ba/scope-creep-email-language-pack`
+- [[scope-creep-email-language-pack]]
+- [[change-request-impact-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

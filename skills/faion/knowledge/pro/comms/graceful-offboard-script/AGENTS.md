@@ -3,78 +3,97 @@ slug: graceful-offboard-script
 tier: pro
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "944477ad2ad8599f"
-summary: "Graceful Offboard Script — testable methodology for scripts, written cadences, stakeholder updates. Bad-fit offboarding is a strategic move for agencies; no methodology covers how to do it without damaging brand or referral pipeline."
-tags: [comms, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Bad-fit offboarding script that ends a client engagement without damaging brand or referral pipeline — strategic move, not a confession.
+content_id: "38ca28dd96b31d24"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [offboard, retention, agency, referral, comms]
 ---
 # Graceful Offboard Script
 
 ## Summary
 
-**One-sentence:** Graceful Offboard Script — testable methodology for scripts, written cadences, stakeholder updates. Bad-fit offboarding is a strategic move for agencies; no methodology covers how to do it without damaging brand or referral pipeline.
+**One-sentence:** Bad-fit offboarding script that ends a client engagement without damaging brand or referral pipeline — strategic move, not a confession.
 
-**One-paragraph:** Graceful Offboard Script closes a known gap in comms practice: Bad-fit offboarding is a strategic move for agencies; no methodology covers how to do it without damaging brand or referral pipeline. The methodology is anchored to the recurring activity 'Quarter-end retention review (QBR cycle, 4 weeks) (role: p5-micro-agency-founder)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Bad-fit offboarding script that ends a client engagement without damaging brand or referral pipeline — strategic move, not a confession. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- QBR показує bad-fit client → agency-side offboard.
+- frame як value alignment, не «ми не справляємось».
+- handover plan + recommended-alternative агенція.
+- referral pipeline не повинен бути зруйнованим.
+- post-offboard NPS / testimonial запит, не silence.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Quarter-end retention review (QBR cycle, 4 weeks) (role: p5-micro-agency-founder)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- the triggering activity 'Quarter-end retention review (QBR cycle, 4 weeks)' shows up at least once per cycle.
+- the operator has authority to act on the artefact.
+- a named consumer exists for the output.
+- an auditable source-of-truth for QBR data is available.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- one-off, never-to-repeat work — overhead does not pay back.
+- no named consumer — the artefact will be orphaned.
+- cannot access the QBR source-of-truth — substitutes are worse than skipping.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/comms/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `graceful_offboard_script_template_fill` | haiku | Template fill, no judgement |
-| `graceful_offboard_script_evidence_check` | sonnet | Bounded comparison + judgement |
-| `graceful_offboard_script_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/graceful-offboard-script.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-graceful-offboard-script.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/` (see neighbouring methodologies)
-- triggering activity: `Quarter-end retention review (QBR cycle, 4 weeks) (role: p5-micro-agency-founder)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelancer-rate-raise-letter-template]]
+- [[contractor-onboarding-runbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

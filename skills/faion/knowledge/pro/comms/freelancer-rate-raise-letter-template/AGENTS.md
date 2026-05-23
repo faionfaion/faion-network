@@ -3,78 +3,97 @@ slug: freelancer-rate-raise-letter-template
 tier: pro
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "8e94d24cfc39c288"
-summary: "Freelancer Rate Raise Letter Template — testable methodology for scripts, written cadences, stakeholder updates. Battle-tested raise-announcement letter template for retainer clients with grace-period framing. difficult-conversations is too general."
-tags: [comms, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Battle-tested raise-announcement letter for retainer clients with grace-period framing — not a generic 'difficult-conversations' lecture.
+content_id: "ad96c29a7bf61dde"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [rate-raise, retainer, freelance, letter-template, comms]
 ---
 # Freelancer Rate Raise Letter Template
 
 ## Summary
 
-**One-sentence:** Freelancer Rate Raise Letter Template — testable methodology for scripts, written cadences, stakeholder updates. Battle-tested raise-announcement letter template for retainer clients with grace-period framing. difficult-conversations is too general.
+**One-sentence:** Battle-tested raise-announcement letter for retainer clients with grace-period framing — not a generic 'difficult-conversations' lecture.
 
-**One-paragraph:** Freelancer Rate Raise Letter Template closes a known gap in comms practice: Battle-tested raise-announcement letter template for retainer clients with grace-period framing. difficult-conversations is too general. The methodology is anchored to the recurring activity 'Quarterly rate adjustment review (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Battle-tested raise-announcement letter for retainer clients with grace-period framing — not a generic 'difficult-conversations' lecture. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- quarterly rate review для retainer client.
+- grace period framing замість «effective immediately».
+- ціна обґрунтована value delta, не CPI.
+- letter ships with churn-risk classifier (stay / negotiate / churn).
+- post-letter follow-up на T+7 з конкретним path вперед.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Quarterly rate adjustment review (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- the triggering activity 'Quarterly rate adjustment review (role: p3-technical-freelancer)' shows up at least once per cycle.
+- the operator has authority to act on the artefact.
+- a named consumer exists for the output.
+- an auditable source-of-truth (current rate, value delta) is available.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- one-off, never-to-repeat work — overhead does not pay back.
+- no named consumer — the artefact will be orphaned.
+- cannot access the source-of-truth — paraphrased substitutes are worse than skipping.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/comms/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_rate_raise_letter_template_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_rate_raise_letter_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_rate_raise_letter_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/freelancer-rate-raise-letter-template.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-rate-raise-letter-template.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/` (see neighbouring methodologies)
-- triggering activity: `Quarterly rate adjustment review (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelancer-payment-chase-script-library]]
+- [[graceful-offboard-script]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

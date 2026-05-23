@@ -3,77 +3,97 @@ slug: agency-contractor-jd-template
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for agency contractor jd template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "f91a13a7613e0fd8"
-tags: [agency, comms, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Outcomes-based contractor JD for micro-agencies; explicit deliverables, paid-trial gate, IP clause, payment cadence — not a full-time JD with 'contract' relabeled.
+content_id: "0b5bb4e3fe578c73"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [agency, contractor, jd, outcomes-based, hr]
 ---
 # Agency Contractor JD Template
 
 ## Summary
 
-**One-sentence:** Reusable template for agency contractor jd template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Outcomes-based contractor JD for micro-agencies; explicit deliverables, paid-trial gate, IP clause, payment cadence — not a full-time JD with 'contract' relabeled.
 
-**One-paragraph:** Reusable template for agency contractor jd template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. hr-recruiter covers FT hiring; no outcomes-based contractor JD pattern for micro-agencies.
+**One-paragraph:** Outcomes-based contractor JD for micro-agencies; explicit deliverables, paid-trial gate, IP clause, payment cadence — not a full-time JD with 'contract' relabeled. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- micro-agency наймає contractor під real-client deliverable.
+- JD — outcomes-based, не «responsibilities» список FT-style.
+- paid-trial gate + acceptance criteria → no 6-week funnel.
+- IP clause explicit з day 0 (work-for-hire + assignment).
+- payment cadence + scope-change clause inline → reduce dispute risk.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by agency contractor jd template (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- you are starting a new instance of the artefact addressed (kickoff, contract, brief, deck).
+- the instance has a named owner and a target review date.
+- filled fields will be read by humans outside the author's team.
+- sensitive data is captured but redacted before broad sharing.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- first instance ever, no comparable past work — write freeform, extract a template after.
+- one-off bespoke artefact (M&A, lawsuit) — template constrains the wrong axes.
+- localized cultural or regulatory context the template does not encode.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/hr-recruiter/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/comms/hr-recruiter/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/agency-contractor-jd-template.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-contractor-jd-template.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
-- peer methodologies: see siblings under `pro/comms/hr-recruiter/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[contractor-audition-flow]]
+- [[contractor-onboarding-runbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

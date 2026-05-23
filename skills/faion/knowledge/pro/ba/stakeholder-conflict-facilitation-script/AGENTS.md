@@ -3,57 +3,96 @@ slug: stakeholder-conflict-facilitation-script
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Step-by-step facilitation script for a live stakeholder-conflict meeting — agenda, ground rules, position framing, decision rubric, and dissent-capture format — replacing soft-skill folklore with a codified process.
-content_id: "f29b084876d9937d"
-tags: [business-analyst, stakeholder-conflict, facilitation, decision-rationale, p4-outsource, p6-product-dev-team]
+summary: 60-minute structured five-phase meeting (frame → positions → rubric → decide → record dissent) that converts a requirement disagreement into a signed decision-log entry.
+content_id: "59382dee6e6618a1"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [facilitation, stakeholder-conflict, decision-log, ba, meeting-design]
 ---
 # Stakeholder Conflict Facilitation Script
 
 ## Summary
 
-**One-sentence:** A meeting-day script that runs a stakeholder-conflict facilitation as a five-phase sequence — frame → state positions → apply rubric → decide → record dissent — and produces a signed decision log entry instead of a vibe.
+**One-sentence:** 60-minute structured five-phase meeting (frame → positions → rubric → decide → record dissent) that converts a requirement disagreement into a signed decision-log entry.
 
-**One-paragraph:** Stakeholder analysis methodologies map who has what stake, but say nothing about how to facilitate an actual conflict meeting where two named stakeholders disagree on a requirement. BAs default to whatever soft skill they happen to have, which means quality varies by personality. This methodology codifies the facilitation: a 60-minute structured meeting with phase-explicit agenda (5 min frame → 15 min positions → 15 min rubric application → 10 min decision → 15 min dissent capture and assignments), pre-circulated ground rules, a decision rubric that converts qualitative arguments into a shared score, and a written dissent capture that documents who disagreed and on what grounds. Output is a one-page decision-rationale entry signed by all attendees. Eliminates the "we discussed it and decided" entry in the requirements doc that everyone later disowns.
+**One-paragraph:** 60-minute structured five-phase meeting (frame → positions → rubric → decide → record dissent) that converts a requirement disagreement into a signed decision-log entry. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned playbook-step artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- ≥2 стейкхолдери мають записану незгоду щодо requirement / scope / design.
+- BA є фасилітатором (співфасилітатором), не пасивним учасником.
+- стейкхолдерів можна звести в одну синхронну зустріч (in-person/video).
+- рішення впливає на роботу, заплановану в найближчому sprint.
+- потрібен підписаний decision-log, який пізніше не «розпарується».
 
 ## Applies If (ALL must hold)
 
-- Two or more named stakeholders disagree on a requirement, scope item, or design choice — disagreement is recorded somewhere (email, doc comment, meeting note).
-- The BA owns or co-owns the resolution process (not pure escalation to a sponsor).
-- Stakeholders can be brought into one synchronous meeting (in-person or video) — fully async is a different methodology.
-- Decision affects work that is committed within the next sprint cycle (i.e., real time pressure).
+- two or more named stakeholders disagree on a requirement, scope item, or design choice — disagreement is recorded.
+- the BA owns or co-owns the resolution process (not pure escalation to a sponsor).
+- stakeholders can be brought into one synchronous meeting (in-person or video).
+- decision affects work that is committed within the next sprint cycle.
 
 ## Skip If (ANY kills it)
 
-- Pure escalation case where the sponsor will rule unilaterally — script over-engineers it.
-- Conflict is interpersonal, not requirements-based — needs HR/coaching, not BA facilitation.
-- Stakeholders refuse to commit to the rubric in advance — phase 3 collapses without it.
-- Decision can be safely deferred more than 2 sprints — run async requirements clarification instead.
+- pure escalation case where the sponsor will rule unilaterally.
+- conflict is interpersonal, not requirements-based — needs HR/coaching.
+- stakeholders refuse to commit to the rubric in advance — phase 3 collapses without it.
+- decision can be safely deferred more than 2 sprints — run async clarification instead.
 
 ## Prerequisites
 
-- One-paragraph statement of the disagreement signed off by both stakeholders ("yes, this is what we disagree about").
-- Pre-circulated decision rubric template (criterion + weight + scoring scale).
-- Decision-log file with a stub entry created before the meeting.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst/stakeholder-analysis` | Stakeholder map informs who must attend and what authority each carries. |
-| `pro/ba/decision-rationale-capture` | Output format consumed by this script. |
+| `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Five rules: five phases timeboxed, pre-circulated agenda + ground rules, rubric used not narrative, named dissent captured, one-page signed log. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the playbook-step artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/stakeholder-conflict-facilitation-script.md` | Working playbook-step skeleton with 5-line header |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-stakeholder-conflict-facilitation-script.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer: `stakeholder-conflict-mediation`, `decision-rationale-capture`, `decision-options-memo-template`
-- external: BABOK §10.43 Stakeholder List + IAF Core Facilitator Competencies E (Guide Group to Appropriate and Useful Outcomes)
+- [[stakeholder-conflict-mediation]]
+- [[decision-rationale-capture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

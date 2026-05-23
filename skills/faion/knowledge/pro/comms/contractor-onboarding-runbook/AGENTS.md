@@ -3,80 +3,95 @@ slug: contractor-onboarding-runbook
 tier: pro
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Contractor Onboarding Runbook: codified comms practice that turns the recurring 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' decision into a repeatable, auditable artefact.
-content_id: "6093c1b77dd5e73c"
-tags: [contractor-onboarding-runbook, comms, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Contractor-specific 3-5 week onboarding runbook covering access, IP, paired-shadow, and day-30 review — does NOT reuse the FT employee onboarding-30-day template.
+content_id: "a53c55a96ca57cd3"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [contractor, onboarding, runbook, micro-agency, comms]
 ---
 # Contractor Onboarding Runbook
 
 ## Summary
 
-**One-sentence:** Contractor Onboarding Runbook: codified comms practice that turns the recurring 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Contractor-specific 3-5 week onboarding runbook covering access, IP, paired-shadow, and day-30 review — does NOT reuse the FT employee onboarding-30-day template.
 
-**One-paragraph:** Contractor Onboarding Runbook addresses the gap surfaced by 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)'. onboarding-30-day exists for FT employees; agencies need a contractor-specific runbook covering access, IP, paired-shadow, and day-30 review. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Contractor-specific 3-5 week onboarding runbook covering access, IP, paired-shadow, and day-30 review — does NOT reuse the FT employee onboarding-30-day template. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned playbook-step artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- agency onboard contractor під real-client engagement.
+- access provisioning + IP коректно з day 0 (NDA, scope, deliverable IP).
+- paired-shadow проходить, не «read the wiki».
+- day-30 review з go/no-go рішенням, не extension by default.
+- runbook є replicated для кожного нового contractor → масштаб.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- task is 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' or close variant.
+- operator has the artefacts named in Prerequisites available before starting.
+- output will be consumed by a downstream agent or human reviewer.
+- tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- team already maintains a working onboarding runbook — replace, do not duplicate.
+- single-use throwaway engagement — overhead is not justified.
+- regulatory / compliance context overrides any in-methodology guidance.
 
 ## Prerequisites
 
-- recent context for the 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/hr-recruiter` | parent role skill — provides the operating context for this methodology |
+| `pro/comms/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the playbook-step artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/contractor-onboarding-runbook.json` | JSON schema for the Contractor Onboarding Runbook output contract |
-| `templates/contractor-onboarding-runbook.md` | Markdown skeleton with the required fields |
+| `templates/contractor-onboarding-runbook.md` | Working playbook-step skeleton with 5-line header |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-contractor-onboarding-runbook.py` | Enforce Contractor Onboarding Runbook output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-contractor-onboarding-runbook.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
-- upstream playbook: `p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)`
-- methodology family: `pro/comms/` (gap-p2 batch, F-059-063)
+- [[contractor-audition-flow]]
+- [[graceful-offboard-script]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

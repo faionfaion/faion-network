@@ -3,78 +3,97 @@ slug: traceability-matrix-template-csv
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "76e3617970ca133a"
-summary: "Traceability Matrix Template Csv: produces a versioned, owner-signed artefact that closes the gap 'role-business-analyst/Traceability matrix weekly refresh'."
-tags: [traceability-matrix-template-csv, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Ready-to-use CSV traceability matrix + Jira export script for weekly refresh; closes the gap between BA discovery and engineering execution.
+content_id: "226ff25f78ffe387"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [traceability, matrix, csv, requirements, ba]
 ---
-# Traceability Matrix Template Csv
+# Traceability Matrix Template (CSV)
 
 ## Summary
 
-**One-sentence:** Traceability Matrix Template Csv: produces a versioned, owner-signed artefact that closes the gap 'role-business-analyst/Traceability matrix weekly refresh'.
+**One-sentence:** Ready-to-use CSV traceability matrix + Jira export script for weekly refresh; closes the gap between BA discovery and engineering execution.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-business-analyst/Traceability matrix weekly refresh': BAs need a ready-to-use matrix template + Jira export script for weekly refresh; current methodology is conceptual only. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a traceability matrix template csv artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Ready-to-use CSV traceability matrix + Jira export script for weekly refresh; closes the gap between BA discovery and engineering execution. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- tracability matrix потрібна щотижнево — не one-off.
+- Jira / ADO / Polarion exposed export → fillable CSV.
+- BA уникає мануального reformatting кожного спринту.
+- matrix є input для CR impact rubric — структура має бути стабільною.
+- коли коломна mapping ламається — fail-loudly, не silent drop.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-business-analyst/Traceability matrix weekly refresh' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- task is 'role-business-analyst/Traceability matrix weekly refresh' or a close variant.
+- operator has the artefacts named in Prerequisites before starting.
+- output will be consumed by a downstream agent or human reviewer (not discarded).
+- tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working traceability matrix template csv artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- team already maintains a working traceability matrix — replace, do not duplicate.
+- the change is greenfield prototype with no production users.
+- regulatory / compliance context overrides in-methodology guidance (defer to legal).
 
 ## Prerequisites
 
-- recent context for the 'role-business-analyst/Traceability matrix weekly refresh' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/ba` | parent domain group — provides operating context for Traceability Matrix Template Csv |
+| `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/traceability-matrix-template-csv.json` | JSON schema for the Traceability Matrix Template Csv output contract |
-| `templates/traceability-matrix-template-csv.md` | Markdown skeleton with the required fields |
+| `templates/traceability-matrix-template-csv.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-traceability-matrix-template-csv.py` | Enforce Traceability Matrix Template Csv output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-traceability-matrix-template-csv.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- upstream playbook: `role-business-analyst/Traceability matrix weekly refresh`
-- pro/ba/role-business-analyst
+- [[traceability-tooling-comparison-jira-ado-polarion]]
+- [[change-request-impact-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

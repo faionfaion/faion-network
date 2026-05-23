@@ -3,80 +3,95 @@ slug: contractor-audition-flow
 tier: pro
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Contractor Audition Flow: codified comms practice that turns the recurring 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies' decision into a repeatable, auditable artefact.
-content_id: "ceb7302b80c21219"
-tags: [contractor-audition-flow, comms, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Paid-trial spec + scoring rubric + ramp-onto-real-client criteria + kill-criteria — a contractor-specific audition flow that does NOT run a 6-week W-2 interview funnel.
+content_id: "0657efa9e59a3327"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [contractor, audition, hiring, micro-agency, comms]
 ---
 # Contractor Audition Flow
 
 ## Summary
 
-**One-sentence:** Contractor Audition Flow: codified comms practice that turns the recurring 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies' decision into a repeatable, auditable artefact.
+**One-sentence:** Paid-trial spec + scoring rubric + ramp-onto-real-client criteria + kill-criteria — a contractor-specific audition flow that does NOT run a 6-week W-2 interview funnel.
 
-**One-paragraph:** Contractor Audition Flow addresses the gap surfaced by 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies'. hr-recruiter/recruiting-process and structured-interview-design assume W-2 hiring funnels. Agencies need a contractor-specific audition flow: paid trial task spec, scoring rubric, ramp-onto-real-client criteria, kill-criteria. Conflating it with employee interviewing produces 6-week hiring loops the agency can't afford. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Paid-trial spec + scoring rubric + ramp-onto-real-client criteria + kill-criteria — a contractor-specific audition flow that does NOT run a 6-week W-2 interview funnel. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned playbook-step artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- micro-agency будує bench без перетворення на agency-of-agencies.
+- paid trial task з типовими input/output, не «design exercise».
+- scoring rubric з вагами, не «vibe».
+- ramp criteria для real-client onboarding (не theatre).
+- kill criteria за day-30 → охороняє margin замість sunk cost.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- task is 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies' or close variant.
+- operator has the artefacts named in Prerequisites available before starting.
+- output will be consumed by a downstream agent or human reviewer (not discarded).
+- tier == pro or higher (gating enforced by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- team already maintains a working artefact for this gap — replace, do not duplicate.
+- single-use throwaway hire — overhead of the contract is not justified.
+- regulatory / compliance context overrides any in-methodology guidance.
 
 ## Prerequisites
 
-- recent context for the 'p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/hr-recruiter` | parent role skill — provides the operating context for this methodology |
+| `pro/comms/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the playbook-step artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/contractor-audition-flow.json` | JSON schema for the Contractor Audition Flow output contract |
-| `templates/contractor-audition-flow.md` | Markdown skeleton with the required fields |
+| `templates/contractor-audition-flow.md` | Working playbook-step skeleton with 5-line header |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-contractor-audition-flow.py` | Enforce Contractor Audition Flow output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-contractor-audition-flow.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
-- upstream playbook: `p5-micro-agency-founder/Build a bench of vetted subcontractors without becoming an agency-of-agencies`
-- methodology family: `pro/comms/` (gap-p2 batch, F-059-063)
+- [[contractor-onboarding-runbook]]
+- [[graceful-offboard-script]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

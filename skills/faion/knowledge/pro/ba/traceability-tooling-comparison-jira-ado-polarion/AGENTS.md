@@ -3,78 +3,96 @@ slug: traceability-tooling-comparison-jira-ado-polarion
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "020db263f8a8e972"
-summary: "Traceability Tooling Comparison Jira Ado Polarion: produces a versioned, owner-signed artefact that closes the gap 'role-business-analyst/Requirements traceability across the full project lifecycle'."
-tags: [traceability-tooling-comparison-jira-ado-polarion, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Comparison + setup-guide report for traceability tooling (Jira, Azure DevOps, Polarion, Confluence): link types, custom fields, trace gates, gotchas.
+content_id: "c5d8cfe44402e4bb"
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [traceability, jira, ado, polarion, tool-comparison, ba]
 ---
-# Traceability Tooling Comparison Jira Ado Polarion
+# Traceability Tooling Comparison (Jira / ADO / Polarion)
 
 ## Summary
 
-**One-sentence:** Traceability Tooling Comparison Jira Ado Polarion: produces a versioned, owner-signed artefact that closes the gap 'role-business-analyst/Requirements traceability across the full project lifecycle'.
+**One-sentence:** Comparison + setup-guide report for traceability tooling (Jira, Azure DevOps, Polarion, Confluence): link types, custom fields, trace gates, gotchas.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-business-analyst/Requirements traceability across the full project lifecycle': BAs constantly inherit Jira / Azure DevOps / Polarion / Confluence trace setups they didn't design. Need a comparison + setup guide: link types, custom fields, trace gates, gotchas per tool. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a traceability tooling comparison jira ado polarion artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Comparison + setup-guide report for traceability tooling (Jira, Azure DevOps, Polarion, Confluence): link types, custom fields, trace gates, gotchas. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned report artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- BA інherited Jira/ADO/Polarion setup, який не сам проектував.
+- потрібна decision-record «який tool під які requirements».
+- пастка кастомних полів і link-type консистентності.
+- trace-gate gotchas per tool (audit-trail, permission model).
+- звіт читає sponsor / PMO без glossary.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-business-analyst/Requirements traceability across the full project lifecycle' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- task is 'role-business-analyst/Requirements traceability across the full project lifecycle'.
+- operator has the artefacts named in Prerequisites before starting.
+- output will be consumed by a downstream agent or human reviewer.
+- tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working traceability tooling comparison jira ado polarion artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- team already maintains a working tooling-comparison artefact — replace, do not duplicate.
+- the change is greenfield prototype with no production users.
+- regulatory / compliance context overrides in-methodology guidance.
 
 ## Prerequisites
 
-- recent context for the 'role-business-analyst/Requirements traceability across the full project lifecycle' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/ba` | parent domain group — provides operating context for Traceability Tooling Comparison Jira Ado Polarion |
+| `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the report artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/traceability-tooling-comparison-jira-ado-polarion.json` | JSON schema for the Traceability Tooling Comparison Jira Ado Polarion output contract |
-| `templates/traceability-tooling-comparison-jira-ado-polarion.md` | Markdown skeleton with the required fields |
+| `templates/traceability-tooling-comparison-jira-ado-polarion.md` | Working report skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-traceability-tooling-comparison-jira-ado-polarion.py` | Enforce Traceability Tooling Comparison Jira Ado Polarion output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-traceability-tooling-comparison-jira-ado-polarion.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- upstream playbook: `role-business-analyst/Requirements traceability across the full project lifecycle`
-- pro/ba/role-business-analyst
+- [[traceability-matrix-template-csv]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

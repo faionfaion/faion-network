@@ -3,72 +3,98 @@ slug: employee-value-proposition
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for defining and communicating the unique value employees receive in exchange for their skills and commitment, structured around five pillars: Compensation, Benefits, Career, Work Environment, and Culture/Purpose.
-content_id: "75ca2274b0aef712"
-tags: [employer-branding, employee-value, evp, recruiting, offer-acceptance]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Five-pillar EVP (Compensation / Benefits / Career / Work Environment / Culture-Purpose), each pillar backed by ≥3 named proof points before external publication.
+content_id: "b07e15ded9ca0db7"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [evp, employer-branding, employee-value, recruiting, hr]
 ---
 # Employee Value Proposition (EVP)
 
 ## Summary
 
-**One-sentence:** A methodology for defining and communicating the unique value employees receive in exchange for their skills and commitment, structured around five pillars: Compensation, Benefits, Career, Work Environment, and Culture/Purpose.
+**One-sentence:** Five-pillar EVP (Compensation / Benefits / Career / Work Environment / Culture-Purpose), each pillar backed by ≥3 named proof points before external publication.
 
-**One-paragraph:** A methodology for defining and communicating the unique value employees receive in exchange for their skills and commitment, structured around five pillars: Compensation, Benefits, Career, Work Environment, and Culture/Purpose. The testable rule: every EVP pillar must have at least three named proof points (programs, budgets, or data) before external publication — pillars without evidence are rejected.
+**One-paragraph:** Five-pillar EVP (Compensation / Benefits / Career / Work Environment / Culture-Purpose), each pillar backed by ≥3 named proof points before external publication. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- annual or quarterly EVP refresh — survey + exit data + benchmark.
+- ≥3 proof points (program, budget, data) per pillar — no aspirational fluff.
+- DEI numbers — UNVERIFIED placeholder, fill from HRIS only.
+- post-pass scrub generic clichés («innovative», «passionate»).
+- segmented messaging engineering / sales / ops замість one-size-fits-all.
 
 ## Applies If (ALL must hold)
 
-- Company has 50+ employees and inconsistent narrative across careers page, JDs, recruiter outreach, and offer letters.
-- Offer-acceptance rate is dropping or post-decline surveys cite "didn't understand what makes you different."
-- Annual employer brand refresh: synthesize survey data, exit interviews, competitor pages into a draft EVP.
-- Localizing or segmenting EVP for different audiences (engineering vs. sales, EU vs. US).
+- company has 50+ employees and inconsistent narrative across careers page, JDs, recruiter outreach, and offer letters.
+- offer-acceptance rate is dropping or post-decline surveys cite 'didn't understand what makes you different.'
+- annual employer brand refresh: synthesize survey data, exit interviews, competitor pages into a draft EVP.
+- localizing or segmenting EVP for different audiences (engineering vs. sales, EU vs. US).
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF startup (<20 people): EVP will change in three months — premature.
-- Acute reputation crisis (layoffs, scandal): fix the underlying issue first; EVP copy during crisis fuels Glassdoor backlash.
-- One-off role hiring with no brand intent: a well-written JD suffices.
-- Company offers below-market compensation and refuses to address it — no narrative compensates.
+- pre-PMF startup (<20 people): EVP will change in three months — premature.
+- acute reputation crisis (layoffs, scandal): fix the underlying issue first.
+- one-off role hiring with no brand intent: a well-written JD suffices.
+- company offers below-market compensation and refuses to address it — no narrative compensates.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/comms/hr-recruiter/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/employee-value-proposition.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-employee-value-proposition.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[employer-branding]]
+- [[interview-methods]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

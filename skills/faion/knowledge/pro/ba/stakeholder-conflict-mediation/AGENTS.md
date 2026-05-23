@@ -3,57 +3,96 @@ slug: stakeholder-conflict-mediation
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Live mediation playbook for stakeholder conflicts surfacing during requirements review meetings — pause-reframe-isolate-decide-confirm loop with a fallback escalation criterion when the room cannot converge.
-content_id: "71ad8e5f7b3956e7"
-tags: [business-analyst, stakeholder-conflict, mediation, requirements-review, live-meeting, p4-outsource]
+summary: In-the-moment five-step loop (pause → reframe → isolate → propose → confirm) for the BA when a stakeholder conflict erupts mid-requirements-review.
+content_id: "d2385170e53586e7"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [mediation, stakeholder-conflict, live-meeting, ba, facilitation]
 ---
 # Stakeholder Conflict Mediation
 
 ## Summary
 
-**One-sentence:** A live-meeting mediation loop for the BA running a requirements review when two stakeholders openly conflict — pause → reframe to the requirement → isolate the disputed clause → propose a decision path → confirm next step in writing — with a defined escalation criterion if the loop fails twice.
+**One-sentence:** In-the-moment five-step loop (pause → reframe → isolate → propose → confirm) for the BA when a stakeholder conflict erupts mid-requirements-review.
 
-**One-paragraph:** Whereas `stakeholder-conflict-facilitation-script` runs a *scheduled* conflict-resolution meeting, conflicts often erupt mid-requirements-review without warning. The static `stakeholder-analysis` methodology classifies stakeholders but offers no in-the-moment playbook. This methodology gives the BA a five-step loop they can run inside the same meeting: pause the broader review, reframe the argument back to the disputed requirement clause, isolate the specific point of disagreement (often only one of several), propose a decision path (decide-now / async-with-rubric / escalate), and confirm the next step is captured in writing before resuming review. If the loop iterates twice without convergence, the BA invokes a pre-agreed escalation criterion to a named sponsor rather than letting the meeting hostage the rest of the agenda.
+**One-paragraph:** In-the-moment five-step loop (pause → reframe → isolate → propose → confirm) for the BA when a stakeholder conflict erupts mid-requirements-review. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned playbook-step artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- конфлікт спалахнув mid-review без попереднього scheduling.
+- BA є facilitator / co-facilitator зустрічі.
+- ≥2 стейкхолдери відкрито протистоять по конкретному requirement.
+- у project charter названо escalation contact для unresolved conflicts.
+- є ≥10 хв часу залишилось у зустрічі для одного циклу loop.
 
 ## Applies If (ALL must hold)
 
-- Conflict erupts during an active requirements review meeting (not pre-scheduled mediation).
-- The BA is the meeting facilitator or co-facilitator.
-- At least two named stakeholders are taking opposing positions on a specific requirement.
-- An escalation contact (sponsor, product head) has been agreed in the project charter.
+- conflict erupts during an active requirements review (not pre-scheduled mediation).
+- the BA is the meeting facilitator or co-facilitator.
+- at least two named stakeholders are taking opposing positions on a specific requirement.
+- an escalation contact (sponsor, product head) is agreed in the project charter.
 
 ## Skip If (ANY kills it)
 
-- Pre-scheduled conflict meeting — use `stakeholder-conflict-facilitation-script` instead.
-- Conflict is interpersonal/political, not requirements-based — defer to HR/manager, not BA.
-- Meeting has under 10 minutes remaining — schedule a dedicated follow-up; do not attempt mediation in fragments.
-- No agreed escalation path exists — fix that first; running this loop without it produces no exit.
+- pre-scheduled conflict meeting — use stakeholder-conflict-facilitation-script instead.
+- conflict is interpersonal/political, not requirements-based — defer to HR/manager.
+- meeting has under 10 minutes remaining — schedule a dedicated follow-up.
+- no agreed escalation path exists — fix that first; the loop has no exit without it.
 
 ## Prerequisites
 
-- Project charter or kickoff doc names an escalation contact for unresolved requirements conflicts.
-- BA has access to the requirements doc to surface the specific clause in dispute.
-- Meeting is recorded or has a designated note-taker (so reframings can be quoted back).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst/stakeholder-analysis` | Stakeholder authority map informs escalation thresholds. |
-| `pro/ba/decision-rationale-capture` | Format for capturing the written confirm step. |
+| `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Five rules: pause + reframe, isolate to one clause, propose three paths, written confirm, two-iter escalation cap. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the playbook-step artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/stakeholder-conflict-mediation.md` | Working playbook-step skeleton with 5-line header |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-stakeholder-conflict-mediation.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer: `stakeholder-conflict-facilitation-script`, `decision-rationale-capture`, `cr-impact-memo-template`
-- external: Interest-Based Relational approach (Fisher & Ury, Getting to Yes) §Separate the people from the problem
+- [[stakeholder-conflict-facilitation-script]]
+- [[decision-rationale-capture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
