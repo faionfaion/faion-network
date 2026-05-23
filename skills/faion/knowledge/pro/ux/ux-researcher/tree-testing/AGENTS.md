@@ -3,72 +3,99 @@ slug: tree-testing
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Tree testing evaluates the findability of topics in a website's hierarchy by having participants navigate a text-only version of the site structure (no design, no content) to locate answers to scenario tasks.
-content_id: "b3b3361955a312cd"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Findability evaluation report: text-only IA tree, scenario tasks, per-task success/directness scores, problem-area annotations and IA-revision recommendations.
+content_id: "c79c44e67f50278a"
+complexity: medium
+produces: report
+est_tokens: 4900
 tags: [tree-testing, information-architecture, ia-validation, findability, usability-testing]
 ---
 # Tree Testing
 
 ## Summary
 
-**One-sentence:** Tree testing evaluates the findability of topics in a website's hierarchy by having participants navigate a text-only version of the site structure (no design, no content) to locate answers to scenario tasks.
+**One-sentence:** Findability evaluation report: text-only IA tree, scenario tasks, per-task success/directness scores, problem-area annotations and IA-revision recommendations.
 
-**One-paragraph:** Tree testing evaluates the findability of topics in a website's hierarchy by having participants navigate a text-only version of the site structure (no design, no content) to locate answers to scenario tasks. Key metrics are success rate, directness, and first-click correctness. Requires 30-50 participants for statistical confidence and 10-15 tasks covering shallow and deep destinations.
+**One-paragraph:** Findability evaluation report: text-only IA tree, scenario tasks, per-task success/directness scores, problem-area annotations and IA-revision recommendations. The methodology pins inputs to citable sources, runs >=5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- The triggering activity for tree-testing recurs in the operator's workload at least once per cycle.
+- A named downstream consumer exists (human reviewer or downstream agent) for the produced artefact.
+- Inputs come from a citable source-of-truth, not paraphrase.
+- Result will drive a binding action (commit, ship, ramp, freeze) that justifies the methodology overhead.
+- The operator has write or sign-off authority over the artefact this methodology produces.
 
 ## Applies If (ALL must hold)
 
-- Validating a proposed IA before visual design or build begins.
-- Comparing two candidate IAs head-to-head with the same task set.
-- Post-card-sort validation: test that users can navigate the structure card sorting produced.
-- Pre-redesign baselining: measure findability on current site vs proposed site to quantify lift.
+- The triggering activity for tree-testing appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- IA does not yet exist — run a card sort first.
-- Testing visual labels, CTAs, or filtering UI — use first-click testing or full usability testing.
-- Sites where >50% of traffic enters via search — navigation findability is a weaker signal.
-- Single-page apps without hierarchical navigation — there is no tree to test.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/ux-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[content-audit-basics]] | upstream context this methodology builds on |
+| [[mobile-ux-basics]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-tree-testing-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tree-testing.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-researcher/`
+- [[content-audit-basics]]
+- [[mobile-ux-basics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
