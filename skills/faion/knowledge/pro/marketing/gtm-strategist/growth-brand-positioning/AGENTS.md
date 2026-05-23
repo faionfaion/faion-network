@@ -3,74 +3,97 @@ slug: growth-brand-positioning
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A six-step framework for owning a specific position in a target customer's mind: define the customer ruthlessly precisely, map competitive alternatives, identify a single "only we" differentiator, choose a category strategy, craft an internal positioning statement plus one-liner, and validate through customer interviews.
-content_id: "6e3b58a021d86b2d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Six-step positioning spec: define precise customer + map alternatives + name single 'only we' differentiator + pick category + craft statement + validate via customer interviews.
+content_id: "d0e363807b489bb3"
+complexity: deep
+produces: spec
+est_tokens: 4200
 tags: [positioning, brand, marketing, differentiation, gtm]
 ---
 # Brand Positioning
 
 ## Summary
 
-**One-sentence:** A six-step framework for owning a specific position in a target customer's mind: define the customer ruthlessly precisely, map competitive alternatives, identify a single "only we" differentiator, choose a category strategy, craft an internal positioning statement plus one-liner, and validate through customer interviews.
+**One-sentence:** Six-step positioning spec: define precise customer + map alternatives + name single 'only we' differentiator + pick category + craft statement + validate via customer interviews.
 
-**One-paragraph:** A six-step framework for owning a specific position in a target customer's mind: define the customer ruthlessly precisely, map competitive alternatives, identify a single "only we" differentiator, choose a category strategy, craft an internal positioning statement plus one-liner, and validate through customer interviews. Uses April Dunford's methodology as the primary anchor.
+**One-paragraph:** Six-step positioning spec: define precise customer + map alternatives + name single 'only we' differentiator + pick category + craft statement + validate via customer interviews. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- Перед запуском GTM strategy — positioning є upstream.
+- Product чує 'мы как X, тільки cheaper / faster' — це pricing проблема + positioning crime.
+- Founder каже 'we serve everyone' — це anti-positioning, fix first.
+- Перед website rebuild / sales page sprint — anchor у positioning спершу.
 
 ## Applies If (ALL must hold)
 
-- New product or new market segment: derive positioning before writing any copy.
-- Stale messaging: existing positioning blends with competitors or customers can't repeat it.
-- Pre-launch stress-test: validate a positioning statement against competitive alternatives and customer interviews.
-- Sales/marketing alignment: produce the messaging hierarchy (one-liner → elevator pitch → 3 key messages → proof points).
-- Category strategy decision: existing vs. sub-category vs. new category with explicit tradeoffs.
+- Product has paying customers + identifiable winners (avatar candidates).
+- Команда здатна на 10+ customer interviews protect quarter.
+- Founder accepts narrowing — pre-committed до exclusion of 'serve everyone' wording.
 
 ## Skip If (ANY kills it)
 
-- Tactical copy production (headlines, ad copy, email subjects) — positioning is upstream input, not copy itself.
-- Brand identity (logo, palette, typography) — different domain.
-- Personas from scratch — use persona-building methodology; positioning consumes personas.
-- Competitive intelligence on individual rivals — use growth-competitor-analysis; positioning consumes that output.
-- Repositioning a public-company brand under shareholder scrutiny — beyond methodology scope.
+- Pre-product / 0 paying customers — speculate, не position.
+- Founder unwilling narrow — positioning fail under pressure.
+- Single-vertical product with > 90% revenue from one segment — formalize, не re-position.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec-skeleton.md` | Brand Positioning skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Brand Positioning. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-brand-positioning.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[growth-gtm-strategy]]
+- [[agency-niche-positioning]]
+- [[growth-press-coverage]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

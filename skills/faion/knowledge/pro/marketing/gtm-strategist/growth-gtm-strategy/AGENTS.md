@@ -3,72 +3,97 @@ slug: growth-gtm-strategy
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Five-question GTM framework: define one ICP with anti-ICP, craft positioning using For/Who/Is/Unlike/We formula, select 2-3 channels, choose sales motion by ACV, and plan phased launch.
-content_id: "e11358b515aeb6a0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Five-question GTM spec: define ONE ICP + anti-ICP, craft For/Who/Is/Unlike/We positioning, select 2-3 channels, choose sales motion by ACV, plan phased launch.
+content_id: "dada5d629a5c5e8e"
+complexity: deep
+produces: spec
+est_tokens: 4200
 tags: [gtm, go-to-market, strategy, icp, launch]
 ---
 # Go-to-Market Strategy
 
 ## Summary
 
-**One-sentence:** Five-question GTM framework: define one ICP with anti-ICP, craft positioning using For/Who/Is/Unlike/We formula, select 2-3 channels, choose sales motion by ACV, and plan phased launch.
+**One-sentence:** Five-question GTM spec: define ONE ICP + anti-ICP, craft For/Who/Is/Unlike/We positioning, select 2-3 channels, choose sales motion by ACV, plan phased launch.
 
-**One-paragraph:** Five-question GTM framework: define one ICP with anti-ICP, craft positioning using For/Who/Is/Unlike/We formula, select 2-3 channels, choose sales motion by ACV, and plan phased launch. Mark unverified claims as ASSUMPTION.
+**One-paragraph:** Five-question GTM spec: define ONE ICP + anti-ICP, craft For/Who/Is/Unlike/We positioning, select 2-3 channels, choose sales motion by ACV, plan phased launch. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- Before product launch — GTM strategy gate.
+- Перед серйозним budget commit на marketing.
+- При перейті між sales motions (PLG → sales-led або зворотньо).
+- Кожні 6 місяців як strategy retrospective.
 
 ## Applies If (ALL must hold)
 
-- Drafting an initial GTM plan from product brief and market data.
-- Building a competitive positioning map by analyzing G2, Capterra, SimilarWeb, and competitor sites.
-- Generating multiple GTM hypotheses (channel × motion × pricing) and stress-testing against unit economics.
-- Monthly metric review to flag off-track KPIs and propose strategy adjustments.
-- Preparing launch-readiness reports across phases (private beta → public beta → GA).
+- Product complete enough для зовнішнього launch.
+- Доступ до competitive landscape data.
+- >= 1 quarter runway для viable GTM execution.
 
 ## Skip If (ANY kills it)
 
-- No validated product yet — GTM without product-market fit validation is fiction; run customer-discovery interviews first.
-- Late-stage pivots driven by emergent insight from a single customer call — human must own strategic shifts; agent optimizes on outdated assumptions.
-- Regulated industries with heavy licensing gates (medical devices, fintech, defense) — GTM constraints are legal, not market-driven.
+- Pre-product (alpha) — це product strategy, не GTM.
+- Pure internal tool — GTM irrelevant.
+- Already executing successful GTM — це optimization context, не strategy.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec-skeleton.md` | Go-to-Market Strategy skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Go-to-Market Strategy. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-gtm-strategy.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[growth-brand-positioning]]
+- [[growth-product-hunt-launch]]
+- [[growth-press-coverage]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

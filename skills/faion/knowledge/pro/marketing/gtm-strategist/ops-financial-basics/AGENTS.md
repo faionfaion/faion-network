@@ -3,72 +3,99 @@ slug: ops-financial-basics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Subscription business viability hinges on understanding unit economics: how much each customer is worth over their lifetime (LTV), how much you pay to acquire them (CAC), and whether you recover that cost in reasonable time (payback period).
-content_id: "18ea5fa50a703f21"
-tags: [unit-economics, financial, ltv, cac, pnl]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Unit-economics report: LTV, CAC, payback period, LTV:CAC≥3 gate, plus monthly P&L (revenue/COGS/gross margin/opex) used to flag unsustainable spend lines.
+content_id: "fd373e9e1b5ea73d"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: ["unit-economics", "financial", "ltv", "cac", "pnl"]
 ---
 # Financial Fundamentals for Subscription Businesses
 
 ## Summary
 
-**One-sentence:** Subscription business viability hinges on understanding unit economics: how much each customer is worth over their lifetime (LTV), how much you pay to acquire them (CAC), and whether you recover that cost in reasonable time (payback period).
+**One-sentence:** Unit-economics report: LTV, CAC, payback period, LTV:CAC≥3 gate, plus monthly P&L (revenue/COGS/gross margin/opex) used to flag unsustainable spend lines.
 
-**One-paragraph:** Subscription business viability hinges on understanding unit economics: how much each customer is worth over their lifetime (LTV), how much you pay to acquire them (CAC), and whether you recover that cost in reasonable time (payback period). The golden ratio, LTV:CAC greater than or equal to 3, means each customer generates three times their acquisition cost. A monthly P and L with revenue, COGS, gross margin, and operating expenses reveals where cash is flowing and what expenses are unsustainable.
+**One-paragraph:** Financial Fundamentals for Subscription Businesses pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- Early SaaS founders (pre-Series A) validating business model before scaling marketing spend.
-- Evaluating a new pricing tier or customer segment: unit economics must improve or stay consistent, not degrade.
-- Deciding between product expansion vs. customer success investment. Unit economics reveal which lever moves the needle.
-- Presenting to investors or co-founders about business health and sustainability.
-- Launching marketing campaigns: calculate expected CAC and validate it against LTV before spending.
+- The team operates the system the methodology targets (`ops-financial-basics` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- Pre-product-market-fit businesses where cohort retention is below 60% at 3 months — improving retention comes before optimizing CAC.
-- One-time purchase or marketplace products — LTV formula assumes recurring revenue and breaks for non-subscription models.
-- Fully bootstrapped single-person businesses with minimal overhead — the unit economics formula is overkill when you're not acquiring customers at scale.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Соло- і малих SaaS, що рахують LTV / CAC / payback вперше або заново.
+- Перевірки правила LTV:CAC ≥ 3 перед збільшенням маркетинг-бюджету.
+- Місячного P&L з revenue / COGS / gross margin / opex з чітким owner-ом за лінію.
+- Виявлення unsustainable expense lines до runway-кризи.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked example from inputs to validated artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-financial-basics.md` | Working skeleton for the `ops-financial-basics` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-financial-basics.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

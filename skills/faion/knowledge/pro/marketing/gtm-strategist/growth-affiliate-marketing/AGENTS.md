@@ -3,73 +3,97 @@ slug: growth-affiliate-marketing
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured approach to building partner-driven acquisition channels where third-party publishers earn commissions on sales they refer.
-content_id: "541a48e9ba06be68"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Partner-driven affiliate channel spec: commission structure + cookie duration + recruitment + asset library + onboarding + fraud detection + payout ops.
+content_id: "2223674ec8508e16"
+complexity: deep
+produces: spec
+est_tokens: 4200
 tags: [affiliate, partner, commission, referrals, acquisition]
 ---
 # Growth Affiliate Marketing
 
 ## Summary
 
-**One-sentence:** A structured approach to building partner-driven acquisition channels where third-party publishers earn commissions on sales they refer.
+**One-sentence:** Partner-driven affiliate channel spec: commission structure + cookie duration + recruitment + asset library + onboarding + fraud detection + payout ops.
 
-**One-paragraph:** A structured approach to building partner-driven acquisition channels where third-party publishers earn commissions on sales they refer. Covers program design (commission structure, cookie duration, terms), affiliate recruitment, asset library creation, onboarding sequences, performance tracking, fraud prevention, and payout operations.
+**One-paragraph:** Partner-driven affiliate channel spec: commission structure + cookie duration + recruitment + asset library + onboarding + fraud detection + payout ops. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
+
+**Ефективно для:**
+
+- B2C / B2B SaaS з viable LTV для багаторівневого commission share.
+- Перед запуском paid retargeting — affiliate як diversification.
+- Якщо CAC blended > 30% LTV, affiliate може бути дешевший channel.
+- При scaling > $50k MRR — affiliate ops стає sustainable.
 
 ## Applies If (ALL must hold)
 
-- Recurring-revenue product (SaaS, subscription, course) with LTV high enough to support 20-40% commissions.
-- Digital product with self-serve checkout and clean link/code attribution.
-- Niche ICP reachable through 20-50 quality newsletter writers, bloggers, or course creators.
-- Checkout is Stripe/Paddle/Lemon Squeezy-compatible (affiliate link or discount-code friendly).
+- LTV documented + >= 40% gross margin per customer.
+- Tracking infra (affiliate platform / FirstPromoter / Tapfiliate / PartnerStack) configured.
+- Compliance owner для FTC / disclosure rules (US, UK, EU).
 
 ## Skip If (ANY kills it)
 
-- Sub-$30 transactional products with thin margin — payouts + admin overhead exceed return.
-- Pre-PMF or volatile pricing — unstable offers burn affiliate relationships.
-- Brand-sensitive regulated verticals (finance, medical) — affiliate copy creates compliance risk.
-- No asset library exists yet — affiliates without swipes/banners won't promote.
-- Marketplace price-comparison products — coupon-site affiliates cannibalize organic conversions.
+- Pre-LTV / pre-product-market-fit — affiliates burn budget on poor retention.
+- Margin < 25% — commission math kills unit economics.
+- Heavily-regulated vertical (health, finance) without legal sign-off — DO NOT run.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent role context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-tradeoffs` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec-skeleton.md` | Growth Affiliate Marketing skeleton — fill per artefact, do not commit free-form output. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Growth Affiliate Marketing. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-affiliate-marketing.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[growth-influencer-marketing]]
+- [[reference-program-playbook]]
+- [[growth-referral-programs]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

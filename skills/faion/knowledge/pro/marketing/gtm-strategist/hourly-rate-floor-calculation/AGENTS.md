@@ -3,89 +3,99 @@ slug: hourly-rate-floor-calculation
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Compute the per-hour billable rate a freelancer / contractor must charge to hit a target take-home income at realistic billable utilization (40-60%), not 100%.
-content_id: "c019147611b282aa"
-tags: [pricing, freelance, utilization, rate-card, runway, gross-up]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Hourly Rate Floor Calculation: 3-band floor/stretch/bottom report grossed up for taxes + overhead at realistic 40-60% utilisation, anchored to operator jurisdiction.
+content_id: "d8d200d276e9ae3f"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: ["pricing", "freelance", "utilization", "rate-card", "runway", "gross-up"]
 ---
 # Hourly Rate Floor Calculation
 
 ## Summary
 
-**One-sentence:** Compute the per-hour billable rate a freelancer / contractor must charge to hit a target take-home income at realistic billable utilization (40-60%), not 100%.
+**One-sentence:** Hourly Rate Floor Calculation: 3-band floor/stretch/bottom report grossed up for taxes + overhead at realistic 40-60% utilisation, anchored to operator jurisdiction.
 
-**One-paragraph:** Freelancers consistently under-price because they divide their target income by 2080 hours and use that number as their hourly. Real billable utilization for a sustainable solo practice is 40-60% — the other 40-60% goes to sales, admin, learning, and unpaid project waste. This methodology defines the floor calculation: target_take_home → gross_up_for_taxes → gross_up_for_overhead → divide_by_billable_hours → utilization_correction. Mechanism: a 7-step worksheet, geography-specific tax + overhead assumptions, and a confidence-band output ("floor", "stretch", "non-negotiable bottom"). Primary output: a single number — the minimum sustainable hourly — plus the assumptions table so future re-pricing can recompute without redoing discovery.
+**One-paragraph:** Hourly Rate Floor Calculation pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- operator bills hourly for ≥ 50% of income OR is about to start hourly work
-- operator has a target take-home income figure (annual or monthly)
-- operator is solo or 1099-style contractor (W-2 calculations are different)
-- operator is in a stable tax jurisdiction with known effective rates
-- operator does NOT have employer-provided benefits covering healthcare / pension
+- The team operates the system the methodology targets (`hourly-rate-floor-calculation` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- pure fixed-price business — use `from-hourly-to-fixed-transition` and ops-pricing-strategy instead
-- W-2 employee with stable salary — rate floor concept doesn't map
-- target income unknown ("just whatever I can get") — fix target first
-- operator uses tax-equalization (multi-country payroll) — needs specialist advice
-- operator has &lt; 6 months' bookkeeping data — no overhead baseline to gross up against
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
 
-## Prerequisites (must be true before starting)
+**Ефективно для:**
 
-- target annual take-home income (post-tax)
-- estimated effective tax rate for the jurisdiction (income + self-employment + VAT/GST if billable)
-- 6-12 months of overhead spend (tools, insurance, healthcare, office, training)
-- estimated unpaid time per quarter (sales, admin, learning, dead leads)
-- realistic billable utilization estimate (default 50% if no data)
+- Соло-фрілансерів і мікроагенцій, що ставлять перший pricing-floor.
+- Перерахунку ставок при зміні юрисдикції, податкового режиму, healthcare.
+- Квартального ре-розрахунку флору, коли utilization дрейфує > 10%.
+- Підготовки до перемовин: окремі bottom / floor / stretch замість одного числа.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/gtm-strategist/ops-pricing-strategy` | Optional: position the floor within a tiered SaaS pricing structure |
-| `pro/marketing/gtm-strategist/from-hourly-to-fixed-transition` | Receives the floor as the effective-hourly anchor for fixed-price math |
-| `solo/launch-operations/runway-calc` | Sanity-check the income target against current burn |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: utilization &lt; 100%, gross-up taxes, gross-up overhead, three-band output, geography-specific | ~1000 |
-| `content/02-output-contract.xml` | essential | Floor / stretch / bottom band schema, assumption table, recompute trigger | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (100% utilization fantasy, forgotten benefits, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked example from inputs to validated artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `gross_up_taxes_compute` | haiku | Pure arithmetic with jurisdiction lookup |
-| `overhead_baseline_summarizer` | sonnet | Read 12-month expense data, classify business vs personal |
-| `utilization_estimator` | sonnet | Pattern-match operator history to billable-hours band |
-| `floor_calculation_synth` | sonnet | Combine inputs into 3-band output with assumption trail |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/rate-floor-worksheet.md` | 7-step calculation template with assumption fields |
-| `templates/overhead-categories.md` | Standard overhead bucket list (tools, insurance, training, etc.) |
-| `templates/utilization-bands.md` | Solo / agency utilization benchmark table |
-| `templates/jurisdiction-tax-table.md` | Sample effective-rate table for US, UK, EU, UA, PT |
+| `templates/hourly-rate-floor-calculation.md` | Working skeleton for the `hourly-rate-floor-calculation` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/floor-calc.py` | Compute floor / stretch / bottom from inputs | Initial pricing |
-| `scripts/recompute-trigger.py` | Compare current assumptions vs cached worksheet | Quarterly review |
+| `scripts/validate-hourly-rate-floor-calculation.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
-- peer methodologies: `from-hourly-to-fixed-transition`, `ops-pricing-strategy`
-- external: [Freelancer's Rate Calculator (Brennan Dunn)](https://doubleyourfreelancingrate.com/) · [IRS self-employment tax guide](https://www.irs.gov/businesses/small-businesses-self-employed/self-employment-tax-social-security-and-medicare-taxes)
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -3,73 +3,98 @@ slug: ops-contractor-management
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A four-phase operational framework for managing hired contractors after the contract is signed: onboard with documentation and tool access, establish async communication rhythm (daily/weekly/monthly), assign tasks with explicit scope and examples, and evaluate performance monthly using an SBI-R (Situation-Behavior-Impact-Request) feedback structure.
-content_id: "c25ac41a597158c3"
-tags: [contractors, management, operations, feedback, oversight]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Contractor management playbook-step: onboard/communicate/assign/evaluate with daily-weekly-monthly cadence and SBI-R feedback at monthly review.
+content_id: "d82874ad74051144"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: ["contractors", "management", "operations", "feedback", "oversight"]
 ---
 # Contractor Management and Operational Oversight
 
 ## Summary
 
-**One-sentence:** A four-phase operational framework for managing hired contractors after the contract is signed: onboard with documentation and tool access, establish async communication rhythm (daily/weekly/monthly), assign tasks with explicit scope and examples, and evaluate performance monthly using an SBI-R (Situation-Behavior-Impact-Request) feedback structure.
+**One-sentence:** Contractor management playbook-step: onboard/communicate/assign/evaluate with daily-weekly-monthly cadence and SBI-R feedback at monthly review.
 
-**One-paragraph:** A four-phase operational framework for managing hired contractors after the contract is signed: onboard with documentation and tool access, establish async communication rhythm (daily/weekly/monthly), assign tasks with explicit scope and examples, and evaluate performance monthly using an SBI-R (Situation-Behavior-Impact-Request) feedback structure.
+**One-paragraph:** Contractor Management and Operational Oversight pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- Onboarding a new contractor: build doc pack, provision tooling, schedule check-in cadence
-- Aggregating weekly/monthly status across multiple contractors
-- Drafting structured SBI-R feedback from observed work output
-- Performance evaluation cycles: synthesize a review from logged tasks and quality signals
-- Standardizing communication rhythm for an async, multi-timezone contractor roster
+- The team operates the system the methodology targets (`ops-contractor-management` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- Pre-hire screening and sourcing — use ops-contractor-basics
-- Conflict resolution or termination conversations — human-only; agents can prep facts but not deliver
-- Performance issues that may signal worker misclassification — escalate to legal first
-- Managing W-2 employees — different feedback frameworks (1:1s, OKRs, comp reviews)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Управління підписаними контракторами в async-режимі через cadence daily/weekly/monthly.
+- Постановки задач з explicit scope + examples (без 'just figure it out').
+- Місячного performance review через SBI-R (Situation/Behavior/Impact/Request).
+- Обмеження autonomy: AI не звільняє і не підвищує — це робить людина.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-contractor-management.md` | Working skeleton for the `ops-contractor-management` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-contractor-management.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
