@@ -1,42 +1,195 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Client Maturity Assessment Rubric Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Client Maturity Assessment Rubric output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Client Maturity Assessment Rubric Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid Client Maturity Assessment Rubric `rubric` artefact. The validator script enforces this contract before downstream consumption.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pm/client-maturity-assessment-rubric.json",
+  "title": "Client Maturity Assessment Rubric",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "dimensions",
+    "threshold"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "team",
+          "we",
+          "us",
+          "engineering"
+        ]
+      }
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "weight",
+          "score"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-      <pattern id="f5">version regressed (lower than previous record)</pattern>
-    </forbidden>
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "client-maturity-assessment-rubric-2026-05-23-acme",
+  "owner": "ruslan@faion.net",
+  "decision": "Proceed with the agreed plan as captured in the linked inputs.",
+  "rationale": "Decision rests on the latest engagement notes (notes-2026-05-22) and the prior baseline (baseline-2026-05-15); both inputs corroborate the same direction without contradicting constraints.",
+  "inputs_used": [
+    {
+      "name": "notes-2026-05-22",
+      "source": "wiki://pm/notes/2026-05-22.md"
+    },
+    {
+      "name": "baseline-2026-05-15",
+      "source": "repo://artefacts/baseline-2026-05-15.json"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "dimensions": [
+    {
+      "name": "margin",
+      "weight": 0.35,
+      "score": 3.5,
+      "evidence": "Modelled margin 28% per finance sheet 2026-Q2."
+    },
+    {
+      "name": "fit",
+      "weight": 0.25,
+      "score": 4.0,
+      "evidence": "Stack overlaps with two prior wins (proj-A, proj-B)."
+    },
+    {
+      "name": "compliance-burden",
+      "weight": 0.2,
+      "score": 2.5,
+      "evidence": "GDPR + HIPAA-lite per RFP section 7."
+    },
+    {
+      "name": "ai-leverage",
+      "weight": 0.2,
+      "score": 4.5,
+      "evidence": "70% of LOE classified as agentable per audit-2026-05-20."
+    }
+  ],
+  "threshold": 3.0
+}
+]]></code>
+    </example>
+  </section>
 
-    <allowed-transformations>
-      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
-    </allowed-transformations>
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "BadSlug",
+  "owner": "team",
+  "decision": "",
+  "inputs_used": [],
+  "version": "1"
+}
+]]></code>
+      <note>artefact_id is not kebab-case; owner is `team` (forbidden); decision is empty; inputs_used is empty; version is not semver; required `rubric`-shape fields are missing.</note>
+    </example>
+  </section>
 
-    <schema-reference path="templates/client-maturity-assessment-rubric.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/client-maturity-assessment-rubric.json</item>
-      <item>owner is a named individual or rotating named role — never a plural pronoun</item>
+      <item id="f1">owner ∈ { team, we, us, engineering, empty }</item>
+      <item id="f2">rationale that does not cite any input by name</item>
+      <item id="f3">inputs_used is empty AND decision is not `no-op`</item>
+      <item id="f4">duplicate artefact_id within the same artefact store</item>
+      <item id="f5">last_reviewed date in the future</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-client-maturity-assessment-rubric.py">Validator script enforcing the schema + forbidden patterns.</reference>
+  <reference path="templates/client-maturity-assessment-rubric.json">Standalone JSON Schema file (draft-07).</reference>
 </text>

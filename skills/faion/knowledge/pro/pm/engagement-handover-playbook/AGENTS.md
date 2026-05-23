@@ -3,78 +3,98 @@ slug: engagement-handover-playbook
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "ea1037d77e35ef38"
-summary: Engagement Handover Playbook delivers a concrete, testable methodology that turns the recurring task of 'Engagement Handover / Transition Out' into an auditable artefact, addressing the gap: project-closure exists but is org-internal flavoured (lessons-learned, benefits-realizati
-tags: [pm, pro, template, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Outsource handover artefact: knowledge-transfer matrix, sign-off pack, 30-day quiet-line guarantee, repo + creds + runbook + future-work index for client or next vendor.
+content_id: "7754d4d83d3fc47d"
+complexity: deep
+produces: playbook-step
+est_tokens: 5200
+tags: [pm, pro, handover, outsource, transition, p4]
 ---
 # Engagement Handover Playbook
 
 ## Summary
 
-**One-sentence:** Engagement Handover Playbook delivers a concrete, testable methodology that turns the recurring task of 'Engagement Handover / Transition Out' into an auditable artefact, addressing the gap: project-closure exists but is org-internal flavoured (lessons-learned, benefits-realization). Outsource-specific handover (knowledge transfer to client team OR next vendor, with sign-off and 30-day quiet-line guarantee) is missing.
+**One-sentence:** Outsource handover artefact: knowledge-transfer matrix, sign-off pack, 30-day quiet-line guarantee, repo + creds + runbook + future-work index for client or next vendor.
 
-**One-paragraph:** project-closure exists but is org-internal flavoured (lessons-learned, benefits-realization). Outsource-specific handover (knowledge transfer to client team OR next vendor, with sign-off and 30-day quiet-line guarantee) is missing. Engagement Handover Playbook closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Engagement Handover / Transition Out' (p4-outsource-specialist, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Engagement Handover Playbook delivers a defensible playbook-step artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- P4 outsource фрілансер/агенція, що завершує 6-12-тижневий engagement.
+- Vendor transition (зміна постачальника на client side) з 30-денним quiet-line guarantee.
+- Engagement з PCI/HIPAA/regulated scope — knowledge transfer має бути auditable.
+- Solo-консультант, що передає 'one-throat-to-choke' роботу in-house команді.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Engagement Handover / Transition Out' (role: p4-outsource-specialist) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- vendor or freelancer engagement is closing within the next 4 weeks
+- deliverables will continue to be operated by client team or another vendor
+- named receiver exists on the other side with authority to accept sign-off
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- engagement is being terminated for cause without handover scope — defer to legal/MSA
+- deliverables are a one-shot artefact with no ongoing operation — closure ≠ handover
+- client explicitly refused handover and accepted as-is — record refusal, exit
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the playbook-step + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `engagement_handover_playbook_template_fill` | haiku | Template fill, no judgment |
-| `engagement_handover_playbook_evidence_check` | sonnet | Bounded comparison + judgment |
-| `engagement_handover_playbook_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-engagement_handover_playbook` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/engagement-handover-playbook.md` | playbook-step skeleton with required fields + 5-line header |
+| `templates/engagement-handover-playbook.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-engagement-handover-playbook.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `p4-outsource-specialist/Engagement Handover / Transition Out`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[freelancer-handover-bundle-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.
