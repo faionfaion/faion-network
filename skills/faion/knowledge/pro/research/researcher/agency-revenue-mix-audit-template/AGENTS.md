@@ -3,88 +3,101 @@ slug: agency-revenue-mix-audit-template
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6868a356fc8b23df"
-summary: Quarterly research audit that decomposes agency revenue into project / retainer / productized lines with gross margin per line and trend analysis.
-tags: [research, agency, revenue-mix, margin, productization, business-model-research]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Revenue-mix audit template that classifies an agency's last-12-months revenue by type (project, retainer, productized, referral, owner-billed) and surfaces dependence risks + valuation-multiplier impact.
+content_id: "51b5885f27fc48d1"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [agency, revenue-mix, audit, research, pro]
 ---
 # Agency Revenue Mix Audit Template
 
 ## Summary
 
-**One-sentence:** Quarterly research audit that decomposes agency revenue into project / retainer / productized lines with gross margin per line and trend analysis.
+**One-sentence:** Revenue-mix audit template that classifies an agency's last-12-months revenue by type (project, retainer, productized, referral, owner-billed) and surfaces dependence risks + valuation-multiplier impact.
 
-**One-paragraph:** Generic business-model research treats agency revenue as a single number; this audit decomposes it into the three operationally distinct lines and tracks margin per line + line-mix trend over 4-6 quarters. Mechanism: pull 6 quarters of revenue data, classify every invoice into project / retainer / productized / misc, compute gross margin per line (revenue - direct costs of delivery), compute concentration (top-3 client share within line + across all), compute line-mix trend (is retainer growing as % of total?). Output: a quarterly research report with 5 decision questions for the founder (raise rates, drop low-margin clients, productize, hire vs. contract, exit?).
+**One-paragraph:** Revenue-mix audit template that classifies an agency's last-12-months revenue by type (project, retainer, productized, referral, owner-billed) and surfaces dependence risks + valuation-multiplier impact. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Agency founder pre-broker audit before exit conversations.
+- Annual revenue-mix review to track owner-dependency reduction.
+- Mix-shift planning when retainer % must rise to lift valuation.
+- Investor / acquirer due-diligence prep.
 
 ## Applies If (ALL must hold)
 
-- agency / consultancy with ≥ 6 quarters of revenue history
-- founder makes strategic revenue-mix decisions quarterly (productize? raise rates? exit a line?)
-- you have line-classified invoicing data OR can reconstruct from invoices + SOWs
-- accounting software has gross-margin tracking OR direct costs are reconstructable per line
+- The triggering activity for agency revenue mix audit template appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- &lt; 4 quarters of history — trend analysis is noise, not signal
-- pure-project agency with no retainer aspiration — analysis still helps but lower ROI
-- enterprise / 50+ person firm — different reporting framework needed (FP&amp;A team)
-- accounting in shambles (uncategorized expenses, missing invoices) — fix bookkeeping first
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- 6 quarters of invoiced revenue with client + SOW reference
-- direct costs per invoice (contractor pay, tooling, third-party services)
-- list of active retainers with monthly value and start/end dates
-- list of productized offerings (if any) with unit count + price
-- top-line P&L per quarter (revenue, COGS, opex, net)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager/agency-pnl-tracker-template` | Weekly / monthly data source the audit consumes |
-| `pro/research/researcher/business-model-research` | Broader business-model framing this audit slots into |
-| `pro/product/product-operations/account-health-scoring-model` | Account health weights into top-3-client analysis |
+| `pro/research/researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[agency-valuation-rubric]] | upstream context this methodology builds on |
+| [[business-model-planning]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: line classification rigor, margin per line not just revenue, 6-quarter trend window, concentration cross-cut, 5-decision-question close | ~900 |
-| `content/02-output-contract.xml` | essential | Audit report schema, line-mix trend schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (line drift, hidden direct costs, vanity revenue, productization theater, missing exit analysis, decision deferral) | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `invoice_classification_per_line` | sonnet | Per-invoice judgment: project / retainer / productized / misc |
-| `direct_cost_pull` | haiku | Lookup from accounting export |
-| `trend_synthesis` | opus | Cross-quarter pattern detection (line growing, margin shrinking) |
-| `decision_questions_synthesis` | opus | Translate findings into 5 founder-actionable questions |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-agency-revenue-mix-audit-template-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/audit-report.md` | Full audit report skeleton |
-| `templates/line-mix-trend-chart.md` | 6-quarter stacked bar of revenue by line |
-| `templates/margin-per-line-table.md` | Per-line gross margin trend |
-| `templates/decision-question-set.md` | 5 founder-decision prompts based on findings |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/classify-invoices.py` | Map invoices to line based on SOW + contract pattern | Audit setup |
-| `scripts/compute-margin-per-line.py` | Revenue - direct costs per line per quarter | Audit core |
-| `scripts/detect-concentration-risk.py` | Cross-cut concentration by line + global | Audit close |
+| `scripts/validate-agency-revenue-mix-audit-template.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
-- peer methodologies: `business-model-research`, `agency-pnl-tracker-template`, `agency-to-saas-readiness-checklist`
-- external: [Profit First (Michalowicz)](https://mikemichalowicz.com/profit-first/) · [Built to Sell (Warrillow)](https://builttosell.com/) · [Agency Profit Toolkit (Parakeeto)](https://parakeeto.com/blog/)
+- [[agency-valuation-rubric]]
+- [[business-model-planning]]
+- [[risk-assessment]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

@@ -3,75 +3,102 @@ slug: audience-segmentation
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A 5-step methodology for dividing a potential market into distinct, scored groups using 2-3 dimensions drawn from observed data (demographic, behavioral, psychographic, needs-based).
-content_id: "1b17d1bfb969be65"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 5-step audience-segmentation report partitioning a market into 2-5 scored segments along 2-3 dimensions (demographic, behavioural, psychographic, needs-based) with target-segment decision and ICP profile.
+content_id: "40687ddd18d225da"
+complexity: deep
+produces: report
+est_tokens: 4900
 tags: [segmentation, marketing, positioning, icp, research]
 ---
 # Audience Segmentation
 
 ## Summary
 
-**One-sentence:** A 5-step methodology for dividing a potential market into distinct, scored groups using 2-3 dimensions drawn from observed data (demographic, behavioral, psychographic, needs-based).
+**One-sentence:** 5-step audience-segmentation report partitioning a market into 2-5 scored segments along 2-3 dimensions (demographic, behavioural, psychographic, needs-based) with target-segment decision and ICP profile.
 
-**One-paragraph:** A 5-step methodology for dividing a potential market into distinct, scored groups using 2-3 dimensions drawn from observed data (demographic, behavioral, psychographic, needs-based). Produces a scored segment matrix and a target-strategy decision. Outputs audience-segmentation.md in .aidocs/product_docs/.
+**One-paragraph:** 5-step audience-segmentation report partitioning a market into 2-5 scored segments along 2-3 dimensions (demographic, behavioural, psychographic, needs-based) with target-segment decision and ICP profile. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Pre-launch: deciding which single segment gets the MVP.
+- Post-launch with mixed signals (high churn in 30%, high NPS in 50%).
+- Repositioning a stalled product where "everyone" messaging tests failed.
+- Pricing tier design when usage data shows two or more behavioural clusters.
+- B2B GTM when sales calls reveal distinct buyer types with different objections.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch: deciding which single segment gets the MVP.
-- Post-launch with mixed signals (high churn in 30% of cohort, high NPS in 50%) — segment to find actual ICP.
-- Repositioning a stalled product where "everyone" messaging tests failed.
-- Pricing tier design when usage data shows two or more behavioral clusters.
-- Channel allocation when paid spend is diffuse without a clear winner.
-- B2B GTM when sales calls reveal distinct buyer types with different objections.
+- The triggering activity for audience segmentation appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- TAM under ~5k addressable accounts — further segmentation starves each segment of evidence.
-- First 10 paying customers — too few data points; run pain-points and problem-validation first.
-- Pure infra/dev tools where the buyer is "any engineer with this stack" — use niche-evaluation.
-- Dimensions chosen from gut alone with no interview/CRM/analytics data backing them.
-- One-off campaigns where the segment is already given by the brief.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[jtbd-switch-interview]] | upstream context this methodology builds on |
+| [[mixed-methods-triangulation]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-audience-segmentation-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-audience-segmentation.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[jtbd-switch-interview]]
+- [[mixed-methods-triangulation]]
+- [[niche-scorecard]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

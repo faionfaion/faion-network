@@ -1,67 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Revenue Mix Audit Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the quarterly audit report schema.</summary>
+<text id="02-output-contract" title="Agency Revenue Mix Audit Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid Agency Revenue Mix Audit Template artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="audit_metadata">
-        <subfield name="quarter_label" type="string"/>
-        <subfield name="window_quarters" type="integer" min="6" max="6"/>
-        <subfield name="auditor" type="string"/>
-        <subfield name="audited_at" type="iso_date"/>
-      </field>
-      <field name="line_classified_revenue" format="quarterly_table">
-        <subfield name="rows[].quarter" type="string"/>
-        <subfield name="rows[].project_revenue" type="number"/>
-        <subfield name="rows[].retainer_revenue" type="number"/>
-        <subfield name="rows[].productized_revenue" type="number"/>
-        <subfield name="rows[].misc_revenue" type="number"/>
-      </field>
-      <field name="margin_per_line_per_quarter" format="quarterly_table">
-        <subfield name="rows[].quarter" type="string"/>
-        <subfield name="rows[].project_margin_percent" type="number"/>
-        <subfield name="rows[].retainer_margin_percent" type="number"/>
-        <subfield name="rows[].productized_margin_percent" type="number"/>
-      </field>
-      <field name="concentration">
-        <subfield name="within_line_top_3_percent" type="dict"/>
-        <subfield name="across_all_top_3_percent" type="number"/>
-      </field>
-      <field name="reclassification_log" format="list"/>
-      <field name="decision_questions" min_items="5" max_items="5">
-        <subfield name="decision_questions[].question" type="string"/>
-        <subfield name="decision_questions[].recommended_answer" enum="YES,NO,DEFER"/>
-        <subfield name="decision_questions[].evidence_summary" type="string"/>
-        <subfield name="decision_questions[].follow_up_owner" type="string"/>
-      </field>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-revenue-mix-audit-template.json",
+  "title": "Agency Revenue Mix Audit Template",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "agency_name",
+    "period_iso",
+    "revenue_by_type",
+    "dependence_risks",
+    "multiplier_impact",
+    "evidence",
+    "owner",
+    "last_touched",
+    "template_version"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date",
+      "minLength": 1
+    },
+    "agency_name": {
+      "type": "string",
+      "description": "subject agency",
+      "minLength": 1
+    },
+    "period_iso": {
+      "type": "string",
+      "description": "last-12-months ISO range",
+      "minLength": 1
+    },
+    "revenue_by_type": {
+      "type": "object",
+      "description": "{project, retainer, productized, referral, owner_billed} \u2192 usd + %"
+    },
+    "dependence_risks": {
+      "type": "array",
+      "description": "{type, risk_note, mitigation}",
+      "minItems": 1
+    },
+    "multiplier_impact": {
+      "type": "object",
+      "description": "type-share \u2192 valuation multiplier delta"
+    },
+    "evidence": {
+      "type": "array",
+      "description": "{source, citation}",
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
 
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "artefact_id": "agency-revenue-mix-audit-template-2026-05-23",
+  "agency_name": "draft",
+  "period_iso": "draft",
+  "revenue_by_type": {
+    "key": "value"
+  },
+  "dependence_risks": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "multiplier_impact": {
+    "key": "value"
+  },
+  "evidence": [
+    {
+      "source": "https://example.com/transcript/1",
+      "citation": "verbatim user quote"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence array — rejected by `validate-agency-revenue-mix-audit-template.py` with exit 1.</note>
+  </example>
+
+  
     <forbidden>
-      <pattern id="f1">window_quarters != 6</pattern>
-      <pattern id="f2">line_classified_revenue with any quarter where project+retainer+productized+misc != total_revenue for that quarter</pattern>
-      <pattern id="f3">margin_per_line_per_quarter missing direct_costs sourcing notes</pattern>
-      <pattern id="f4">concentration computed at only one level (within-line OR across-all, not both)</pattern>
-      <pattern id="f5">decision_questions count != 5</pattern>
-      <pattern id="f6">audit_report missing line-mix trend chart OR margin-per-line trend table</pattern>
+      <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+      <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "everyone").</pattern>
+      <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter.</pattern>
+      <pattern id="f4">`evidence` array empty for any non-trivial field declared in the schema.</pattern>
+      <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a reviewer field naming a human distinct from the producing agent.</pattern>
     </forbidden>
 
-    <allowed-transformations>
-      <transformation>"Productized" line may show 0 if not yet launched — keep the row to track its introduction.</transformation>
-      <transformation>For agencies with &lt; 6 quarters of history, the audit runs in "preliminary" mode with quarter_count noted; full audit deferred until window populates.</transformation>
-      <transformation>Decision question recommendations may be DEFER with explicit re-evaluation date (e.g., "revisit Q3'26") — does not bypass the 5-question requirement.</transformation>
-    </allowed-transformations>
 
-    <schema-reference path="templates/audit-report.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>exactly 6 quarters in window</item>
-      <item>every invoice classified to a line; reclassification_log populated for edge cases</item>
-      <item>direct_costs sourced from accounting (not estimated) per quarter</item>
-      <item>both within-line + across-all concentration computed</item>
-      <item>exactly 5 decision questions with YES/NO/DEFER + evidence + owner</item>
-      <item>trend chart shows all 6 quarters; margin table shows all 6 quarters</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-agency-revenue-mix-audit-template.py">Validator script — exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

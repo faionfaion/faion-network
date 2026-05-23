@@ -3,72 +3,100 @@ slug: agent-invocation
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Reference for invoking faion-researcher agents from orchestrators.
-content_id: "d19bf5332a582c57"
-tags: [research, agents, orchestration, workflow, subagents]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Config spec for invoking research subagents safely: bounded tool whitelist, structured input schema, structured output schema, max-iterations cap, and observable trace contract.
+content_id: "b35ac9b929895a66"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [agent, invocation, config, research, pro]
 ---
-# Agent Invocation Reference
+# Agent Invocation
 
 ## Summary
 
-**One-sentence:** Reference for invoking faion-researcher agents from orchestrators.
+**One-sentence:** Config spec for invoking research subagents safely: bounded tool whitelist, structured input schema, structured output schema, max-iterations cap, and observable trace contract.
 
-**One-paragraph:** Reference for invoking faion-researcher agents from orchestrators. Covers two agents (faion-research-agent with 9 modes, faion-domain-checker-agent) and a sequential workflow pattern where each mode's output feeds the next. All outputs land in .aidocs/product_docs/.
+**One-paragraph:** Config spec for invoking research subagents safely: bounded tool whitelist, structured input schema, structured output schema, max-iterations cap, and observable trace contract. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Wiring a new research subagent into the orchestrator.
+- Auditing an existing subagent for unbounded tool access.
+- Pinning a subagent's max-iterations and stop conditions before a long batch.
+- Standardising trace logs across heterogeneous subagents.
 
 ## Applies If (ALL must hold)
 
-- Orchestrating a multi-stage research run (ideas → market → competitors → pains → personas → validate → niche → pricing → names → domain-check).
-- Picking the right mode for a user "research X" request without polluting parent context.
-- Naming + domain-check workflows where names mode must chain to faion-domain-checker-agent.
-- Ensuring outputs land deterministically in .aidocs/product_docs/<file>.md for downstream consumption by faion-sdd or faion-product-manager.
+- The triggering activity for agent invocation appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- One-off factual lookup (single TAM number, single competitor URL) — call WebSearch directly; a research subagent costs 10x more tokens.
-- Internal codebase research — use Grep/Glob/Agent instead; this agent is tuned for external web sources.
-- Purely creative ideation (brand voice, copy variants) — use brainstorm instead of mode: ideas.
-- Project already has fresh market-research.md / competitive-analysis.md — re-running burns budget; read existing files first.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[audience-segmentation]] | upstream context this methodology builds on |
+| [[continuous-discovery]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-agent-invocation-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.json` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agent-invocation.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[audience-segmentation]]
+- [[continuous-discovery]]
+- [[mixed-methods-triangulation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

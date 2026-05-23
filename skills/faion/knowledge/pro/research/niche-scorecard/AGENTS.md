@@ -3,77 +3,100 @@ slug: niche-scorecard
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Niche Scorecard: codified research practice that turns the recurring 'p3-technical-freelancer/Specialty niche pivot (8-12 weeks generalist to specialist)' decision into a repeatable, auditable artefact.
-content_id: "bb0f7d8d789a2e64"
-tags: [niche-scorecard, research, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 5-criteria weighted niche scorecard (Market Size 25%, Competition 20%, Barriers 20%, Profitability 20%, Your Fit 15%) scoring 3-5 niches in parallel with cited sources per criterion.
+content_id: "407dfe3792a2c865"
+complexity: medium
+produces: rubric
+est_tokens: 4200
+tags: [niche, scorecard, research, pro, rubric]
 ---
 # Niche Scorecard
 
 ## Summary
 
-**One-sentence:** Niche Scorecard: codified research practice that turns the recurring 'p3-technical-freelancer/Specialty niche pivot (8-12 weeks generalist to specialist)' decision into a repeatable, auditable artefact.
+**One-sentence:** 5-criteria weighted niche scorecard (Market Size 25%, Competition 20%, Barriers 20%, Profitability 20%, Your Fit 15%) scoring 3-5 niches in parallel with cited sources per criterion.
 
-**One-paragraph:** Niche Scorecard addresses the gap identified by the p3-technical-freelancer/Specialty niche pivot (8-12 weeks generalist to specialist) playbook: market-researcher exists but a freelancer needs a tighter 5-dimension scorecard (demand, fit, ceiling, defensibility, distribution) sized for a weekend, not a research sprint. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** 5-criteria weighted niche scorecard (Market Size 25%, Competition 20%, Barriers 20%, Profitability 20%, Your Fit 15%) scoring 3-5 niches in parallel with cited sources per criterion. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Niche short-list ranking before writing a spec.md.
+- Comparing 3-5 product ideas before committing to one.
+- Annual portfolio review of which niche to double down on.
+- Pivot evaluation when current niche under-performs.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p3-technical-freelancer/Specialty niche pivot (8-12 weeks generalist to specialist) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The triggering activity for niche scorecard appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- recent context for the p3-technical-freelancer/Specialty niche pivot (8-12 weeks generalist to specialist) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/research/researcher` | parent role skill — provides the operating context for this methodology |
+| `pro/research/` parent skill context | vocabulary, neighbouring methodologies |
+| [[business-model-planning]] | upstream context this methodology builds on |
+| [[market-analysis]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-niche-scorecard-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/niche-scorecard.json` | JSON schema for the Niche Scorecard output contract |
-| `templates/niche-scorecard.md` | Markdown skeleton with the required fields |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-niche-scorecard.py` | Enforce Niche Scorecard output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-niche-scorecard.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
-- upstream playbook: `p3-technical-freelancer/Specialty niche pivot (8-12 weeks generalist to specialist)`
+- [[business-model-planning]]
+- [[market-analysis]]
+- [[risk-assessment]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

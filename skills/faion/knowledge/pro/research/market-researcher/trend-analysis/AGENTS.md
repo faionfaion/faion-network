@@ -3,74 +3,101 @@ slug: trend-analysis
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Trend analysis at the market-researcher level identifies emerging patterns from industry analyst reports, macroeconomic indicators, regulatory pipelines, and incumbent 10-K filings.
-content_id: "bf474c5624667233"
-tags: [trend-analysis, market-trends, macro-indicators, regulatory-analysis, competitor-signals]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: General-purpose trend-analysis report combining PEST/STEEP forces, named signals, hype-curve placement, and second-order implications with a 12-24 month horizon.
+content_id: "092655a085ae568b"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [trends, analysis, pest, research, pro]
 ---
-# Trend Analysis (Market-Researcher Lens)
+# Trend Analysis
 
 ## Summary
 
-**One-sentence:** Trend analysis at the market-researcher level identifies emerging patterns from industry analyst reports, macroeconomic indicators, regulatory pipelines, and incumbent 10-K filings.
+**One-sentence:** General-purpose trend-analysis report combining PEST/STEEP forces, named signals, hype-curve placement, and second-order implications with a 12-24 month horizon.
 
-**One-paragraph:** Trend analysis at the market-researcher level identifies emerging patterns from industry analyst reports, macroeconomic indicators, regulatory pipelines, and incumbent 10-K filings. Every numeric market-size or CAGR row must carry a source URL, publication year, and page number; reject any row that an agent produces from training data without a live citation.
+**One-paragraph:** General-purpose trend-analysis report combining PEST/STEEP forces, named signals, hype-curve placement, and second-order implications with a 12-24 month horizon. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Annual strategic-planning trend scan.
+- Pivot evaluation needing a forward read on the market.
+- Pre-investment / pre-spec environmental scan.
+- Sales-enablement briefing on where the market is heading.
 
 ## Applies If (ALL must hold)
 
-- Pre-investment or vertical-selection for regulated categories (fintech, health, crypto, AI infra) where the policy clock dominates the product clock
-- Annual strategic planning: mapping CAGR + concentration + regulatory pipeline against a 3-year revenue plan
-- M&A or partnership scan: spotting that an incumbent's moat is eroding because a rule is opening the market
-- Re-pricing an existing offer after a macro shift (rates, FX, labour cost) moves customer willingness-to-pay
-- Investor or board memo: produces the "market context" slide with cited analyst rows, not vibes
+- The triggering activity for trend analysis appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Pure dev-tool or open-source category trends - the researcher variant (HN/PH/GitHub signals) is faster and cheaper
-- Day-to-day content topic ranking - analyst-report cadence is quarterly, not weekly
-- Pre-revenue idea screening - at idea stage, customer interviews beat IDC reports
-- Narrow local-language B2B niches - Gartner/Forrester rarely cover segments below $500M outside US/EU
-- When the goal is "find the next viral product" - analyst reports are explicitly lagging signals
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/market-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[product-development-trends]] | upstream context this methodology builds on |
+| [[market-analysis]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-trend-analysis-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trend-analysis.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/market-researcher/`
+- [[product-development-trends]]
+- [[market-analysis]]
+- [[competitive-intelligence]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
