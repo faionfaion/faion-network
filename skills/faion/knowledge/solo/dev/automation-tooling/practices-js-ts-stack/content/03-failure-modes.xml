@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="practices-js-ts-stack Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for practices-js-ts-stack as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="JavaScript/TypeScript Stack Practices Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Props typed as `any` or as a bare object `{ variant: string, children: any }`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defeats TypeScript's type system; agents propagate `any` through the component tree silently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding `"strict": false` or casting with `as any` to suppress TypeScript errors during development.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Errors suppressed this way surface in production as runtime crashes. Agents copy the pattern and progressively weaken the type system.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="strict-false-shortcut" severity="high">
+      <symptom>Build passes but runtime null/undefined errors appear in production.</symptom>
+      <root-cause source="field experience">tsconfig has strict=false to silence type errors during migration; never re-enabled.</root-cause>
+      <fix>Flip strict=true; fix the errors module by module; use // @ts-expect-error with a reason for unavoidable cases.</fix>
+    </antipattern>
+    <antipattern id="mixed-cjs-esm" severity="high">
+      <symptom>Library exports work in CJS consumers but break in ESM (or vice versa); 'ERR_REQUIRE_ESM' at runtime.</symptom>
+      <root-cause source="field experience">Author shipped without an exports map; bundlers picked the wrong entry.</root-cause>
+      <fix>Set type=module and add exports map with both import and (if needed) require entries; verify with `node --eval` from both worlds.</fix>
+    </antipattern>
+    <antipattern id="no-typecheck-in-ci" severity="high">
+      <symptom>Production error: TypeError because a type was wrong; tsc shows the error locally but CI never ran it.</symptom>
+      <root-cause source="field experience">CI only runs the bundler; bundlers skip typecheck by default.</root-cause>
+      <fix>Add a dedicated step `pnpm exec tsc --noEmit` to the CI workflow before build.</fix>
+    </antipattern>
+    <antipattern id="prettier-vs-eslint-pingpong" severity="medium">
+      <symptom>Running ESLint --fix reformats a file Prettier just formatted, and vice versa.</symptom>
+      <root-cause source="field experience">ESLint config still has stylistic rules overlapping Prettier's domain.</root-cause>
+      <fix>Extend eslint-config-prettier last in the config; remove style rules from project config.</fix>
+    </antipattern>
+
   </section>
 </text>

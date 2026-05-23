@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="puppeteer-agent-workflow Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for puppeteer-agent-workflow. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Puppeteer Agent Workflow Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the puppeteer-agent-workflow methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="bash-not-inline" testable="true" depth="essential">
+      <statement>The agent MUST drive Puppeteer through a separate worker process invoked via Bash with a hard --timeout. Running Puppeteer inline inside the LLM turn is forbidden.</statement>
+      <rationale source="Internal — agent-Puppeteer audit">Browser processes are stateful and long-lived; the LLM is stateless and token-bounded. Inline drives produce unbounded waits, memory leaks, and unrecoverable state on context compaction.</rationale>
     </rule>
+    <rule id="structured-artifacts-to-disk" testable="true" depth="essential">
+      <statement>The worker MUST write structured artifacts (JSON, screenshots, HAR) to disk and exit. The agent reads only the artifact path back, never streams live page state into context.</statement>
+      <rationale source="Internal — context-budget audit">Streaming raw page.content() into the LLM blows the context budget and hallucinates layout. Structured artifacts are bounded and re-readable across compactions.</rationale>
+    </rule>
+    <rule id="no-screenshot-selectors" testable="true" depth="essential">
+      <statement>Selectors MUST be attribute-based (data-testid, id, name, role). Selectors derived from a screenshot (nth-child, visual class names) are forbidden.</statement>
+      <rationale source="Internal — selector flake audit">Positional selectors encode pixel coordinates or visual class names that break on any CSS/layout change; attribute-based selectors survive redesigns.</rationale>
+    </rule>
+    <rule id="scrub-secrets-before-persist" testable="true" depth="essential">
+      <statement>Before persisting any artifact (HAR, log, screenshot, JSON), the worker MUST run a secret scrubber that masks tokens, cookies, passwords, and PII patterns.</statement>
+      <rationale source="Internal — secret-leak postmortem">Automated pipelines logging full page state will leak session tokens; raw HAR contains Authorization headers verbatim.</rationale>
+    </rule>
+    <rule id="human-in-loop-on-auth-walls" testable="true" depth="essential">
+      <statement>Flows hitting login forms, CAPTCHA challenges, or 2FA prompts MUST pause and surface a screenshot for human review. Silent retry loops on auth walls are forbidden.</statement>
+      <rationale source="Internal — account-lockout incident">Automated retries against credential walls trigger account lockout and never succeed; a screenshot + pause unblocks the human and avoids the lockout.</rationale>
+    </rule>
+    <rule id="hard-timeout" testable="true" depth="essential">
+      <statement>The worker MUST be invoked with a wall-clock timeout (e.g., timeout 60 node worker.js). The script itself MUST set page.setDefaultTimeout to a value below the wall-clock budget.</statement>
+      <rationale source="Puppeteer docs + ops experience">Without timeouts, a hanging waitFor* call burns the agent's quota until the orchestrator kills it. A nested timeout keeps the failure mode explicit.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

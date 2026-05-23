@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="practices-backend-languages Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Backend Languages Practices Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/practices-backend-languages.json",
+  "type": "object",
+  "required": [
+    "language",
+    "layout_ok",
+    "error_model_ok",
+    "di_shape_ok",
+    "async_ok"
+  ],
+  "properties": {
+    "language": {
+      "enum": [
+        "go",
+        "rails",
+        "laravel",
+        "spring",
+        "dotnet",
+        "rust"
+      ]
+    },
+    "layout_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "error_model_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "di_shape_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "async_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "language": "go",
+  "layout_ok": true,
+  "error_model_ok": true,
+  "di_shape_ok": true,
+  "async_ok": true,
+  "notes": "cmd/internal/pkg layout; errors wrapped with %w; consumer-side interfaces; worker pool used."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "language": "spring",
+  "layout_ok": true,
+  "di_shape_ok": false
+}
+]]></code>
+    <note>Spring service uses field @Autowired (di_shape_ok=false); missing error_model_ok and async_ok.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-spring-field-autowired">
+      <description>@Autowired on a private field instead of a final-field constructor</description>
+      <why>Violates spring-constructor-injection; breaks unit-test isolation.</why>
+    </pattern>
+    <pattern id="f-go-producer-interface">
+      <description>Interface declared in the producer package</description>
+      <why>Violates go-layout-and-errors; causes import cycles.</why>
+    </pattern>
+    <pattern id="f-rust-blocking-in-async">
+      <description>reqwest::blocking::Client called inside an async fn</description>
+      <why>Violates rust-result-and-async; blocks tokio runtime threads.</why>
+    </pattern>
+    <pattern id="f-fat-rails-controller">
+      <description>Rails controller method &gt;30 lines doing DB writes inline</description>
+      <why>Violates rails-thin-controllers; logic untestable without full Rails stack.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-practices-backend-languages.py">Validator script</reference>
 </text>

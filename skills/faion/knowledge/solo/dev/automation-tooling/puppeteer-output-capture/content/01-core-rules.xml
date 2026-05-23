@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="puppeteer-output-capture Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for puppeteer-output-capture. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Puppeteer Output Capture (Screenshots, PDFs, HAR) Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the puppeteer-output-capture methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="lossy-for-bulk-screenshots" testable="true" depth="essential">
+      <statement>Bulk screenshot pipelines MUST use type='jpeg' or 'webp' with quality=80. PNG is allowed only for visual-regression workflows requiring lossless pixels.</statement>
+      <rationale source="Puppeteer screenshot docs + ops cost audit">Storage and transfer costs dominate high-volume pipelines; lossy formats at quality 80 are visually indistinguishable for most content and 3-5x smaller.</rationale>
     </rule>
+    <rule id="pdf-print-background" testable="true" depth="essential">
+      <statement>page.pdf() MUST set printBackground=true whenever the page uses background colours or images. Default false strips them.</statement>
+      <rationale source="Puppeteer PDF docs">Chrome's print CSS hides backgrounds for paper economy; programmatic PDFs of invoices/dashboards need the full design.</rationale>
+    </rule>
+    <rule id="pdf-after-render" testable="true" depth="essential">
+      <statement>page.pdf() MUST be called only after waitForSelector on an anchor element + (when fonts matter) document.fonts.ready. Calling pdf() immediately after goto is forbidden.</statement>
+      <rationale source="Puppeteer + web fonts docs">JS-rendered content (charts, fonts, lazy images) may not be finished when goto resolves; the PDF captures a half-rendered page.</rationale>
+    </rule>
+    <rule id="scrub-har-before-persist" testable="true" depth="essential">
+      <statement>HAR output MUST pass through a secret scrubber (Authorization headers, Set-Cookie, JWT bodies, PII patterns) before any persistence step.</statement>
+      <rationale source="Internal — HAR-leak postmortem">Raw HAR captures Authorization headers and cookies verbatim; persisting them leaks long-lived credentials.</rationale>
+    </rule>
+    <rule id="bounded-artifact-paths" testable="true" depth="essential">
+      <statement>Artifact paths MUST be bounded under a known directory (/tmp/agent-run/&lt;job-id&gt;/) and cleaned up after the job. Writing to arbitrary user-controlled paths is forbidden.</statement>
+      <rationale source="Security review — path traversal">User-controlled paths enable directory traversal; unbounded paths exhaust disk on long-running daemons.</rationale>
+    </rule>
+    <rule id="headers-not-stdout" testable="true" depth="essential">
+      <statement>Captured headers, cookies, and request bodies MUST NOT be written to stdout/stderr without scrubbing. Logging full network state is forbidden.</statement>
+      <rationale source="Internal — log-leak audit">stdout often flows into CI logs that are kept long-term and accessible to downstream tools.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="puppeteer-launch-setup Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for puppeteer-launch-setup. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Puppeteer Launch &amp; Navigation Setup Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the puppeteer-launch-setup methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="no-sandbox-in-container" testable="true" depth="essential">
+      <statement>When launching in Docker / CI / serverless, the launch config MUST include --no-sandbox and --disable-setuid-sandbox. Sandbox flags MUST stay enabled in local dev so behaviour mismatches are caught early.</statement>
+      <rationale source="Puppeteer Docker recipes">Containers run as root or in user namespaces where the Chromium sandbox cannot initialise; missing flags produce cryptic 'No usable sandbox' errors. Keeping sandbox on locally surfaces real issues before deploy.</rationale>
     </rule>
+    <rule id="pinned-chromium-revision" testable="true" depth="essential">
+      <statement>package.json MUST set a Chromium revision (PUPPETEER_SKIP_DOWNLOAD + explicit version OR @sparticuz/chromium pinned). Floating Chromium versions are forbidden.</statement>
+      <rationale source="Puppeteer install docs">Chrome auto-update via puppeteer install drifts the bundled version; pinning prevents silent CI failures across runs.</rationale>
+    </rule>
+    <rule id="cache-dir-writable" testable="true" depth="essential">
+      <statement>PUPPETEER_CACHE_DIR MUST be set to a writable path in CI/serverless. The default ~/.cache/puppeteer breaks in read-only containers.</statement>
+      <rationale source="Puppeteer cache docs">Puppeteer downloads Chrome to PUPPETEER_CACHE_DIR; read-only home directories silently fail install.</rationale>
+    </rule>
+    <rule id="always-close-browser" testable="true" depth="essential">
+      <statement>browser.close() MUST be called in a finally block. An orphan Chromium process is forbidden after script exit.</statement>
+      <rationale source="Puppeteer FAQ">Node process exit does not guarantee browser cleanup; finally ensures release on both normal exit and unhandled exceptions. Orphan browsers pin GBs of RAM.</rationale>
+    </rule>
+    <rule id="spa-safe-goto" testable="true" depth="essential">
+      <statement>page.goto MUST use waitUntil='domcontentloaded' as the default. waitUntil='networkidle0' is allowed only on classic server-rendered pages, never on SPAs with WebSocket/SSE/analytics traffic.</statement>
+      <rationale source="Puppeteer navigation docs">networkidle0 hangs forever on SPAs that never reach zero in-flight requests; agents loop until timeout.</rationale>
+    </rule>
+    <rule id="default-timeout-bounded" testable="true" depth="essential">
+      <statement>page.setDefaultTimeout MUST be set explicitly and below the wall-clock budget of the wrapping process. Relying on the 30s default is forbidden.</statement>
+      <rationale source="Puppeteer config docs">Without an explicit timeout, hung waits silently exhaust the parent budget; explicit timeouts make failure observable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="puppeteer-stealth-proxy Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for puppeteer-stealth-proxy. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Puppeteer Stealth &amp; Proxy Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the puppeteer-stealth-proxy methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="single-evasion-stance" testable="true" depth="essential">
+      <statement>The worker MUST pick exactly one evasion stance: puppeteer-extra-plugin-stealth alone, manual navigator overrides alone, or none. Combining plugin + manual overrides is forbidden.</statement>
+      <rationale source="Internal — stealth-bug debrief">Stealth plugin changes navigator props the agent may later assert on; mixing with manual overrides produces contradictory state and brittle assertions.</rationale>
     </rule>
+    <rule id="documented-stance" testable="true" depth="essential">
+      <statement>The chosen stance MUST be documented in a top-of-file comment naming the stance and the rationale.</statement>
+      <rationale source="Internal — drift audit">Future agents read the file and need to know which stance is in effect before changing anything; undocumented stances drift.</rationale>
+    </rule>
+    <rule id="bounded-retries-with-circuit-breaker" testable="true" depth="essential">
+      <statement>Retries against rate-limit responses (429/403) MUST be bounded (max 2) and a circuit breaker MUST surface the error to the caller after threshold. Unbounded silent retries are forbidden.</statement>
+      <rationale source="Browserless ops docs + cost audit">Unbounded retries burn budget fast and trigger IP/account bans; circuit-breaker keeps failures observable.</rationale>
+    </rule>
+    <rule id="proxy-health-check" testable="true" depth="essential">
+      <statement>Proxies MUST be health-checked before use (HEAD request to a known endpoint) and unhealthy proxies MUST be removed from the pool until next refresh.</statement>
+      <rationale source="Proxy ops experience">Dead proxies cause silent stalls or HTTPS errors that look like target issues; health checks isolate.</rationale>
+    </rule>
+    <rule id="proxy-auth-not-in-args" testable="true" depth="essential">
+      <statement>Proxy credentials MUST be passed via page.authenticate({username,password}) — not via the --proxy-server=http://user:pass@host arg, which leaks credentials into the process command line.</statement>
+      <rationale source="Chromium proxy docs + security review">Command-line args appear in ps output and process telemetry; authenticate() keeps credentials in protected memory.</rationale>
+    </rule>
+    <rule id="no-asserts-on-overridden-props" testable="true" depth="essential">
+      <statement>page.evaluate MUST NOT assert on navigator properties that the stealth stance overrides (webdriver, plugins, languages, hardwareConcurrency).</statement>
+      <rationale source="Internal — assertion drift">Assertions on overridden props produce false negatives when the plugin/manual override changes; they should not be load-bearing.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,27 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="testing-backend-languages Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for testing-backend-languages as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Backend Testing Across Languages Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Slow, flaky tests from missing let! vs let distinction — let is lazy; let! forces evaluation immediately in before blocks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Test ordering sensitivity emerges when objects created lazily are mutated by other examples. Use let! for objects that must exist before every example in the group.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent adds @SpringBootTest to all test classes because the example in documentation uses it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force @ExtendWith(MockitoExtension.class) for services, @DataJpaTest for repositories, @WebMvcTest for controllers in the prompt. Only use @SpringBootTest for explicit integration tests labelled @Tag("integration").</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent uses new Mock without setting up the method under test, leaving it returning null/default.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Untriggered mocks return default values silently; the test passes vacuously. Always verify mock setup covers every call the SUT makes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agent mixes #[test] with async fn, producing a function that compiles but panics at runtime.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>async fn under #[test] (without tokio::test) creates a future that is never polled — the test body never runs, assertion is never reached, test "passes". Explicitly require #[tokio::test] for all async test functions in the prompt.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="springboottest-everywhere" severity="high">
+      <symptom>Mvn test takes 4 minutes for 50 tests; each class shows 'Starting application'.</symptom>
+      <root-cause source="field experience">@SpringBootTest on every class — copied from documentation example.</root-cause>
+      <fix>Use @ExtendWith(MockitoExtension.class) for service tests, @DataJpaTest for repositories, @WebMvcTest for controllers. Reserve @SpringBootTest for integration scenarios.</fix>
+    </antipattern>
+    <antipattern id="rust-async-vacuous-pass" severity="high">
+      <symptom>Tests pass but the assertion never seems to run; coverage tool shows 0 hits on the assertion line.</symptom>
+      <root-cause source="field experience">#[test] over async fn; the future is never polled, body never runs.</root-cause>
+      <fix>Switch to #[tokio::test] (or runtime-specific). Add #[cfg(test)] mod tests {} grouping.</fix>
+    </antipattern>
+    <antipattern id="deep-mock-graph" severity="medium">
+      <symptom>Refactor that splits a service into two breaks 30 tests, none of which expressed real expectations.</symptom>
+      <root-cause source="field experience">Tests mocked the entire call graph 4 levels deep.</root-cause>
+      <fix>Reduce mocks to direct collaborators of the SUT. Convert deep tests into thin integration tests.</fix>
+    </antipattern>
+    <antipattern id="sut-in-assertion-body" severity="medium">
+      <symptom>Test passes locally, fails intermittently in CI; the SUT has a side-effect counter that increments twice.</symptom>
+      <root-cause source="field experience">assert service.do() == service.do() invoked the SUT twice in the assertion.</root-cause>
+      <fix>Always capture: result = service.do(); assert result == expected. Make side-effects observable.</fix>
+    </antipattern>
+    <antipattern id="minitest-by-default" severity="low">
+      <symptom>Ruby agent generates Minitest classes in an RSpec project.</symptom>
+      <root-cause source="field experience">LLM default; project context not surfaced.</root-cause>
+      <fix>Pin RSpec explicitly in the agent prompt; convert Minitest classes to describe/it blocks with factory_bot factories.</fix>
+    </antipattern>
+
   </section>
 </text>

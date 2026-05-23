@@ -2,74 +2,102 @@
 slug: pnpm-package-management
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Fast, disk-efficient package manager using a content-addressable store and symlinks for strict dependency isolation.
-content_id: "a00e7bb5e5f9160f"
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a pnpm-managed Node.js project config (.npmrc + pnpm-workspace.yaml + package.json packageManager pin + CI workflow) enforcing frozen lockfile, no shameful hoist, and only-allow pnpm.
+content_id: "f675dbb6b529a0fb"
+complexity: medium
+produces: config
+est_tokens: 4400
 tags: [pnpm, package-management, monorepo, nodejs, ci]
 ---
 # pnpm Package Management
 
 ## Summary
 
-**One-sentence:** Fast, disk-efficient package manager using a content-addressable store and symlinks for strict dependency isolation.
+**One-sentence:** Produces a pnpm-managed Node.js project config (.npmrc + pnpm-workspace.yaml + package.json packageManager pin + CI workflow) enforcing frozen lockfile, no shameful hoist, and only-allow pnpm.
 
-**One-paragraph:** Fast, disk-efficient package manager using a content-addressable store and symlinks for strict dependency isolation. The concrete rule: always --frozen-lockfile in CI, pin manager version via "packageManager": "pnpm@9.x.y" in root package.json, and block accidental npm/yarn use via a preinstall script. shamefully-hoist=true is the universal wrong fix — reject any PR adding it without justification.
+**One-paragraph:** pnpm uses a content-addressable store and symlinked node_modules for strict dependency isolation. This methodology produces the config files that wire a project to pnpm correctly: .npmrc (strict-peer-dependencies, frozen-lockfile, engine-strict), pnpm-workspace.yaml (for monorepos), root package.json with a pinned packageManager field, a preinstall hook (only-allow pnpm) to block npm/yarn drift, and a CI workflow using pnpm/action-setup with store cache.
+
+**Ефективно для:**
+
+- All new Node.js/TypeScript projects unless org policy mandates npm/yarn.
+- Monorepos with 3+ packages — pnpm workspaces are faster and first-class.
+- CI pipelines where install time matters; pnpm + store cache shaves minutes.
+- Projects with phantom-dependency bugs (imports work locally, fail in CI).
 
 ## Applies If (ALL must hold)
 
-- All new Node.js/TypeScript projects unless org policy requires npm/yarn
-- Monorepos with 3+ packages: pnpm workspaces are faster and first-class
-- CI pipelines where install time matters; pnpm + store cache shaves minutes
-- Projects with phantom-dependency bugs (imports work locally, fail elsewhere)
-- Container builds wanting layer-cached deps via pnpm fetch
+- All new Node.js/TypeScript projects unless org policy requires npm/yarn.
+- Monorepos with 3+ packages: pnpm workspaces are faster and first-class.
+- CI pipelines where install time matters; pnpm + store cache shaves minutes.
+- Projects with phantom-dependency bugs (imports work locally, fail elsewhere).
+- Container builds wanting layer-cached deps via pnpm fetch.
 
 ## Skip If (ANY kills it)
 
-- React Native projects pinned to npm/yarn by Metro/Expo (Expo SDK <= 50 had pnpm rough edges)
-- One-file scripts where npm exec/bunx is lighter
-- Deploy targets with configs expecting package-lock.json that cannot be updated
-- Hosting platforms that don't support pnpm out of the box without explicit packageManager field (rare in 2026)
+- React Native projects pinned to npm/yarn by Metro/Expo (Expo SDK <= 50 had pnpm rough edges).
+- One-file scripts where npm exec/bunx is lighter.
+- Deploy targets with configs expecting package-lock.json that cannot be updated.
+- Hosting platforms that refuse to honour the packageManager field.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Project root path + node_modules layout | directory | filesystem |
+| Node.js >= 16.9 | binary on PATH | developer machine + CI |
+| Target pnpm major version | semver string | team decision (default: latest LTS major) |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[trunk-based-ci-gates]] | CI workflow runs on trunk-based gate; this methodology produces the install step inside that gate |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-existing-config` | sonnet | scan .npmrc, package.json, lockfile shape — judgment on what to keep |
+| `emit-config-files` | haiku | mechanical template rendering once the audit decided values |
+| `classify-outdated-deps` | sonnet | patch/minor/major risk classification of pnpm outdated -r --format json |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/npmrc` | Strict .npmrc — engine-strict, frozen lockfile, no shameful hoist |
+| `templates/pnpm-workspace.yaml` | Workspace definition for apps/packages/tools layout |
+| `templates/ci-pnpm.yml` | GitHub Actions workflow with pnpm store cache + frozen lockfile install |
+| `templates/dockerfile-pnpm` | Multi-stage Dockerfile using pnpm fetch for layer caching |
+| `templates/artefact.json` | Sample artefact metadata consumed by validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pnpm-package-management.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[trunk-based-ci-gates]]
+- [[trunk-based-dev-patterns]]
+- [[practices-js-ts-stack]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

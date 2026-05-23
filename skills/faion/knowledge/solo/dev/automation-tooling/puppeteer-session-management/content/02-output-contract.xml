@@ -1,22 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="puppeteer-session-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Puppeteer Session Management Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/puppeteer-session-management.json",
+  "type": "object",
+  "required": [
+    "session_mode",
+    "userdatadir_per_identity",
+    "parallel_isolation",
+    "daemonised",
+    "secrets_outside_repo"
+  ],
+  "properties": {
+    "session_mode": {
+      "enum": [
+        "userdatadir",
+        "cookie_serialise",
+        "hybrid_forbidden"
+      ]
+    },
+    "userdatadir_per_identity": {
+      "type": "boolean"
+    },
+    "userdatadir_path": {
+      "type": "string"
+    },
+    "parallel_isolation": {
+      "enum": [
+        "incognito_context",
+        "separate_browser",
+        "none"
+      ]
+    },
+    "daemonised": {
+      "type": "boolean"
+    },
+    "secrets_outside_repo": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "session_mode": "userdatadir",
+  "userdatadir_per_identity": true,
+  "userdatadir_path": "/var/lib/agent/profiles/user-42",
+  "parallel_isolation": "incognito_context",
+  "daemonised": true,
+  "secrets_outside_repo": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "session_mode": "hybrid_forbidden",
+  "userdatadir_per_identity": false
+}
+]]></code>
+    <note>Hybrid mode forbidden; userDataDir shared; no isolation; not daemonised; secrets in repo.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-shared-userdatadir">
+      <description>Same userDataDir used by two different identities</description>
+      <why>Violates userdatadir-per-identity; cross-contamination.</why>
+    </pattern>
+    <pattern id="f-hybrid-cookies-and-dir">
+      <description>Script saves cookies to JSON AND uses userDataDir for the same identity</description>
+      <why>Violates cookies-are-secondary; mechanisms drift apart.</why>
+    </pattern>
+    <pattern id="f-userdatadir-in-repo">
+      <description>userDataDir path inside the repository</description>
+      <why>Violates session-secrets-not-in-repo; leaks credentials.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-puppeteer-session-management.py">Validator script</reference>
 </text>

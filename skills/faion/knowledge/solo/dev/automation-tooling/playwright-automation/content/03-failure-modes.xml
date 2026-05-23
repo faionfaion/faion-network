@@ -1,42 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="playwright-automation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for playwright-automation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Playwright Automation Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using CSS selectors from codegen output (.btn-primary, #form-submit) without converting to role locators.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Codegen generates CSS as a lowest-common-denominator fallback. These selectors die when styling changes, causing flaky tests that have nothing to do with functionality.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>LLMs adding page.waitForTimeout(2000) "to be safe".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Ban it via CI lint rule. Adds 2 seconds per occurrence, scales with suite size, and masks actual timing problems. Use locator auto-wait or expect(locator).toBeVisible({timeout}).</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agents broadening selectors when getByRole() throws "strict mode violation: multiple elements".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The correct fix is narrowing with { name: 'specific label' }. Broadening picks an arbitrary element and silently tests the wrong thing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agents committing auth.json to git.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>auth.json contains session tokens. Add to .gitignore and pull from secret store at test time. Trace artifacts may also contain PII; gate behind staging-only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Codegen-generated CSS selectors used without converting to role/text locators.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Codegen generates CSS as a lowest-common-denominator fallback. Force agents to rewrite to role/text after recording.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>WebKit headless on Linux has minor parity gaps with macOS Safari.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Run WebKit tests in CI on Linux but validate critical flows against real macOS Safari before release.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Trace viewer artifacts blow up CI: a 5-min run can produce 200MB.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use trace: 'on-first-retry', not 'on'. This captures diagnostics only when tests fail.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="css-from-codegen" severity="high">
+      <symptom>Test file uses .btn-primary, #form-submit, .css-1a2b3c — selectors that look stable but die on next CSS refactor.</symptom>
+      <root-cause source="field experience">Codegen generates CSS as a lowest-common-denominator fallback. The author shipped without converting to role/text locators.</root-cause>
+      <fix>Rewrite every CSS selector to getByRole/getByLabel/getByText. Only keep CSS when no semantic role exists, and add a comment explaining why.</fix>
+    </antipattern>
+    <antipattern id="wait-for-timeout-injected" severity="high">
+      <symptom>Suite has page.waitForTimeout(2000) sprinkled 'to be safe' after every action.</symptom>
+      <root-cause source="field experience">LLM defaulted to fixed sleeps to make tests pass locally; never tested under load.</root-cause>
+      <fix>Ban via CI lint rule (grep -F 'waitForTimeout'). Replace each occurrence with expect(locator).toBeVisible() or page.waitForLoadState().</fix>
+    </antipattern>
+    <antipattern id="selector-broadening-on-strict-violation" severity="high">
+      <symptom>Agent saw 'strict mode violation' and changed getByRole('button') to page.locator('button').first().</symptom>
+      <root-cause source="field experience">Agent treated the error as a selector-too-narrow problem instead of selector-too-ambiguous.</root-cause>
+      <fix>Always narrow with { name: 'exact label' }. .first() silently tests an arbitrary element.</fix>
+    </antipattern>
+    <antipattern id="auth-json-committed" severity="high">
+      <symptom>auth.json appears in git history; pre-commit hooks did not catch it.</symptom>
+      <root-cause source="field experience">Author forgot to add auth.json to .gitignore; secret-scanning hooks not configured.</root-cause>
+      <fix>Add auth.json + storageState.json + .pwauth/ to .gitignore. Add a pre-commit hook that fails if any auth-shaped file is staged.</fix>
+    </antipattern>
+    <antipattern id="trace-on-blows-ci-storage" severity="medium">
+      <symptom>CI artifact bucket fills weekly; 5-minute runs produce 200MB traces.</symptom>
+      <root-cause source="field experience">trace: 'on' captured every test, every action — most are never inspected.</root-cause>
+      <fix>Switch to trace: 'on-first-retry' (CI) or 'retain-on-failure'. Set screenshot: 'only-on-failure'.</fix>
+    </antipattern>
+
   </section>
 </text>

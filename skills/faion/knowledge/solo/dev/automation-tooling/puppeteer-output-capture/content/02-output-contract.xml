@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="puppeteer-output-capture Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Puppeteer Output Capture (Screenshots, PDFs, HAR) Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/puppeteer-output-capture.json",
+  "type": "object",
+  "required": [
+    "output_type",
+    "uses_correct_format",
+    "applies_scrub",
+    "waits_before_pdf",
+    "bounded_artifact_path"
+  ],
+  "properties": {
+    "output_type": {
+      "enum": [
+        "screenshot",
+        "pdf",
+        "har",
+        "mixed"
+      ]
+    },
+    "screenshot_format": {
+      "enum": [
+        "jpeg",
+        "webp",
+        "png"
+      ]
+    },
+    "screenshot_quality": {
+      "type": "integer",
+      "minimum": 50,
+      "maximum": 95
+    },
+    "pdf_print_background": {
+      "type": "boolean"
+    },
+    "uses_correct_format": {
+      "type": "boolean",
+      "const": true
+    },
+    "applies_scrub": {
+      "type": "boolean",
+      "const": true
+    },
+    "waits_before_pdf": {
+      "type": "boolean"
+    },
+    "bounded_artifact_path": {
+      "type": "boolean",
+      "const": true
+    },
+    "artifact_dir": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "output_type": "mixed",
+  "screenshot_format": "jpeg",
+  "screenshot_quality": 80,
+  "pdf_print_background": true,
+  "uses_correct_format": true,
+  "applies_scrub": true,
+  "waits_before_pdf": true,
+  "bounded_artifact_path": true,
+  "artifact_dir": "/tmp/agent-run/job-42"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "output_type": "pdf",
+  "pdf_print_background": false,
+  "applies_scrub": false,
+  "waits_before_pdf": false,
+  "bounded_artifact_path": false
+}
+]]></code>
+    <note>PDF without printBackground; no wait before pdf; no scrub; unbounded artifact path.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-png-bulk">
+      <description>PNG screenshots stored in bulk without a visual-regression justification</description>
+      <why>Violates lossy-for-bulk-screenshots; 3-5x storage cost for no quality benefit on photographic content.</why>
+    </pattern>
+    <pattern id="f-pdf-no-wait">
+      <description>await page.goto(url); await page.pdf(...) with no waitForSelector between</description>
+      <why>Violates pdf-after-render; captures unfinished page.</why>
+    </pattern>
+    <pattern id="f-har-unscrubbed">
+      <description>fs.writeFileSync(harPath, JSON.stringify(har)) with no scrubber call</description>
+      <why>Violates scrub-har-before-persist; leaks Authorization/Set-Cookie.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-puppeteer-output-capture.py">Validator script</reference>
 </text>

@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="practices-django-coding Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for practices-django-coding as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Django Coding Practices Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Wrapping a single function in a class: `class ActivationService: def activate(self, ...)`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Adds instantiation overhead, hides the function interface, and agents replicate the pattern into every new service creating needless boilerplate.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>DB query or business logic inside the view method body (e.g., `Item.objects.filter(...)` directly in `post()`).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Breaks testability and creates duplicate logic when the same operation is needed from a Celery task or management command.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="fat-view" severity="high">
+      <symptom>ViewSet method runs 70 lines: parses request, validates, writes to 3 tables, sends email, renders response.</symptom>
+      <root-cause source="field experience">No service layer; everything lives in the view.</root-cause>
+      <fix>Extract logic into model methods or a service module; view becomes &lt;30 lines: parse + call service + render.</fix>
+    </antipattern>
+    <antipattern id="n-plus-one-in-template" severity="high">
+      <symptom>Page loads slowly; django-silk shows 1 + N queries where N matches table size.</symptom>
+      <root-cause source="field experience">Template loops over qs and accesses obj.fk.field without select_related/prefetch_related.</root-cause>
+      <fix>Add .select_related('fk') for FKs and .prefetch_related('m2m_field') for M2Ms in the view's qs.</fix>
+    </antipattern>
+    <antipattern id="non-atomic-multi-write" severity="high">
+      <symptom>On payment failure, the Order row is created but the PaymentAttempt row is missing; state inconsistent.</symptom>
+      <root-cause source="field experience">Two .save() calls without transaction.atomic; second one raised.</root-cause>
+      <fix>Wrap the whole flow in transaction.atomic (decorator on service method or context manager block).</fix>
+    </antipattern>
+    <antipattern id="signal-side-effect" severity="medium">
+      <symptom>User reports an unexpected email after registration; tracing reveals a post_save signal three apps away.</symptom>
+      <root-cause source="field experience">In-app side-effect implemented via signal; flow is implicit.</root-cause>
+      <fix>Move side-effect into explicit service function or model.save() override. Reserve signals for true cross-app concerns.</fix>
+    </antipattern>
+    <antipattern id="settings-single-file" severity="medium">
+      <symptom>settings.py contains hard-coded DEBUG=True under an if branch; secrets visible in git.</symptom>
+      <root-cause source="field experience">No env-aware split; team patched the file per environment.</root-cause>
+      <fix>Split into base/dev/prod + DJANGO_SETTINGS_MODULE env var. Load secrets via django-environ from .env (gitignored).</fix>
+    </antipattern>
+
   </section>
 </text>

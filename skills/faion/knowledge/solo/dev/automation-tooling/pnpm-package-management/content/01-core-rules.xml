@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="pnpm-package-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for pnpm-package-management. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="pnpm Package Management Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the pnpm-package-management methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="pin-package-manager" testable="true" depth="essential">
+      <statement>Root package.json MUST contain "packageManager": "pnpm@&lt;major.minor.patch&gt;". Corepack uses this to enforce one version across dev + CI + Docker.</statement>
+      <rationale source="pnpm corepack docs">Lockfile format changes between pnpm major versions; without pinning, different environments produce churn that obscures real dependency changes.</rationale>
     </rule>
+    <rule id="frozen-lockfile-in-ci" testable="true" depth="essential">
+      <statement>CI MUST run pnpm install --frozen-lockfile. --no-frozen-lockfile is forbidden as a CI workaround.</statement>
+      <rationale source="pnpm CLI docs">--no-frozen-lockfile allows silent drift; reproducible builds require the lockfile to be the source of truth.</rationale>
+    </rule>
+    <rule id="no-shameful-hoist" testable="true" depth="essential">
+      <statement>shamefully-hoist MUST be false (the default). The only allowed exception is node-linker=hoisted with an inline comment naming the native add-on and linked upstream issue.</statement>
+      <rationale source="pnpm motivation docs">shamefully-hoist=true defeats pnpm's phantom-dependency protection. The real fix for 'module not found' is adding the missing direct dependency.</rationale>
+    </rule>
+    <rule id="block-npm-yarn" testable="true" depth="essential">
+      <statement>Root package.json MUST set "scripts.preinstall": "npx -y only-allow pnpm" so accidental npm/yarn invocations fail fast.</statement>
+      <rationale source="only-allow upstream README">Mixed package managers create a second lockfile, corrupt node_modules layout, and silently break reproducibility.</rationale>
+    </rule>
+    <rule id="workspace-protocol" testable="true" depth="essential">
+      <statement>Internal monorepo dependencies MUST use workspace:* in package.json. pnpm publish rewrites this to a real semver range at publish time.</statement>
+      <rationale source="pnpm workspace docs">workspace:* guarantees the local version is used in dev and the correct semver range is published, with no manual conversion step that agents forget.</rationale>
+    </rule>
+    <rule id="separate-lockfile-commits" testable="true" depth="essential">
+      <statement>pnpm-lock.yaml updates MUST land in a separate commit from application code changes.</statement>
+      <rationale source="Internal — bisect debrief">Mixing lockfile + app diffs makes it impossible to bisect which dependency change caused a regression.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

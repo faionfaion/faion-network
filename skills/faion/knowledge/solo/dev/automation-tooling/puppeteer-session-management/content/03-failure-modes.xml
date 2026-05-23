@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="puppeteer-session-management Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for puppeteer-session-management as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Puppeteer Session Management Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="per-run-userdatadir" severity="high">
+      <symptom>Each job re-logs in; MFA prompts arrive every run; budget burns on auth, not on actual work.</symptom>
+      <root-cause source="field experience">userDataDir generated per run (mkdtemp); benefits of persistence lost.</root-cause>
+      <fix>Allocate one userDataDir per logical identity; reuse across runs. Snapshot the directory after first successful login.</fix>
+    </antipattern>
+    <antipattern id="shared-default-context" severity="high">
+      <symptom>Parallel jobs see each other's data; user-42 ends up viewing user-13's dashboard.</symptom>
+      <root-cause source="field experience">All jobs share browser.defaultBrowserContext(); cookies leak across.</root-cause>
+      <fix>Wrap each job in browser.createIncognitoBrowserContext() OR start a fresh browser per job. Always close the context in finally.</fix>
+    </antipattern>
+    <antipattern id="long-session-in-per-task" severity="medium">
+      <symptom>Per-task invocation costs 4s of Chromium cold-start; pipeline budget eaten by overhead.</symptom>
+      <root-cause source="field experience">Bash worker launches and tears down Chromium for every task.</root-cause>
+      <fix>Move to a daemonised runner exposing an HTTP/queue interface; the agent enqueues tasks and the browser stays warm.</fix>
+    </antipattern>
+    <antipattern id="userdatadir-in-repo" severity="high">
+      <symptom>Audit finds session cookies committed in git history.</symptom>
+      <root-cause source="field experience">userDataDir path was relative to repo root; everything inside got staged.</root-cause>
+      <fix>Move userDataDir under /var/lib/agent/profiles/&lt;id&gt;/ or equivalent encrypted-at-rest path; add path pattern to .gitignore as defence-in-depth.</fix>
+    </antipattern>
+    <antipattern id="leaked-incognito-context" severity="medium">
+      <symptom>Daemon memory grows linearly with job count; OOM after 200 tasks.</symptom>
+      <root-cause source="field experience">createIncognitoBrowserContext called per job; context.close() never reached due to throw.</root-cause>
+      <fix>Wrap context creation in try/finally; always call context.close(). Add a watchdog logging open context count per cycle.</fix>
+    </antipattern>
+
   </section>
 </text>

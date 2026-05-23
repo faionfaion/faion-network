@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="puppeteer-stealth-proxy Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for puppeteer-stealth-proxy as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Puppeteer Stealth &amp; Proxy Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running unbounded retries on 429 responses from managed browser services (Browserless, ScrapingBee) without a circuit breaker.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unbounded retries on rate-limit responses burn budget fast. Set --max-retries=2 and circuit-break on 4xx; surface the error to the caller instead of looping silently.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mixed-stealth" severity="high">
+      <symptom>Script asserts navigator.webdriver === false; assertion sometimes passes, sometimes fails depending on plugin load order.</symptom>
+      <root-cause source="field experience">puppeteer-extra-plugin-stealth + manual override both touch navigator.webdriver; one overwrites the other unpredictably.</root-cause>
+      <fix>Remove the manual override. Document at top of file: 'STEALTH STANCE: plugin-only'.</fix>
+    </antipattern>
+    <antipattern id="proxy-creds-in-args" severity="high">
+      <symptom>Security audit finds proxy username + password in CI logs (ps output captured).</symptom>
+      <root-cause source="field experience">Used --proxy-server=http://user:pass@host launch arg.</root-cause>
+      <fix>Use --proxy-server=http://host (no creds) + page.authenticate({username, password}) per page.</fix>
+    </antipattern>
+    <antipattern id="unbounded-retries" severity="high">
+      <symptom>Job ran for 6 hours, hit 429 thousands of times, eventually got IP-banned.</symptom>
+      <root-cause source="field experience">Retry loop with no max; circuit breaker absent.</root-cause>
+      <fix>Cap retries at 2 with exponential backoff. Trip a circuit breaker on persistent 4xx and exit non-zero with status.</fix>
+    </antipattern>
+    <antipattern id="dead-proxies" severity="medium">
+      <symptom>Random jobs stall for 30s then fail with TLS errors; pattern correlates with specific proxy IPs.</symptom>
+      <root-cause source="field experience">Dead proxies still in rotation; no health check.</root-cause>
+      <fix>HEAD the health endpoint per proxy on pool refresh; remove unhealthy entries; alert ops below pool floor.</fix>
+    </antipattern>
+    <antipattern id="navigator-assertions" severity="medium">
+      <symptom>Test that asserts navigator.plugins.length &gt; 0 passes on bare Chrome, fails with stealth plugin loaded.</symptom>
+      <root-cause source="field experience">Assertion against a property the stealth stance overrides.</root-cause>
+      <fix>Drop the assertion or run the assertion stage with stealth disabled; never depend on overridden properties for verification.</fix>
+    </antipattern>
+
   </section>
 </text>

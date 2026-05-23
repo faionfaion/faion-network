@@ -2,71 +2,100 @@
 slug: puppeteer-page-interaction
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Covers all user-facing interaction in Puppeteer: CSS/XPath element selection, click/type/keyboard/mouse simulation, all form input types, multi-tab handling, iFrame access, dialog handling, file downloads, and mobile device emulation.
-content_id: "32cf7ff2b420a1fc"
-tags: [puppeteer, dom-interaction, form-automation, browser-automation, nodejs]
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Puppeteer interaction layer using attribute-based selectors (data-testid/id/name), targeted waitForSelector instead of waitForTimeout, request interception for stable scraping, and form fills via type/select/check methods.
+content_id: "b6f1d663ffeb4bce"
+complexity: medium
+produces: code
+est_tokens: 4400
+tags: [puppeteer, selectors, forms, request-interception, interaction]
 ---
-# Puppeteer: Page Interaction, Forms & Advanced Patterns
+# Puppeteer Page Interaction (Selectors, Clicks, Forms)
 
 ## Summary
 
-**One-sentence:** Covers all user-facing interaction in Puppeteer: CSS/XPath element selection, click/type/keyboard/mouse simulation, all form input types, multi-tab handling, iFrame access, dialog handling, file downloads, and mobile device emulation.
+**One-sentence:** Produces a Puppeteer interaction layer using attribute-based selectors (data-testid/id/name), targeted waitForSelector instead of waitForTimeout, request interception for stable scraping, and form fills via type/select/check methods.
 
-**One-paragraph:** Covers all user-facing interaction in Puppeteer: CSS/XPath element selection, click/type/keyboard/mouse simulation, all form input types, multi-tab handling, iFrame access, dialog handling, file downloads, and mobile device emulation.
+**One-paragraph:** Most flaky Puppeteer scripts have two root causes: positional selectors that break on any layout change, and fixed sleeps instead of targeted waits. This methodology produces an interaction layer with click/type/select helpers that take attribute-based selectors only, a wait helper that wraps waitForSelector + waitForFunction (never waitForTimeout), request-interception helpers for stable scraping (block analytics, mock APIs), and form-fill helpers that handle disabled-state checks before the action.
+
+**Ефективно для:**
+
+- Building a stable scraping or workflow script against an SPA.
+- Refactoring a flaky positional-selector script onto attribute selectors.
+- Adding request interception to block analytics and speed up scrapes.
+- Writing form-fill flows that respect disabled/loading states.
 
 ## Applies If (ALL must hold)
 
-- Automating form fills, multi-step wizards, or login flows that require simulated human input.
-- Extracting data from pages that require interaction before content loads.
-- Testing UI components that open new tabs, show browser dialogs, or render inside iFrames.
-- Emulating mobile devices for responsive-site scraping or testing.
+- Worker uses Puppeteer 22+ (waitForTimeout removed).
+- Target page exposes data-testid/id/name/aria-label on interactive elements (or you can add them).
+- Stability across CSS refactors matters (script runs many times).
+- Form flows where elements may be temporarily disabled.
 
 ## Skip If (ANY kills it)
 
-- Pure HTML scraping with no JS rendering — use a simple HTTP client + cheerio, avoid the browser overhead.
-- Cross-browser interaction tests — Playwright covers Firefox and WebKit natively.
+- One-off debugging in dev where any selector works.
+- Cross-browser need — use Playwright with role locators.
+- Pages whose only stable identifiers are visual; consider a screenshot-based AI tool.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target page DOM via page.content() or staging copy | HTML snapshot | live page or staging |
+| Selector contract | data-testid / id / name preferred | frontend team |
+| Form/action map | list of (selector, action, expected post-state) | task brief |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[puppeteer-launch-setup]] | page handed in came from safe launch wrapper |
+| [[puppeteer-agent-workflow]] | this code runs inside a Bash worker |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `inspect-dom` | haiku | scan page.content() for stable attributes |
+| `emit-interaction-helpers` | sonnet | render click/type/select with attribute-only selectors |
+| `wire-request-interception` | sonnet | block analytics / mock APIs based on scrape goal |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/interact.ts` | Interaction helpers using data-testid + wait + native APIs |
+| `templates/interception.ts` | Request interception blocking analytics + ads |
+| `templates/form.ts` | Form submission waiting for API response |
+| `templates/artefact.json` | Sample artefact metadata for validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-puppeteer-page-interaction.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[puppeteer-launch-setup]]
+- [[puppeteer-output-capture]]
+- [[puppeteer-stealth-proxy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

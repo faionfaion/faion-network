@@ -2,73 +2,103 @@
 slug: testing-backend-languages
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Each backend language has a canonical test idiom.
-content_id: "117afa78a4b317ca"
-tags: [testing, rspec, phpunit, spring-boot, rust]
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a test suite scaffold per backend language using the idiomatic runner (RSpec/Pest/xUnit/tokio::test/JUnit slices) with the right scope discipline (no @SpringBootTest by default; no WebApplicationFactory by default; #[tokio::test] for async Rust).
+content_id: "139bcb93834fba30"
+complexity: medium
+produces: code
+est_tokens: 4400
+tags: [testing, rspec, pest, xunit, junit, tokio-test, multi-language]
 ---
-# Backend Language Testing: Ruby, PHP, Java, C#, Rust
+# Backend Testing Across Languages
 
 ## Summary
 
-**One-sentence:** Each backend language has a canonical test idiom.
+**One-sentence:** Produces a test suite scaffold per backend language using the idiomatic runner (RSpec/Pest/xUnit/tokio::test/JUnit slices) with the right scope discipline (no @SpringBootTest by default; no WebApplicationFactory by default; #[tokio::test] for async Rust).
 
-**One-paragraph:** Each backend language has a canonical test idiom. This methodology provides the minimum pattern for Ruby/RSpec, PHP/Laravel+Pest, Java/Spring Boot, C#/.NET xUnit, and Rust, plus the LLM gotchas specific to each stack so agents produce idiomatic tests on the first pass.
+**One-paragraph:** Per-language test idioms: Ruby on Rails uses RSpec + factory_bot with let/let! discipline; Laravel uses Pest + RefreshDatabase + postJson/getJson; Spring Boot uses @ExtendWith(MockitoExtension.class) / @DataJpaTest / @WebMvcTest slices instead of @SpringBootTest by default; .NET uses xUnit + Moq + FluentAssertions, no WebApplicationFactory unless integration; Rust uses #[test] / #[tokio::test] in #[cfg(test)] mod tests {} blocks. Agent prompts include the runner name explicitly so LLMs don't default to the wrong API.
+
+**Ефективно для:**
+
+- Greenfield test setup in any of the five backend languages.
+- Refactor passes replacing @SpringBootTest with proper slices.
+- Adding async Rust tests under tokio::test instead of bare #[test].
+- Cleaning up Minitest -> RSpec migrations.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a test suite in a new Ruby on Rails, PHP Laravel, Java Spring, C# .NET, or Rust service.
-- Filling coverage holes on an existing backend module — feed source + this reference and ask for unit/integration tests in the project idiom.
-- Standardising test style across a polyglot backend monorepo where each service uses a different stack.
-- Producing first-cut tests during SDD in-progress/ so review focuses on logic, not boilerplate.
+- Backend language is one of: ruby_rails / laravel / spring / dotnet / rust.
+- Project ships unit + integration tests as a quality gate.
+- Tests run in CI and must complete in <10 minutes.
+- Mocks/fakes are used for dependencies, not deep call graphs.
 
 ## Skip If (ANY kills it)
 
-- Python/Django — see testing-django-pytest for the pytest + factory_boy idiom.
-- Frontend JS/TS — see testing-js-ts-frontend for vitest + Testing Library.
-- Performance / load testing — see perf-test-basics, perf-test-tools.
-- When the project already has a strong test convention — agent will drift into the generic style here and create churn.
+- Pure Python (use testing-django-pytest).
+- Frontend tests (use testing-js-ts-frontend).
+- End-to-end browser tests (use playwright-automation).
+- Performance/load tests — separate methodology.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Language | ruby_rails | laravel | spring | dotnet | rust | team decision |
+| Test scope | unit | integration | slice | task brief |
+| Dependencies the SUT uses | list of collaborators | service spec |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[practices-backend-languages]] | code-side patterns the tests verify |
+| [[trunk-based-ci-gates]] | CI gate runs these tests on every push |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-runner` | haiku | lookup from language tag |
+| `emit-test-scaffold` | sonnet | idiomatic test class with mocks + assertions |
+| `scope-discipline-check` | sonnet | flag @SpringBootTest / WebApplicationFactory misuse |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/OrderService.spec.rb` | RSpec test using factory_bot + let |
+| `templates/OrderTest.php` | Pest test with RefreshDatabase + JSON assertion |
+| `templates/OrderServiceTest.java` | Spring service unit test using MockitoExtension (no SpringBootTest) |
+| `templates/OrderServiceTests.cs` | xUnit + Moq + FluentAssertions service test |
+| `templates/order_test.rs` | Rust async unit test using tokio::test |
+| `templates/artefact.json` | Sample artefact metadata for validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-testing-backend-languages.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[testing-django-pytest]]
+- [[testing-js-ts-frontend]]
+- [[practices-backend-languages]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

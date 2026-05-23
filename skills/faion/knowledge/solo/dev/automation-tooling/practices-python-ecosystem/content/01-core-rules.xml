@@ -1,23 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="practices-python-ecosystem Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for practices-python-ecosystem. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Python Ecosystem Practices Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the practices-python-ecosystem methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>FastAPI route handlers MUST use Pydantic BaseModel for request/response bodies, Depends() for injecting DB sessions and auth, and delegate business logic to a service function. Route handlers MUST NOT contain inline DB queries or business logic.</statement>
-      <rationale source="v1-source">FastAPI's Depends() system makes auth and DB injection testable via override. Pydantic models provide automatic validation and OpenAPI schema generation. Agents often place logic inline in route handlers when not explicitly constrained.</rationale>
+
+    <rule id="pyproject-single-source" testable="true" depth="essential">
+      <statement>pyproject.toml (PEP 621) MUST be the single source of project metadata. setup.py / setup.cfg are forbidden in new projects.</statement>
+      <rationale source="PEP 621">PEP 621 unifies metadata across build backends; mixed setup.py + pyproject leads to drift and confused tooling.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Python projects MUST use the `src/` layout: source code under `src/&lt;package&gt;/`, tests under `tests/` at the project root, `pyproject.toml` for metadata, and `.env.example` committed (never `.env`). `conftest.py` lives in `tests/`.</statement>
-      <rationale source="v1-source">The `src/` layout prevents the package from being importable from the project root without installation, catching missing `__init__.py` and install issues early. It is the layout recommended by pip, uv, and poetry for 2024+.</rationale>
+    <rule id="src-layout" testable="true" depth="essential">
+      <statement>Project MUST use the src/&lt;package&gt;/ layout. Top-level package directories next to tests/ are forbidden.</statement>
+      <rationale source="Python Packaging User Guide">src/ layout prevents accidental import-from-cwd that hides install bugs; pytest + editable install behave consistently.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every public Python function MUST have complete type annotations: parameter types and return type. Use `from typing import Optional, List, Dict` (Python 3.8 compatible) or native `X | None`, `list[X]`, `dict[K, V]` syntax (Python 3.10+). Bare `def f(x)` with no annotations fails ruff's type-check rules.</statement>
-      <rationale source="v1-source">Type hints enable pyright/mypy static analysis, improve agent completions, and serve as inline documentation that cannot drift from the implementation. Missing hints force agents to guess return shapes and produce incorrect downstream code.</rationale>
+    <rule id="ruff-replaces-trio" testable="true" depth="essential">
+      <statement>Linting + formatting MUST go through ruff (ruff check + ruff format). black, isort, flake8 are forbidden in the same project.</statement>
+      <rationale source="ruff README">ruff is one binary replacing the trio; running all three doubles config and slows pre-commit.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Python projects MUST use `pyproject.toml` for project metadata and configuration. Dependency management MUST use uv (preferred 2026) or poetry — never raw `pip install` without a lockfile. The lockfile (`uv.lock` or `poetry.lock`) MUST be committed. Dev dependencies MUST be separated from runtime dependencies.</statement>
-      <rationale source="v1-source">Lockfiles guarantee reproducible installs across developer machines and CI. Without a lockfile, agents install the latest versions which may be incompatible, producing "works on my machine" failures. uv is 10-100x faster than pip and is the standard for 2026.</rationale>
+    <rule id="mypy-strict" testable="true" depth="essential">
+      <statement>Type checking MUST run mypy with strict=true (or matching ruff/pyright preset). disallow_untyped_defs and no_implicit_optional are required.</statement>
+      <rationale source="mypy docs">Strict mode catches the bugs casual typing misses; libraries shipping types MUST validate strictly to honour the py.typed contract.</rationale>
     </rule>
+    <rule id="no-print-in-app-code" testable="true" depth="essential">
+      <statement>print() MUST NOT appear in production code paths (T20 in ruff). Use logging.* instead.</statement>
+      <rationale source="ruff T20 rule">print bypasses log config, breaks structured logging, and floods stdout in production.</rationale>
+    </rule>
+    <rule id="lockfile-determinism" testable="true" depth="essential">
+      <statement>Dependencies MUST be locked via uv.lock or requirements.txt generated by pip-compile. Floating versions in production deploys are forbidden.</statement>
+      <rationale source="uv docs / pip-tools docs">Without a lock, the build version drifts on every install; reproducibility breaks.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

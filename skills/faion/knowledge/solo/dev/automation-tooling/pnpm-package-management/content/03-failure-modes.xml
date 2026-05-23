@@ -1,67 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="pnpm-package-management Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for pnpm-package-management as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="pnpm Package Management Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Setting shamefully-hoist=true as a quick fix for "module not found" errors.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defeats pnpm's core value proposition. The real fix is adding the missing package as an explicit dependency. Hoisting hides the gap and spreads phantom imports to other consumers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Mixing npm install or yarn add commands with pnpm in the same project.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Creates a second lockfile (package-lock.json or yarn.lock), corrupts node_modules layout, and produces non-reproducible installs. The preinstall hook with only-allow pnpm prevents this.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using npx instead of pnpm dlx for one-shot package execution.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Works but bypasses pnpm's content-addressable store, creating a separate npm-managed cache and potentially using a different version than workspace deps.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Not committing pnpm-lock.yaml to source control.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without the lockfile, installs are not reproducible. Every install may resolve to different patch versions, silently changing behavior across environments.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>LLMs paste npx instead of pnpm dlx — works but bypasses pnpm's content-addressable store.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use pnpm dlx for one-shot execution. This keeps all package resolution within pnpm's store and ensures version consistency with workspace dependencies.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>auto-install-peers=true masks missing peer deps; agents over-rely on it then break in strict consumers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Keep auto-install-peers=true for convenience but periodically audit peer dependencies manually. In published packages, explicit peer deps are required.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>After pnpm patch, the agent commits only the patch file and forgets to commit the pnpm.patchedDependencies block in package.json.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both the patch file and the package.json registration are required atomically. The patch file alone is ignored at install time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Native add-ons (sharp, node-canvas) sometimes need node-linker=hoisted for tools that scan node_modules flat.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use node-linker=hoisted in .npmrc for that specific project, document the reason, and link to the upstream issue tracking the fix.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Some Jest/Webpack plugins assume hoisted layout — strict mode breaks them; agents then add shamefully-hoist=true defeating the point.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Investigate the failing plugin first. The real fix is usually adding a missing peer dep or using the node-linker=hoisted exception with documentation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>pnpm patch workflow is great but agents forget pnpm patch-commit and lose the diff.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>After pnpm patch, always run pnpm patch-commit immediately. Commit both the patch file and the package.json pnpm.patchedDependencies block in the same commit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Lockfile churn between pnpm major versions without pinned packageManager.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pin via "packageManager": "pnpm@9.x.y" in root package.json. Corepack enforces the same version everywhere, eliminating lockfile-format drift.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>workspace:* protocol doesn't work with npm publish — must use pnpm publish which rewrites it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always publish workspace packages with pnpm publish or pnpm -r publish. Never use npm publish for packages with workspace:* dependencies.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="shameful-hoist-as-quick-fix" severity="high">
+      <symptom>Author hit 'module not found' for a native add-on or bundler plugin and set shamefully-hoist=true to make it green.</symptom>
+      <root-cause source="field experience">Agent defaults to the most permissive setting; never auditioned the real cause (missing direct dep).</root-cause>
+      <fix>Revert shamefully-hoist=true. Add the missing package as an explicit dependency. Only fall back to node-linker=hoisted with an inline comment + linked issue.</fix>
+    </antipattern>
+    <antipattern id="mixed-npm-yarn-pnpm" severity="high">
+      <symptom>Repo has both package-lock.json and pnpm-lock.yaml; CI sometimes installs one, sometimes the other.</symptom>
+      <root-cause source="field experience">No preinstall guard; team members ran npm install in the wrong checkout.</root-cause>
+      <fix>Add "preinstall": "npx -y only-allow pnpm" to package.json scripts. Delete package-lock.json. Commit pnpm-lock.yaml as the single source of truth.</fix>
+    </antipattern>
+    <antipattern id="no-frozen-lockfile-in-ci" severity="high">
+      <symptom>CI passes locally but lockfile silently drifts; production behaviour differs from dev.</symptom>
+      <root-cause source="field experience">CI runs pnpm install without --frozen-lockfile; minor version drift accumulates.</root-cause>
+      <fix>Hard-code --frozen-lockfile in the CI install step. Run pnpm install locally first when adding deps; commit the lockfile.</fix>
+    </antipattern>
+    <antipattern id="patch-without-package-json" severity="medium">
+      <symptom>After pnpm patch, only the patch file is committed; the patch is silently ignored at install time.</symptom>
+      <root-cause source="field experience">Author forgot pnpm.patchedDependencies block in package.json.</root-cause>
+      <fix>Always run pnpm patch-commit immediately after pnpm patch. Commit both the patch file and the package.json block atomically.</fix>
+    </antipattern>
+    <antipattern id="no-pinned-package-manager" severity="medium">
+      <symptom>Lockfile reshuffles between commits for no semantic reason.</symptom>
+      <root-cause source="field experience">Different developers run different pnpm majors; corepack resolves to latest.</root-cause>
+      <fix>Add "packageManager": "pnpm@&lt;x.y.z&gt;" to root package.json. Enable corepack on all machines.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="puppeteer-session-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for puppeteer-session-management. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Puppeteer Session Management Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the puppeteer-session-management methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="userdatadir-per-identity" testable="true" depth="essential">
+      <statement>userDataDir MUST be unique per logical identity, not per run. The same identity reuses the same directory; different identities use different directories. Sharing one userDataDir across identities is forbidden.</statement>
+      <rationale source="Puppeteer launch docs">userDataDir persists the full Chromium profile (cookies, storage, cert cache); sharing across identities cross-contaminates sessions. Per-run dirs waste login budget and re-trigger MFA.</rationale>
     </rule>
+    <rule id="incognito-for-parallel" testable="true" depth="essential">
+      <statement>Concurrent jobs against the same target MUST run in separate browser.createIncognitoBrowserContext() contexts (one browser, isolated state) OR separate browser instances. Sharing one default context across parallel jobs is forbidden.</statement>
+      <rationale source="Puppeteer multi-context docs">Default context shares cookies/storage; concurrent jobs trample each other's auth and produce inconsistent results.</rationale>
+    </rule>
+    <rule id="cookies-are-secondary" testable="true" depth="essential">
+      <statement>Explicit cookie save/load via page.cookies + page.setCookie is acceptable only when userDataDir is not viable (e.g., stateless function). Mixing both mechanisms in the same identity is forbidden.</statement>
+      <rationale source="Internal — session-bug debrief">Mixed mechanisms drift apart: userDataDir cookies and the JSON file diverge after the first reload, producing 'logged in then logged out' behaviour.</rationale>
+    </rule>
+    <rule id="daemon-for-long-sessions" testable="true" depth="essential">
+      <statement>Long-lived sessions (&gt;5 minutes) MUST live in a daemonised runner exposed via queue/HTTP. The agent enqueues tasks and reads results; the browser stays warm across calls. Running long sessions from a per-task Bash invocation is forbidden.</statement>
+      <rationale source="Internal — ops cost audit">Per-task invocations re-launch Chromium each time; cold-start dominates and HSTS/cache benefits are lost.</rationale>
+    </rule>
+    <rule id="session-secrets-not-in-repo" testable="true" depth="essential">
+      <statement>userDataDir paths MUST be outside the repository AND inside a directory backed by encrypted storage. Committing userDataDir contents to git is forbidden.</statement>
+      <rationale source="Security review">userDataDir holds live session cookies; a commit leaks long-lived credentials.</rationale>
+    </rule>
+    <rule id="explicit-context-cleanup" testable="true" depth="essential">
+      <statement>Each createIncognitoBrowserContext MUST be matched by a context.close(). Leaked contexts are forbidden.</statement>
+      <rationale source="Puppeteer memory profiling">Leaked contexts pin memory and cause the browser to OOM under sustained parallel load.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

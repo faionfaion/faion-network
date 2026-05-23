@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="puppeteer-agent-workflow Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Puppeteer Agent Workflow Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/puppeteer-agent-workflow.json",
+  "type": "object",
+  "required": [
+    "invocation_mode",
+    "uses_attribute_selectors",
+    "has_secret_scrub",
+    "has_hard_timeout",
+    "writes_artifact_to_disk"
+  ],
+  "properties": {
+    "invocation_mode": {
+      "enum": [
+        "bash_worker",
+        "queue_daemon"
+      ]
+    },
+    "uses_attribute_selectors": {
+      "type": "boolean",
+      "const": true
+    },
+    "has_secret_scrub": {
+      "type": "boolean",
+      "const": true
+    },
+    "has_hard_timeout": {
+      "type": "boolean",
+      "const": true
+    },
+    "writes_artifact_to_disk": {
+      "type": "boolean",
+      "const": true
+    },
+    "human_loop_on_auth": {
+      "type": "boolean"
+    },
+    "artifact_path": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "invocation_mode": "bash_worker",
+  "uses_attribute_selectors": true,
+  "has_secret_scrub": true,
+  "has_hard_timeout": true,
+  "writes_artifact_to_disk": true,
+  "human_loop_on_auth": true,
+  "artifact_path": "/tmp/agent-run/result.json"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "invocation_mode": "inline_llm_turn",
+  "uses_attribute_selectors": false,
+  "has_secret_scrub": false
+}
+]]></code>
+    <note>inline_llm_turn forbidden; missing scrub + selectors + timeout + artifact_path.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-inline-puppeteer">
+      <description>Puppeteer require()'d inside the LLM-tool surface and awaited mid-turn</description>
+      <why>Violates bash-not-inline; unbounded waits and stateful leaks.</why>
+    </pattern>
+    <pattern id="f-wait-for-timeout">
+      <description>page.waitForTimeout(N) anywhere in the worker</description>
+      <why>Removed in Puppeteer 22; use targeted waits.</why>
+    </pattern>
+    <pattern id="f-networkidle0-on-spa">
+      <description>page.goto(url, { waitUntil: 'networkidle0' }) on a WebSocket/SSE SPA</description>
+      <why>Hangs forever; use domcontentloaded + targeted wait.</why>
+    </pattern>
+    <pattern id="f-raw-har-persist">
+      <description>Persisting HAR or page.content() output without secret scrub</description>
+      <why>Leaks Authorization headers and session cookies.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-puppeteer-agent-workflow.py">Validator script</reference>
 </text>

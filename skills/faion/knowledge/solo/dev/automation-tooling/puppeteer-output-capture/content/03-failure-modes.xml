@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="puppeteer-output-capture Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for puppeteer-output-capture as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Puppeteer Output Capture (Screenshots, PDFs, HAR) Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling page.pdf() immediately after page.goto() without waiting for the full render.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>JavaScript-rendered content (charts, fonts, lazy-loaded images) may not have finished when goto resolves. Add waitForSelector on a key element or waitForNetworkIdle before calling pdf().</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="pdf-before-render" severity="high">
+      <symptom>Generated PDF shows partial chart data and fallback fonts where the live page renders correctly.</symptom>
+      <root-cause source="field experience">page.pdf() called immediately after goto; JS rendering and font loading were incomplete.</root-cause>
+      <fix>Add waitForSelector on a key element + await page.evaluate(() =&gt; document.fonts.ready) before pdf().</fix>
+    </antipattern>
+    <antipattern id="pdf-missing-background" severity="medium">
+      <symptom>Invoice PDFs render black-on-white; background colours/logo strip stripped.</symptom>
+      <root-cause source="field experience">page.pdf() called with default printBackground=false.</root-cause>
+      <fix>Pass printBackground: true. For dashboards, also set preferCSSPageSize: true so @page rules apply.</fix>
+    </antipattern>
+    <antipattern id="png-bulk-cost" severity="medium">
+      <symptom>Object storage bill spikes; daily upload size is 5x last quarter for the same shot count.</symptom>
+      <root-cause source="field experience">Pipeline shifted from JPEG to PNG when an author left default type.</root-cause>
+      <fix>Default to type: 'jpeg', quality: 80. Reserve PNG for visual-regression where lossless matters.</fix>
+    </antipattern>
+    <antipattern id="har-leaked-tokens" severity="high">
+      <symptom>Security review finds JWTs and session cookies in HAR archives in S3.</symptom>
+      <root-cause source="field experience">HAR persisted with no scrubber.</root-cause>
+      <fix>Pipe HAR through scrubber masking Authorization/Cookie/Set-Cookie headers + JWT body patterns before write.</fix>
+    </antipattern>
+    <antipattern id="unbounded-paths" severity="medium">
+      <symptom>Daemon worker fills /tmp; eventually crashes with ENOSPC.</symptom>
+      <root-cause source="field experience">Each job writes to a unique path that is never cleaned up.</root-cause>
+      <fix>Use /tmp/agent-run/&lt;job-id&gt;/ and clean the directory after the job completes (or via cron).</fix>
+    </antipattern>
+
   </section>
 </text>

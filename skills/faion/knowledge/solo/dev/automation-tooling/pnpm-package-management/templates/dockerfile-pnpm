@@ -1,26 +1,23 @@
-# Dockerfile — multi-stage build with pnpm store layer caching
-# Stage 1: fetch deps into store (cached layer)
-# Stage 2: install + build
-# Stage 3: minimal runtime image
+# purpose: Multi-stage Dockerfile using pnpm fetch for layer caching
+# consumes: input artefacts described in AGENTS.md ## Prerequisites
+# produces: artefact conforming to content/02-output-contract.xml for pnpm-package-management
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1200 tokens when loaded as context
 
-FROM node:20-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+FROM node:20-alpine AS base
 RUN corepack enable
+WORKDIR /app
 
 FROM base AS deps
-WORKDIR /app
 COPY pnpm-lock.yaml ./
-# Populate pnpm store without installing (enables offline install in build stage)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
+RUN pnpm fetch
 
 FROM deps AS build
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
-RUN pnpm build
+RUN pnpm -r build
 
 FROM base AS runtime
-WORKDIR /app
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-CMD ["node", "dist/index.js"]
+COPY --from=build /app/dist /app/dist
+COPY --from=build /app/node_modules /app/node_modules
+CMD ["node", "dist/main.js"]

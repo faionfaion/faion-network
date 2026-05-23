@@ -1,22 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="practices-django-coding Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Django Coding Practices Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/practices-django-coding.json",
+  "type": "object",
+  "required": [
+    "module_name",
+    "fat_model_ok",
+    "select_prefetch_ok",
+    "atomic_writes_ok",
+    "settings_split_ok"
+  ],
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]+$"
+    },
+    "fat_model_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "select_prefetch_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "atomic_writes_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "custom_queryset_ok": {
+      "type": "boolean"
+    },
+    "settings_split_ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "max_view_lines": {
+      "type": "integer",
+      "maximum": 30
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "module_name": "orders",
+  "fat_model_ok": true,
+  "select_prefetch_ok": true,
+  "atomic_writes_ok": true,
+  "custom_queryset_ok": true,
+  "settings_split_ok": true,
+  "max_view_lines": 22
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "module_name": "Orders",
+  "fat_model_ok": false,
+  "atomic_writes_ok": false
+}
+]]></code>
+    <note>module_name not snake_case; views are fat; writes not atomic; missing select_prefetch_ok + settings_split_ok.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-loop-fk">
+      <description>for x in qs: x.fk_field.something inside a template or view loop without select_related</description>
+      <why>Violates select-prefetch-related; classic N+1.</why>
+    </pattern>
+    <pattern id="f-non-atomic-multiwrite">
+      <description>Two .save() calls on related models with no transaction.atomic</description>
+      <why>Violates atomic-writes; partial-state risk.</why>
+    </pattern>
+    <pattern id="f-secrets-in-settings">
+      <description>SECRET_KEY hard-coded in settings.py committed to git</description>
+      <why>Violates settings-split; secret leak risk.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-practices-django-coding.py">Validator script</reference>
 </text>

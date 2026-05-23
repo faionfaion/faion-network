@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="puppeteer-page-interaction Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for puppeteer-page-interaction as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Puppeteer Page Interaction (Selectors, Clicks, Forms) Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="positional-selectors" severity="high">
+      <symptom>Script breaks every time the marketing team tweaks the nav layout; nth-child indexes shift.</symptom>
+      <root-cause source="field experience">Selectors generated from screenshots or codegen without attribute promotion.</root-cause>
+      <fix>Read page.content(), pick data-testid/id/name/role; if missing, file a frontend ticket to add data-testid attributes.</fix>
+    </antipattern>
+    <antipattern id="fixed-sleeps" severity="high">
+      <symptom>Script passes locally on a fast machine, fails in CI; adding more sleeps is a losing battle.</symptom>
+      <root-cause source="field experience">page.waitForTimeout used to 'be safe'; never targets a real readiness condition.</root-cause>
+      <fix>Replace with waitForSelector or waitForFunction targeting the actual DOM/state condition that proves readiness.</fix>
+    </antipattern>
+    <antipattern id="click-before-ready" severity="high">
+      <symptom>Click silently misses; form submits empty; no exception thrown.</symptom>
+      <root-cause source="field experience">page.click ran before the element was visible/enabled.</root-cause>
+      <fix>Add waitForSelector({ visible: true }) + check element.isDisabled() before the action.</fix>
+    </antipattern>
+    <antipattern id="no-request-interception" severity="medium">
+      <symptom>Scrape takes 8 seconds per page; logs show analytics, ad tags, video pre-loads all running.</symptom>
+      <root-cause source="field experience">Request interception not enabled; all third-party traffic runs.</root-cause>
+      <fix>page.setRequestInterception(true) and abort matches against known analytics/ads/tracking patterns.</fix>
+    </antipattern>
+    <antipattern id="direct-value-assignment" severity="medium">
+      <symptom>React form shows the field filled but submit handler sees empty value.</symptom>
+      <root-cause source="field experience">page.evaluate set element.value directly; React did not see a change event.</root-cause>
+      <fix>Use page.type for text inputs and page.select for selects. For checkboxes/radios, use page.click.</fix>
+    </antipattern>
+
   </section>
 </text>

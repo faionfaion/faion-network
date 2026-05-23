@@ -1,22 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="practices-python-ecosystem Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for practices-python-ecosystem as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Python Ecosystem Practices Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Inline DB query inside the route handler body (e.g., `db.query(Item).filter(...).first()` directly in the function).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Untestable without the HTTP layer; the same query appears duplicated in other routes or Celery tasks.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Unannotated public functions: `def process_users(users, options=None):`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Breaks static analysis, makes agent completions unreliable, and fails `pyright --strict` checks.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using `pip install -r requirements.txt` without a lockfile, or having both `requirements.txt` and `pyproject.toml` with conflicting versions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Non-locked requirements allow minor version drift that introduces breaking changes silently between installs.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="setup-py-and-pyproject" severity="high">
+      <symptom>Repo has both setup.py and pyproject.toml; build backends pick different metadata.</symptom>
+      <root-cause source="field experience">Migration was halfway and the legacy file was kept 'just in case'.</root-cause>
+      <fix>Delete setup.py + setup.cfg. Ensure pyproject.toml has [build-system] + [project] tables fully populated.</fix>
+    </antipattern>
+    <antipattern id="flat-layout-import-shadowing" severity="high">
+      <symptom>Tests pass with editable install but fail in installed wheel because tests imported the working-dir copy of the package, not the installed one.</symptom>
+      <root-cause source="field experience">Flat layout: top-level &lt;package&gt;/ directory next to tests/.</root-cause>
+      <fix>Move package to src/&lt;package&gt;/. Update pyproject [tool.setuptools.packages.find] or hatch config. Re-run pytest with the installed wheel.</fix>
+    </antipattern>
+    <antipattern id="black-and-ruff" severity="medium">
+      <symptom>Pre-commit reformats a file twice on every commit; CI complains about leftover diffs.</symptom>
+      <root-cause source="field experience">Both black and ruff format hooks installed.</root-cause>
+      <fix>Drop the black hook. Configure ruff format. Run ruff format once to normalise the codebase.</fix>
+    </antipattern>
+    <antipattern id="mypy-warn-not-error" severity="medium">
+      <symptom>mypy reports 200 warnings on CI; nobody fixes them; new type errors slip in.</symptom>
+      <root-cause source="field experience">Project runs mypy without --strict; warnings are not enforced.</root-cause>
+      <fix>Flip strict=true; fix or # type: ignore[reason] every existing violation; baseline file via mypy --baseline if needed.</fix>
+    </antipattern>
+    <antipattern id="no-lockfile" severity="high">
+      <symptom>Production install picks a new transitive dep version that breaks startup.</symptom>
+      <root-cause source="field experience">No uv.lock / requirements.txt under version control; floating versions install at deploy.</root-cause>
+      <fix>Generate uv.lock (or pip-compile requirements.in -&gt; requirements.txt). Commit the lockfile. Install via pip install -r requirements.txt --require-hashes.</fix>
+    </antipattern>
+
   </section>
 </text>

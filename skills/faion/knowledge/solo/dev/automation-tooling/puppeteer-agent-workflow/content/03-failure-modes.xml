@@ -1,32 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="puppeteer-agent-workflow Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for puppeteer-agent-workflow as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Puppeteer Agent Workflow Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>6 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>The model writes await page.waitForTimeout(N).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>waitForTimeout was deprecated and removed in Puppeteer 22. Replace with new Promise(r =&gt; setTimeout(r, N)) or a targeted waitForSelector/waitForFunction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>LLMs default to waitUntil: 'networkidle0' on every page.goto().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>networkidle0 hangs forever on auth/analytics-heavy pages and SPAs with WebSocket/SSE. Force domcontentloaded + targeted waits in prompts and code review.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Selectors generated from screenshots (e.g. nth-child positions, visual class names).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Positional selectors break on any layout or content change. Require the agent to fetch DOM via page.content() first and use attribute-based selectors (data-testid, id, name).</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Credentials, cookies, or filled form data written to log files or stdout without scrubbing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Automated pipelines that log full page state or network HAR will leak session tokens. Pair with a password-scrubber step before persisting any artifacts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Fully automated loops on login forms, CAPTCHA challenges, or 2FA prompts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any flow involving credentials or 2FA must pause and surface a screenshot for human review; never let the agent loop silently on an auth wall.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="inline-puppeteer" severity="high">
+      <symptom>LLM run hangs for minutes; final response is a half-rendered DOM dump that blows the context.</symptom>
+      <root-cause source="field experience">Author imported puppeteer in the tool layer and called launch() inside the turn.</root-cause>
+      <fix>Extract to a worker script. Invoke via Bash with a wall-clock timeout. Return only the artifact path to the LLM.</fix>
+    </antipattern>
+    <antipattern id="wait-for-timeout-22" severity="high">
+      <symptom>Script throws 'page.waitForTimeout is not a function' on Puppeteer 22+.</symptom>
+      <root-cause source="field experience">LLM copied a pre-22 example; waitForTimeout was removed.</root-cause>
+      <fix>Replace with new Promise(r =&gt; setTimeout(r, N)) or, better, waitForSelector / waitForFunction targeting the actual condition.</fix>
+    </antipattern>
+    <antipattern id="networkidle0-on-spa" severity="high">
+      <symptom>page.goto hangs until the wall-clock timeout; logs show analytics + WebSocket pings continuing forever.</symptom>
+      <root-cause source="field experience">LLM defaulted to waitUntil='networkidle0'; SPA never reaches zero in-flight.</root-cause>
+      <fix>Use waitUntil='domcontentloaded' + targeted waitForSelector on the element the next action needs.</fix>
+    </antipattern>
+    <antipattern id="screenshot-derived-selectors" severity="medium">
+      <symptom>Scraper breaks on every minor CSS change; selectors like 'nav &gt; div:nth-child(3) &gt; a' get out of sync.</symptom>
+      <root-cause source="field experience">Selectors generated from a screenshot or visual layout.</root-cause>
+      <fix>Force the agent to read page.content() first and pick data-testid, id, name, or aria-label selectors.</fix>
+    </antipattern>
+    <antipattern id="auth-wall-silent-retry" severity="high">
+      <symptom>Account gets locked after 5 failed login attempts; the agent kept retrying silently.</symptom>
+      <root-cause source="field experience">No human-in-loop check; the agent treated the login screen like any other page.</root-cause>
+      <fix>Detect known auth-wall patterns (login forms, CAPTCHA, 2FA); pause and surface a screenshot. Human resumes with a stored session.</fix>
+    </antipattern>
+    <antipattern id="secrets-in-har" severity="high">
+      <symptom>Audit reveals HAR files in S3 with Authorization headers and JWT tokens in plain text.</symptom>
+      <root-cause source="field experience">HAR persisted raw; no scrubber.</root-cause>
+      <fix>Run the artifact through a secret scrubber (regex for Bearer/JWT/cookie patterns) before any persistence.</fix>
+    </antipattern>
+
   </section>
 </text>

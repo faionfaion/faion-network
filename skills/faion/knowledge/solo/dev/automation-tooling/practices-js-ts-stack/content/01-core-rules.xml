@@ -1,35 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="practices-js-ts-stack Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for practices-js-ts-stack. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="JavaScript/TypeScript Stack Practices Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the practices-js-ts-stack methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>React components MUST define an explicit TypeScript interface for props (`interface ButtonProps { ... }`), use `React.FC&lt;ButtonProps&gt;` or direct destructuring, and be placed in `src/components/{Name}/{Name}.tsx`. The component file MUST NOT contain inline styles longer than a class reference.</statement>
-      <rationale source="v1-source">Explicit prop interfaces enable TypeScript strict-mode checking, autocomplete in IDEs, and documentation in Storybook. Consistent file placement makes agents find existing components before creating duplicates.</rationale>
+
+    <rule id="strict-tsconfig" testable="true" depth="essential">
+      <statement>tsconfig MUST set strict=true, noUncheckedIndexedAccess=true, noImplicitOverride=true, exactOptionalPropertyTypes=true.</statement>
+      <rationale source="TypeScript handbook">Default strictness still allows arr[0] to be typed as T (not T | undefined); noUncheckedIndexedAccess closes that hole. exactOptionalPropertyTypes catches accidental undefined assignments.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Shared async data-fetching logic MUST be extracted into a custom hook in `hooks/use{Name}.ts`. The hook MUST return `{ data, loading, error }`. Components MUST NOT contain raw `useEffect` + `useState` for fetching — use the hook abstraction.</statement>
-      <rationale source="v1-source">Duplicated useEffect fetch patterns across components are the most common React code smell. Custom hooks allow centralized caching, error handling, and retry logic. TanStack Query replaces this pattern for server-state caching.</rationale>
+    <rule id="esm-only" testable="true" depth="essential">
+      <statement>package.json MUST set "type": "module" and use an "exports" map. CommonJS require() in source is forbidden; use dynamic import() if interop is required.</statement>
+      <rationale source="Node.js ESM docs">ESM is the Node + browser standard; mixed CJS/ESM trees produce dual-package hazard. Pinning type=module + exports map prevents the dual-package state.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All TypeScript projects MUST enable `"strict": true` in tsconfig.json, which includes `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, and `noUnusedParameters`. Type-only imports MUST use `import type { X }` syntax to keep bundle slim. No `any` type in production code.</statement>
-      <rationale source="v1-source">TypeScript strict mode catches null pointer errors, implicit any, and unused variables at compile time. `import type` eliminates type-only symbols from the bundle and satisfies `verbatimModuleSyntax`. Agents default to non-strict configs and then add `any` casts as a workaround.</rationale>
+    <rule id="flat-eslint-config" testable="true" depth="essential">
+      <statement>ESLint MUST use the flat-config format (eslint.config.js). The legacy .eslintrc cascade is forbidden in new projects.</statement>
+      <rationale source="ESLint 9 release notes">Flat config is the supported format from ESLint 9; the legacy cascade is being removed and double-configures projects that mix them.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Node.js/TypeScript projects MUST follow this layout: `package.json` + `tsconfig.json` at root, `src/` for source (index.ts, routes/, services/, models/), `tests/` for test files (`*.test.ts`), `.env.example` committed but never `.env`.</statement>
-      <rationale source="v1-source">Consistent layout prevents agents from scattering source files at the project root or placing tests alongside source without a clear boundary.</rationale>
+    <rule id="ci-typecheck-step" testable="true" depth="essential">
+      <statement>CI MUST run a tsc --noEmit step distinct from build. Skipping typecheck because the build emits types is forbidden.</statement>
+      <rationale source="Internal — type-error postmortem">Bundlers (esbuild, tsup, swc) skip typecheck by default for speed. Without a dedicated --noEmit step, type errors land in main unnoticed.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Next.js 13+ projects MUST use the App Router (`app/` directory). Route groups use `(name)/` syntax for layout isolation. API routes use `app/api/{resource}/route.ts`. Root layout in `app/layout.tsx` wraps all pages. Dashboard-level layout is `app/dashboard/layout.tsx`.</statement>
-      <rationale source="v1-source">Next.js 15 is App Router-only. Pages Router (`pages/`) is deprecated. Agents that default to Pages Router patterns produce code that conflicts with the App Router's server component model and causes hydration errors.</rationale>
+    <rule id="prettier-no-overlap" testable="true" depth="essential">
+      <statement>Prettier handles formatting; ESLint MUST NOT include stylistic rules that overlap with Prettier (use eslint-config-prettier). Two formatters fighting each other are forbidden.</statement>
+      <rationale source="Prettier + ESLint integration docs">Overlapping rules produce ping-pong autofixes and break CI gates.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Select state management by scope: `useState` for local component state; `useContext` for shared UI state (theme, auth); Zustand for medium-complexity cross-component state; Redux Toolkit only for large apps requiring time-travel debugging; TanStack Query for all server-state caching. Do NOT use Redux for server state — use TanStack Query.</statement>
-      <rationale source="v1-source">Overengineering state is the most common frontend architecture mistake. Adding Redux to a project that needs two shared values doubles its complexity. TanStack Query handles cache invalidation, background refetching, and loading states that would require 200 lines of Redux boilerplate.</rationale>
+    <rule id="no-any-no-unused" testable="true" depth="essential">
+      <statement>@typescript-eslint/no-explicit-any and no-unused-vars MUST be errors (not warnings). Local exceptions require an // eslint-disable-next-line comment with a reason.</statement>
+      <rationale source="typescript-eslint recommended-strict">Warnings get ignored; errors block CI. Requiring a reason comment makes exceptions reviewable.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Select CSS approach by project context: CSS Modules for component isolation in React; Tailwind CSS for rapid prototyping and utility-first projects; styled-components for CSS-in-JS with dynamic styles; SCSS + BEM for large traditional projects. Do NOT mix approaches within one project.</statement>
-      <rationale source="v1-source">Mixed CSS approaches cause naming collisions and specificity wars. Agents produce Tailwind utility classes inside CSS Modules files or vice versa when the project convention is not explicit.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

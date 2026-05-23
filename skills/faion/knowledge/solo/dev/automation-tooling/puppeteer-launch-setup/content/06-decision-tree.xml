@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Puppeteer Launch &amp; Navigation Setup Decision Tree" version="2.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml for puppeteer-launch-setup.</summary>
+  <decision-tree>
+    <root-question id="q-root">Where will the worker run?</root-question>
+    <branch when="env == docker || env == ci">
+      <conclusion ref="no-sandbox-in-container" verdict="add --no-sandbox + --disable-setuid-sandbox + --disable-dev-shm-usage; set PUPPETEER_CACHE_DIR" />
+    </branch>
+    <branch when="env == serverless">
+      <question id="q1">Need a small cold-start binary?</question>
+      <branch when="use_sparticuz == true">
+        <conclusion ref="pinned-chromium-revision" verdict="use @sparticuz/chromium pinned to a known good version" />
+      </branch>
+      <branch when="use_sparticuz == false">
+        <conclusion ref="pinned-chromium-revision" verdict="use puppeteer-core + custom binary path + pinned revision" />
+      </branch>
+    </branch>
+    <branch when="env == local">
+      <conclusion ref="no-sandbox-in-container" verdict="keep sandbox enabled; mirror prod flags except --no-sandbox" />
+    </branch>
+    <branch when="page.target_is_spa == true">
+      <conclusion ref="spa-safe-goto" verdict="domcontentloaded + targeted waitForSelector; never networkidle0" />
+    </branch>
+  </decision-tree>
+  <example trace="ci-worker-in-docker">env=ci → launch args include --no-sandbox + --disable-setuid-sandbox + --disable-dev-shm-usage; PUPPETEER_CACHE_DIR=/tmp/.puppeteer; default goto waitUntil=domcontentloaded. Rule: no-sandbox-in-container.</example>
+</text>

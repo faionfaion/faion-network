@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="puppeteer-stealth-proxy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Puppeteer Stealth &amp; Proxy Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/puppeteer-stealth-proxy.json",
+  "type": "object",
+  "required": [
+    "stance",
+    "stance_documented",
+    "max_retries",
+    "circuit_breaker",
+    "proxy_auth_method"
+  ],
+  "properties": {
+    "stance": {
+      "enum": [
+        "plugin",
+        "manual",
+        "none"
+      ]
+    },
+    "stance_documented": {
+      "type": "boolean",
+      "const": true
+    },
+    "max_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "circuit_breaker": {
+      "type": "boolean",
+      "const": true
+    },
+    "proxy_pool_size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "proxy_health_check": {
+      "type": "boolean"
+    },
+    "proxy_auth_method": {
+      "enum": [
+        "authenticate_api",
+        "command_line_arg_forbidden"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "stance": "plugin",
+  "stance_documented": true,
+  "max_retries": 2,
+  "circuit_breaker": true,
+  "proxy_pool_size": 8,
+  "proxy_health_check": true,
+  "proxy_auth_method": "authenticate_api"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "stance": "plugin",
+  "max_retries": 10
+}
+]]></code>
+    <note>Stance not documented; retries unbounded; no circuit breaker; proxy creds in command line.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-mixed-stealth">
+      <description>Both puppeteer-extra-plugin-stealth and manual navigator.webdriver = false in same script</description>
+      <why>Violates single-evasion-stance; contradictory navigator state.</why>
+    </pattern>
+    <pattern id="f-proxy-creds-cli">
+      <description>--proxy-server=http://user:pass@host launch arg</description>
+      <why>Violates proxy-auth-not-in-args; leaks credentials in ps output.</why>
+    </pattern>
+    <pattern id="f-unbounded-retries">
+      <description>for(;;) retry loop on 429 without max</description>
+      <why>Violates bounded-retries-with-circuit-breaker; burns budget.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-puppeteer-stealth-proxy.py">Validator script</reference>
 </text>

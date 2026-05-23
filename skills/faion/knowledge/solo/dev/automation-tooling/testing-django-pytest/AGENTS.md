@@ -2,74 +2,99 @@
 slug: testing-django-pytest
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use pytest function-style tests with @pytest.
-content_id: "5309055fa03bac76"
-tags: [testing, pytest, django, python, factory-boy]
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces Django pytest tests using function style + @pytest.mark.django_db + factory_boy factories, parametrize for input variants, shallow mocks, and conftest.py that does not call ORM directly.
+content_id: "058325640d0b42a3"
+complexity: medium
+produces: code
+est_tokens: 4400
+tags: [django, pytest, factory-boy, testing, tdd]
 ---
 # Django Testing with pytest
 
 ## Summary
 
-**One-sentence:** Use pytest function-style tests with @pytest.
+**One-sentence:** Produces Django pytest tests using function style + @pytest.mark.django_db + factory_boy factories, parametrize for input variants, shallow mocks, and conftest.py that does not call ORM directly.
 
-**One-paragraph:** Use pytest function-style tests with @pytest.mark.django_db for Django services. Anchor tests to factory_boy factories for object graphs, parametrize to remove duplication, and feed failures back immediately with pytest -x before moving on.
+**One-paragraph:** Django testing under pytest: function-style tests (def test_*) with @pytest.mark.django_db, factory_boy factories in conftest.py (never raw User.objects.create_user), parametrize for input/output variants (no test_create_1 / test_create_2 sequence names), shallow mocks (no Mock(spec=...) cascading), and explicit guardrails against the LLM TDD failure mode (edit production code silently to make a failing test pass).
+
+**Ефективно для:**
+
+- New Django module needing unit + integration tests.
+- Cleaning up unittest.TestCase classes into pytest function style.
+- Replacing brittle conftest fixtures with factory_boy factories.
+- Adding mutation-score gating on critical modules.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a test suite for a new Django service — use this reference as the style anchor.
-- Filling coverage holes on an existing module — feed source + this reference and ask for unit/integration tests in the project idiom.
-- Producing first-cut tests during SDD in-progress/ so review focuses on logic, not boilerplate.
-- Standardising test style across a Django monorepo where engineers reinvent layouts per app.
+- Django >= 4 with pytest-django installed.
+- factory_boy available (or willing to add).
+- Tests run in CI and have <10 min budget.
+- Mocks/fakes are used for external collaborators only.
 
 ## Skip If (ANY kills it)
 
-- Performance / load testing — see perf-test-basics, perf-test-tools.
-- Browser E2E — see playwright-automation / puppeteer-automation.
-- Specifying what to test (acceptance criteria) — that belongs in test-plan.md of an SDD feature.
-- When the project already has a strong test convention with custom factories — agent will drift into the generic style here and create churn.
-- Non-Django Python projects — the @pytest.mark.django_db marker and DRF fixtures are irrelevant; use plain pytest patterns instead.
+- Non-Django Python projects (use practices-python-ecosystem).
+- Frontend or JS tests (use testing-js-ts-frontend).
+- Browser E2E (use playwright-automation).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Django app to test | module path | task brief |
+| Existing fixtures / factories status | audit report | tests/ directory |
+| CI runner | pytest invocation flags | ci config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[practices-django-coding]] | code under test follows fat-model thin-view + service-layer rules |
+| [[practices-python-ecosystem]] | shared pyproject + ruff + mypy + pre-commit |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-conftest` | sonnet | factory_boy factories + pytest fixtures |
+| `emit-parametrized-tests` | sonnet | one assertion concept per test; parametrize for variants |
+| `scan-tdd-edit-leak` | haiku | detect production-code edits without test diff |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/conftest.py` | factory_boy factories + pytest fixtures |
+| `templates/test_order_service.py` | Parametrized pytest test with shallow mocks |
+| `templates/artefact.json` | Sample artefact metadata for validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-testing-django-pytest.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[practices-django-coding]]
+- [[practices-python-ecosystem]]
+- [[testing-backend-languages]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

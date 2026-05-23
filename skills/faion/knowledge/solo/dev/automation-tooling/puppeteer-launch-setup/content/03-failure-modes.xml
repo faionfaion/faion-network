@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="puppeteer-launch-setup Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for puppeteer-launch-setup as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Puppeteer Launch &amp; Navigation Setup Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using await page.waitForTimeout(N) to pause execution.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>waitForTimeout was deprecated and removed in Puppeteer 22. Use new Promise(r =&gt; setTimeout(r, N)) or preferably a targeted waitForSelector/waitForFunction instead of fixed sleeps.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="no-sandbox-error-in-docker" severity="high">
+      <symptom>Docker run fails with 'No usable sandbox! Update your kernel...' the first time it boots Chromium.</symptom>
+      <root-cause source="field experience">Launch config missing --no-sandbox + --disable-setuid-sandbox.</root-cause>
+      <fix>Add both flags to launch args. Keep them only in container/CI; do not propagate to local dev.</fix>
+    </antipattern>
+    <antipattern id="networkidle0-hangs" severity="high">
+      <symptom>Script hangs for 30s on every page.goto against the SPA dashboard.</symptom>
+      <root-cause source="field experience">Default networkidle0 never settles because WebSocket and analytics traffic keeps the network alive.</root-cause>
+      <fix>Default to waitUntil='domcontentloaded' + targeted waitForSelector on the element the next action needs.</fix>
+    </antipattern>
+    <antipattern id="orphan-chromium" severity="high">
+      <symptom>Server RAM usage grows after every job; ps shows multiple chrome --headless processes.</symptom>
+      <root-cause source="field experience">Script throws after newPage; browser.close was inside the try block, never reached.</root-cause>
+      <fix>Move browser.close into a finally block. Add process.on('SIGTERM') cleanup for daemon workers.</fix>
+    </antipattern>
+    <antipattern id="chromium-auto-update" severity="medium">
+      <symptom>Yesterday's CI passed; today's CI fails on a selector that exists on the page when opened manually.</symptom>
+      <root-cause source="field experience">Puppeteer auto-installed a new Chromium revision; default headless mode changed slightly.</root-cause>
+      <fix>Pin the revision in package.json or use @sparticuz/chromium at a fixed version; commit lockfile.</fix>
+    </antipattern>
+    <antipattern id="default-timeout-too-high" severity="medium">
+      <symptom>Parent process kills the job because Puppeteer's 30s default + multiple waits exceed the 60s budget.</symptom>
+      <root-cause source="field experience">Script relied on default timeout; waits stacked unpredictably.</root-cause>
+      <fix>Call page.setDefaultTimeout(20000) (or per-call timeout) so each wait stays well below the parent budget.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,19 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="testing-django-pytest Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for testing-django-pytest. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Django Testing with pytest Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>7 testable rules grounding the testing-django-pytest methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Django tests MUST use pytest function style (def test_...) with @pytest.mark.django_db rather than unittest.TestCase subclasses. Object graphs MUST be built with factory_boy factories, not raw ORM creates or fixtures that rot with model changes.</statement>
-      <rationale source="v1-source">Function style composes with pytest fixtures without super() calls. factory_boy factories evolve with the model and produce readable, minimal object graphs. Raw ORM creates in tests produce fragile tests that break on field additions.</rationale>
+
+    <rule id="pytest-function-style" testable="true" depth="essential">
+      <statement>Tests MUST use pytest function style (def test_*) with @pytest.mark.django_db. unittest.TestCase subclasses are forbidden in new code.</statement>
+      <rationale source="pytest-django docs">Function style composes with pytest fixtures without super() calls and reads more cleanly.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>conftest.py MUST NOT use raw User.objects.create_user() calls. All object creation MUST go through factory_boy factories so tests survive model changes without fixture rewrites.</statement>
-      <rationale source="v1-source">Fixtures that call ORM directly accumulate required-field calls that break silently when the model gains non-nullable fields. factory_boy factories define sensible defaults and require only the fields relevant to the test.</rationale>
+    <rule id="factory-boy-not-raw-orm" testable="true" depth="essential">
+      <statement>Object graphs MUST be built via factory_boy factories defined in conftest.py. Raw Model.objects.create() inside test bodies or conftest fixtures is forbidden.</statement>
+      <rationale source="factory_boy docs">Factories evolve with the model; raw creates accumulate required-field calls that break silently when new non-nullable fields are added.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Duplicate test functions that differ only in input/output MUST be collapsed into a single @pytest.mark.parametrize block. Test names MUST describe the concept being tested, not a sequence number (test_create_1, test_create_2 is forbidden).</statement>
-      <rationale source="v1-source">One assertion concept per test named after the concept. Sequential names make failures uninterpretable without reading the body.</rationale>
+    <rule id="parametrize-over-duplicates" testable="true" depth="essential">
+      <statement>Duplicate tests that differ only in inputs/outputs MUST be collapsed into @pytest.mark.parametrize. Sequence-numbered names (test_create_1, test_create_2) are forbidden.</statement>
+      <rationale source="pytest parametrize docs">Parametrize keeps the assertion concept singular and the variants readable; sequence names destroy interpretability.</rationale>
     </rule>
+    <rule id="shallow-mocks" testable="true" depth="essential">
+      <statement>Mock(spec=...) cascading is forbidden. Mocks MUST cover only direct collaborators of the SUT; deeper graphs go through thin integration tests with a real DB.</statement>
+      <rationale source="Internal — mock-overreach audit">Deep mocks freeze refactors and make green tests lie when collaborators change.</rationale>
+    </rule>
+    <rule id="no-sut-in-assertion" testable="true" depth="essential">
+      <statement>The SUT MUST be invoked once and the result captured before assertion. assert service.do() == service.do() is forbidden.</statement>
+      <rationale source="Internal — assertion-doubling debrief">Double invocation doubles side-effects and hides flakes; capture-then-assert keeps state observable.</rationale>
+    </rule>
+    <rule id="mutation-score-on-critical" testable="true" depth="essential">
+      <statement>Critical modules MUST be covered by mutation testing (mutmut/cosmic-ray) — not just line coverage. assert True is forbidden.</statement>
+      <rationale source="mutation testing surveys">Line coverage is satisfied by meaningless assertions; mutation score forces tests to actually catch behaviour changes.</rationale>
+    </rule>
+    <rule id="human-in-loop-on-production-edits" testable="true" depth="essential">
+      <statement>When a test fails, the LLM MUST surface the failing diff for human review before editing production code. Silent production edits to make tests pass are forbidden.</statement>
+      <rationale source="Internal — TDD-LLM postmortem">TDD failure mode for LLMs is to fix the symptom (failing test) by changing production code, hiding the real bug. Human checkpoint catches this.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

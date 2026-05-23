@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="playwright-automation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Playwright Automation Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/playwright-automation.json",
+  "type": "object",
+  "required": [
+    "filename",
+    "language",
+    "uses_role_locators",
+    "has_wait_for_timeout",
+    "trace_mode",
+    "auth_via_storage_state"
+  ],
+  "properties": {
+    "filename": {
+      "type": "string",
+      "pattern": "^.+\\.(spec\\.ts|mjs|ts|js)$"
+    },
+    "language": {
+      "enum": [
+        "typescript",
+        "javascript"
+      ]
+    },
+    "uses_role_locators": {
+      "type": "boolean",
+      "const": true
+    },
+    "has_wait_for_timeout": {
+      "type": "boolean",
+      "const": false
+    },
+    "trace_mode": {
+      "enum": [
+        "on-first-retry",
+        "retain-on-failure",
+        "off"
+      ]
+    },
+    "screenshot_mode": {
+      "enum": [
+        "only-on-failure",
+        "off"
+      ]
+    },
+    "auth_via_storage_state": {
+      "type": "boolean"
+    },
+    "cross_browser": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "filename": "tests/login.spec.ts",
+  "language": "typescript",
+  "uses_role_locators": true,
+  "has_wait_for_timeout": false,
+  "trace_mode": "on-first-retry",
+  "screenshot_mode": "only-on-failure",
+  "auth_via_storage_state": true,
+  "cross_browser": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "filename": "tests/login.ts",
+  "language": "typescript",
+  "uses_role_locators": false,
+  "has_wait_for_timeout": true,
+  "trace_mode": "on"
+}
+]]></code>
+    <note>CSS-only selectors; page.waitForTimeout present; trace='on' will blow CI storage; missing screenshot_mode and auth_via_storage_state.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-css-only">
+      <description>All locators are CSS selectors</description>
+      <why>Violates role-locator-priority. Survival across UI refactors requires role/label/text first.</why>
+    </pattern>
+    <pattern id="f-wait-timeout">
+      <description>page.waitForTimeout(N) anywhere in the file</description>
+      <why>Banned by no-wait-for-timeout; introduces flakiness and masks real bugs.</why>
+    </pattern>
+    <pattern id="f-trace-on">
+      <description>use: { trace: 'on' } in playwright.config</description>
+      <why>Banned by trace-on-first-retry; blows CI artefact storage.</why>
+    </pattern>
+    <pattern id="f-auth-per-test">
+      <description>page.goto('/login') followed by fill in every test</description>
+      <why>Banned by auth-via-storage-state; 5x slowdown and rate-limit risk.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-playwright-automation.py">Validator script</reference>
 </text>

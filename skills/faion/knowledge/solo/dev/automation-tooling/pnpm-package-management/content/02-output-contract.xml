@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="pnpm-package-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="pnpm Package Management Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the config artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pnpm-package-management.json",
+  "type": "object",
+  "required": [
+    "package_manager",
+    "npmrc_shamefully_hoist",
+    "ci_frozen_lockfile",
+    "preinstall_only_allow",
+    "lockfile_committed"
+  ],
+  "properties": {
+    "package_manager": {
+      "type": "string",
+      "pattern": "^pnpm@\\d+\\.\\d+\\.\\d+$"
+    },
+    "npmrc_shamefully_hoist": {
+      "type": "boolean",
+      "const": false
+    },
+    "npmrc_strict_peer_dependencies": {
+      "type": "boolean"
+    },
+    "npmrc_engine_strict": {
+      "type": "boolean"
+    },
+    "ci_frozen_lockfile": {
+      "type": "boolean",
+      "const": true
+    },
+    "preinstall_only_allow": {
+      "type": "boolean",
+      "const": true
+    },
+    "workspace_packages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lockfile_committed": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "package_manager": "pnpm@9.1.0",
+  "npmrc_shamefully_hoist": false,
+  "npmrc_strict_peer_dependencies": true,
+  "npmrc_engine_strict": true,
+  "ci_frozen_lockfile": true,
+  "preinstall_only_allow": true,
+  "workspace_packages": [
+    "apps/*",
+    "packages/*"
+  ],
+  "lockfile_committed": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "package_manager": "pnpm",
+  "npmrc_shamefully_hoist": true,
+  "ci_frozen_lockfile": false
+}
+]]></code>
+    <note>package_manager missing semver pin; shamefully-hoist=true defeats isolation; CI runs without --frozen-lockfile; missing preinstall + lockfile_committed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-shameful-hoist">
+      <description>shamefully-hoist=true in .npmrc without justification comment</description>
+      <why>Violates no-shameful-hoist. Hides phantom dependencies.</why>
+    </pattern>
+    <pattern id="f-npm-mixed">
+      <description>package-lock.json committed alongside pnpm-lock.yaml</description>
+      <why>Mixed package managers corrupt installs and break reproducibility.</why>
+    </pattern>
+    <pattern id="f-no-pin">
+      <description>packageManager field missing or pinned to a non-semver tag</description>
+      <why>Violates pin-package-manager; corepack cannot enforce version.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-pnpm-package-management.py">Validator script</reference>
 </text>

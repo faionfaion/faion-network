@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="puppeteer-launch-setup Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Puppeteer Launch &amp; Navigation Setup Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the config artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/puppeteer-launch-setup.json",
+  "type": "object",
+  "required": [
+    "env",
+    "sandbox_flags_set",
+    "chromium_pinned",
+    "cache_dir_set",
+    "close_in_finally",
+    "default_wait_until"
+  ],
+  "properties": {
+    "env": {
+      "enum": [
+        "local",
+        "docker",
+        "ci",
+        "serverless"
+      ]
+    },
+    "sandbox_flags_set": {
+      "type": "boolean"
+    },
+    "chromium_pinned": {
+      "type": "boolean",
+      "const": true
+    },
+    "cache_dir_set": {
+      "type": "boolean"
+    },
+    "close_in_finally": {
+      "type": "boolean",
+      "const": true
+    },
+    "default_wait_until": {
+      "enum": [
+        "domcontentloaded",
+        "load"
+      ]
+    },
+    "default_timeout_ms": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 60000
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "env": "ci",
+  "sandbox_flags_set": true,
+  "chromium_pinned": true,
+  "cache_dir_set": true,
+  "close_in_finally": true,
+  "default_wait_until": "domcontentloaded",
+  "default_timeout_ms": 20000
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "env": "docker",
+  "sandbox_flags_set": false,
+  "chromium_pinned": false,
+  "close_in_finally": false,
+  "default_wait_until": "networkidle0"
+}
+]]></code>
+    <note>Docker without --no-sandbox; Chromium not pinned; no finally block; networkidle0 default will hang on SPA.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-no-sandbox-in-local">
+      <description>--no-sandbox added to local dev launch</description>
+      <why>Hides sandbox issues that surface only in container; keep local matching prod policy but with sandbox on so divergence is caught.</why>
+    </pattern>
+    <pattern id="f-networkidle0-default">
+      <description>page.goto without explicit waitUntil; relying on Puppeteer default load</description>
+      <why>Violates spa-safe-goto; agent code becomes unpredictable across page types.</why>
+    </pattern>
+    <pattern id="f-no-finally">
+      <description>await browser.close() outside a try/finally</description>
+      <why>Violates always-close-browser; throws leak browser processes.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-puppeteer-launch-setup.py">Validator script</reference>
 </text>

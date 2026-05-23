@@ -1,22 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="practices-backend-languages Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for practices-backend-languages as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Backend Languages Practices Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Interface defined in the producer package: `package userservice; type UserRepository interface {...}`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Violates Go's "accept interfaces, return structs" idiom. Causes import cycles and forces the producer to anticipate all consumers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>`@Autowired` on a field: `@Autowired private UserRepository userRepository;`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Field injection requires Spring context in tests; constructor injection lets tests pass mocks directly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using `reqwest::blocking::Client` inside `#[tokio::main]` or any async function.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Compiles and runs, but blocks the async runtime thread, causing deadlocks under concurrent load. Use `reqwest::Client` (async) instead.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="go-producer-side-interface" severity="high">
+      <symptom>package userservice defines type UserRepository interface alongside the Postgres implementation.</symptom>
+      <root-cause source="field experience">Author copied a Java/C# pattern of declaring interfaces with the implementation.</root-cause>
+      <fix>Move the interface to the consumer package. Implementation package returns the concrete struct; consumers depend on their own narrow interface.</fix>
+    </antipattern>
+    <antipattern id="spring-field-autowired" severity="high">
+      <symptom>Tutorial-style code: @Autowired private UserRepository repo; in service classes.</symptom>
+      <root-cause source="field experience">Field injection is shown in most tutorials; agent replicated the public pattern.</root-cause>
+      <fix>Convert to constructor injection: private final UserRepository repo + @RequiredArgsConstructor. Re-run unit tests without Spring context.</fix>
+    </antipattern>
+    <antipattern id="rust-blocking-in-async" severity="high">
+      <symptom>reqwest::blocking::Client::new().get(url) appears inside an async fn under #[tokio::main].</symptom>
+      <root-cause source="field experience">Code compiles; agent did not realise blocking calls freeze the async runtime.</root-cause>
+      <fix>Switch to reqwest::Client (async) and .await the response. For unavoidable blocking work, use tokio::task::spawn_blocking.</fix>
+    </antipattern>
+    <antipattern id="rails-fat-controller" severity="medium">
+      <symptom>Controller action contains 50+ lines of business logic, DB writes, mail sends.</symptom>
+      <root-cause source="field experience">Author followed the path of least resistance; no service object pattern in place.</root-cause>
+      <fix>Extract logic to a service object under app/services/; controller calls service.call and renders the result.</fix>
+    </antipattern>
+
   </section>
 </text>

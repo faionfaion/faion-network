@@ -1,22 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="puppeteer-page-interaction Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Puppeteer Page Interaction (Selectors, Clicks, Forms) Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the code artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/puppeteer-page-interaction.json",
+  "type": "object",
+  "required": [
+    "uses_attribute_selectors",
+    "no_wait_for_timeout",
+    "waits_before_action",
+    "request_interception_on",
+    "form_uses_native_apis"
+  ],
+  "properties": {
+    "uses_attribute_selectors": {
+      "type": "boolean",
+      "const": true
+    },
+    "no_wait_for_timeout": {
+      "type": "boolean",
+      "const": true
+    },
+    "waits_before_action": {
+      "type": "boolean",
+      "const": true
+    },
+    "request_interception_on": {
+      "type": "boolean"
+    },
+    "blocked_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "form_uses_native_apis": {
+      "type": "boolean",
+      "const": true
+    },
+    "page_evaluate_actions": {
+      "type": "integer",
+      "maximum": 0
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "uses_attribute_selectors": true,
+  "no_wait_for_timeout": true,
+  "waits_before_action": true,
+  "request_interception_on": true,
+  "blocked_domains": [
+    "google-analytics.com",
+    "doubleclick.net",
+    "fullstory.com"
+  ],
+  "form_uses_native_apis": true,
+  "page_evaluate_actions": 0
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "uses_attribute_selectors": false,
+  "no_wait_for_timeout": false,
+  "waits_before_action": false,
+  "form_uses_native_apis": false,
+  "page_evaluate_actions": 5
+}
+]]></code>
+    <note>Positional selectors; waitForTimeout sprinkled; direct .click without waits; page.evaluate used for clicks.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-positional-selector">
+      <description>selectors like 'div:nth-child(3) &gt; a'</description>
+      <why>Violates attribute-selectors-only; breaks on layout change.</why>
+    </pattern>
+    <pattern id="f-wait-for-timeout">
+      <description>page.waitForTimeout(N)</description>
+      <why>Removed in Puppeteer 22; flaky regardless.</why>
+    </pattern>
+    <pattern id="f-direct-click-no-wait">
+      <description>await page.click(sel) immediately after page.goto</description>
+      <why>Violates wait-before-action; element may not be ready.</why>
+    </pattern>
+    <pattern id="f-page-evaluate-click">
+      <description>page.evaluate(() =&gt; document.querySelector('button').click())</description>
+      <why>Violates ban-jsevaluate-shortcuts; bypasses Puppeteer wait coordination.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-puppeteer-page-interaction.py">Validator script</reference>
 </text>
