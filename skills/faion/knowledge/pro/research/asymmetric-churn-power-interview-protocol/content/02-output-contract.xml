@@ -1,39 +1,166 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Asymmetric Churn Power Interview Protocol Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Asymmetric Churn Power Interview Protocol output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Asymmetric Churn Power Interview Protocol Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys, types, and forbidden patterns. Valid + invalid examples below.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/asymmetric-churn-power-interview-protocol.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/asymmetric-churn-power-interview-protocol.json</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/churn-protocol.json",
+  "type": "object",
+  "required": [
+    "cohort",
+    "interviews",
+    "themes",
+    "coding"
+  ],
+  "properties": {
+    "cohort": {
+      "type": "object",
+      "required": [
+        "segment",
+        "window",
+        "min_usage_threshold"
+      ]
+    },
+    "interviews": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "transcript_path"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "churn",
+              "power-user"
+            ]
+          },
+          "transcript_path": {
+            "type": "string"
+          },
+          "pitch_contamination": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "theme",
+          "evidence_count"
+        ]
+      }
+    },
+    "coding": {
+      "type": "object",
+      "required": [
+        "coders",
+        "kappa"
+      ],
+      "properties": {
+        "coders": {
+          "type": "array",
+          "minItems": 2
+        },
+        "kappa": {
+          "type": "number",
+          "minimum": 0.7
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "cohort": {
+    "segment": "self-serve pro",
+    "window": "2026-Q1",
+    "min_usage_threshold": "\u22654 sessions"
+  },
+  "interviews": [
+    {
+      "id": "i1",
+      "type": "churn",
+      "transcript_path": "t1.md",
+      "pitch_contamination": false
+    },
+    {
+      "id": "i2",
+      "type": "churn",
+      "transcript_path": "t2.md",
+      "pitch_contamination": false
+    },
+    {
+      "id": "i3",
+      "type": "churn",
+      "transcript_path": "t3.md",
+      "pitch_contamination": false
+    },
+    {
+      "id": "i4",
+      "type": "power-user",
+      "transcript_path": "t4.md",
+      "pitch_contamination": false
+    }
+  ],
+  "themes": [
+    {
+      "theme": "onboarding pain",
+      "evidence_count": 3
+    }
+  ],
+  "coding": {
+    "coders": [
+      "a",
+      "b"
+    ],
+    "kappa": 0.78
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "cohort": {
+    "segment": "x"
+  },
+  "interviews": [],
+  "themes": [],
+  "coding": {
+    "coders": [
+      "a"
+    ],
+    "kappa": 0.4
+  }
+}
+]]></code>
+    <note>Cohort missing window+threshold; interviews empty; &lt;2 coders; kappa &lt;0.7.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">ad-hoc cohort without window+threshold</pattern>
+    <pattern id="f2">no power-user interviews</pattern>
+    <pattern id="f3">single-coder tagging</pattern>
+    <pattern id="f4">theme without evidence_count</pattern>
+  </section>
+
+  <reference path="scripts/validate-asymmetric-churn-power-interview-protocol.py">Validator script (stdlib-only).</reference>
 </text>

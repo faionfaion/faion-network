@@ -3,75 +3,100 @@ slug: product-development-trends-2026
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A recurring observability job — not a one-shot research deliverable — that keeps the four product-development trend buckets grounded in dated primary sources.
-content_id: "b694e59a8c77a33d"
-tags: [trend-buckets, quarterly-pulse, state-confidence, dev-methodology, primary-sources]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 2026-vintage trend scan over product-development practice with valid_until dates per item; auto-expires when a trend's underlying signal goes stale or shifts a hype-curve phase.
+content_id: "baaa48c1973ce55f"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [trends-2026, product-development, research, pro, vintaged]
 ---
-# Product Development Trends 2026 (Quarterly Pulse)
+# Product Development Trends 2026
 
 ## Summary
 
-**One-sentence:** A recurring observability job — not a one-shot research deliverable — that keeps the four product-development trend buckets grounded in dated primary sources.
+**One-sentence:** 2026-vintage trend scan over product-development practice with valid_until dates per item; auto-expires when a trend's underlying signal goes stale or shifts a hype-curve phase.
 
-**One-paragraph:** A recurring observability job — not a one-shot research deliverable — that keeps the four product-development trend buckets grounded in dated primary sources. Each quarter a market-researcher subagent pulls signals from Stack Overflow Survey, GitHub Octoverse, ThoughtWorks Radar, State of DevOps, and Gartner, scores each bucket on a state by confidence rubric, and writes a dated snapshot that feeds roadmap and GTM positioning.
+**One-paragraph:** 2026-vintage trend scan over product-development practice with valid_until dates per item; auto-expires when a trend's underlying signal goes stale or shifts a hype-curve phase. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Annual practice-refresh review constrained to 2026 evidence.
+- Investor / acquirer briefing where vintage matters.
+- Pre-tooling-investment scan for the 2026 cycle.
+- Auditing a 2025 trend report for items that already aged out.
 
 ## Applies If (ALL must hold)
 
-- Quarterly refresh of roadmap macro-assumptions — re-validate that the chosen process is still the 2026 norm
-- Onboarding a new founder/PM agent into the faion-net stack as orientation on expected delivery style
-- GTM/positioning copy review — checking that messaging references current trends, not 2022 talking points
-- As input to idea-generation-methods or business-model-planning when justifying which delivery model the niche assumes
-- Pulse-check before kicking off a large feature: confirm the team's loop matches "AI-augmented ideation, continuous feedback, rapid pivot"
+- The triggering activity for product development trends 2026 appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Concrete competitor study — use competitor-analysis or competitive-intelligence
-- Sizing the market — use market-research-tam-sam-som
-- Picking a methodology to actually run a feature — use pm-agile, sdd, or continuous-discovery
-- Generating a product roadmap — this is an input, not a producer; route output into product-manager
-- Regulated/compliance-heavy products (medical, finance) where waterfall plus traceability is a feature
-- Hardware, B2G, or fixed-scope contracted work — "rapid pivots" is hostile to those contracts
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/market-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[product-development-trends]] | upstream context this methodology builds on |
+| [[trend-analysis]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-product-development-trends-2026-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-development-trends-2026.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/market-researcher/`
+- [[product-development-trends]]
+- [[trend-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

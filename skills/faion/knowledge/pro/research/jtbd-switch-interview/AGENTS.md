@@ -3,25 +3,35 @@ slug: jtbd-switch-interview
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c4572c11b284d1f2"
-summary: "Jtbd Switch Interview — testable methodology for interviews, evidence, synthesis. Solo researcher has jobs-to-be-done but not the specific Switch / Forces-of-Progress interview method (push, pull, anxiety, habit). PMs need this to validate AI features specifically because the switch costs are mostly habit/anxiety."
-tags: [research, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Switch / Forces-of-Progress interview protocol that surfaces push, pull, anxiety, habit forces driving real buyer switches; produces a 4-force scored report anchored to verbatim transcripts.
+content_id: "fa948fc80264a934"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [research, pro, jtbd, switch-interview, forces-of-progress]
 ---
-# Jtbd Switch Interview
+# JTBD Switch Interview
 
 ## Summary
 
-**One-sentence:** Jtbd Switch Interview — testable methodology for interviews, evidence, synthesis. Solo researcher has jobs-to-be-done but not the specific Switch / Forces-of-Progress interview method (push, pull, anxiety, habit). PMs need this to validate AI features specifically because the switch costs are mostly habit/anxiety.
+**One-sentence:** Switch / Forces-of-Progress interview protocol that surfaces push, pull, anxiety, habit forces driving real buyer switches; produces a 4-force scored report anchored to verbatim transcripts.
 
-**One-paragraph:** Jtbd Switch Interview closes a known gap in research practice: Solo researcher has jobs-to-be-done but not the specific Switch / Forces-of-Progress interview method (push, pull, anxiety, habit). PMs need this to validate AI features specifically because the switch costs are mostly habit/anxiety. The methodology is anchored to the recurring activity 'Validate an AI feature before it consumes a quarter (role: role-product-manager)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Switch / Forces-of-Progress interview protocol that surfaces push, pull, anxiety, habit forces driving real buyer switches; produces a 4-force scored report anchored to verbatim transcripts. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Validating an AI feature before it consumes a quarter of roadmap budget.
+- Re-segmenting customers when launch metrics diverge from pre-launch personas.
+- Diagnosing why a free-trial → paid conversion stalls below 5%.
+- Pricing-tier design grounded in switch costs (habit + anxiety), not features.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Validate an AI feature before it consumes a quarter (role: role-product-manager)' shows up in the user's workload at least once per cycle.
+- The triggering activity for jtbd switch interview appears in the user's workload at least once per cycle.
 - The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
 - A named consumer exists for the output — either a human reviewer or a downstream agent.
 - An auditable source-of-truth is available for the inputs this methodology requires.
@@ -29,52 +39,65 @@ tags: [research, pro, methodology]
 ## Skip If (ANY kills it)
 
 - One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/research/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/research/` parent skill context | vocabulary, neighbouring methodologies |
+| [[audience-segmentation]] | upstream context this methodology builds on |
+| [[continuous-discovery]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `jtbd_switch_interview_template_fill` | haiku | Template fill, no judgement |
-| `jtbd_switch_interview_evidence_check` | sonnet | Bounded comparison + judgement |
-| `jtbd_switch_interview_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-jtbd-switch-interview-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-jtbd-switch-interview.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/` (see neighbouring methodologies)
-- triggering activity: `Validate an AI feature before it consumes a quarter (role: role-product-manager)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[audience-segmentation]]
+- [[continuous-discovery]]
+- [[mixed-methods-triangulation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

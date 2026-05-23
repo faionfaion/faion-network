@@ -3,75 +3,101 @@ slug: business-model-research
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Business model research at the market-researcher level produces a peer-benchmark table — not a single canvas.
-content_id: "243577a9242ec7d2"
-tags: [business-model, benchmarking, revenue-archetypes, market-research, comp-analysis]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Comparative research report mapping 5-10 business models against the candidate product economics (CAC, LTV, gross margin, churn) and ranking them by fit, not by industry default.
+content_id: "72f4897e116fe162"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [business-model, research, monetization, pricing, pro]
 ---
-# Business Model Research (Market-Researcher Lens)
+# Business Model Research
 
 ## Summary
 
-**One-sentence:** Business model research at the market-researcher level produces a peer-benchmark table — not a single canvas.
+**One-sentence:** Comparative research report mapping 5-10 business models against the candidate product economics (CAC, LTV, gross margin, churn) and ranking them by fit, not by industry default.
 
-**One-paragraph:** Business model research at the market-researcher level produces a peer-benchmark table — not a single canvas. The methodology classifies 8-15 comparables (including failed and acquihired peers) into five revenue archetypes (subscription, one-time, transaction, advertising, marketplace), extracts P25/P50/P75 distributions for ARPU, gross margin, gross logo retention, NDR, and CAC payback, then overlays the founder's plan against the distribution. The core rule: always include at least 2 dead or acquihired comparables — without them, medians overstate viability by 20-40%.
+**One-paragraph:** Comparative research report mapping 5-10 business models against the candidate product economics (CAC, LTV, gross margin, churn) and ranking them by fit, not by industry default. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Pre-spec evaluation of revenue-model options for a new product.
+- Benchmarking your model against direct + adjacent competitors.
+- Resolving disagreement between freemium vs paid-trial advocates.
+- Quarterly model review when unit economics shift (CAC up, LTV flat).
 
 ## Applies If (ALL must hold)
 
-- Pre-spec market-side answer to "what model do peers in this category actually use?"
-- Investor or board memo: produce an industry revenue-model distribution by archetype
-- Pricing committee input: pull ARPU, gross margin, NDR, and rule-of-40 from a public-comp set
-- Category entry decision: rank 5-15 candidate categories by median LTV:CAC and CAC payback
-- M&A scoping: build a comps table mapping the target's model to nearest public proxy
-- Cross-checking a researcher-mode canvas — verify the founder's chosen archetype against industry base rates
+- The triggering activity for business model research appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Single-product canvas and unit-economics design — that is the researcher/business-model-research sibling's scope
-- Markets with fewer than 3 public or well-documented private comparables — table is statistically meaningless
-- Hyper-local services where public comps do not transfer — use local-market survey instead
-- Pre-revenue categories with no precedent — peer benchmarking is misleading; use analogous-markets or first-principles-pricing
-- Regulated verticals where revenue model is dictated by law — research the regulation, not the comps
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/market-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[business-model-planning]] | upstream context this methodology builds on |
+| [[market-analysis]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-business-model-research-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-business-model-research.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/market-researcher/`
+- [[business-model-planning]]
+- [[market-analysis]]
+- [[competitor-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

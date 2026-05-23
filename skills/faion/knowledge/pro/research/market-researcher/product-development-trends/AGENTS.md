@@ -3,74 +3,101 @@ slug: product-development-trends
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A market-side trend brief that produces TAM/pricing/positioning implications from a scored signal set.
-content_id: "35a8a51de6541961"
-tags: [market-trends, competitive-intelligence, signal-scoring, market-implications, trend-research]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Trend-scan report for product-development practice (tooling, methodologies, dev-loop changes) with cited adoption signals, hype-curve placement, and applicability notes per trend.
+content_id: "17da402557bd3dc7"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [trends, product-development, research, pro, tooling]
 ---
-# Product Development Trends (Market-Side Brief)
+# Product Development Trends
 
 ## Summary
 
-**One-sentence:** A market-side trend brief that produces TAM/pricing/positioning implications from a scored signal set.
+**One-sentence:** Trend-scan report for product-development practice (tooling, methodologies, dev-loop changes) with cited adoption signals, hype-curve placement, and applicability notes per trend.
 
-**One-paragraph:** A market-side trend brief that produces TAM/pricing/positioning implications from a scored signal set. A three-stage pipeline (wide signal collection → scored synthesis → human checkpoint) writes a dated trend-report.md and a signals.jsonl audit trail so next-quarter runs diff rather than re-scrape.
+**One-paragraph:** Trend-scan report for product-development practice (tooling, methodologies, dev-loop changes) with cited adoption signals, hype-curve placement, and applicability notes per trend. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Annual practice-refresh review for a product team.
+- Pre-tooling-investment scan before buying a new platform.
+- Conference / thought-leadership briefing prep.
+- Hiring spec writing — what skills are now table-stakes.
 
 ## Applies If (ALL must hold)
 
-- Quarterly market-trend refresh feeding GTM positioning, pricing tier design, or category framing
-- Pre-investment decision: separating hype from durable adoption before budget is committed
-- When competitive intel uncovers a methodology shift and you need to decide whether to follow or counter-position
-- Annual board memo where the market lens (TAM expansion, sub-segment emergence, pricing-power shifts) is the deliverable
-- Inside faion-research-agent mode=market when the team explicitly asks for a "what's changing" overlay
+- The triggering activity for product development trends appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Product roadmap or sprint planning — use researcher/product-development-trends or pm-agile
-- Pure pricing benchmark — use market-researcher/pricing-research
-- Single-feature validation — use user-researcher/problem-validation or continuous-discovery
-- Competitive tear-down of one named rival — use competitor-analysis and competitive-intelligence
-- Less than 90 days since the last trends pass with no triggering event (funding round, regulatory shift, major launch)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/market-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[product-development-trends-2026]] | upstream context this methodology builds on |
+| [[trend-analysis]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-product-development-trends-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-development-trends.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/market-researcher/`
+- [[product-development-trends-2026]]
+- [[trend-analysis]]
+- [[competitive-intelligence]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

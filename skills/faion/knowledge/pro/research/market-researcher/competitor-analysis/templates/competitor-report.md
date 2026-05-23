@@ -7,7 +7,7 @@
 | Competitor | Type | Founded | Funding | Est. Users | Source |
 |------------|------|---------|---------|------------|--------|
 | [Name] | Direct | YYYY | $X | X | [URL, YYYY-MM-DD] |
-| [Name] | Indirect | YYYY | TBD | TBD | [URL, YYYY-MM-DD] |
+| [Name] | Indirect | YYYY | [funding usd or "unknown"] | [users count or "unknown"] | [URL, YYYY-MM-DD] |
 
 ### Detailed Analysis
 

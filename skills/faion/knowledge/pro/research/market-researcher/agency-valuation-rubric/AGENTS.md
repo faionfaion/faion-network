@@ -3,76 +3,100 @@ slug: agency-valuation-rubric
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Numeric scoring rubric for agency valuation rubric that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
-content_id: "858cc0c8296cf041"
-tags: [agency, research, scorecard]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Weighted 1-5 rubric that converts qualitative agency-quality signals (productized revenue %, retainer %, owner-dependency, niche stickiness) into a comparable 0-100 valuation multiplier on top of EBITDA.
+content_id: "3965ff2d772baa68"
+complexity: medium
+produces: rubric
+est_tokens: 4200
+tags: [agency, valuation, scorecard, research, pro]
 ---
 # Agency Valuation Rubric
 
 ## Summary
 
-**One-sentence:** Numeric scoring rubric for agency valuation rubric that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
+**One-sentence:** Weighted 1-5 rubric that converts qualitative agency-quality signals (productized revenue %, retainer %, owner-dependency, niche stickiness) into a comparable 0-100 valuation multiplier on top of EBITDA.
 
-**One-paragraph:** Numeric scoring rubric for agency valuation rubric that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts. Micro-agency multiples are public and patterned (typically 2–4x EBITDA, with multipliers for productized revenue %, retainer %, owner-dependency, niche stickiness). Founders need a self-service rubric to plug in their numbers before talking to any broker. market-researcher does not cover deal comps.
+**One-paragraph:** Weighted 1-5 rubric that converts qualitative agency-quality signals (productized revenue %, retainer %, owner-dependency, niche stickiness) into a comparable 0-100 valuation multiplier on top of EBITDA. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Founder pre-broker self-valuation before exit conversations.
+- Comparing 3-5 agency acquisition targets against the same yardstick.
+- Stress-testing a 3x EBITDA offer against rubric-driven adjustments.
+- Annual owner-dependency audit to identify which scores to raise.
 
 ## Applies If (ALL must hold)
 
-- You evaluate >1 instance against the same criteria addressed by agency valuation rubric (calls, vendors, candidates).
-- Scores will be used for a binary decision (advance, reject, prioritize).
-- Each criterion has a defined 1-5 anchor; raters trained on the rubric before scoring.
-- ≥2 raters per instance for any score that gates a >$10k or strategic decision.
+- The triggering activity for agency valuation rubric appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- n < 3 instances — gut feel is faster and accuracy is similar.
-- Decisions are single-criterion (price-only, deadline-only) — full rubric is overhead.
-- Strategic, single-shot decisions where qualitative narrative beats numeric blend.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- Rubric file or sheet with anchors written for each criterion 1-5.
-- Rater(s) trained on at least 3 calibration examples before scoring real instances.
-- Storage for scores reachable from downstream decision step (CRM, spreadsheet).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/research/market-researcher/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/research/market-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[niche-scorecard]] | upstream context this methodology builds on |
+| [[business-model-planning]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_criterion_score` | sonnet | Anchored 1-5 judgment per dimension |
-| `multi_rater_reconciliation` | opus | Resolve divergent scores with rationale |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-agency-valuation-rubric-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-valuation-rubric.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/market-researcher/`
-- peer methodologies: see siblings under `pro/research/market-researcher/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[niche-scorecard]]
+- [[business-model-planning]]
+- [[competitor-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

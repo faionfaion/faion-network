@@ -1,3 +1,9 @@
+<!-- purpose: niche-scorecard.md skeleton for Business Model Planning -->
+<!-- consumes: input brief + source-of-truth refs -->
+<!-- produces: sub-artefact consumed by the main spec output -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-800 tokens when filled -->
+
 ## Niche: [Name]
 
 | Criterion    | Score | Weight | Weighted | Justification                    | Source URL |

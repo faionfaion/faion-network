@@ -1,55 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="competitive-intelligence Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for competitive-intelligence. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Competitive Intelligence Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Competitive Intelligence methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every loss-reason row requires at least one verbatim buyer-side quote with speaker role, company size, and segment. Rep notes alone are insufficient — set confidence to 2 or below and flag for interview.</statement>
-      <rationale source="v1-source">Win/loss self-report bias: sales reps over-attribute losses to "price" when buyers actually leave for product fit, integration risk, or relationship gaps. Buyer-side quotes override rep attribution.</rationale>
+
+    <rule id="anchor-evidence-required" testable="true" depth="essential">
+      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
+      <rationale source="Anti-hallucination practice for Competitive Intelligence">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Maintain maximum 8 loss reasons in the taxonomy. Never expand silently — taxonomy additions require a documented decision. Deals that do not fit get "other" and go to human triage.</statement>
-      <rationale source="v1-source">Taxonomy drift breaks cross-period trend lines. A reason added in Q3 cannot be compared to Q1 data unless it is backfilled consistently.</rationale>
+    <rule id="owner-and-last-touched" testable="true" depth="essential">
+      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
+      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Treat "no_decision" as its own outcome, not as a loss. Report stalled-pipeline rate separately from competitive loss rate.</statement>
-      <rationale source="v1-source">Mixing no-decision with competitive losses inflates the win-rate denominator and makes pipeline health look worse than it is. Leadership uses the wrong metric to judge sales effectiveness.</rationale>
+    <rule id="template-version-pinned" testable="true" depth="essential">
+      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
+      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Run buyer-side win/loss interviews on at least 30% of lost deals above $50K ACV. Use Clozd or an internal interviewer who never sat on the deal — reps cannot interview their own losses.</statement>
-      <rationale source="v1-source">Rep-interviewed losses produce systematically biased data defending the rep's narrative. Independent interviewers surface the actual buyer motivations that drove the decision.</rationale>
+    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
+      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
+      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Stratify all win/loss analysis by segment and deal size. "We lose 60% of deals" is meaningless; "we lose 80% of mid-market deals against Vendor X when integration matters" is actionable.</statement>
-      <rationale source="v1-source">Blended win rates hide segment-specific patterns that require different responses. A 60% blended rate could mean 90% win in enterprise and 30% win in SMB — opposite strategic implications.</rationale>
+    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
+      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
+      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Triangulate competitor pricing three ways: posted list price, G2 reviewer-disclosed spend, and ex-customer or buyer interview. Publish the median and the spread — not a single number.</statement>
-      <rationale source="v1-source">B2B SaaS discounting averages 15-35% off list price. Published list price is aspirational; realized ACV from buyer disclosures is the actual competitive benchmark. Single-source pricing intel is misleading.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
+      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>For marketplaces, always compute all-in take rate: commission + payment processing + seller subscription + ad platform fees. Never report headline commission alone.</statement>
-      <rationale source="v1-source">Headline commission (e.g., Etsy 6.5%) understates the real take by 2x or more when seller subscriptions, payment fees, and ad revenue are included. All-in rate is what sellers actually experience.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Require at least 3 independent fetches of a competitor pricing page over 14 days before declaring a pricing change. Single-fetch divergence is likely AB testing, not a price change.</statement>
-      <rationale source="v1-source">Competitors run pricing AB tests continuously; a daily fetch sees noise. Premature "competitor dropped prices" signals based on one fetch trigger incorrect strategic responses.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Pin currency, billing period, unit (per-seat / per-org / per-usage), and contract length in the pricing schema. "$10/month" without these fields cannot be compared across competitors.</statement>
-      <rationale source="v1-source">Currency and term ambiguity is the number-one cause of pricing benchmark errors. A per-seat monthly price cannot be added to a per-org annual price without normalization.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Positioning extracted from buyer reviews outweighs positioning declared by competitor marketing copy. Hero copy reflects aspiration; G2 reviews reflect what buyers actually experience. The gap is your wedge.</statement>
-      <rationale source="v1-source">Competitors write hero copy for the positioning they want; buyers describe the product they got. The gap between declared positioning and buyer-described positioning is where an entrant can credibly differentiate.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Use k-means with manual seed labels per quarter; reject auto-clustering output. Re-run with the same seed labels each quarter to maintain trend comparability.</statement>
-      <rationale source="v1-source">Auto-clustering by LLMs merges adjacent categories that are actually distinct buyer segments with different purchase criteria. Manual seed labels preserve the signal that category definitions are shifting.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Re-baseline positioning analysis every quarter. Publish dated artifacts (competitive-analysis-YYYY-MM-DD.md). A stale market map is worse than no map — it guides decisions toward the wrong target.</statement>
-      <rationale source="v1-source">Pricing, packaging, and positioning shift continuously. Sales enablement teams trust dated artifacts because they know what version they are working from.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

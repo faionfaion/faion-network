@@ -3,88 +3,102 @@ slug: continuous-discovery
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Continuous discovery is the practice of running weekly market-scanning and competitor-monitoring loops instead of one-shot research sprints.
-content_id: "09d2bd7b60d51b4e"
-tags: [competitive-intelligence, market-scanning, competitor-monitoring, continuous-research, pricing-intelligence]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Weekly continuous-discovery operating cadence: opportunity-solution-tree maintenance, \u22653 customer touches/week, signal pipeline (interview + behavioural + market) with raw_hash + source_url discipline.
+content_id: "307971a0900f7072"
+complexity: deep
+produces: playbook-step
+est_tokens: 4200
+tags: [continuous-discovery, torres, opportunity-solution-tree, research, pro]
 ---
 # Continuous Discovery
 
 ## Summary
 
-**One-sentence:** Continuous discovery is the practice of running weekly market-scanning and competitor-monitoring loops instead of one-shot research sprints.
+**One-sentence:** Weekly continuous-discovery operating cadence: opportunity-solution-tree maintenance, ≥3 customer touches/week, signal pipeline (interview + behavioural + market) with raw_hash + source_url discipline.
 
-**One-paragraph:** Continuous discovery is the practice of running weekly market-scanning and competitor-monitoring loops instead of one-shot research sprints. Rather than treating market intelligence as a project-start deliverable, it maintains a living picture of competitors, pricing, new entrants, and category signals on a daily/weekly/bi-weekly cadence using cheap models for data collection and Opus only for synthesis.
+**One-paragraph:** Weekly continuous-discovery operating cadence: opportunity-solution-tree maintenance, ≥3 customer touches/week, signal pipeline (interview + behavioural + market) with raw_hash + source_url discipline. The methodology pins inputs to citable sources, runs ≥3 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Product team standing up a weekly discovery rhythm.
+- Founder running solo discovery alongside delivery.
+- Post-launch product hitting a flat usage curve.
+- Pre-roadmap-cycle hypothesis grooming.
 
 ## Applies If (ALL must hold)
 
-- Live category where competitors ship weekly and a 6-month-old market map is already wrong.
-- Pricing-sensitive segments where competitor packaging changes erode conversion within days.
-- GTM teams needing a weekly "what changed" digest without burning a senior analyst.
-- Funded categories where new entrants (YC batches, ProductHunt launches) appear faster than a quarterly TAM refresh catches.
-- Geo expansion plays where local competitors and regulatory shifts move the SOM monthly.
-- Post-launch defense: detecting when a fast-follower clones your wedge before churn shows up.
-- A live category where competitors ship weekly (AI tooling, dev tools, fintech, creator SaaS) and a 6-month-old market map is already wrong.
-- Pricing-sensitive segments (PLG SaaS, marketplaces) where competitor price/packaging changes erode conversion within days.
-- Funded categories where new entrants (YC batches, ProductHunt launches, Stripe Atlas filings) appear faster than a quarterly TAM refresh can catch.
-- Geo expansion plays where local competitors and regulatory shifts (DSA, EU AI Act, state-level US privacy) materially move the SOM monthly.
-- Solopreneur stacks operating like a one-person research firm — the only way to keep a monitoring matrix alive is via cron + agents.
-- Post-launch defense: detecting the moment a fast-follower clones your wedge, before churn shows up in the funnel.
+- The triggering activity for continuous discovery appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF zero-to-one with no defined competitive set — run competitor-analysis once first.
-- Slow-moving regulated categories (medtech, defense, classical banking) where half-life is years.
-- Compliance-bound enterprise sales with 12-18 month cycles — quarterly snapshots beat noisy weekly diffs.
-- Single-customer custom-software work — no "market" to scan.
-- When the team will not act on signals — unread scans become a research graveyard that burns tokens.
-- Crisis mode (active outage, churn cliff) — pause scan, focus on incident, resume after stabilization.
-- Pre-PMF zero-to-one with no defined competitive set — start with market-research-tam-sam-som and competitor-analysis once, not a rolling scan.
-- Slow-moving regulated categories (medtech devices, defense, classical banking) where the market half-life is measured in years.
-- Compliance-bound enterprise sales with 12–18 month cycles — quarterly market snapshots beat noisy weekly diffs.
-- Single-customer custom-software work — there is no "market" to scan; switch to account-level intelligence.
-- When the team will not act on signals — a continuously scanned market that nobody reads becomes a research graveyard and burns tokens.
-- Crisis mode (active outage, churn cliff, lawsuit) — pause the scan, focus humans on the incident, resume after stabilization.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/research/market-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[jtbd-switch-interview]] | upstream context this methodology builds on |
+| [[mixed-methods-triangulation]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-continuous-discovery-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/ost-update.md` | Sub-artefact skeleton consumed by the main output |
+| `templates/signal.jsonl` | Sub-artefact skeleton consumed by the main output |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-continuous-discovery.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/research/market-researcher/`
+- [[jtbd-switch-interview]]
+- [[mixed-methods-triangulation]]
+- [[audience-segmentation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
