@@ -1,0 +1,84 @@
+# DX Friction Log Format
+
+## Summary
+
+**One-sentence:** Lightweight format for capturing every developer-experience friction moment as a timestamped row with severity, surface, and proposed-fix; produces a rolling friction-log report the operator triages weekly.
+
+**One-paragraph:** Lightweight format for capturing every developer-experience friction moment as a timestamped row with severity, surface, and proposed-fix; produces a rolling friction-log report the operator triages weekly. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Onboarding to a new repo — friction is highest in first 2 weeks; capture it before it becomes invisible.
+- Tooling migrations (npm → pnpm, Jest → Vitest) where friction tells you whether the migration completed.
+- Solo dev seeking ammunition for tooling investment (each row is a vote).
+- Open-source maintainers turning user reports into contributor fixes.
+
+## Applies If (ALL must hold)
+
+- Operator wants to find DX bottlenecks before they become silent productivity loss.
+- A single repo / product is in active development with daily friction surfaces.
+- There is a place to persist the log (markdown file, gist, ticket) the operator will revisit.
+- Triage cadence (weekly or biweekly) is committed to.
+
+## Skip If (ANY kills it)
+
+- Inactive project — no friction to log.
+- Operator will not triage — log becomes a graveyard.
+- Friction is already captured in a tracker with the same fields — duplicate logging is friction.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[ai-pairing-decision-tree]] | upstream context this methodology builds on |
+| [[exploratory-testing-charters]] | sibling discipline cited in decision tree |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-dx-friction-log-format-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-dx-friction-log-format.py --self-test` |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-dx-friction-log-format.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
+## Related
+
+- [[ai-pairing-decision-tree]]
+- [[exploratory-testing-charters]]
+- [[qa-bug-bash-runbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
