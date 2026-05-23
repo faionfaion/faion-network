@@ -4,70 +4,96 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A fill-in-the-blanks template for spec.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Maintain the canonical spec.md template as a versioned, lintable Markdown skeleton so every team-authored spec starts from the same shape.
 content_id: "90e6e806771848c7"
-tags: [spec, template, requirements, acceptance-criteria, moscow]
+complexity: light
+produces: config
+est_tokens: 2900
+tags: ["template", "spec", "skeleton", "version-controlled", "lint"]
 ---
-# Template: Specification
+# Template Spec
 
 ## Summary
 
-**One-sentence:** A fill-in-the-blanks template for spec.
+**One-sentence:** Maintain the canonical spec.md template as a versioned, lintable Markdown skeleton so every team-authored spec starts from the same shape.
 
-**One-paragraph:** A fill-in-the-blanks template for spec.md — the document that answers "WHAT are we building and WHY?" Sections: Reference Documents, Overview, Problem Statement (Who/Problem/Impact/Solution/Metric), User Personas, User Stories (As a/I want/So that), Functional Requirements table (FR-X with MoSCoW), Non-Functional Requirements table (NFR-X with targets), Acceptance Criteria (Given-When-Then), Out of Scope table, Assumptions and Constraints, and Dependencies.
+**One-paragraph:** Without a canonical spec.md template, every spec invents its own layout and depth. This methodology owns the spec.md template: section headers, placeholder copy, lint rules, and quarterly review cycle. The template is versioned semver; downstream methodologies (spec-structure, spec-requirements) reference it by path; agents copy it as the starting skeleton for new specs.
+
+**Ефективно для:**
+
+- Team standardising specs — needs one template to point at.
+- Solo founder onboarding collaborators; template anchors expectations.
+- Agent generating spec.md from discovery output; template is the target shape.
+- Refactor projects where spec drift hurts review velocity.
 
 ## Applies If (ALL must hold)
 
-- Starting any new feature that will be executed by a subagent — the template enforces the FR/AC structure the executor needs
-- When a stakeholder provides fuzzy requirements and you need a structured artifact to validate understanding
-- Before writing design.md — spec must exist and be approved first
-- Generating spec drafts from user interviews, chat logs, or product briefs
+- Spec-structure methodology is in use.
+- Template lives in a shared location (this methodology's templates/).
+- Template is version-controlled and lint-checked.
+- Quarterly review cycle is in place.
 
 ## Skip If (ANY kills it)
 
-- Hot-fixes and patches — spec overhead exceeds value for changes under ~2 hours of work
-- Pure infrastructure tasks with no user-facing behavior
-- Research spikes where requirements are deliberately undefined
+- Team uses external spec tool (Notion, Confluence) — different template.
+- Single-author scrap project — no shared template needed.
+- Pre-SDD adoption — no specs yet.
+- Template superseded by an external standard — defer.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| spec-structure spec | markdown | spec-structure |
+| templates/spec.md | markdown | This methodology |
+| Lint rules | yaml | Repo config |
+| Quarterly review schedule | calendar | Team doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/spec-structure` | Layout the template implements. |
+| `solo/sdd/sdd-planning/spec-requirements` | Requirement format hosted by the template. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `update-template` | sonnet | Per-change reasoning on template fields. |
+| `lint-pass` | haiku | Deterministic lint check. |
+| `quarterly-review` | opus | Cross-spec review against current conventions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/template-spec.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/template-spec.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-template-spec.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[spec-structure]]
+- [[template-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

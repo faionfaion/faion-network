@@ -111,9 +111,9 @@
 
 | Feature | Reason | When |
 |---------|--------|------|
-| {Feature explicitly discussed and rejected} | {Why excluded} | {Phase 2 / Never / TBD} |
-| {Feature explicitly discussed and rejected} | {Why excluded} | {Phase 2 / Never / TBD} |
-| {Feature explicitly discussed and rejected} | {Why excluded} | {Phase 2 / Never / TBD} |
+| {Feature explicitly discussed and rejected} | {Why excluded} | {Phase 2 / Never / deferred} |
+| {Feature explicitly discussed and rejected} | {Why excluded} | {Phase 2 / Never / deferred} |
+| {Feature explicitly discussed and rejected} | {Why excluded} | {Phase 2 / Never / deferred} |
 
 ---
 

@@ -4,69 +4,96 @@ tier: solo
 group: sdd
 domain: sdd
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The canonical template for TASK_NNN.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Step-by-step guide to filling the TASK template (front-matter + five-section body) for a new implementation task without inventing fields or skipping required content.
 content_id: "3f0940926c125b23"
-tags: [task, template, executor, token-budget, dependency-tree]
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: ["task", "template", "guide", "fill", "sdd"]
 ---
 # Task Creation Template Guide
 
 ## Summary
 
-**One-sentence:** The canonical template for TASK_NNN.
+**One-sentence:** Step-by-step guide to filling the TASK template (front-matter + five-section body) for a new implementation task without inventing fields or skipping required content.
 
-**One-paragraph:** The canonical template for TASK_NNN.md files — the atomic units executor agents consume. Each task file must be self-contained within a 100k token budget: SDD references (15%), dependency tree with completed-task summaries and code snippets (10%), research (25%), implementation (40%), testing (10%). The dependency tree is the most critical section — it prevents agents from re-discovering patterns already established in completed tasks.
+**One-paragraph:** Authors fill TASK files inconsistently when the template is left as silent skeleton: required fields skipped, optional fields invented, body sections mis-ordered. This methodology gives a step-by-step fill guide aligned with impl-plan-task-format: front-matter first (id/est_tokens/depends_on/owner/component), then body in fixed order (Goal, Inputs, Steps, Acceptance, Notes). Each step lists what to copy from upstream docs and what to write fresh.
+
+**Ефективно для:**
+
+- Solo founder authoring their first dozen TASKs; needs a step-by-step.
+- Agent drafting TASK from spec + design; guide anchors structure.
+- Reviewer scanning TASKs for completeness; guide is the rubric.
+- Onboarding new collaborators to the TASK convention.
 
 ## Applies If (ALL must hold)
 
-- Generating TASK_NNN.md files from an approved implementation plan
-- Ensuring each task contains enough context for single-agent execution without re-reading the whole codebase
-- Before handing off feature execution to faion-sdd-executor-agent
+- impl-plan-task-format is the canonical TASK shape.
+- templates/TASK_skeleton.md is available.
+- Author can copy from upstream spec + design.md.
+- TASKs are filed in TASK_*.md format.
 
 ## Skip If (ANY kills it)
 
-- Before spec.md and design.md are both approved — templates will be incomplete
-- Spike/research tasks with unknown scope (token budget cannot be estimated)
-- New greenfield project with no prior tasks (no dependency tree to build)
+- TASKs live in external tracker — different fill process.
+- Single-line TASK — overhead exceeds benefit.
+- Pre-impl-plan — no TASK template needed.
+- Author already fluent; check task-creation-principles rubric instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| templates/TASK_skeleton.md | markdown | This methodology |
+| impl-plan-task-format spec | markdown | impl-plan-task-format |
+| spec.md + design.md | markdown | Spec + Design methodologies |
+| Component map | list | impl-plan-components |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/sdd/sdd-planning/impl-plan-task-format` | TASK shape this guide fills. |
+| `solo/sdd/sdd-planning/task-creation-principles` | Principles validated post-fill. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `fill-step` | sonnet | Per-step content drafting. |
+| `lint-fill` | haiku | Deterministic field-presence check. |
+| `review-task` | sonnet | Reviewer pass after fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/task-creation-template-guide.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/task-creation-template-guide.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-task-creation-template-guide.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd-planning/`
+- [[impl-plan-task-format]]
+- [[task-creation-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
