@@ -1,45 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Pricing Experiment Log — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>An append-only ledger with a fixed column schema, named cadence review, and explicit retention policy.</summary>
+<text id="02-output-contract" title="Pricing Experiment Log Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Pricing Experiment Log output. Subagent must satisfy this before returning to the caller.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>entry.id (monotonic)</item>
-      <item>entry.ts (ISO)</item>
-      <item>entry.owner</item>
-      <item>entry.hypothesis_or_event</item>
-      <item>entry.evidence_link</item>
-      <item>entry.outcome (or `pending`)</item>
-      <item>entry.next (next action or `none`)</item>
-    </list>
+  <output-contract>
+    <required>
+      <field name="experiment_id" type="string" required="true">unique id</field>
+      <field name="hypothesis" type="string" required="true">falsifiable claim with numeric expectation</field>
+      <field name="toggle" type="object" required="true">before/after pricing config</field>
+      <field name="baseline" type="object" required="true">mrr + conversion% at toggle_at</field>
+      <field name="measurement_window" type="object" required="true">ISO start/end locked pre-toggle</field>
+      <field name="observed" type="object" required="true">post-window mrr + conversion%</field>
+      <field name="decision" type="string" required="true">keep | revert | iterate</field>
+      <field name="evidence_links" type="array" required="true">Stripe + dashboard URLs</field>
+      <field name="owner" type="string" required="true">named owner</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">hypothesis missing numeric expectation</pattern>
+      <pattern id="f2">window_locked_at after toggle_at</pattern>
+      <pattern id="f3">decision not in {keep, revert, iterate}</pattern>
+      <pattern id="f4">evidence_links empty</pattern>
+      <pattern id="f5">baseline empty</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Allowed to mark a row 'invalid' (e.g. external macro shock) with logged reason.</transformation>
+      <transformation>Allowed to consolidate two near-identical rows post-hoc with logged merge note.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/pricing-experiment-log.json"/>
+  </output-contract>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "experiment_id": "sample-experiment_id",
+  "hypothesis": "sample-hypothesis",
+  "toggle": {
+    "k": "v"
+  },
+  "baseline": {
+    "k": "v"
+  },
+  "measurement_window": {
+    "k": "v"
+  },
+  "observed": {
+    "k": "v"
+  },
+  "decision": "sample-decision",
+  "evidence_links": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>edits in place</description>
-      <reason>Loses decision trail.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rows without evidence_link</description>
-      <reason>Opinion-capture; not learning.</reason>
-    </antipattern>
-    <antipattern>
-      <description>ledger without scheduled review</description>
-      <reason>Write-only logs decay.</reason>
-    </antipattern>
-    <antipattern>
-      <description>deletion before retention horizon</description>
-      <reason>Destroys institutional memory.</reason>
-    </antipattern>
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
   </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>Schema fixed; all entries match.</item>
-      <item>Append-only enforced (corrections add rows).</item>
-      <item>Each entry has an evidence link.</item>
-      <item>Review cadence published and run.</item>
-      <item>Retention policy + archival path documented.</item>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/pricing-experiment-log.json</item>
     </list>
   </section>
 </text>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Kill Criteria Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Kill Criteria Template output. Subagent must satisfy this before returning to the caller.</summary>
+
+  <output-contract>
+    <required>
+      <field name="bet_name" type="string" required="true">named bet / product</field>
+      <field name="launch_date" type="date" required="true">ISO date of launch event</field>
+      <field name="primary_metric" type="string" required="true">single metric (MRR | MAU | signups | joy_score)</field>
+      <field name="primary_metric_threshold" type="number" required="true">numeric floor — below this triggers kill</field>
+      <field name="baseline_snapshot" type="object" required="true">current value of primary metric at write time</field>
+      <field name="review_dates" type="array" required="true">calendared review dates (≥1)</field>
+      <field name="owner" type="string" required="true">named human owner</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">primary_metric_threshold non-numeric OR missing</pattern>
+      <pattern id="f2">owner is collapsed plural (team / we / us)</pattern>
+      <pattern id="f3">review_dates empty</pattern>
+      <pattern id="f4">launch_date in past AND created_at &gt; launch_date</pattern>
+      <pattern id="f5">primary_metric is a multi-metric AND/OR expression</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Allowed to add advisory side-metrics (≤3) for context; they do not gate kill.</transformation>
+      <transformation>Allowed to extend review window once (T+30 → T+60) with logged justification; second extension is forbidden.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/kill-criteria-template.json"/>
+  </output-contract>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "bet_name": "sample-bet_name",
+  "launch_date": "2026-05-23",
+  "primary_metric": "sample-primary_metric",
+  "primary_metric_threshold": 1,
+  "baseline_snapshot": {
+    "k": "v"
+  },
+  "review_dates": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/kill-criteria-template.json</item>
+    </list>
+  </section>
+</text>

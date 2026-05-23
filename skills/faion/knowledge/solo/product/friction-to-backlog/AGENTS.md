@@ -3,78 +3,101 @@ slug: friction-to-backlog
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Converts journey-map friction nodes into prioritised backlog tickets \u2014 each ticket carries the friction-id, expected metric impact, evidence count, owner \u2014 closing the loop from mapping to delivery."
 content_id: "37c2ab52f5a25042"
-summary: "Friction To Backlog — testable methodology for product-discovery, roadmap, lifecycle. Converting journey-map friction nodes into prioritised tickets is the actual leverage point of mapping; corpus stops at the artefact."
-tags: [product, solo, methodology]
+complexity: medium
+produces: report
+est_tokens: 4700
+tags: [friction-to-backlog, product, solo, friction-map, backlog]
 ---
 # Friction To Backlog
 
 ## Summary
 
-**One-sentence:** Friction To Backlog — testable methodology for product-discovery, roadmap, lifecycle. Converting journey-map friction nodes into prioritised tickets is the actual leverage point of mapping; corpus stops at the artefact.
+**One-sentence:** Converts journey-map friction nodes into prioritised backlog tickets — each ticket carries the friction-id, expected metric impact, evidence count, owner — closing the loop from mapping to delivery.
 
-**One-paragraph:** Friction To Backlog closes a known gap in product practice: Converting journey-map friction nodes into prioritised tickets is the actual leverage point of mapping; corpus stops at the artefact. The methodology is anchored to the recurring activity 'Journey-map-driven attack: from friction map to ranked design-backlog (role: role-ux-ui-designer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Mapping friction is the easy part; the hard part is converting the map into an actionable, prioritised backlog. This methodology pins a per-friction-node ticket structure: (a) friction-id (links back to map node), (b) expected metric impact (which KPI moves, by how much), (c) evidence count (interviews + analytics), (d) owner, (e) effort estimate. Tickets are prioritised by (impact × evidence) / effort. The map and the backlog are kept in sync via a weekly check.
+
+**Ефективно для:**
+
+- Solo PM with a friction map sitting in Figma unused.
+- Indie operator with growing backlog and unclear UX priorities.
+- Tech-lead translating UX research into engineering tickets.
+- Designer + PM team handing off journey-map output to engineering.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Journey-map-driven attack: from friction map to ranked design-backlog (role: role-ux-ui-designer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- A friction map / journey map exists with ≥5 friction nodes named.
+- Backlog tracker is owned by the PM.
+- There is at least one KPI dashboard to ground impact estimates.
+- Operator can commit to a weekly map↔backlog sync.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No friction map exists — build the map first.
+- Map has <5 friction nodes — overhead exceeds benefit.
+- Team uses no-estimate flow — impact/effort ranking adds friction.
+- Tickets are contractually fixed.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Friction map / journey map | Figma / Miro / md | research repo |
+| KPI dashboard reference | url | analytics |
+| Backlog tracker URL | url | tracker |
+| Customer-interview evidence | md | research repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/product/discovery-research-handoff-template` | evidence shape per friction |
+| `solo/product/backlog-hygiene-cron-checklist` | weekly sync cadence |
+| `solo/product/product-manager` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `friction_to_backlog_template_fill` | haiku | Template fill, no judgement |
-| `friction_to_backlog_evidence_check` | sonnet | Bounded comparison + judgement |
-| `friction_to_backlog_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-friction-to-backlog` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/friction-to-backlog.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/friction-to-backlog.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-friction-to-backlog.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `Journey-map-driven attack: from friction map to ranked design-backlog (role: role-ux-ui-designer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[backlog-hygiene-cron-checklist]]`
+- `[[design-debt-vs-design-bet]]`
+- `[[kano-prioritization]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

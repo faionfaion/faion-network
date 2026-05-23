@@ -3,77 +3,94 @@ slug: mvp-instrumentation-checklist
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Mvp Instrumentation Checklist: codified product practice that turns the recurring 'role-product-manager/Discovery to shipped MVP' decision into a repeatable, auditable artefact.
-content_id: "ca555ed463828fbc"
-tags: [mvp-instrumentation-checklist, product, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a checklist proving an MVP ships with ≥1 acquisition event + ≥1 activation event + ≥1 retention event + ≥1 revenue event wired BEFORE first user touches it."
+content_id: "f4d112d39bae9d80"
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [product, solo, mvp, instrumentation, analytics]
 ---
-# Mvp Instrumentation Checklist
+
+# MVP Instrumentation Checklist
 
 ## Summary
 
-**One-sentence:** Mvp Instrumentation Checklist: codified product practice that turns the recurring 'role-product-manager/Discovery to shipped MVP' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a checklist proving an MVP ships with ≥1 acquisition event + ≥1 activation event + ≥1 retention event + ≥1 revenue event wired BEFORE first user touches it.
 
-**One-paragraph:** Mvp Instrumentation Checklist addresses the gap identified by the role-product-manager/Discovery to shipped MVP playbook: MVP-scoping + product-launch exist, but the bridge — what to instrument BEFORE launch so the readout is meaningful — is missing. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Solopreneurs launching an MVP and only realising after launch that they have no signal on which step in the funnel users die at.
+
+**One-paragraph:** MVPs launch without instrumentation and the operator finds out a month later that signups exist in Stripe but no event traces the funnel — and the operator now has to retro-instrument with hypotheses instead of data. This methodology produces a binary checklist (each step instrumented yes/no) that gates the launch event: ≥1 acquisition event, ≥1 activation event, ≥1 retention event, ≥1 revenue event, plus the dashboard URL. Output is consumed by the launch-tier-decision-frame as a readiness signal.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-product-manager/Discovery to shipped MVP OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Operator is shipping an MVP to first users in the next 14 days.
+- Operator has an analytics tool (Plausible / GA4 / PostHog / Mixpanel) wired or installable in <2h.
+- Operator can name the four funnel steps (acquire / activate / retain / revenue) for this product.
+- Operator has a dashboard surface where the events can be displayed.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Product is a research prototype with no funnel intent.
+- Operator refuses to install an analytics tool (privacy posture extreme) — alternate metrics-via-server-logs is a separate methodology.
+- MVP is internal-only — funnel events are not meaningful.
 
 ## Prerequisites
 
-- recent context for the role-product-manager/Discovery to shipped MVP task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|---|---|---|
+| analytics tool URL | URL | operator |
+| named funnel steps | array of 4 strings | founder |
+| dashboard surface URL | URL | operator |
+| launch date | ISO date | calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/product/product-planning` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `solo/product/launch-tier-decision-frame` | Downstream — readiness gate consumes this checklist. |
+| `solo/product/metric-deviation-hypothesis-framework` | Downstream — hypothesis framework requires instrumented events. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| `verify_events_wired` | haiku | Per-event yes/no check via dashboard query. |
+| `name_funnel_steps` | sonnet | Bounded judgement: pick the 4 steps appropriate to this product shape. |
+| `readiness_synthesis` | opus | Synthesis when chained with launch-tier-decision-frame. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/mvp-instrumentation-checklist.json` | JSON schema for the Mvp Instrumentation Checklist output contract |
-| `templates/mvp-instrumentation-checklist.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/mvp-instrumentation-checklist.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/mvp-instrumentation-checklist.md` | Markdown skeleton with the required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-mvp-instrumentation-checklist.py` | Enforce Mvp Instrumentation Checklist output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-mvp-instrumentation-checklist.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
-- upstream playbook: `role-product-manager/Discovery to shipped MVP`
+- [[launch-tier-decision-frame]] — related methodology.
+- [[metric-deviation-hypothesis-framework]] — related methodology.
+- [[solo-kpi-dashboard-template]] — related methodology.
+- [[vanity-metrics-audit]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

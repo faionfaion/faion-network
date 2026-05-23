@@ -3,68 +3,95 @@ slug: multi-product-portfolio-management
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Time-slicing, kill criteria, and shared-audience leverage for indie hackers running 3-7 micro-products on $19/mo budget.
-content_id: "5732afebe4284c91"
-tags: [multi-product-portfolio-management, product, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a portfolio config (per-product mode tag + weekly time-budget + capital allocation + cross-product kill rule) for a solopreneur running ≥3 products."
+content_id: "178671a3dab836cc"
+complexity: medium
+produces: config
+est_tokens: 3600
+tags: [product, solo, portfolio, multi-product, indie]
 ---
 
-# Solo Multi-Product Portfolio Management
+# Multi Product Portfolio Management
 
 ## Summary
 
-**One-sentence:** Time-slicing, kill criteria, and shared-audience leverage for indie hackers running 3-7 micro-products on $19/mo budget.
+**One-sentence:** Produces a portfolio config (per-product mode tag + weekly time-budget + capital allocation + cross-product kill rule) for a solopreneur running ≥3 products.
 
-**One-paragraph:** pro/product/product-planning/portfolio-strategy is Pro-tier for product-org leads. Indie hackers running 3-7 micro-products need a solo-tier playbook for time-slicing, kill criteria, shared-audience leverage. Output: portfolio table + time allocation + kill rules.
+**Ефективно для:** Solopreneurs running 3-8 products in parallel who treat them as one mental pile and lose track of which product gets which attention this week.
+
+**One-paragraph:** Indie hackers run 3-8 side projects in parallel and the corpus only supports single-product prioritisation (RICE on one backlog). This methodology produces a portfolio config that tags each product with a mode (build / grow / maintain / sunset), assigns a weekly time-budget per mode, allocates capital, and pins a cross-product kill rule so the portfolio rotates instead of bloating. Output is consumed by the operator's weekly time block + portfolio review.
 
 ## Applies If (ALL must hold)
 
-- indie hacker running ≥2 active products
-- single founder + maybe 1 contractor
-- shared audience or shared tech stack across products
+- Operator runs ≥3 products in parallel.
+- Total weekly time available ≤40h (solo cap).
+- Each product is on a known revenue + traffic baseline.
+- Operator can name modes explicitly (no 'all are growing' wishful thinking).
 
 ## Skip If (ANY kills it)
 
-- single-product focus — irrelevant
-- team ≥3 with dedicated PMs — use product-org portfolio
-- products in entirely unrelated audiences (no leverage)
+- Operator runs ≤2 products — portfolio config is overkill, single-product prioritisation suffices.
+- Operator unwilling to tag products with mode (build/grow/maintain/sunset) — config has nothing to organise.
+- Time budget is unlimited (employed team / VC) — capital allocation is not solopreneur-shaped.
 
 ## Prerequisites
 
-- list of products with MRR, monthly active users, last 90-day growth
-- audience overlap data (newsletter / social)
-- monthly time-allocation log
+| Artefact | Format | Source |
+|---|---|---|
+| product list | array of named products | operator |
+| MRR + traffic per product | object | Stripe + Plausible |
+| weekly time available | hours | operator |
+| capital pool | currency | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/product/product-planning` | parent skill — provides operating context for this methodology |
-| `solo/product/product-planning` | peer methodology — produces inputs or consumes outputs |
-| `solo/product/sunset-failed-product-playbook` | peer methodology — produces inputs or consumes outputs |
+|---|---|
+| `solo/product/portfolio-triage-indie` | Upstream — triage method that feeds verdicts here. |
+| `solo/product/maintain-mode-sops-solo` | Downstream — maintain-mode products use those SOPs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 4 step-by-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+|---|---|---|
+| `tag_modes` | haiku | Per-product mode assignment from inputs. |
+| `allocate_time_and_capital` | sonnet | Bounded judgement: time + capital per mode. |
+| `portfolio_rotation_review` | opus | Cross-product synthesis at quarterly portfolio review. |
+
+## Templates
+
+| File | Purpose |
+|---|---|
+| `templates/multi-product-portfolio-management.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/multi-product-portfolio-management.md` | Markdown skeleton with the required fields. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|---|---|---|
+| `scripts/validate-multi-product-portfolio-management.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
-- peer methodology: `solo/product/product-planning`
-- peer methodology: `solo/product/sunset-failed-product-playbook`
-- external: https://www.indiehackers.com/podcast/167-pieter-levels-of-nomadlist (Pieter Levels portfolio); https://danvas.dev/blog/portfolio-of-side-projects
+- [[portfolio-triage-indie]] — related methodology.
+- [[maintain-mode-sops-solo]] — related methodology.
+- [[kill-criteria-template]] — related methodology.
+- [[sunset-failed-product-playbook]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

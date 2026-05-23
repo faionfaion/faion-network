@@ -3,78 +3,97 @@ slug: launch-comms-kit-template
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "0c201d11c16d4f1e"
-summary: "Launch Comms Kit Template — testable methodology for product-discovery, roadmap, lifecycle. product-launch methodology covers strategy; the actual launch-day artifacts (changelog, in-app banner copy, support FAQ) have no shared scaffold."
-tags: [product, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a launch comms kit spec (one tweet thread + one PH copy + one mailing-list draft + one HN show-post + one changelog entry) sharing a single positioning sentence."
+content_id: "977f59578e6c7ca6"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [product, solo, launch, comms, positioning]
 ---
+
 # Launch Comms Kit Template
 
 ## Summary
 
-**One-sentence:** Launch Comms Kit Template — testable methodology for product-discovery, roadmap, lifecycle. product-launch methodology covers strategy; the actual launch-day artifacts (changelog, in-app banner copy, support FAQ) have no shared scaffold.
+**One-sentence:** Produces a launch comms kit spec (one tweet thread + one PH copy + one mailing-list draft + one HN show-post + one changelog entry) sharing a single positioning sentence.
 
-**One-paragraph:** Launch Comms Kit Template closes a known gap in product practice: product-launch methodology covers strategy; the actual launch-day artifacts (changelog, in-app banner copy, support FAQ) have no shared scaffold. The methodology is anchored to the recurring activity 'Launch PR sign-off + coordination (role: role-product-manager)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** Solopreneurs shipping a launch event (PH / HN / Show / mailing list) who scatter ad-hoc copy across channels and end up with five different positioning sentences.
+
+**One-paragraph:** A launch event hits 4-6 channels (PH, HN, mailing list, X thread, changelog, optional podcast) and each channel begs a different copy shape. Without a kit template, the founder writes each piece in isolation and ships five different positioning sentences. This methodology produces a spec where ONE positioning sentence anchors all channel-specific drafts, a launch-day timeline binds the publishes, and a post-launch retro slot is pre-booked. Output is consumed by the launch-day operator and by the post-launch retro log.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Launch PR sign-off + coordination (role: role-product-manager)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator is shipping a launch event with ≥3 channels.
+- A single positioning sentence has been chosen and won't change mid-launch.
+- Launch day is scheduled with a fixed window (12-72h).
+- Operator has access to all channel accounts (PH, HN, X, mailing list).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Soft-launch with one channel only — the kit is overkill.
+- Operator does NOT have a single positioning sentence yet — fix positioning first.
+- Launch is gated by review / approval not under operator control — defer kit until window confirmed.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|---|---|---|
+| positioning sentence (≤140 chars) | string | founder |
+| launch-day window | datetime range | calendar |
+| channel list with credentials | object | operator |
+| PH / HN account standing | boolean | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `solo/product/launch-tier-decision-frame` | Upstream — decides which tier the launch is gunning for. |
+| `solo/marketing/tweet-thread-launch-template` | Channel-specific copy for the X thread piece. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 4 step-by-step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `launch_comms_kit_template_template_fill` | haiku | Template fill, no judgement |
-| `launch_comms_kit_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `launch_comms_kit_template_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `draft_channel_pieces` | haiku | Template-fill from positioning sentence per channel. |
+| `positioning_consistency_check` | sonnet | Cross-channel comparison: do all 5 pieces share the same positioning sentence? |
+| `launch_retro_synthesis` | opus | Post-launch outcome review across channels. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/launch-comms-kit-template.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/launch-comms-kit-template.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-launch-comms-kit-template.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `Launch PR sign-off + coordination (role: role-product-manager)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[launch-tier-decision-frame]] — related methodology.
+- [[tweet-thread-launch-template]] — related methodology.
+- [[shutdown-customer-email-pack]] — related methodology.
+- [[launch-comms-kit-template]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

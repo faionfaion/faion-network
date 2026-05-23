@@ -3,78 +3,100 @@ slug: indie-portfolio-scorecard
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Single scorecard view across multiple indie products: MRR, growth %, support load, founder hours/week, joy score \u2014 used to decide which products to grow, maintain, kill."
 content_id: "e50fc088acdef40c"
-summary: "Indie Portfolio Scorecard — testable methodology for product-discovery, roadmap, lifecycle. Multi-product indies need a single scorecard view: MRR per product, growth %, support load, hours/wk, joy. faion's product-lifecycle is too enterprise. A purpose-built scorecard methodology is the missing keystone."
-tags: [product, solo, methodology]
+complexity: medium
+produces: report
+est_tokens: 4700
+tags: [indie-portfolio-scorecard, product, solo, portfolio, metrics]
 ---
 # Indie Portfolio Scorecard
 
 ## Summary
 
-**One-sentence:** Indie Portfolio Scorecard — testable methodology for product-discovery, roadmap, lifecycle. Multi-product indies need a single scorecard view: MRR per product, growth %, support load, hours/wk, joy. faion's product-lifecycle is too enterprise. A purpose-built scorecard methodology is the missing keystone.
+**One-sentence:** Single scorecard view across multiple indie products: MRR, growth %, support load, founder hours/week, joy score — used to decide which products to grow, maintain, kill.
 
-**One-paragraph:** Indie Portfolio Scorecard closes a known gap in product practice: Multi-product indies need a single scorecard view: MRR per product, growth %, support load, hours/wk, joy. faion's product-lifecycle is too enterprise. A purpose-built scorecard methodology is the missing keystone. The methodology is anchored to the recurring activity 'Multi-product portfolio rotation: ship N small bets per year (role: p2-indie-hacker)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Multi-product indie operators need a single scorecard to decide where to put attention. Faion's product-lifecycle methodologies skew enterprise. This methodology pins a purpose-built scorecard with five columns per product: MRR, growth % (90-day), support load (hours/week), founder hours/week, joy score (1-5). The scorecard is reviewed monthly. Decision rules: products with declining MRR + low joy → kill candidate; high MRR + low growth + low founder hours → maintain mode; high growth + high founder hours → grow mode.
+
+**Ефективно для:**
+
+- Indie operator with ≥2 live products.
+- Founder running a portfolio that 'feels' wrong but can't be measured.
+- Maker with bundled offers (course + tool + newsletter).
+- Solo consultant productising offers across multiple SKUs.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Multi-product portfolio rotation: ship N small bets per year (role: p2-indie-hacker)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator runs ≥2 live products with billing data.
+- MRR data is available per product.
+- Operator owns the calendar to estimate hours/week.
+- Monthly review slot is calendared.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Single-product operator — scorecard adds no value.
+- All products are pre-revenue — score the bets, not the products.
+- Founder cannot self-rate joy honestly — talk to a coach first.
+- Data quality is too poor (no MRR tracking) — fix tracking first.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Per-product MRR series (90 days) | csv | billing system |
+| Per-product support ticket counts | csv | support tool |
+| Founder hours/week estimate | self-report | operator |
+| Joy score (1-5) | self-report | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/product/multi-product-portfolio-management` | portfolio-management context |
+| `solo/pm/tiny-bets-quarterly-cadence` | quarter-cadence link |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `indie_portfolio_scorecard_template_fill` | haiku | Template fill, no judgement |
-| `indie_portfolio_scorecard_evidence_check` | sonnet | Bounded comparison + judgement |
-| `indie_portfolio_scorecard_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-indie-portfolio-scorecard` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/indie-portfolio-scorecard.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/indie-portfolio-scorecard.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-indie-portfolio-scorecard.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `Multi-product portfolio rotation: ship N small bets per year (role: p2-indie-hacker)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[multi-product-portfolio-management]]`
+- `[[tiny-bets-quarterly-cadence]]`
+- `[[kill-or-keep-criteria]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

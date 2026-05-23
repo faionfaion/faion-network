@@ -3,77 +3,97 @@ slug: maintain-mode-sops-solo
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Maintain Mode Sops Solo: codified product practice that turns the recurring 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year' decision into a repeatable, auditable artefact.
-content_id: "0eb47f7670a8d00a"
-tags: [maintain-mode-sops-solo, product, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a maintain-mode SOP spec (weekly check + monthly tax + quarterly review + on-call rule) for a solo-owned product moving from build-mode to maintain-mode."
+content_id: "7b4d5ce7b41af5c1"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [product, solo, maintain-mode, sops, operations]
 ---
-# Maintain Mode Sops Solo
+
+# Maintain Mode SOPs Solo
 
 ## Summary
 
-**One-sentence:** Maintain Mode Sops Solo: codified product practice that turns the recurring 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a maintain-mode SOP spec (weekly check + monthly tax + quarterly review + on-call rule) for a solo-owned product moving from build-mode to maintain-mode.
 
-**One-paragraph:** Maintain Mode Sops Solo addresses the gap identified by the p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year playbook: When a launched product is profitable but not scaling, indies need a 'maintain mode' SOP: 1h/wk support, monthly invoice review, quarterly micro-update. Today this institutional knowledge is tribal; faion should codify it as a tier-solo methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Solopreneurs whose product stopped growing but still serves paying customers and need a low-touch ops SOP to keep it alive without lighting hair on fire weekly.
+
+**One-paragraph:** A solo product that finished its growth chapter still needs care — uptime, support, billing edge cases, dependency upgrades, tax filings. Without a written maintain-mode SOP the operator either over-invests (build-mode habits keep firing) or under-invests (silently rotting). This methodology produces an SOP spec: weekly 30-min check, monthly tax / billing reconciliation, quarterly dependency upgrade window, on-call rule for incidents. Output is consumed by the operator's calendar + status page.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Product has crossed PMF or stopped growing and is in maintain-mode.
+- Product has paying customers (MRR > 0) AND zero growth-investment is planned for ≥6 months.
+- Operator is the single point of failure for ops, billing, support.
+- Operator can dedicate ≥30 minutes / week to maintain-mode tasks.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Product is still in build-mode (growth tasks dominate).
+- Product has no paying customers — sunset playbook instead.
+- Operator cannot guarantee ≥30 min/week — sunset or hand-off instead.
 
 ## Prerequisites
 
-- recent context for the p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|---|---|---|
+| MRR + churn snapshot | currency + % | Stripe / Lemonsqueezy |
+| dependency list | array | package manifest |
+| support inbox | URL | Help Scout / Front / email |
+| status page URL | URL | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/product/product-planning` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `solo/product/multi-product-portfolio-management` | Parent — multi-product portfolio context. |
+| `solo/product/subscription-lifecycle-edge-cases` | Downstream — billing edge cases the SOP must cover. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 4 step-by-step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| `scaffold_sop_spec` | haiku | Template-fill from prereqs. |
+| `calibrate_cadence` | sonnet | Bounded judgement: weekly vs bi-weekly vs monthly cadence per task. |
+| `ops_drift_review` | opus | Cross-month synthesis on drift from spec. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/maintain-mode-sops-solo.json` | JSON schema for the Maintain Mode Sops Solo output contract |
-| `templates/maintain-mode-sops-solo.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/maintain-mode-sops-solo.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/maintain-mode-sops-solo.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-maintain-mode-sops-solo.py` | Enforce Maintain Mode Sops Solo output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-maintain-mode-sops-solo.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
-- upstream playbook: `p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year`
+- [[multi-product-portfolio-management]] — related methodology.
+- [[subscription-lifecycle-edge-cases]] — related methodology.
+- [[sunset-failed-product-playbook]] — related methodology.
+- [[portfolio-triage-indie]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

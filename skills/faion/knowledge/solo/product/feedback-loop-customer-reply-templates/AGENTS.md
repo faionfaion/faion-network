@@ -3,78 +3,100 @@ slug: feedback-loop-customer-reply-templates
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Customer-reply templates closing the feedback loop: acknowledge, route, follow-up \u2014 each ticket emerges with a tagged outcome (build / waitlist / decline / bug) and a customer-facing reply."
 content_id: "d2e6457d786af4aa"
-summary: Feedback Loop Customer Reply Templates delivers a concrete, testable methodology that turns the recurring task of 'Customer feedback triage from Intercom/Pylon' into an auditable artefact, addressing the gap: Feedback-management methodologies cover collection + prioritization but
-tags: [product, solo, template, methodology]
+complexity: medium
+produces: playbook-step
+est_tokens: 4000
+tags: [feedback-loop-customer-reply-templates, product, solo, support, feedback]
 ---
 # Feedback Loop Customer Reply Templates
 
 ## Summary
 
-**One-sentence:** Feedback Loop Customer Reply Templates delivers a concrete, testable methodology that turns the recurring task of 'Customer feedback triage from Intercom/Pylon' into an auditable artefact, addressing the gap: Feedback-management methodologies cover collection + prioritization but skip the 'reply to the requester' templates that close the loop.
+**One-sentence:** Customer-reply templates closing the feedback loop: acknowledge, route, follow-up — each ticket emerges with a tagged outcome (build / waitlist / decline / bug) and a customer-facing reply.
 
-**One-paragraph:** Feedback-management methodologies cover collection + prioritization but skip the 'reply to the requester' templates that close the loop. Feedback Loop Customer Reply Templates closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Customer feedback triage from Intercom/Pylon' (role-product-manager, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Most support tools collect feedback but don't close the loop with the customer. This methodology pins five reply templates (acknowledge, build, waitlist, decline, bug) and a routing rule per template. Each ticket exits with both an internal classification AND a customer-facing reply within 72h. Decline replies cite the anti-roadmap entry; waitlist replies link the smoke page; build replies cite the roadmap slot.
+
+**Ефективно для:**
+
+- Solo SaaS founder fielding daily Intercom / Pylon / email feedback.
+- Indie operator with no support team and growing inbox.
+- Founder whose customers say 'I never heard back about my request'.
+- Tech-lead acting as support owner with no triage discipline.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Customer feedback triage from Intercom/Pylon' (role: role-product-manager) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Feedback inflow ≥5 tickets/week.
+- Founder owns the support tool.
+- Anti-roadmap exists or is being authored in parallel.
+- Founder can commit to 72h reply SLA.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Feedback volume <1/week — manual replies fine.
+- Team has a dedicated support engineer with own templates.
+- Anti-roadmap doesn't exist and won't be authored — decline replies have nothing to cite.
+- Customers receive enterprise-grade SLAs different from the templates.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Support tool URL | Intercom / Pylon / email | vendor |
+| Anti-roadmap doc | url | anti-roadmap-template output |
+| Roadmap reference | url | roadmap tool |
+| Bug-tracker URL | url | tracker |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/product/build-or-waitlist-decision-tree` | routing rule for build vs decline |
+| `solo/product/anti-roadmap-template` | decline-reply citation source |
+| `solo/comms/communicator` | reply tone + voice |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `feedback_loop_customer_reply_templates_template_fill` | haiku | Template fill, no judgment |
-| `feedback_loop_customer_reply_templates_evidence_check` | sonnet | Bounded comparison + judgment |
-| `feedback_loop_customer_reply_templates_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-feedback-loop-customer-reply-templates` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/feedback-loop-customer-reply-templates.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/feedback-loop-customer-reply-templates.schema.json` | JSON Schema seed + filled fixture for the playbook-step artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-feedback-loop-customer-reply-templates.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `role-product-manager/Customer feedback triage from Intercom/Pylon`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[anti-roadmap-template]]`
+- `[[build-or-waitlist-decision-tree]]`
+- `[[friction-to-backlog]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

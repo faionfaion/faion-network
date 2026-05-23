@@ -3,78 +3,100 @@ slug: kano-prioritization
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Kano-based classifier separating must-haves, performance features, delighters, indifferent, reverse features \u2014 produces a categorised feature list with survey-grounded categories."
 content_id: "795af8582271edbb"
-summary: "Kano Prioritization — testable methodology for product-discovery, roadmap, lifecycle. Faion has MoSCoW and RICE but no Kano. Kano is essential for distinguishing must-have basics from delighters and for spotting reverse features that actively annoy users. PMs in P6 need this when leadership demands 'wow' features that data shows are indifferent."
-tags: [product, solo, methodology]
+complexity: medium
+produces: rubric
+est_tokens: 4000
+tags: [kano-prioritization, product, solo, prioritization, kano]
 ---
 # Kano Prioritization
 
 ## Summary
 
-**One-sentence:** Kano Prioritization — testable methodology for product-discovery, roadmap, lifecycle. Faion has MoSCoW and RICE but no Kano. Kano is essential for distinguishing must-have basics from delighters and for spotting reverse features that actively annoy users. PMs in P6 need this when leadership demands 'wow' features that data shows are indifferent.
+**One-sentence:** Kano-based classifier separating must-haves, performance features, delighters, indifferent, reverse features — produces a categorised feature list with survey-grounded categories.
 
-**One-paragraph:** Kano Prioritization closes a known gap in product practice: Faion has MoSCoW and RICE but no Kano. Kano is essential for distinguishing must-have basics from delighters and for spotting reverse features that actively annoy users. PMs in P6 need this when leadership demands 'wow' features that data shows are indifferent. The methodology is anchored to the recurring activity 'Reset prioritization war with mixed-method scoring (role: role-product-manager)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Faion has MoSCoW and RICE prioritisation; Kano is the missing classifier for distinguishing must-have basics from delighters and for spotting reverse features that actively annoy. This methodology pins the survey shape (two questions per feature: functional + dysfunctional reactions), the category-assignment rule (based on response pairs), the minimum sample (≥30 per segment), and the output (categorised list with confidence + revisit date). PMs in product roles need this when leadership asks for 'wow' features that data shows are indifferent.
+
+**Ефективно для:**
+
+- Solo PM with leadership pushing for 'wow' features.
+- Indie operator deciding whether a new feature is must-have or vanity.
+- Tech-lead facing prioritisation pressure across must / wow / nice.
+- Course creator deciding curriculum modules by audience reaction.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Reset prioritization war with mixed-method scoring (role: role-product-manager)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- There is a candidate feature list of ≥5 items needing classification.
+- Operator can survey ≥30 users per primary segment.
+- Audience consents to a 5-minute survey.
+- Survey results will drive a roadmap decision, not just inform.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Feature list <5 items — overhead exceeds benefit.
+- Audience pool <30 — survey is statistically uninformative.
+- Operator already used Kano <90 days ago — rerun in 90 days.
+- Roadmap is contractually fixed — Kano output cannot route a decision.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Candidate feature list | md / csv | backlog tracker |
+| Audience segmentation | csv | CRM / newsletter platform |
+| Survey tool | Typeform / Tally / Google Forms | vendor |
+| Segment sample size estimates | table | operator analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/product/product-manager` | parent operating context |
+| `solo/product/friction-to-backlog` | candidate-feature source |
+| `solo/product/design-debt-vs-design-bet` | post-classification routing |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `kano_prioritization_template_fill` | haiku | Template fill, no judgement |
-| `kano_prioritization_evidence_check` | sonnet | Bounded comparison + judgement |
-| `kano_prioritization_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-kano-prioritization` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/kano-prioritization.md` | Markdown skeleton for the rubric artefact, matching content/02-output-contract.xml |
+| `templates/kano-prioritization.schema.json` | JSON Schema seed + filled fixture for the rubric artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-kano-prioritization.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `Reset prioritization war with mixed-method scoring (role: role-product-manager)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[friction-to-backlog]]`
+- `[[design-debt-vs-design-bet]]`
+- `[[indie-portfolio-scorecard]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

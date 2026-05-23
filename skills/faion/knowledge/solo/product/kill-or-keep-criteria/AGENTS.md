@@ -3,78 +3,95 @@ slug: kill-or-keep-criteria
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "bf966db848445012"
-summary: "Kill Or Keep Criteria — testable methodology for product-discovery, roadmap, lifecycle. Sunsetting a side-project is taboo / underdocumented. Need a clear kill-or-keep checklist (MRR floor, traffic floor, joy floor, opportunity-cost)."
-tags: [product, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a checklist that scores a side-project against MRR-floor / traffic-floor / joy-floor / opportunity-cost thresholds and outputs a binary kill-or-keep decision with cited evidence."
+content_id: "e45b37a5e8cb0192"
+complexity: medium
+produces: checklist
+est_tokens: 3600
+tags: [product, solo, kill-or-keep, portfolio, audit]
 ---
+
 # Kill Or Keep Criteria
 
 ## Summary
 
-**One-sentence:** Kill Or Keep Criteria — testable methodology for product-discovery, roadmap, lifecycle. Sunsetting a side-project is taboo / underdocumented. Need a clear kill-or-keep checklist (MRR floor, traffic floor, joy floor, opportunity-cost).
+**One-sentence:** Produces a checklist that scores a side-project against MRR-floor / traffic-floor / joy-floor / opportunity-cost thresholds and outputs a binary kill-or-keep decision with cited evidence.
 
-**One-paragraph:** Kill Or Keep Criteria closes a known gap in product practice: Sunsetting a side-project is taboo / underdocumented. Need a clear kill-or-keep checklist (MRR floor, traffic floor, joy floor, opportunity-cost). The methodology is anchored to the recurring activity 'Weekly portfolio metric scan (role: p2-indie-hacker)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** Solopreneurs auditing a side-project portfolio quarterly who lack a binary, evidence-anchored kill rubric and default to 'one more month' indefinitely.
+
+**One-paragraph:** Sunsetting a side-project is taboo and underdocumented. This methodology produces a checklist that scores the project against four floors (MRR, traffic, joy, opportunity cost), demands verbatim evidence for each score, and yields a single binary kill-or-keep verdict with the next action attached. Output is consumed by the operator's portfolio review log.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Weekly portfolio metric scan (role: p2-indie-hacker)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator runs a portfolio scan at a published cadence (weekly / monthly / quarterly).
+- The project has been live ≥30 days so floors have signal.
+- Operator has read access to MRR + traffic dashboards.
+- A named owner exists to act on the verdict (write access, sign-off rights).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Project is <30 days post-launch — floors are noise, not signal.
+- Operator cannot access dashboards / MRR source-of-truth — paraphrased numbers are worse than skipping.
+- Project is a contractual obligation — kill is blocked anyway.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|---|---|---|
+| MRR snapshot | currency | Stripe / Lemonsqueezy |
+| traffic snapshot | number | Plausible / GA4 |
+| joy-score self-rating | 1-10 | operator |
+| opportunity-cost candidate | string | operator's roadmap |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `solo/product/portfolio-triage-indie` | Parent triage that consumes the verdict. |
+| `solo/product/kill-criteria-template` | Upstream — pre-registered thresholds that this rubric checks against. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | 4 step-by-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `kill_or_keep_criteria_template_fill` | haiku | Template fill, no judgement |
-| `kill_or_keep_criteria_evidence_check` | sonnet | Bounded comparison + judgement |
-| `kill_or_keep_criteria_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `kill_or_keep_criteria_template_fill` | haiku | Template fill, no judgement. |
+| `kill_or_keep_criteria_evidence_check` | sonnet | Bounded comparison + judgement. |
+| `kill_or_keep_criteria_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/kill-or-keep-criteria.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/kill-or-keep-criteria.md` | Markdown skeleton with the required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-kill-or-keep-criteria.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `Weekly portfolio metric scan (role: p2-indie-hacker)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[kill-criteria-template]] — related methodology.
+- [[portfolio-triage-indie]] — related methodology.
+- [[sunset-failed-product-playbook]] — related methodology.
+- [[pivot-vs-quit-decision-template]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

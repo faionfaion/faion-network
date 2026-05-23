@@ -1,42 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Solo Multi-Product Portfolio Management Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Solo Multi-Product Portfolio Management output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Multi Product Portfolio Management Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Multi Product Portfolio Management output. Subagent must satisfy this before returning to the caller.</summary>
 
   <output-contract>
     <required>
-      <field name="products" type="list" required="true">[{name, mrr, weekly_hours, kill_criteria, last_review}]</field>
-      <field name="total_weekly_hours" type="integer" required="true">≤40</field>
-      <field name="shared_audience_channels" type="list" required="true">[{channel, subscribers, cross_promo_cadence}]</field>
-      <field name="stack_components_shared" type="list" required="true">[{component, products_using}]</field>
-      <field name="review_quarter" type="string" required="true">YYYY-Qn</field>
-      <field name="owner" type="string" required="true">the founder</field>
+      <field name="operator" type="string" required="true">named portfolio owner</field>
+      <field name="products" type="array" required="true">≥3 product objects (name, mode, mrr, traffic, time_budget_hours, capital_allocation_usd)</field>
+      <field name="cross_product_kill_rule" type="string" required="true">explicit rule string</field>
+      <field name="quarterly_review_at" type="string" required="true">ISO datetime</field>
+      <field name="total_weekly_time_cap" type="number" required="true">hours ≤40</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">total_weekly_hours &gt; 50</pattern>
-      <pattern id="f2">products without kill_criteria</pattern>
-      <pattern id="f3">audience cross-promo &gt; 1 per 2 weeks per channel</pattern>
-      <pattern id="f4">stack components diverge with no plan to consolidate</pattern>
+      <pattern id="f1">any product mode not in {build, grow, maintain, sunset}</pattern>
+      <pattern id="f2">sum(time_budget_hours) &gt; total_weekly_time_cap</pattern>
+      <pattern id="f3">cross_product_kill_rule empty</pattern>
+      <pattern id="f4">quarterly_review_at empty or non-ISO</pattern>
+      <pattern id="f5">any capital_allocation_usd non-numeric</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Allowed to swap one mode-tag mid-quarter with logged rationale (e.g. grow → maintain).</transformation>
+      <transformation>Allowed to flex weekly time cap by ±5h once per quarter; second flex requires kill of a low-mode product.</transformation>
     </allowed-transformations>
 
     <schema-reference path="templates/multi-product-portfolio-management.json"/>
   </output-contract>
 
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "operator": "ruslan@faion.net",
+  "products": [
+    {
+      "k": "v"
+    }
+  ],
+  "cross_product_kill_rule": "sample-cross_product_kill_rule",
+  "quarterly_review_at": "sample-quarterly_review_at",
+  "total_weekly_time_cap": 1,
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>products populated with a typed value</item>
-      <item>total_weekly_hours populated with a typed value</item>
-      <item>shared_audience_channels populated with a typed value</item>
-      <item>stack_components_shared populated with a typed value</item>
-      <item>review_quarter populated with a typed value</item>
-      <item>owner populated with a typed value</item>
+      <item>Every required field populated with a typed value</item>
       <item>No forbidden pattern matches the output</item>
       <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/multi-product-portfolio-management.json</item>
     </list>
   </section>
 </text>

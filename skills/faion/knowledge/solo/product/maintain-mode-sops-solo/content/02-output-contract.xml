@@ -1,32 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Maintain Mode Sops Solo Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Maintain Mode Sops Solo output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Maintain Mode SOPs Solo Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Maintain Mode SOPs Solo output. Subagent must satisfy this before returning to the caller.</summary>
 
   <output-contract>
     <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      <field name="product_name" type="string" required="true">named product</field>
+      <field name="weekly_check" type="object" required="true">tasks + duration</field>
+      <field name="monthly_reconcile" type="object" required="true">tasks + duration</field>
+      <field name="quarterly_upgrade" type="object" required="true">tasks + duration</field>
+      <field name="on_call_rule" type="object" required="true">trigger + max_response_window_hours</field>
+      <field name="sunset_trigger" type="string" required="true">MRR / churn condition</field>
+      <field name="owner" type="string" required="true">named human owner</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f1">weekly_check duration &gt; 30 min</pattern>
+      <pattern id="f2">on_call_rule missing max_response_window_hours</pattern>
+      <pattern id="f3">sunset_trigger empty</pattern>
+      <pattern id="f4">owner is collapsed plural</pattern>
+      <pattern id="f5">any cadence not calendar-locked</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Allowed to flex monthly cadence to bi-monthly if product is stable for 3 consecutive months.</transformation>
+      <transformation>Allowed to extend on-call window from 24h → 48h for non-revenue products.</transformation>
     </allowed-transformations>
 
     <schema-reference path="templates/maintain-mode-sops-solo.json"/>
   </output-contract>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "product_name": "sample-product_name",
+  "weekly_check": {
+    "k": "v"
+  },
+  "monthly_reconcile": {
+    "k": "v"
+  },
+  "quarterly_upgrade": {
+    "k": "v"
+  },
+  "on_call_rule": {
+    "k": "v"
+  },
+  "sunset_trigger": "sample-sunset_trigger",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
