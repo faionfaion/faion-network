@@ -1,22 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="kb-symbol-index-fresh-tags Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Symbol Index as Always-Fresh LSP/ctags Artifact Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/kb-symbol-index-fresh-tags.json",
+  "type": "object",
+  "required": [
+    "index_tool",
+    "index_path",
+    "refresh_strategy",
+    "ci_gate"
+  ],
+  "properties": {
+    "index_tool": {
+      "enum": [
+        "serena",
+        "scip",
+        "ctags",
+        "sourcegraph"
+      ]
+    },
+    "index_path": {
+      "type": "string"
+    },
+    "refresh_strategy": {
+      "type": "object",
+      "required": [
+        "on_precommit",
+        "on_ci_full"
+      ],
+      "properties": {
+        "on_precommit": {
+          "enum": [
+            "incremental",
+            "full",
+            "disabled"
+          ]
+        },
+        "on_ci_full": {
+          "enum": [
+            "scheduled",
+            "every_pr"
+          ]
+        }
+      }
+    },
+    "ci_gate": {
+      "type": "object",
+      "required": [
+        "fail_on_stale"
+      ],
+      "properties": {
+        "fail_on_stale": {
+          "const": true
+        }
+      }
+    },
+    "query_interface": {
+      "enum": [
+        "json-cli",
+        "lsp",
+        "scip-rpc"
+      ]
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "index_tool": "ctags",
+  "index_path": ".symbol-index/tags",
+  "refresh_strategy": {
+    "on_precommit": "incremental",
+    "on_ci_full": "scheduled"
+  },
+  "ci_gate": {
+    "fail_on_stale": true
+  },
+  "query_interface": "json-cli"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "index_tool": "grep",
+  "ci_gate": {
+    "fail_on_stale": false
+  }
+}
+]]></code>
+    <note>index_tool=&apos;grep&apos; not in enum; fail_on_stale must be True; missing required keys.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">index_tool not in {serena, scip, ctags, sourcegraph}</pattern>
+    <pattern id="f2">ci_gate.fail_on_stale == false</pattern>
+    <pattern id="f3">refresh_strategy.on_precommit == &apos;full&apos; (use incremental)</pattern>
+  </section>
+
+  <reference path="scripts/validate-symbol-index-fresh-tags.py">Validator script</reference>
 </text>

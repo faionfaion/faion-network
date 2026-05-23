@@ -1,22 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="kb-codebase-rag-symbol-chunked Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Codebase RAG with Symbol-Boundary Chunking Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/kb-codebase-rag-symbol-chunked.json",
+  "type": "object",
+  "required": [
+    "chunker_kind",
+    "padding_max_pct",
+    "metadata_fields",
+    "fallback_strategy",
+    "vector_store"
+  ],
+  "properties": {
+    "chunker_kind": {
+      "enum": [
+        "tree-sitter",
+        "lsp",
+        "ctags",
+        "hybrid"
+      ]
+    },
+    "padding_max_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.3
+    },
+    "metadata_fields": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "enum": [
+          "file_path",
+          "language",
+          "symbol_kind",
+          "symbol_name",
+          "line_start",
+          "line_end"
+        ]
+      },
+      "contains": {
+        "enum": [
+          "file_path"
+        ]
+      }
+    },
+    "fallback_strategy": {
+      "type": "object",
+      "required": [
+        "kind",
+        "line_window",
+        "overlap"
+      ],
+      "properties": {
+        "kind": {
+          "const": "line-window"
+        },
+        "line_window": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 200
+        },
+        "overlap": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40
+        }
+      }
+    },
+    "vector_store": {
+      "enum": [
+        "qdrant",
+        "weaviate",
+        "pgvector",
+        "lancedb"
+      ]
+    },
+    "chunk_id_strategy": {
+      "const": "sha256-content"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "chunker_kind": "tree-sitter",
+  "padding_max_pct": 0.25,
+  "metadata_fields": [
+    "file_path",
+    "language",
+    "symbol_kind",
+    "symbol_name",
+    "line_start",
+    "line_end"
+  ],
+  "fallback_strategy": {
+    "kind": "line-window",
+    "line_window": 120,
+    "overlap": 20
+  },
+  "vector_store": "qdrant",
+  "chunk_id_strategy": "sha256-content"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "chunker_kind": "regex",
+  "padding_max_pct": 0.8,
+  "metadata_fields": [
+    "foo"
+  ],
+  "fallback_strategy": {
+    "kind": "ai-guess"
+  }
+}
+]]></code>
+    <note>chunker_kind invalid enum; padding &gt; 0.3; metadata_fields missing file_path; fallback_strategy.kind wrong.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">chunker_kind == &apos;regex&apos; or &apos;fixed-line&apos; (without fallback context)</pattern>
+    <pattern id="f2">padding_max_pct &gt; 0.3</pattern>
+    <pattern id="f3">metadata_fields missing file_path</pattern>
+    <pattern id="f4">chunk_id_strategy != &apos;sha256-content&apos;</pattern>
+  </section>
+
+  <reference path="scripts/validate-codebase-rag-symbol-chunked.py">Validator script</reference>
 </text>

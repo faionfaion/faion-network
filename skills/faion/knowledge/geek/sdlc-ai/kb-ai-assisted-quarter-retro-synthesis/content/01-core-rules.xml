@@ -1,78 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI-Assisted Quarter Retro Synthesis Core Rules" version="1.0.0" est_tokens="950" depth="essential">
-  <summary>Five hard rules for synthesizing a product-dev quarter retro across multiple squads + telemetry sources.</summary>
+<text id="01-core-rules" title="AI-Assisted Multi-Squad Quarter Retro Synthesis Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-four-source-coverage" testable="true" depth="essential">
-      <statement>The synthesis MUST ingest all four source types: per-squad retros, ticket export, DORA metrics, incident postmortems. Missing any source produces a partial picture that misses cross-cutting issues. If a source is unavailable, document the gap explicitly.</statement>
-      <rationale source="DORA State of DevOps research; engineering-effectiveness practice">Squad retros capture team-perceived friction; tickets capture work-shape reality; DORA captures delivery health; incidents capture failure patterns. Any single source misses what the others surface. Quarter retros that ignore DORA stay narrative-rich and decision-poor; retros that ignore incidents repeat last quarter's pain.</rationale>
+    <rule id="redact-before-ingest" testable="true" depth="essential">
+      <statement>Chat / ticket / incident text MUST be redacted (PII, client names, secrets) BEFORE any LLM call. Redaction runs locally.</statement>
+      <rationale source="Privacy + DLP best practice">Quarterly corpora contain customer names and credentials; pre-LLM redaction is the only safe surface.</rationale>
     </rule>
-
-    <rule id="r2-theme-multi-squad-presence" testable="true" depth="essential">
-      <statement>A theme in the main retro doc must appear in ≥ 2 squads' input. Single-squad-only issues go to that squad's individual retro, not the cross-squad doc. This prevents one squad's pain from dominating the team-wide narrative.</statement>
-      <rationale source="DORA team-level vs. organization-level differentiation">Cross-squad retros are for cross-squad patterns. A single squad's tooling complaint is their problem; if 3 squads cite the same tooling, it's a team-wide investment decision. The 2-squad floor keeps the doc focused on org-level themes.</rationale>
+    <rule id="dora-numbers-from-snapshot" testable="true" depth="essential">
+      <statement>DORA deltas (lead time / change-failure / deploy frequency / MTTR) come from the snapshot CSV, NEVER from LLM inference.</statement>
+      <rationale source="DORA accelerate research">LLMs hallucinate numbers; metrics must be deterministic.</rationale>
     </rule>
-
-    <rule id="r3-dora-trend-over-snapshot" testable="true" depth="essential">
-      <statement>DORA metrics are reported as quarter-over-quarter DELTA, never as standalone snapshots. "Deploy frequency 8/day" means nothing; "9/day → 12/day (+33%)" or "9/day → 6/day (-33% with explanation)" is the story. Trend is the signal.</statement>
-      <rationale source="DORA research methodology; SPC trend analysis">A snapshot of deploy frequency tells you nothing about whether the team is improving. Quarter-over-quarter delta does. The DORA quartiles (Elite / High / Medium / Low) are useful for context but the lever is the trend within your team.</rationale>
+    <rule id="verbatim-citations-required" testable="true" depth="essential">
+      <statement>Every theme cites ≥ 2 verbatim quotes from source documents with locator.</statement>
+      <rationale source="Anthropic citations research">Same anti-hallucination discipline as the annual synthesis.</rationale>
     </rule>
-
-    <rule id="r4-incident-learning-extracted" testable="true" depth="essential">
-      <statement>Every P1/P2 incident from the quarter produces ONE learning extracted into the retro doc: the systemic cause + the systemic fix. Incident-level "what happened" goes in the postmortem; cross-incident pattern goes in the retro. If no learnings can be extracted, the postmortems weren't done properly.</statement>
-      <rationale source="incident-engineering practice (Allspaw, Majors); postmortem retros">Quarter retros that ignore incidents repeat them. Each incident has a generalizable lesson if the postmortem found a real root cause. Surfacing 3-5 incident-learnings per quarter prevents the team from re-fighting the same outage shape.</rationale>
+    <rule id="incident-attribution-traceable" testable="true" depth="essential">
+      <statement>Each incident referenced in the report links back to its postmortem doc with locator.</statement>
+      <rationale source="SRE postmortem culture">Without the link, the agent&apos;s incident narrative becomes its own truth.</rationale>
     </rule>
-
-    <rule id="r5-retro-doc-six-page-cap" testable="true" depth="essential">
-      <statement>Final retro doc is 4-6 pages. Longer = nobody reads it; shorter = it's a memo, not a retro. The format pressure forces themes to be sharp and Q+1 actions to be prioritized. Long-tail observations go to an appendix that's optional reading.</statement>
-      <rationale source="executive-doc length research; Amazon 6-page memo discipline">Senior stakeholders skim docs &gt; 6 pages and miss the asks. The 6-page cap is the canonical executive-readable format (cf. Amazon's 6-page memo). Themes that don't fit are either too narrow (single-squad) or insufficiently prioritized.</rationale>
+    <rule id="action-items-named-owner-deadline" testable="true" depth="essential">
+      <statement>Each action item names role + deadline ≤ end of next quarter + success criteria.</statement>
+      <rationale source="OKR research">Anonymous actions are dead actions.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Multi-source theme with DORA + incident + squad retros">
-      <code lang="text"><![CDATA[
-Theme: Deploy pipeline friction
-Coverage: Squads A, B, D (3/5)  Severity: 3 (high)
-
-Evidence:
-  [DORA delta] Lead time for changes: 4.2d → 6.8d (+62%) regression Q-over-Q
-  [Squad A retro L34]: "Pipeline failures spiked in March, blocked deploys 2-3 days at a time"
-  [Squad B retro L78]: "Flaky CI tests pushed deploy windows to weekends"
-  [Squad D retro L19]: "Lost a sprint to investigating phantom test failures"
-  [Incident INC-2026-014]: P2 root cause was a CI test that hides a race condition
-                          that also blocked deploys 8 times this quarter
-
-Q+1 process change:
-  Owner: SRE Lead
-  Deadline: 2026-07-31
-  Action: Audit + harden the top-10 flaky tests; introduce quarantine policy;
-          DORA lead-time target back to 4.5d or better.
-  Success: Q3 lead time ≤ 5.0d AND CI failure rate &lt; 5%.
-      ]]></code>
-      <note>Illustrates all 5 rules: 4-source coverage, multi-squad presence, DORA delta, incident learning, sharp Q+1.</note>
-    </example>
-
-    <example type="bad" title="Squad-narrative retro with no cross-cutting view">
-      <code lang="text"><![CDATA[
-"Squad A had a tough quarter. Squad B did well. Squad C struggled with hiring.
-Squad D shipped on time. We learned a lot."
-
-Problem: violates r1 (no DORA, no incidents), r2 (no themes across squads),
-r3 (no trends), r4 (no incident learnings), r5 (it's a narrative summary,
-not a retro).
-Repair: ingest the 4 sources; cluster into multi-squad themes.
-      ]]></code>
-      <note>"What each squad did" is a status report, not a retro.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If &lt; 3 squads OR DORA not instrumented OR HR-confidential incidents present, the agent MUST stop.</statement>
+      <rationale source="Methodology hygiene">Skip preserves the synthesis&apos;s integrity rather than fabricating.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

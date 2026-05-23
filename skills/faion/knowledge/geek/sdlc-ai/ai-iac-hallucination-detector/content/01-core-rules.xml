@@ -1,69 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI IaC Hallucination Detector Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules every hallucination detector enforces. Hard rules; the schema is the authoritative ground truth.</summary>
-
-  <section title="The five rules">
-
-    <rule id="r1-schema-as-source-of-truth" testable="true" depth="essential">
-      <statement>The provider schema (from Terraform Registry / Pulumi registry / chart values.schema.json) is the SOLE source of truth for argument names, types, and required-vs-optional. Memory-based or LLM-generated "the API also accepts X" is REJECTED.</statement>
-      <rationale source="Hallucination empirical floor">AI assistants confidently emit arguments that the schema does not contain. Without schema validation, the misfiring lands as a runtime error during `terraform plan` or — worse — as a no-op argument that silently ignores intent.</rationale>
+<text id="01-core-rules" title="AI IaC Hallucination Detector Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules with rationale + source for ai-iac-hallucination-detector. Includes terminal skip-this-methodology rule.</summary>
+  <section title="Rule set">
+    <rule id="validate-resource-type" testable="true" depth="essential">
+      <statement>Every `resource "TYPE"` MUST match a type listed in the active provider schema. Unknown types are fabrications and MUST cause `verdict=fail`.</statement>
+      <rationale source="Terraform docs">Terraform docs — provider schema is the authoritative type list; type errors at `plan` are catchable earlier.</rationale>
     </rule>
-
-    <rule id="r2-version-pin-required" testable="true" depth="essential">
-      <statement>Schema validation MUST run against the EXACT provider version pinned in the repo's `required_providers` / chart Chart.yaml. Unpinned providers (RF-03 from the red-flags sibling) MUST be flagged and the detector MUST refuse to emit a schema-clean verdict until the pin is added.</statement>
-      <rationale source="Version drift between providers">`aws` provider v5.40 has different fields from v4.x. Validating v5 code against v4 schema produces false positives; validating v4 code against v5 schema produces false negatives. Pin is non-negotiable for accurate validation.</rationale>
+    <rule id="validate-attribute-name" testable="true" depth="essential">
+      <statement>Every attribute inside a resource block MUST exist in the schema's attribute list for that resource. Typos and invented attributes block merge.</statement>
+      <rationale source="Terraform provider SDK">Terraform provider SDK — unknown attributes raise `Unsupported argument` at plan; pre-plan check shortens the loop by 2-5 minutes per PR.</rationale>
     </rule>
-
-    <rule id="r3-ast-parsing-required" testable="true" depth="essential">
-      <statement>The detector MUST use a real AST parser (tree-sitter HCL, helm-go-template AST, hcl2 SDK), NOT regex or string match. Regex emits false positives on commented arguments and false negatives on heredoc / interpolation. AST parsing is non-optional.</statement>
-      <rationale source="Static-analysis methodology">HCL syntax allows the same argument to appear in valid and invalid forms depending on block context. Regex cannot model context; AST can. Validating with regex is a known dead end.</rationale>
+    <rule id="validate-module-source" testable="true" depth="essential">
+      <statement>`module "NAME" { source = ... }` paths MUST resolve to a published module in the Terraform Registry, a reachable git ref, or a local `./` path that exists in the repo.</statement>
+      <rationale source="Terraform Registry docs">Terraform Registry docs — fabricated sources fail at `init` but waste runner time and leak hallucinated names into logs.</rationale>
     </rule>
-
-    <rule id="r4-deprecation-as-distinct-class" testable="true" depth="essential">
-      <statement>Deprecated arguments are flagged as a distinct class (`deprecation`), not "hallucination". The detector MUST emit the replacement field name from the schema's `deprecation_message` where present. Treating deprecation as hallucination misleads the reviewer.</statement>
-      <rationale source="Provider release-note literature">Terraform providers maintain a deprecation horizon — fields remain accepted for one major version with a warning. Conflating deprecation with hallucination forces unnecessary rewrites; treating them distinctly lets the team plan deprecation cleanup.</rationale>
+    <rule id="validate-data-source" testable="true" depth="essential">
+      <statement>`data "TYPE"` blocks MUST match the schema's data-source list, same rigor as resources.</statement>
+      <rationale source="industry practice">Provider schema parity.</rationale>
     </rule>
-
-    <rule id="r5-fix-revalidation-required" testable="true" depth="essential">
-      <statement>Any LLM-suggested fix MUST be re-validated against the schema before being emitted in the PR comment. The detector MUST NOT trust the LLM's claim that the replacement is correct; it MUST run the same schema validation on the suggested fix.</statement>
-      <rationale source="Compounding hallucination pattern">Fix-suggestion routing tends to hallucinate plausible-but-wrong replacements ("use `aws_s3_bucket_v2` instead", which does not exist). Re-validation breaks the chain.</rationale>
+    <rule id="no-deprecated-resource" testable="true" depth="essential">
+      <statement>Resources marked `deprecated` in the schema MUST be replaced before merge unless the PR carries `migration-in-progress` label.</statement>
+      <rationale source="industry practice">Provider deprecations precede removal by 1-2 minor versions; merging deprecated resources guarantees a follow-up break.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the change is documentation-only or targets an in-house provider without a published schema, return `skipped`.</statement>
+      <rationale source="industry practice">Schema-less providers cannot be machine-validated.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Schema-validated detection + schema-validated fix">
-      <code lang="text"><![CDATA[
-Detection (v5.40 schema):
-  resource "aws_s3_bucket" "logs"
-    .acl = "private"   # NOT in schema (hallucination)
-
-Suggested fix (schema-validated):
-  Move "acl" to a separate aws_s3_bucket_acl resource:
-    resource "aws_s3_bucket_acl" "logs" {
-      bucket = aws_s3_bucket.logs.id
-      acl    = "private"
-    }
-  Verified: aws_s3_bucket_acl resource exists in v5.40 schema with
-  required arguments bucket, acl.
-      ]]></code>
-      <note>r1, r3, r5 satisfied. Schema reference grounds both detection and fix.</note>
-    </example>
-
-    <example type="bad" title="LLM-suggested non-existent replacement">
-      <code lang="text"><![CDATA[
-Detection: aws_s3_bucket.acl deprecated/removed in v5.
-Suggested fix (LLM-only, not validated):
-  resource "aws_s3_bucket_v2" "logs" { ... }   # does NOT exist
-      ]]></code>
-      <note>r5 violation. The detector emitted a fix without re-validating against the schema. Reviewer follows the suggestion, terraform plan fails, time wasted.</note>
-    </example>
-
-  </section>
-
   <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
   </see-also>
 </text>

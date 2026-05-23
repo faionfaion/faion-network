@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lang-php-phpstan9-psalm-taint Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lang-php-phpstan9-psalm-taint. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="PHP Dual Gate: PHPStan Level 9 + Psalm Taint Analysis Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>CI MUST run vendor/bin/phpstan analyse --level=9 --memory-limit=1G on every PR; failures block merge. Pre-existing errors live in phpstan-baseline.neon (committed); new errors NEVER go into the baseline. Agents may not introduce mixed parameters, properties, or return types — annotate the actual type or return never.</statement>
-      <rationale source="v1-source">Level 9 turns LLM-friendly mixed returns (the lowest-effort plausible annotation) into compile-time failures, forcing agent output to converge on the actual type the code uses.</rationale>
+
+    <rule id="phpstan-level-9" testable="true" depth="essential">
+      <statement>phpstan.neon MUST set `level: 9` (or `level: max` for libraries); strict types enabled.</statement>
+      <rationale source="PHPStan documentation">Level 9 forces strict null + array shapes; lower levels miss the bug classes the methodology targets.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>CI MUST run vendor/bin/psalm --taint-analysis --threads=4 on every PR; any taint issue blocks merge. Suppressing a taint (@psalm-taint-escape) is allowed ONLY when the call site applies a cited sanitizer, and the suppression line MUST include a comment naming the sanitizer (e.g. // taint-escape: htmlspecialchars).</statement>
-      <rationale source="v1-source">Type checkers cannot detect SQLi or XSS because the dangerous string is well-typed string; only data-flow analysis catches the pattern. Forcing a named-sanitizer comment on every escape makes the audit trail self-explanatory.</rationale>
+    <rule id="psalm-taint-on" testable="true" depth="essential">
+      <statement>psalm.xml MUST enable `--taint-analysis` (or equivalent &lt;taintAnalysis enabled=&quot;true&quot;/&gt;) for every PHP repo with user input.</statement>
+      <rationale source="Psalm taint-analysis docs">Taint catches SQLi / XSS / command injection that type checks alone miss.</rationale>
     </rule>
+    <rule id="ci-runs-both" testable="true" depth="essential">
+      <statement>CI MUST run BOTH analyzers as separate jobs; failure of either fails the PR.</statement>
+      <rationale source="Dual-analyzer practice">Different bug classes; merging output hides one tool&apos;s findings under the other&apos;s noise.</rationale>
+    </rule>
+    <rule id="baseline-files-committed" testable="true" depth="essential">
+      <statement>Existing violations are captured via phpstan-baseline.neon / psalm-baseline.xml; new violations on PR fail. Baseline shrinks over time, never grows.</statement>
+      <rationale source="Analyzer-baseline pattern">Incremental adoption: baseline lets the gate go green immediately, then ratchets.</rationale>
+    </rule>
+    <rule id="no-suppression-without-justification" testable="true" depth="essential">
+      <statement>@phpstan-ignore-next-line / @psalm-suppress comments MUST include a justification on the same line.</statement>
+      <rationale source="Internal — analyzer audits">Silent suppressions accumulate; named justifications make them reviewable.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If PHP &lt; 7.4 OR codebase relies heavily on magic methods / dynamic props OR repo throwaway, STOP.</statement>
+      <rationale source="Methodology hygiene">False-positive flood on dynamic PHP overwhelms the gate.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

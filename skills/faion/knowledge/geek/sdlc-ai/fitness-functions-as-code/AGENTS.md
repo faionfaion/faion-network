@@ -3,41 +3,94 @@ slug: fitness-functions-as-code
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-content_id: "a4033100917076ae"
-summary: "Encode architecture rules (layering, dependency direction, package boundaries, performance budgets, license constraints) as runnable tests in the SDLC: ArchUnit / dependency-cruiser / ts-arch run on every PR so quarterly review and drift detection have hard signals instead of opinion."
-tags: [geek, sdlc-ai, architecture, fitness-functions, archunit, dependency-cruiser, drift]
+summary: Codify evolutionary architecture fitness functions as executable tests: per-axis (modularity, latency, security posture) tests that fail the build when architecture drifts beyond bounds.
+content_id: "862f872b484869c3"
+complexity: deep
+produces: code
+est_tokens: 4600
+tags: [architecture, fitness-functions, evolutionary-architecture, ci, sdlc-ai]
 ---
 # Fitness Functions as Code
 
 ## Summary
 
-The geek/sdlc-ai group's quarterly architecture review and drift detection both fail without machine-readable architecture rules: code reviewers cannot remember layering and dependency-direction invariants across a quarter, and AI agents have no signal to flag a violation in a generated PR. This methodology encodes those invariants as runnable tests — ArchUnit for JVM, ts-arch / dependency-cruiser for TypeScript, import-linter for Python, depgraph for Go, plus performance-budget assertions and license/SPDX checks — committed to the repo and executed on every PR. Quarterly review becomes a diff of green-bar invariants over time, not an archaeology dig.
+**One-sentence:** Codify evolutionary architecture fitness functions as executable tests: per-axis (modularity, latency, security posture) tests that fail the build when architecture drifts beyond bounds.
 
-## Applies If
+**One-paragraph:** Evolutionary architecture (Ford, Parsons, Kua) treats architectural characteristics as fitness functions — executable tests that fail when modularity, latency, security posture, or coupling drift beyond agreed bounds. Most teams know the concept; few install it. This methodology turns the abstract idea into per-axis Python/TypeScript test files (`tests/fitness/test_modularity.py`, `test_latency_p95.py`, `test_no_circular_deps.py`) that run as part of CI and gate merge.
 
-- The system has more than one layered module or package boundary that an AI-generated PR could accidentally cross.
-- Architecture decisions (allowed dependencies, hot-path budgets, license allow-list) are written down somewhere and could in principle be expressed as predicates.
-- CI runs on every PR and can be extended with a new test stage.
-- The team is doing quarterly architecture review or formal drift detection as a process.
+**Ефективно для:**
 
-## Skip If
+- Codebase has ≥3 services or ≥30 modules — architectural drift is a real risk.
+- Team has agreed an architectural decision record (ADR) listing the characteristics to preserve.
+- CI infrastructure can run static analysis (deps graph) and performance smoke tests (load harness).
 
-- The codebase is a single flat package with no layering — there are no architectural invariants to encode.
-- Architecture is purely verbal and not yet written anywhere — encode it as prose first, then return.
-- The PR throughput is low enough that human reviewers comfortably cover the same checks (very small teams, very slow change rate).
+## Applies If (ALL must hold)
 
-## Content
+- Codebase has ≥3 services or ≥30 modules — architectural drift is a real risk.
+- Team has agreed an architectural decision record (ADR) listing the characteristics to preserve.
+- CI infrastructure can run static analysis (deps graph) and performance smoke tests (load harness).
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Five testable rules covering test-as-code framework choice, layering predicates, performance budgets, license invariants, and the quarterly-review feedback loop |
+## Skip If (ANY kills it)
+
+- Codebase is a single-file script — architecture is trivial.
+- Team has no ADR + no agreement on which characteristics matter — fitness functions need a target.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ADR list | md | Repo at `docs/adr/*.md` |
+| Dep graph tooling | binary | `tach`, `pydeps`, `madge`, or `dependency-cruiser` |
+| Load harness | yaml | Repo at `loadtests/*.yaml` |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-fitness-functions-as-code` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/test_no_circular_deps.py` | Modularity fitness function reference test |
+| `templates/test_p95_under_500ms.py` | Latency fitness function reference test |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-fitness-functions-as-code.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- triggering activity: `Architecture-as-code repository — continuous maintenance with monthly review`, `Quarterly architecture review cycle`
-- neighbouring: `geek/sdlc-ai/kb-adr-decay-detector-agent`, `geek/sdlc-ai/lang-csharp-roslyn-analyzer-errors`, `geek/sdlc-ai/test-property-based-llm-invariants`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

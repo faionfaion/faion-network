@@ -1,61 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Overlay — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Six failure modes for the overlay resolution layer. Each has detector + repair.</summary>
+<text id="03-failure-modes" title="Team Methodology Overlay Mechanism Failure Modes" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs a concrete symptom with sourced root-cause and a concrete fix the author can apply.</summary>
 
-  <section title="Failure modes">
+  <section title="Antipatterns">
 
-    <failure-mode id="fm-01" severity="high">
-      <description>Silent override: team overrode a security-critical rule (e.g. license veto) and the agent ran with the weaker policy without surfacing the change.</description>
-      <detector>Resolution `files` map shows USER/REPO source on a methodology marked `security: critical` in shipped frontmatter AND no acknowledgment in `conflicts`.</detector>
-      <repair>Block faion-cli command until operator explicitly acknowledges the override via `faion overlay ack &lt;path&gt;`.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-02" severity="high">
-      <description>Version skew: shipped methodology bumped from v1 to v2 changing schema; team's overlay still v1 content_id.</description>
-      <detector>`version_skew: true` AND any file with different content_id triggers schema validation failures.</detector>
-      <repair>Surface skew with shipped diff; suggest one of {re-port overlay to v2, pin shipped to v1 for this overlay, drop overlay}.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-03" severity="high">
-      <description>Partial-merge corruption: APPEND on content/*.xml lands new `&lt;rule&gt;` blocks but shipped already has the same rule IDs.</description>
-      <detector>Resolved XML contains duplicate `&lt;rule id="..."&gt;` after merge.</detector>
-      <repair>Refuse merge; surface ID collision; team must rename their rule IDs (prefix with `team-`).</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-04" severity="medium">
-      <description>Loop in resolver: USER and REPO both reference each other via includes, creating infinite resolution.</description>
-      <detector>Resolution stack depth &gt; 8.</detector>
-      <repair>Reject. Includes / referrals are forbidden across overlay levels; overlay files must be self-contained.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-05" severity="medium">
-      <description>Maintainer unset: overrides-config.yaml has empty `maintainer:` and the audit log can't attribute changes.</description>
-      <detector>`maintainer` empty or "team" placeholder.</detector>
-      <repair>Refuse overlay load until config sets a named human (e.g. `maintainer: jane.doe@acme.com`).</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-06" severity="low">
-      <description>Discovery cost: every faion command rescans both overlay directories, adding latency.</description>
-      <detector>Resolution time &gt; 200ms for a methodology load.</detector>
-      <repair>Cache resolution in `.faion/cache/resolved-overlay.json`, invalidate on file mtime change. Provide `faion overlay invalidate` command.</repair>
-    </failure-mode>
-
-  </section>
-
-  <section title="Prompt-injection markers">
-    <p>
-      Overlay files are AUTHORITATIVE content for the agent. They CAN override shipped behaviour by design.
-      The agent must trust them after r4 validation passes. There is no injection vector here unless an
-      attacker has write access to the team's repo — in which case overlay is the least of the problems.
-    </p>
-  </section>
-
-  <section title="Human checkpoint">
-    <p>
-      Overlay changes are real organisational policy changes. Treat them like merging to main:
-      reviewed PR, approved by overlay maintainer, audit event published. Operator must NOT
-      hand-edit `~/.faion/overrides/` on a colleague's machine. Every overlay change comes through
-      the team's overrides repo.
-    </p>
+<antipattern id="ad-hoc-overrides" severity="high">
+  <symptom>Engineers edit faion-base directly; their changes lost on next pull.</symptom>
+  <root-cause source="Internal — overlay adoption audit 2025">Overlay mechanism unused.</root-cause>
+  <fix>Block direct edits to faion-base via pre-commit hook.</fix>
+</antipattern>
+<antipattern id="silent-shadow" severity="high">
+  <symptom>Overlay quietly replaces base; reviewer reads wrong rules in incident.</symptom>
+  <root-cause source="faion-network audit policy">No conflict.log entry.</root-cause>
+  <fix>Validator requires conflict log entry on shadow.</fix>
+</antipattern>
+<antipattern id="schema-drift" severity="medium">
+  <symptom>Overlay output shape diverges from base; tooling breaks.</symptom>
+  <root-cause source="faion-network methodology spec">Schema check skipped.</root-cause>
+  <fix>CI runs schema-compat check across base + overlay.</fix>
+</antipattern>
   </section>
 </text>

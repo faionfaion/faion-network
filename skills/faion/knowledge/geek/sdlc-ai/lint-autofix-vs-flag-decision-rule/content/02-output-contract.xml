@@ -1,22 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lint-autofix-vs-flag-decision-rule Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Autofix-vs-Flag Decision Rule for Coding Agents Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lint-autofix-vs-flag-decision-rule.json",
+  "type": "object",
+  "required": [
+    "tool",
+    "rule_id",
+    "decision",
+    "syntactic_only",
+    "explicit_fix_flag",
+    "tests_passed",
+    "diff_lines"
+  ],
+  "properties": {
+    "tool": {
+      "type": "string"
+    },
+    "rule_id": {
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "autofix",
+        "flag-only"
+      ]
+    },
+    "syntactic_only": {
+      "type": "boolean"
+    },
+    "explicit_fix_flag": {
+      "type": "boolean"
+    },
+    "tests_passed": {
+      "type": "boolean"
+    },
+    "diff_lines": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "single_rule_id": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "autofix"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "syntactic_only": {
+            "const": true
+          },
+          "explicit_fix_flag": {
+            "const": true
+          },
+          "tests_passed": {
+            "const": true
+          }
+        }
+      }
+    }
+  ]
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tool": "ruff",
+  "rule_id": "I001",
+  "decision": "autofix",
+  "syntactic_only": true,
+  "explicit_fix_flag": true,
+  "tests_passed": true,
+  "diff_lines": 12,
+  "single_rule_id": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tool": "eslint",
+  "decision": "autofix",
+  "syntactic_only": false,
+  "tests_passed": false,
+  "diff_lines": 800
+}
+]]></code>
+    <note>decision=&apos;autofix&apos; but syntactic_only=false / tests_passed=false; diff_lines &gt; 50.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">decision=&apos;autofix&apos; AND tests_passed != true</pattern>
+    <pattern id="f2">decision=&apos;autofix&apos; AND syntactic_only != true</pattern>
+    <pattern id="f3">diff_lines &gt; 50 AND single_rule_id != true AND decision=&apos;autofix&apos;</pattern>
+  </section>
+
+  <reference path="scripts/validate-autofix-vs-flag-decision-rule.py">Validator script</reference>
 </text>

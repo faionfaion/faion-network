@@ -1,15 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="inc-tool-tier-approval-gate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for inc-tool-tier-approval-gate. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Tool-Tier Approval Gate Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>9 testable rules with rationale + source for inc-tool-tier-approval-gate. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The tool executor MUST classify every callable into T0/T1/T2; MUST allow T0 unconditionally with audit; MUST allow T1 unconditionally with audit; MUST refuse T2 unless a signed approval token is supplied; MUST treat any tool absent from the registry as T2; and MUST NOT honor tier overrides from the agent prompt or tool arguments.</statement>
-      <rationale source="v1-source">Centralizing the gate at the executor makes safety a property of the system rather than the prompt. Prompt-level "ask before deleting" instructions are routinely bypassed by jailbreaks, confusion, or follow-up tool-use loops; a registry lookup is mechanical.</rationale>
+    <rule id="tiers-defined-canonical" testable="true" depth="essential">
+      <statement>Tool tiers MUST be exactly four: T0 (read-only), T1 (mutable-self), T2 (customer-impact), T3 (multi-cluster / cross-tenant); custom tiers are forbidden.</statement>
+      <rationale source="industry practice">Reducing the policy surface to four tiers prevents endless 'is this T1.5?' debates.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>An approval token MUST be a JWT signed by the approval service; MUST contain `sub` (approver), `tool`, `target`, `incident_id`, `iat`, `exp` (≤ 300 seconds after `iat`), and `jti`; MUST be single-use (server-side `jti` revocation on first acceptance); and MUST be rejected when any claim mismatches the actual call's `(tool, target, incident_id)` arguments.</statement>
-      <rationale source="v1-source">An unscoped or replayable token degrades to a "global yes". Binding to the exact `(tool, target, incident)` triple stops a captured token from being reused on a different cluster, and the 5-minute TTL stops it from being held for a future incident.</rationale>
+    <rule id="tier-assignment-explicit" testable="true" depth="essential">
+      <statement>Every tool in the catalog MUST carry an explicit tier; absence defaults to T3 (most restrictive).</statement>
+      <rationale source="industry practice">Default-strict prevents tools sneaking in at T0.</rationale>
+    </rule>
+    <rule id="t0-free-but-audited" testable="true" depth="essential">
+      <statement>T0 tools execute freely; outputs are still captured to audit log for post-incident review.</statement>
+      <rationale source="industry practice">Reads are safe but evidence of agent reasoning is essential to post-incident reconstruction.</rationale>
+    </rule>
+    <rule id="t1-audit-no-approval" testable="true" depth="essential">
+      <statement>T1 tools (e.g. write to a personal scratchpad, restart agent's own sidecar) execute without approval but emit audit log entry.</statement>
+      <rationale source="industry practice">Self-impact only; no blast radius.</rationale>
+    </rule>
+    <rule id="t2-signed-token" testable="true" depth="essential">
+      <statement>T2 tools (e.g. deploy a service, rotate a customer secret) MUST present a signed approval token bound to action class.</statement>
+      <rationale source="industry practice">Chain to gov-approval-token-signed-jwt.</rationale>
+    </rule>
+    <rule id="t3-two-person-cooling" testable="true" depth="essential">
+      <statement>T3 tools (e.g. cluster-wide change, cross-tenant migration) MUST require a two-person rule + ≥5-minute cooling period after first approval.</statement>
+      <rationale source="NUREG / NIST high-trust controls">NUREG / NIST high-trust controls — two-person rule + cooling cap human-error and panic decisions.</rationale>
+    </rule>
+    <rule id="tier-promotion-reviewed" testable="true" depth="essential">
+      <statement>Promoting a tool from a higher tier to a lower tier MUST go through code review with security signoff.</statement>
+      <rationale source="industry practice">Demotion is the threat; review prevents stealth liberalisation.</rationale>
+    </rule>
+    <rule id="emergency-break-glass-audited" testable="true" depth="essential">
+      <statement>Emergency tier-bypass MUST emit a high-severity audit entry; security team reviews same day.</statement>
+      <rationale source="industry practice">Bypass without review becomes the new default.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If agent has only 1-2 tools or existing flat RBAC is adequate, return `skipped`.</statement>
+      <rationale source="industry practice">Tiering overhead exceeds benefit.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

@@ -3,71 +3,94 @@ slug: inc-runbook-as-markdown-tagged-steps
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Author every alert runbook as a Markdown file in the project repo (`runbooks/<alert-name>.
-content_id: "631405a186b3eeee"
-tags: [incident-response, runbook, sre-agent, approval-gate, oncall]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Runbooks stored as markdown with tagged steps (`[read]`, `[write]`, `[approval-required]`, `[verify]`) the agent can parse and execute; humans + agents read the same file.
+content_id: "cff78cb2d52f8f01"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [runbook, incident, markdown, ai-agents, sdlc-ai]
 ---
-# Runbook-as-Markdown with Agent Step Tags
+# Runbook as Markdown with Tagged Steps
 
 ## Summary
 
-**One-sentence:** Author every alert runbook as a Markdown file in the project repo (`runbooks/<alert-name>.
+**One-sentence:** Runbooks stored as markdown with tagged steps (`[read]`, `[write]`, `[approval-required]`, `[verify]`) the agent can parse and execute; humans + agents read the same file.
 
-**One-paragraph:** Author every alert runbook as a Markdown file in the project repo (`runbooks/<alert-name>.md`) with a fixed section spine — Symptoms / Diagnose / Remediate / Escalate — and machine-parseable HTML-comment tags on each remediation step: `<!-- agent:auto -->` for steps the SRE agent may run unattended and `<!-- agent:approval -->` for steps that must wait for a signed human approval. The agent fetches the runbook keyed by the firing alert name, parses the spine, executes only `agent:auto` steps, and refuses (with a structured request to a human) on any `agent:approval` step. Markdown stays human-readable; the tags are the agent's contract.
+**One-paragraph:** Runbooks live in two parallel worlds — markdown humans skim and YAML/JSON the agent runs. Drift between them is the leading cause of 3am surprises. This methodology unifies both: runbooks are markdown files with machine-parsable step tags (`[read]`, `[write]`, `[approval-required]`, `[verify]`) the agent reads and executes step-by-step, while the same file remains human-skimmable. Output is the runbook markdown plus a JSON parsed-step list per execution.
+
+**Ефективно для:**
+
+- Team operates production systems with runbooks consulted at 3am.
+- AI agents participate in incident response and need machine-parseable structure.
+- Existing runbooks are markdown but drift from execution reality.
 
 ## Applies If (ALL must hold)
 
-- Teams with more than 10 distinct alert types and a stable service catalog.
-- Any oncall workflow where the SRE agent should diagnose unattended but never delete or failover without human consent.
-- Migrating from PDF / Confluence runbooks to a repo-versioned, code-reviewed format.
-- Multi-tool environments (PagerDuty, incident.io, FireHydrant) where one source of truth must drive every agent.
+- Team operates production systems with runbooks consulted at 3am.
+- AI agents participate in incident response and need machine-parseable structure.
+- Existing runbooks are markdown but drift from execution reality.
 
 ## Skip If (ANY kills it)
 
-- Prototype services with fewer than 5 alerts — runbook authoring overhead exceeds the win.
-- Highly conditional remediations that need real branching logic — write a Python operator instead.
-- One-shot diagnostics during an active incident — write the playbook into the postmortem afterward, not now.
+- Team has no runbooks (install the basics first).
+- Runbooks already use a fully machine-driven tool (Rundeck / Stackstorm) — different methodology applies.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Runbook markdown directory | md | Repo at `docs/runbooks/` |
+| Step tag spec | md | Repo at `docs/runbooks/TAG-SPEC.md` |
+| Approval token verifier | config | From `gov-approval-token-signed-jwt` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-inc-runbook-as-markdown-tagged-steps` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/runbook-template.md` | Runbook markdown skeleton with tagged steps |
+| `templates/parser.py` | Reference runbook parser |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-inc-runbook-as-markdown-tagged-steps.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,68 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ADR Decay Detector Agent Output Contract" version="1.0.0" est_tokens="750" depth="essential">
-  <summary>Defines the decay-report bundle and the per-run reproducibility metadata.</summary>
-
-  <output-contract>
-    <required>
-      <field name="run_metadata">
-        <subfield name="commit_sha" type="string" pattern="^[0-9a-f]{7,40}$"/>
-        <subfield name="adr_set_hash" type="string" pattern="^[0-9a-f]{16,64}$"/>
-        <subfield name="model" type="string"/>
-        <subfield name="run_timestamp" type="iso_datetime"/>
-        <subfield name="temperature" type="float" max="0.0"/>
-      </field>
-      <field name="propositions_extracted" format="list">
-        <subfield name="adr_id" type="string"/>
-        <subfield name="propositions[]" type="object"/>
-        <subfield name="propositions[].id" type="string"/>
-        <subfield name="propositions[].subject" type="string"/>
-        <subfield name="propositions[].operator" type="string"/>
-        <subfield name="propositions[].observable" type="object"/>
-        <subfield name="propositions[].scope_globs" min_items="1"/>
-        <subfield name="propositions[].testable" type="boolean"/>
-      </field>
-      <field name="violations" format="list">
-        <subfield name="adr_id" type="string"/>
-        <subfield name="proposition_id" type="string"/>
-        <subfield name="evidence[].file_path" type="string"/>
-        <subfield name="evidence[].line_range" type="string"/>
-        <subfield name="evidence[].snippet" type="string"/>
-        <subfield name="confidence" type="float" min="0.6" max="1.0"/>
-        <subfield name="possible_repairs" min_items="2"/>
-      </field>
-      <field name="non_testable_adrs" format="list"/>
-      <field name="triage_assignee" type="string"/>
-      <field name="triage_deadline" type="iso_date" max_offset_days="7"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">violation referencing a file_path that does not exist at commit_sha (hallucinated path)</pattern>
-      <pattern id="f2">violation with confidence &lt; 0.6 included in the report (noise)</pattern>
-      <pattern id="f3">proposition extracted from a non-testable ADR (must be in non_testable_adrs list)</pattern>
-      <pattern id="f4">violation scope outside the proposition's scope_globs (out-of-scope evidence)</pattern>
-      <pattern id="f5">run_metadata missing or temperature &gt; 0 (non-idempotent)</pattern>
-      <pattern id="f6">agent action: auto-edit, auto-supersede, auto-deprecate, auto-PR-merge an ADR</pattern>
-      <pattern id="f7">PR comment posted multiple times for same (commit_sha, adr_set_hash) tuple (spam)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Confidence scores are computed from match-strength heuristics (exact-text match = 1.0, regex match = 0.8, semantic similarity = 0.6-0.8). Below 0.6 → drop, not report.</transformation>
-      <transformation>Top-K limiting: PR comment includes top 5 violations by (confidence × severity); full report linked.</transformation>
-      <transformation>A "dispute" repair option always present so reviewers can reject a violation without updating code or ADR.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/adr-proposition-extract.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="ADR Decay Detector Agent Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for kb-adr-decay-detector-agent output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/kb-adr-decay-detector-agent.json",
+  "type": "object",
+  "required": [
+    "adr_root",
+    "scanned_count",
+    "findings",
+    "review_queue_url"
+  ],
+  "properties": {
+    "adr_root": {
+      "type": "string"
+    },
+    "scanned_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/decay_finding"
+      }
+    },
+    "review_queue_url": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "$defs": {
+    "decay_finding": {
+      "type": "object",
+      "required": [
+        "adr_path",
+        "category",
+        "evidence",
+        "remediation"
+      ],
+      "properties": {
+        "adr_path": {
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "contradiction",
+            "supersession-orphan",
+            "missing-artifact",
+            "status-drift"
+          ]
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "remediation": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "adr_root": "docs/adr",
+  "scanned_count": 27,
+  "findings": [
+    {"adr_path": "docs/adr/0007-postgres.md", "category": "contradiction", "evidence": "services/orders/db.py imports motor (MongoDB)", "remediation": "Author a new ADR superseding 0007 or revert code to Postgres"},
+    {"adr_path": "docs/adr/0012-cache.md", "category": "missing-artifact", "evidence": "ADR references libs/cache.py which no longer exists", "remediation": "Update ADR reference or restore module"}
+  ],
+  "review_queue_url": "https://linear.app/team/architecture/issues"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "scanned_count": 0
+}
+    ]]></code>
+    <note>scanned_count must be ≥1; required adr_root, findings, review_queue_url missing.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>run_metadata fully populated with commit_sha, adr_set_hash, model, temperature=0</item>
-      <item>every proposition has scope_globs (no unscoped scans)</item>
-      <item>every violation's evidence.file_path exists at commit_sha</item>
-      <item>violations with confidence &lt; 0.6 are dropped, not reported</item>
-      <item>non_testable_adrs list captures vague ADRs (no forced extraction)</item>
-      <item>triage_assignee + deadline populated; deadline ≤ 7 days out</item>
-      <item>agent did not auto-modify any ADR file</item>
+      <item>missing required fields</item>
+      <item>wildcard values where enum is required</item>
+      <item>values outside enum / pattern / numeric bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-kb-adr-decay-detector-agent.py">Validator script</reference>
 </text>

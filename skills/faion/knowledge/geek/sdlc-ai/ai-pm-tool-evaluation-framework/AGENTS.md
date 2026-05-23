@@ -3,78 +3,94 @@ slug: ai-pm-tool-evaluation-framework
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Pm Tool Evaluation Framework: codified AI-in-SDLC practice that turns the recurring 'role-project-manager/Annual delivery-process maturity review' decision into a repeatable, auditable artefact.
-content_id: "268e6be9d6cde58f"
-tags: [ai-pm-tool-evaluation-framework, sdlc-ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Scoring framework for evaluating AI-assisted PM tools (Linear/Jira/Notion AI add-ons) on 8 dimensions: data residency, hallucination rate, tracker fidelity, cost, vendor lock, etc.
+content_id: "e7f749a1dac93b6c"
+complexity: medium
+produces: rubric
+est_tokens: 4400
+tags: [pm-tools, evaluation, ai-procurement, rubric, sdlc-ai]
 ---
-# Ai Pm Tool Evaluation Framework
+# AI PM Tool Evaluation Framework
 
 ## Summary
 
-**One-sentence:** Ai Pm Tool Evaluation Framework: codified AI-in-SDLC practice that turns the recurring 'role-project-manager/Annual delivery-process maturity review' decision into a repeatable, auditable artefact.
+**One-sentence:** Scoring framework for evaluating AI-assisted PM tools (Linear/Jira/Notion AI add-ons) on 8 dimensions: data residency, hallucination rate, tracker fidelity, cost, vendor lock, etc.
 
-**One-paragraph:** Ai Pm Tool Evaluation Framework addresses the gap identified by the role-project-manager/Annual delivery-process maturity review playbook: ai-powered-pm-tools methodology is a survey, not a buyer's evaluation framework. PMs evaluating Linear-AI, Atlassian-Intelligence, Notion-AI, custom-LLM dashboards need a comparable scoring approach including risk of metric-gaming and people-dynamic blind spots. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** PM tool vendors are racing to bolt AI features onto Linear, Jira, Notion, Asana, ClickUp. Buying decisions need a deterministic rubric — not vendor demos. This methodology defines an 8-axis scorecard (data residency, hallucination rate measured on a fixture set, tracker fidelity, cost per user-month, vendor lock-in / export, prompt-injection surface, audit-log completeness, integration depth) with weighted scoring and a pass/fail threshold per axis. Output is a JSON scorecard per vendor, comparable side-by-side, that a buyer can defend in procurement review.
+
+**Ефективно для:**
+
+- The team is evaluating one or more AI-augmented PM SaaS tools for procurement.
+- Procurement requires a written justification (not a single-vendor pilot).
+- The decision impacts ≥5 users and binds the team for ≥6 months.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-project-manager/Annual delivery-process maturity review OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- The team is evaluating one or more AI-augmented PM SaaS tools for procurement.
+- Procurement requires a written justification (not a single-vendor pilot).
+- The decision impacts ≥5 users and binds the team for ≥6 months.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-developer trial with no procurement gate.
+- Vendor is already mandated by enterprise IT (no choice to evaluate).
 
 ## Prerequisites
 
-- recent context for the role-project-manager/Annual delivery-process maturity review task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Vendor shortlist | yaml | RFP intake |
+| Fixture issue corpus | json | Internal — anonymised real-issue sample, ≥50 items |
+| Cost model | yaml | Finance — seat counts, growth |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/sdlc-ai-operator` | parent role skill — provides the operating context for this methodology |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-pm-tool-evaluation-framework` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-pm-tool-evaluation-framework.json` | JSON schema for the Ai Pm Tool Evaluation Framework output contract |
-| `templates/ai-pm-tool-evaluation-framework.md` | Markdown skeleton with the required fields |
+| `templates/scorecard.json` | Per-vendor scorecard skeleton |
+| `templates/comparison.md` | Side-by-side vendor comparison narrative |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-pm-tool-evaluation-framework.py` | Enforce Ai Pm Tool Evaluation Framework output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-pm-tool-evaluation-framework.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- upstream playbook: `role-project-manager/Annual delivery-process maturity review`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

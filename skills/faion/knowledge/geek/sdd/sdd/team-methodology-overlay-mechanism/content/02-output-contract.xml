@@ -1,69 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Overlay — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of an `OverlayResolution` and audit event for each resolved methodology load.</summary>
+<text id="02-output-contract" title="Team Methodology Overlay Mechanism Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. The validator script enforces required keys, evidence-link presence, and slug match. Forbidden patterns: missing evidence array, slug mismatch, free-form version strings.</summary>
 
-  <section title="OverlayResolution required fields">
-    <list>
-      <item>`methodology_path` — string (tier/group/skill/slug)</item>
-      <item>`files` — object mapping file path → `{source: enum {REPO, USER, SHIPPED}, content_id, merge_mode}`</item>
-      <item>`conflicts` — array of `{file, conflict_type, message}` (may be empty)</item>
-      <item>`version_skew` — boolean — true if any USER/REPO content_id differs from SHIPPED</item>
-      <item>`maintainer` — string (overlay maintainer from overrides-config.yaml)</item>
-      <item>`resolved_at` — ISO-8601</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/team-methodology-overlay-mechanism.json",
+  "title": "Team Methodology Overlay Mechanism",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "owner",
+    "produced_at",
+    "evidence",
+    "body"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "team-methodology-overlay-mechanism"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri-reference"
+      },
+      "minItems": 1
+    },
+    "body": {
+      "type": "object"
+    },
+    "ai_drafted": {
+      "type": "boolean"
+    },
+    "reviewer": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
 
-  <section title="Audit event required fields">
-    <list>
-      <item>`event` — literal "overlay.resolve"</item>
-      <item>`methodology_path` — string</item>
-      <item>`sources` — object (file → source enum)</item>
-      <item>`merge_modes` — object (file → enum)</item>
-      <item>`conflicts_detected` — integer</item>
-      <item>`actor` — caller (faion-cli command + user)</item>
-      <item>`resolved_at` — ISO-8601</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "team-methodology-overlay-mechanism",
+  "version": "1.0.0",
+  "owner": "tech-lead@example.com",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "evidence": [
+    "https://example.com/adr/0007",
+    "./docs/decision-log.md#2026-05-22"
+  ],
+  "body": {
+    "summary": "real content here"
+  },
+  "ai_drafted": false,
+  "reviewer": "tech-lead@example.com"
+}
+]]></code>
+    <note>Required fields present, slug matches, evidence non-empty, version is semver.</note>
+  </example>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Resolution emitted with `conflicts.length &gt; 0` but no message surfaced to operator.</description>
-      <reason>Silent conflicts cause production drift. Operator must see and resolve before runtime.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Audit event missing `actor` or `resolved_at`.</description>
-      <reason>Violates r5 audit-log requirement.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`files[*].source` outside {REPO, USER, SHIPPED}.</description>
-      <reason>Violates r1 directory-layout closure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`merge_mode: APPEND` applied to `AGENTS.md` (markdown file with no `&lt;text id&gt;`).</description>
-      <reason>Violates r3. APPEND/PREPEND require structured XML target.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Overlay loads methodology marked `non-overridable: true` in shipped frontmatter (e.g. security-critical core rules).</description>
-      <reason>Violates r4(c). Some methodologies are tier-gate primitives that overlaying corrupts.</reason>
-    </antipattern>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "v1",
+  "evidence": []
+}
+]]></code>
+    <note>Slug mismatched, version not semver, evidence empty, body + owner + produced_at missing. Forbidden patterns: missing required keys, evidence=[], non-semver version, slug != expected.</note>
+  </example>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Overlay may add new `tags:` entries in frontmatter without conflict (additive metadata).</item>
-      <item>Overlay may bump `version:` independently of shipped (team versioning is local).</item>
-      <item>Overlay may set `maintainers: [team-name]` to override shipped maintainer.</item>
-    </list>
-  </section>
-
-  <reference path="templates/overlay-resolution.json">JSON Schema for OverlayResolution.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>All resolved files have a `source` in {REPO, USER, SHIPPED}.</item>
-      <item>`version_skew: false` OR every skewed file has an explicit maintainer ack.</item>
-      <item>No `non-overridable` shipped methodology in overlay set.</item>
-      <item>Audit event written to `.faion/audit/overlay-log.ndjson`.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-team-methodology-overlay-mechanism.py">Validator script (stdlib only, supports --self-test).</reference>
 </text>

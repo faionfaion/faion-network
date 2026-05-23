@@ -3,85 +3,94 @@ slug: ai-generated-iac-review-redflags
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "e7fe56015dc3206d"
-summary: Reviewer's pattern catalogue of AI-generated IaC red flags — hallucinated provider arguments, invented resource names, drifted version constraints — with a checklist the reviewer scans before approving.
-tags: [iac, code-review, ai-codegen, red-flags, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Red-flag checklist for AI-generated Terraform / Pulumi / CloudFormation: hard-coded credentials, open security groups, public S3 buckets, missing tags, no state lock — emits gated JSON report.
+content_id: "46b8e8679532efc3"
+complexity: medium
+produces: checklist
+est_tokens: 4300
+tags: [terraform, iac, ai-review, security, sdlc-ai]
 ---
-# AI-Generated IaC Review Red Flags
+# AI-Generated IaC Review Red-Flags
 
 ## Summary
 
-**One-sentence:** A reviewer's pattern catalogue of the eight common AI-generated IaC red flags — hallucinated provider arguments, invented resource names, drifted version constraints, copied secrets, "for_each" misuse, dangling outputs, count-of-list shape mismatches, missing tags — with a checklist the reviewer scans before approving the PR.
+**One-sentence:** Red-flag checklist for AI-generated Terraform / Pulumi / CloudFormation: hard-coded credentials, open security groups, public S3 buckets, missing tags, no state lock — emits gated JSON report.
 
-**One-paragraph:** AI coding assistants now author the majority of IaC diffs in many shops, but they hallucinate provider arguments (`aws_s3_bucket.acl` after it was deprecated, `kubernetes_deployment.spec.strategy.type = "rolling"` instead of `RollingUpdate`), invent resource names (`aws_route53_zone_record`), drift version constraints (`required_providers.aws` left unpinned), copy secrets verbatim from chat context, misuse `for_each` over indexed lists, leave dangling outputs, and skip tag-mandates. This methodology consolidates the eight catch patterns into a single checklist that the reviewer scans through on every IaC PR. The checklist is paired with regex / AST detectors in `scripts/redflag-scan.py` so the human reviewer focuses on judgement, not pattern matching.
+**One-paragraph:** AI agents author IaC that compiles but encodes catastrophic defaults — public S3 buckets, 0.0.0.0/0 ingress, hard-coded ARNs, no state lock, missing tags. This methodology fixes a 10-item red-flag list run before any `terraform apply` / `pulumi up`. Output is a structured JSON report keyed by file + resource, with severity + remediation, suitable as a PR check that blocks merge on any high-severity finding.
+
+**Ефективно для:**
+
+- AI-authored Terraform, OpenTofu, Pulumi, or CloudFormation changes are in the PR.
+- The target environment has production blast radius (publicly reachable, holds real customer data, or signs releases).
+- CI runs `plan` + reviews before merge — there is a gate to insert this check into.
 
 ## Applies If (ALL must hold)
 
-- The IaC diff (Terraform, Pulumi, Helm) was authored or substantially edited by an AI assistant.
-- The reviewer is human and is the merge gate for the PR.
-- A provider schema is available for validation (Terraform Registry, Pulumi schema, Helm chart values schema).
-- The PR is not blocked by an upstream gate already (otherwise integrate with `ai-generated-iac-review-gate`).
+- AI-authored Terraform, OpenTofu, Pulumi, or CloudFormation changes are in the PR.
+- The target environment has production blast radius (publicly reachable, holds real customer data, or signs releases).
+- CI runs `plan` + reviews before merge — there is a gate to insert this check into.
 
 ## Skip If (ANY kills it)
 
-- Diff is a deterministic-tool change (Renovate dependency bump, automated drift-detection commit).
-- IaC files only touch comments / formatting.
-- Stricter gate already runs `ai-generated-iac-review-gate` end-to-end with the four checks — this catalogue's content is integrated there.
-- Reviewer has &lt; 5 minutes and the diff is &gt; 200 lines — escalate; the catalogue assumes a real review.
+- The change is a pure refactor with no `plan` diff (variable rename, comment).
+- The target is a personal sandbox with auto-destroy and no shared data.
 
 ## Prerequisites
 
-- Provider schema or registry mirror reachable from the review environment.
-- `scripts/redflag-scan.py` runs in CI and emits a structured comment on the PR.
-- A tag-policy file (`tag-policy.yaml`) declaring required tags per resource type.
-- Reviewer has Terraform / Pulumi / Helm syntax familiarity.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| IaC files | tf/yaml/ts | PR diff |
+| `terraform plan` JSON | json | `terraform show -json plan.out` |
+| Tag policy | yaml | team `infra/tag-policy.yaml` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/ai-iac-hallucination-detector` | Sibling: covers the schema validation branch in depth. |
-| `geek/sdlc-ai/ai-generated-iac-review-gate` (under `geek/infra/server-craft/`) | Sibling: this catalogue feeds the gate's security + drift checks. |
-| `geek/sdlc-ai/sec-trivy-pinned-supply-chain-scan` | Provider version constraints fold into supply-chain scan. |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: catalogue immutability, provider-schema authoritative, regex-then-AST, secret scrub, tag-policy enforcement | ~1100 |
-| `content/02-output-contract.xml` | essential | Red-flag report shape, severity scheme, PR-comment structure | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: schema stale, AI-suggested fix, false-positive flood | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `regex-pre-scan` | haiku | Mechanical: fast pattern match across diff |
-| `provider-schema-validate` | haiku | Mechanical: schema lookup |
-| `red-flag-classify` | sonnet | Bounded judgement: confirm a flag is real vs false positive |
-| `pr-comment-compose` | sonnet | Structured comment composition |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-generated-iac-review-redflags` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/redflag-catalogue.md` | The 8-pattern catalogue with examples and counter-examples |
-| `templates/redflag-report.json` | JSON schema for the report |
-| `templates/tag-policy.yaml` | Required-tags-by-resource-type policy file |
+| `templates/redflag-report.json` | JSON skeleton for the validator output |
+| `templates/ci-gate.yml` | GitHub Actions snippet that runs the validator and gates merge |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/redflag-scan.py` | Run regex + AST checks against the diff; emit redflag-report.json | CI on IaC diff |
-| `scripts/provider-schema-fetch.sh` | Refresh provider schemas from Terraform Registry | Daily |
+| `scripts/validate-ai-generated-iac-review-redflags.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: `ai-iac-hallucination-detector`, `ai-generated-iac-review-gate`, `ai-base-image-cve-triage`
-- external: [Terraform Registry](https://registry.terraform.io/) · [Pulumi schema](https://www.pulumi.com/registry/) · [tag-policy reference: AWS Tag Editor](https://docs.aws.amazon.com/ARG/latest/userguide/tag-editor.html)
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

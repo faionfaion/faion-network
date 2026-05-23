@@ -1,22 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="gov-license-compliance-scan Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="License Compliance Scan Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for gov-license-compliance-scan output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/gov-license-compliance-scan.json",
+  "type": "object",
+  "required": [
+    "scanner_id",
+    "scan_root",
+    "findings",
+    "verdict",
+    "sbom_url"
+  ],
+  "properties": {
+    "scanner_id": {
+      "type": "string",
+      "pattern": "^(scancode|syft):.+$"
+    },
+    "scan_root": {
+      "type": "string"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/license_finding"
+      }
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    },
+    "sbom_url": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "$defs": {
+    "license_finding": {
+      "type": "object",
+      "required": [
+        "package",
+        "version",
+        "spdx",
+        "status",
+        "remediation"
+      ],
+      "properties": {
+        "package": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "spdx": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "allowed",
+            "denied",
+            "unknown"
+          ]
+        },
+        "remediation": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "scanner_id": "syft:1.18.0",
+  "scan_root": ".",
+  "findings": [
+    {"package": "log4j-core", "version": "2.22.0", "spdx": "Apache-2.0", "status": "allowed", "remediation": "n/a"},
+    {"package": "ghostscript", "version": "10.0.0", "spdx": "AGPL-3.0-or-later", "status": "denied", "remediation": "Replace with mupdf (CC-BY-SA) or obtain legal exception"}
+  ],
+  "verdict": "fail",
+  "sbom_url": "https://artifacts/sbom-2026-05-22.spdx.json"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "scanner_id": "latest",
+  "findings": [{"package": "x"}]
+}
+    ]]></code>
+    <note>Scanner not pinned with version; finding missing required fields; verdict + sbom_url + scan_root missing.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>missing required fields</item>
+      <item>wildcard values where enum is required</item>
+      <item>values outside enum / pattern / numeric bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-gov-license-compliance-scan.py">Validator script</reference>
 </text>

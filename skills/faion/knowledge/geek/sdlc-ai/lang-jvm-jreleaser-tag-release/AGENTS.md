@@ -3,71 +3,97 @@ slug: lang-jvm-jreleaser-tag-release
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Replace ad-hoc mvn deploy / gradle publish plus hand-edited CHANGELOG.
-content_id: "95f3bdf051e20282"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Replace ad-hoc mvn deploy / gradle publish + hand-edited CHANGELOG with a single git tag that triggers JReleaser — staging to Maven Central, signing, changelog generation, GitHub release in one shot.
+content_id: "490c03b394d22cd7"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [jvm, jreleaser, maven-central, release, java]
 ---
 # JVM One-Tag Release via JReleaser
 
 ## Summary
 
-**One-sentence:** Replace ad-hoc mvn deploy / gradle publish plus hand-edited CHANGELOG.
+**One-sentence:** Replace ad-hoc mvn deploy / gradle publish + hand-edited CHANGELOG with a single git tag that triggers JReleaser — staging to Maven Central, signing, changelog generation, GitHub release in one shot.
 
-**One-paragraph:** Replace ad-hoc mvn deploy / gradle publish plus hand-edited CHANGELOG.md with a single jreleaser.yml checked into the repo. A pushed git tag (e.g. v1.4.0) triggers one CI workflow that signs artifacts (GPG / Sigstore), uploads to Maven Central via the new Sonatype Central Portal, publishes a GitHub Release with notes generated from conventional commits, and optionally distributes binaries to Homebrew / Scoop / SDKMAN. AI agents never touch deploy YAML — they only land the change behind the tag.
+**One-paragraph:** JVM One-Tag Release via JReleaser produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- JVM library publisher (Maven Central / GitHub Packages).
+- Team where the release ritual is bespoke per engineer and prone to error.
+- Multi-module Gradle / Maven build needing coordinated version bump + tag.
+- Project where every release must include signed artefacts + changelog.
 
 ## Applies If (ALL must hold)
 
-- Libraries published to Maven Central or another public Maven repo (Central Portal, Gradle Plugin Portal, GitHub Packages).
-- CLIs distributed via Homebrew, Scoop, SDKMAN, Snap, or Chocolatey alongside JARs.
-- Polyglot repos with JVM + Go / Rust / Native binaries needing one release flow (JReleaser supports non-JVM artifacts too).
-- Any team where the release process has at least one "tribal knowledge" step that an agent would skip.
+- Repo publishes ≥ 1 artefact to a central registry.
+- Maven Central or compatible target is configured.
+- GPG signing key + GitHub token available as CI secrets.
+- Team accepts conventional-commits → changelog generation.
 
 ## Skip If (ANY kills it)
 
-- Single-artifact internal libraries published to a private corporate Nexus where mvn deploy already works — the migration cost exceeds the value.
-- Snapshot-only flows (continuous main → SNAPSHOT pushes) — JReleaser is for tagged releases.
-- Air-gapped environments without outbound HTTPS to GitHub / Maven Central / signing services.
+- Repo never publishes externally (internal app only).
+- Custom release pipeline already proven over years.
+- Team won't adopt conventional commits — JReleaser changelog gets noisy.
+- Multi-language release where JVM is one slice — JReleaser is JVM-only.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| jreleaser.yml | committed JReleaser config | release-eng |
+| CI secrets | GPG key + Sonatype creds + GH token | platform |
+| CHANGELOG generator | JReleaser default or custom config | release-eng |
+| Tag convention | vMAJOR.MINOR.PATCH SemVer | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gov-conventional-commits-enforced]] | JReleaser changelog needs conventional commits |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `jreleaser_config_draft` | sonnet | Author the YAML for repo's distribution set. |
+| `ci_workflow_draft` | sonnet | Tag-triggered GH Actions workflow. |
+| `dry_run_validation` | haiku | `jreleaser config --output` validation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/jreleaser.yml` | JReleaser config for one Maven Central distribution. |
+| `templates/release-workflow.yml` | Tag-triggered GH Actions workflow. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-jvm-jreleaser-tag-release.py` | Validate the JReleaser-config artefact. | pre-merge of release config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[gov-conventional-commits-enforced]]
+- [[lint-precommit-floor]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

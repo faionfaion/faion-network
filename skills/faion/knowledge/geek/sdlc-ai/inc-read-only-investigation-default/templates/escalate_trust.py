@@ -1,64 +1,33 @@
-"""Reference handler for `/agent escalate-trust <incident_id>`.
+# purpose: Trust ratchet manager
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-500 tokens when loaded as context
 
-Creates an ephemeral remediate RoleBinding for the SRE agent's
-ServiceAccount and schedules its revoke. Verifies the requester is
-the on-caller and has a fresh MFA proof.
-
-Wire `oncall`, `mfa`, `rbac`, `incidents`, `audit` to your stack.
-"""
-
+#!/usr/bin/env python3
+# purpose: trust ratchet manager — records first authorised write per action class
+# consumes: audit log + signed approval
+# produces: ratchet entry
+# depends-on: scripts/validate-inc-read-only-investigation-default.py
+# token-budget-impact: ~250 tokens
+"""Record agent write authorisations to trust ratchet."""
 from __future__ import annotations
-
-import time
-from dataclasses import dataclass
-
-DEFAULT_TTL_SECONDS = 60 * 60  # 60 minutes hard cap
+import json
+import sys
+from pathlib import Path
 
 
-@dataclass
-class EscalationResult:
-    binding_name: str
-    expires_at: int
-    incident_id: str
+def record(action_class: str, agent_id: str, approver: str, evidence_url: str, log_path: Path) -> None:
+    entry = {"action_class": action_class, "agent_id": agent_id, "approver": approver, "evidence_url": evidence_url, "ts": "auto"}
+    existing = []
+    if log_path.exists():
+        existing = json.loads(log_path.read_text())
+    existing.append(entry)
+    log_path.write_text(json.dumps(existing, indent=2))
 
 
-def escalate_trust(
-    incident_id: str,
-    requesting_user: str,
-    *,
-    oncall,
-    mfa,
-    rbac,
-    incidents,
-    audit,
-    ttl_seconds: int = DEFAULT_TTL_SECONDS,
-) -> EscalationResult:
-    if not oncall.is_oncaller(incident_id, requesting_user):
-        raise PermissionError("requester is not the on-caller for this incident")
-    if not mfa.challenge_passed(requesting_user, max_age_seconds=60):
-        raise PermissionError("fresh MFA challenge required")
-    if ttl_seconds > DEFAULT_TTL_SECONDS:
-        raise ValueError("TTL exceeds 60-minute hard cap")
-
-    expires_at = int(time.time()) + ttl_seconds
-    binding_name = f"sre-agent-remediate-{incident_id}"
-    rbac.create_clusterrolebinding(
-        name=binding_name,
-        service_account=("sre-agent", "ops"),
-        cluster_role="sre-agent-remediate",
-        annotations={
-            "incident_id": incident_id,
-            "approver":    requesting_user,
-            "expires_at":  str(expires_at),
-        },
-    )
-    incidents.on_close(incident_id, lambda: rbac.delete_clusterrolebinding(binding_name))
-    rbac.schedule_delete(binding_name, at=expires_at)
-    audit.append(
-        action="escalate_trust",
-        incident_id=incident_id,
-        approver=requesting_user,
-        binding=binding_name,
-        expires_at=expires_at,
-    )
-    return EscalationResult(binding_name=binding_name, expires_at=expires_at, incident_id=incident_id)
+if __name__ == "__main__":
+    if len(sys.argv) != 6:
+        sys.stderr.write("usage: escalate_trust.py <action_class> <agent_id> <approver> <evidence_url> <log_path>\n")
+        sys.exit(2)
+    record(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], Path(sys.argv[5]))

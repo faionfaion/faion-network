@@ -3,72 +3,95 @@ slug: gov-license-compliance-scan
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every release pipeline runs an automated license scan against an explicit allowlist.
-content_id: "45fd1c644873945c"
-tags: [governance, license-compliance, sbom, supply-chain, eu-cra]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Repo-wide SPDX license scan on every PR: allowlist/denylist per license id, scanner pinned to ScanCode/Syft, fail on copyleft introductions absent justification.
+content_id: "2ff966838c1e05a1"
+complexity: medium
+produces: report
+est_tokens: 4200
+tags: [governance, license, spdx, open-source, compliance]
 ---
-# License Compliance as a Build-Blocking Gate
+# License Compliance Scan
 
 ## Summary
 
-**One-sentence:** Every release pipeline runs an automated license scan against an explicit allowlist.
+**One-sentence:** Repo-wide SPDX license scan on every PR: allowlist/denylist per license id, scanner pinned to ScanCode/Syft, fail on copyleft introductions absent justification.
 
-**One-paragraph:** Every release pipeline runs an automated license scan against an explicit allowlist. Free OSS-shipped projects use GitHub's `licensee` for source detection; commercial SaaS or shipped binaries use FOSSA (or Black Duck / ScanCode) to produce an SPDX/CycloneDX SBOM and a deny/flag/approve decision per dependency. Copyleft licenses (GPL, AGPL, SSPL) introduced into proprietary builds block the pipeline; the agent regenerates the `NOTICE` / `THIRD_PARTY.md` attribution file on every dependency change. License scanning runs on PR, not just on release.
+**One-paragraph:** Closed-source products that absorb GPL/AGPL transitive dependencies face existential legal risk. This methodology installs a deterministic SPDX scan in CI: scanner pinned (ScanCode or Syft), allowlist + denylist of SPDX ids, scan runs on every PR + nightly main, and any new dependency outside the allowlist blocks merge until justification is recorded. Output is a SBOM-grade license report per PR.
+
+**Ефективно для:**
+
+- The product is distributed externally (closed-source binary, SaaS shipping copies of dependencies, embedded firmware).
+- License decisions have legal implications (paying customers, regulated industry, IP-sensitive sale process).
+- The dependency graph is non-trivial (≥30 transitive deps).
 
 ## Applies If (ALL must hold)
 
-- Any product distributed externally — SaaS, downloadable, OSS published — where license obligations attach.
-- Enterprise procurement contexts where customers ask for an SBOM and a license attestation.
-- Repos where AI agents add dependencies autonomously; the agent is the new "developer who didn't read the license".
-- Products subject to EU CRA (anything sold in the EU after Sep 2026) or US federal procurement (EO 14028 SBOM mandate).
+- The product is distributed externally (closed-source binary, SaaS shipping copies of dependencies, embedded firmware).
+- License decisions have legal implications (paying customers, regulated industry, IP-sensitive sale process).
+- The dependency graph is non-trivial (≥30 transitive deps).
 
 ## Skip If (ANY kills it)
 
-- Internal-only tools that never leave the org boundary — no redistribution, no obligation.
-- Hobby projects with zero compliance bar (still good hygiene if free; skip if it slows you down).
-- Vendored read-only mirrors — license obligations follow the upstream redistribution, not the mirror.
-- Pure data repos with no compiled artifact — apply data-license review instead.
+- Internal-only tool used by no one outside the org and zero distribution scope.
+- Pure-MIT/Apache codebase with one direct dep and no transitive pulls.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Dependency manifest | lockfile | package-lock.json / poetry.lock / go.sum / etc. |
+| Scanner binary | bin | ScanCode (4.x+) or Syft (1.x+) |
+| Allowlist + denylist | yaml | Repo at `compliance/licenses.yaml` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-gov-license-compliance-scan` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/licenses.yaml` | Allow/deny SPDX catalog |
+| `templates/ci-snippet.yml` | GitHub Actions wiring |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gov-license-compliance-scan.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

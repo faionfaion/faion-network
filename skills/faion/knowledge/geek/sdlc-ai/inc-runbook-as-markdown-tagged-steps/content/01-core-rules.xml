@@ -1,15 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="inc-runbook-as-markdown-tagged-steps Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for inc-runbook-as-markdown-tagged-steps. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Runbook as Markdown with Tagged Steps Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>9 testable rules with rationale + source for inc-runbook-as-markdown-tagged-steps. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every bullet under `## Remediate` MUST end with exactly one of `&lt;!-- agent:auto --&gt;` or `&lt;!-- agent:approval --&gt;`. The SRE agent MUST execute `agent:auto` steps unattended, MUST refuse `agent:approval` steps until a signed approval token arrives, and MUST abort the runbook with a `runbook_invalid` error when any remediate step lacks a tag.</statement>
-      <rationale source="v1-source">A runbook without an explicit tag forces the agent to guess; published Kiro-style production deletions trace to "the runbook said it was OK to run" prose interpretations. A closed tag set makes the safety boundary mechanical.</rationale>
+    <rule id="tags-are-canonical" testable="true" depth="essential">
+      <statement>Every actionable step MUST carry one of: `[read]`, `[write]`, `[approval-required]`, `[verify]`, `[wait]`. Tag-less steps are commentary, not actions.</statement>
+      <rationale source="industry practice">Reduces ambiguity for both humans and agents; tag absence means 'context, do not execute'.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The agent MUST resolve the runbook path from the alert's `runbook_url` annotation, MUST verify the file contains all four canonical sections, and MUST refuse all remediation (returning `runbook_missing` to the orchestrator) when the lookup fails. The agent MUST NOT invent or "search" for a runbook.</statement>
-      <rationale source="v1-source">Lookup-by-search lets the agent pick a wrong-but-plausible runbook from a similarly named service, which is how cross-service blast radius incidents start. A failed lookup is a feature: it pages the human to author the missing runbook.</rationale>
+    <rule id="read-tags-no-approval" testable="true" depth="essential">
+      <statement>`[read]` steps execute without approval token; outputs are captured to audit log.</statement>
+      <rationale source="industry practice">Read-only operations are safe by definition; gating slows incident response.</rationale>
+    </rule>
+    <rule id="write-tags-need-approval" testable="true" depth="essential">
+      <statement>`[write]` steps MUST require a signed approval token (chain to `gov-approval-token-signed-jwt`); `[approval-required]` is a stronger label meaning 'human must explicitly approve at step boundary'.</statement>
+      <rationale source="industry practice">Capability gating + human-in-the-loop on dangerous steps.</rationale>
+    </rule>
+    <rule id="verify-tags-have-assertion" testable="true" depth="essential">
+      <statement>`[verify]` steps MUST contain an executable assertion (a script invocation or a dashboard metric check); free-form 'check it looks ok' rejected.</statement>
+      <rationale source="industry practice">Verification without assertion is performance; assertions catch silent regressions.</rationale>
+    </rule>
+    <rule id="parser-version-pinned" testable="true" depth="essential">
+      <statement>Runbook parser MUST be pinned to a version; rule changes go through code review.</statement>
+      <rationale source="industry practice">Parser drift silently changes execution; lock and review.</rationale>
+    </rule>
+    <rule id="step-id-stable" testable="true" depth="essential">
+      <statement>Each step MUST carry a stable `id=&lt;slug&gt;`; agents reference steps by id, not line number.</statement>
+      <rationale source="industry practice">Line numbers shift; ids are stable across edits.</rationale>
+    </rule>
+    <rule id="dry-run-supported" testable="true" depth="essential">
+      <statement>Runbook executor MUST support `--dry-run` that prints step plan + would-be tokens without executing writes.</statement>
+      <rationale source="industry practice">Dry-run is the only way to review a runbook plan before live execution.</rationale>
+    </rule>
+    <rule id="audit-step-execution" testable="true" depth="essential">
+      <statement>Every step execution MUST emit an audit entry with step id, tag, outcome, timestamp.</statement>
+      <rationale source="industry practice">Without audit, post-incident review cannot reconstruct what the agent actually did.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If team has no runbooks or already uses a fully machine-driven tool, return `skipped`.</statement>
+      <rationale source="industry practice">Avoids overhead on non-applicable contexts.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

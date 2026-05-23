@@ -3,72 +3,99 @@ slug: mr-codemod-refactor-agent
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cross-cutting refactors (Angular 17→20, AI SDK 5→6, rename User.
-content_id: "0f03ab3e40964aa8"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Cross-cutting refactors (Angular X→Y, SDK X→Y, rename User.id → User.uid) MUST go through a codemod (jscodeshift / ast-grep / comby / Roslyn refactor) the agent authors first; hand-edit is reserved for the residue.
+content_id: "fb6ef0bde15b5f55"
+complexity: deep
+produces: playbook-step
+est_tokens: 4200
 tags: [codemod, refactor, ast, multi-agent, pull-request]
 ---
 # Codemod-First Refactor Agent
 
 ## Summary
 
-**One-sentence:** Cross-cutting refactors (Angular 17→20, AI SDK 5→6, rename User.
+**One-sentence:** Cross-cutting refactors (Angular X→Y, SDK X→Y, rename User.id → User.uid) MUST go through a codemod (jscodeshift / ast-grep / comby / Roslyn refactor) the agent authors first; hand-edit is reserved for the residue.
 
-**One-paragraph:** Cross-cutting refactors (Angular 17→20, AI SDK 5→6, rename User.email→User.contact) are codemods, not chat conversations. Use AST-aware tools (jscodeshift, ts-morph, libcst, semgrep, codemod.com / Hypermod) to do the deterministic 95% of edits, then let an LLM finish the long-tail (string templates, tests, docstrings, README snippets) that AST cannot reach. Open ONE PR per logical group of changes — not one per file. Multi-agent stacks (Architect → Migration → Validator) generate the PR with summary plus risk notes.
+**One-paragraph:** Codemod-First Refactor Agent produces a playbook-step artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Cross-cutting rename / signature-change spanning > 20 files.
+- Framework / SDK upgrade with known codemod path.
+- Multi-language repo where similar refactors recur.
+- Risky refactor that needs deterministic, reviewable transform.
 
 ## Applies If (ALL must hold)
 
-- Framework upgrades that ship breaking renames (Angular, React, Next.js, Vue, AI SDK).
-- API renames or deprecation removals across >100 call-sites.
-- Lint-rule rollouts where every existing violation must be auto-fixed (TS strict mode flip, ESLint rule).
-- Schema migrations where the field rename touches code, tests, fixtures, and docs in lockstep.
+- Refactor touches > 20 call sites.
+- An AST tool exists for the language (jscodeshift, ts-morph, ast-grep, comby, Roslyn).
+- Refactor is mechanically describable as a transform.
+- Team has CI to run tests after the codemod.
 
 ## Skip If (ANY kills it)
 
-- Small renames (<20 sites) — IDE rename refactor is faster and safer; codemod overhead is not justified.
-- Semantic refactors where the type signature stays but the BEHAVIOUR changes — codemods don't see behaviour.
-- Refactors that require staged rollout across multiple deploys — split into staged PRs first.
-- Generated code where the source-of-truth is not the file being changed.
+- Refactor < 5 files — hand-edit is faster.
+- No AST tool for the language (template files only).
+- Refactor requires deep semantic judgement per site — codemod can't capture.
+- Repo lacks tests — codemod risk too high.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| AST tool | jscodeshift / ts-morph / ast-grep / comby / Roslyn | platform |
+| Codemod script home | scripts/codemods/ | lead |
+| Test suite | fast, green baseline | team |
+| Multi-agent setup | transform-author + reviewer agents | agent ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-autofix-vs-flag-decision-rule]] | Sibling policy on auto-application |
+| [[mr-graph-vs-diff-reviewer]] | Code review against codemod output |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `transform_design` | opus | Codemod author. |
+| `transform_apply_and_test` | sonnet | Apply + run focused tests. |
+| `residue_handle` | sonnet | Per-site hand-edit for un-codemod-able cases. |
+| `review_and_pr` | opus | Final review + PR open. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/codemod.ts` | jscodeshift codemod skeleton. |
+| `templates/codemod-pr.md` | PR body template documenting the codemod. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-codemod-refactor-agent.py` | Validate the playbook-step artefact. | pre-merge of codemod step |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[mr-graph-vs-diff-reviewer]]
+- [[lint-autofix-vs-flag-decision-rule]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

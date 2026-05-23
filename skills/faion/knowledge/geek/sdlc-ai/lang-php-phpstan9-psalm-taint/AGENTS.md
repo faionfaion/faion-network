@@ -3,71 +3,98 @@ slug: lang-php-phpstan9-psalm-taint
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Run two static analyzers in CI for every PHP project where AI agents author code: PHPStan at level 9 (or 10 for libraries) for type strictness, and Psalm with --taint-analysis for inter-procedural data-flow checks (SQLi, XSS, command injection).
-content_id: "000ed7a59aaeb4c1"
-tags: [php, phpstan, psalm, static-analysis, taint-analysis]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Run PHPStan at level 9 and Psalm with --taint-analysis on every PHP repo where AI agents author code — PHPStan for type strictness, Psalm for inter-procedural taint (SQLi, XSS, command injection).
+content_id: "23531c17f120c1fe"
+complexity: medium
+produces: config
+est_tokens: 3700
+tags: [php, phpstan, psalm, static-analysis, taint]
 ---
 # PHP Dual Gate: PHPStan Level 9 + Psalm Taint Analysis
 
 ## Summary
 
-**One-sentence:** Run two static analyzers in CI for every PHP project where AI agents author code: PHPStan at level 9 (or 10 for libraries) for type strictness, and Psalm with --taint-analysis for inter-procedural data-flow checks (SQLi, XSS, command injection).
+**One-sentence:** Run PHPStan at level 9 and Psalm with --taint-analysis on every PHP repo where AI agents author code — PHPStan for type strictness, Psalm for inter-procedural taint (SQLi, XSS, command injection).
 
-**One-paragraph:** Run two static analyzers in CI for every PHP project where AI agents author code: PHPStan at level 9 (or 10 for libraries) for type strictness, and Psalm with --taint-analysis for inter-procedural data-flow checks (SQLi, XSS, command injection). Both must report green before merge.
+**One-paragraph:** PHP Dual Gate: PHPStan Level 9 + Psalm Taint Analysis produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- PHP repo where AI agents write code that touches user input.
+- Legacy PHP gradually adopting strict typing.
+- Library publisher that needs level-10 for downstream confidence.
+- Security-sensitive PHP (auth, payments, admin) that must catch taint at CI.
 
 ## Applies If (ALL must hold)
 
-- Symfony, Laravel, Drupal, or vanilla PHP services with agent contributors.
-- Projects with web-facing controllers, ORM query builders, file uploads, shell command construction.
-- Codebases ratcheting up type strictness (start L5, increment per release; pin L9 once green).
-- Library packages targeting Packagist — level 10 is feasible because there is no framework noise.
+- PHP 8.1+ runtime.
+- Composer + autoloader available.
+- CI can run two extra checks (PHPStan + Psalm).
+- Team accepts adding type annotations to reach level 9 / 10.
 
 ## Skip If (ANY kills it)
 
-- Greenfield prototypes under ~1 KLOC where the bootstrap cost dominates value.
-- Pure CLI scripts with no external input — Psalm's taint pass produces no signal.
-- Legacy codebases where setting L9 day one would mark thousands of files as failing — phase from L5 to L7 to L9 with the baseline file.
+- PHP < 7.4 — analyzer support poor.
+- Codebase relies on magic methods / dynamic properties — false-positive flood.
+- Throwaway prototype — gate cost exceeds value.
+- Both tools already in use — verify config matches this methodology before duplicating.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| phpstan.neon | committed PHPStan config | lead |
+| psalm.xml | committed Psalm config | lead |
+| CI matrix | two stages in CI | ci-eng |
+| Baseline files | phpstan-baseline.neon for existing violations | lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-precommit-floor]] | Hooks can run analyzers locally |
+| [[sec-codeql-autofix-on-pr]] | Sibling SAST gate |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `config_draft` | sonnet | Pick level + baseline strategy. |
+| `baseline_generation` | haiku | Run analyzers and snapshot baselines. |
+| `ci_wire_up` | sonnet | Add the two CI jobs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/phpstan.neon` | PHPStan level 9 config. |
+| `templates/psalm.xml` | Psalm taint-analysis config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-php-phpstan9-psalm-taint.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[lint-precommit-floor]]
+- [[sec-codeql-autofix-on-pr]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

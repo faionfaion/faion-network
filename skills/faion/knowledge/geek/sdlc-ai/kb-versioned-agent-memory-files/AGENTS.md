@@ -3,71 +3,98 @@ slug: kb-versioned-agent-memory-files
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Persist long-term agent memory as four committed Markdown files in.
-content_id: "a00e474f3e9c25b4"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Persist long-term agent memory as four committed Markdown files (decisions.md, patterns.md, mistakes.md, session.md) versioned in-repo so the agent rehydrates context from disk, not chat.
+content_id: "c73f1c94cb9d8c83"
+complexity: medium
+produces: config
+est_tokens: 3800
 tags: [agent-memory, versioned-memory, decisions, patterns, session-state]
 ---
 # Versioned Agent-Memory Files (decisions / patterns / mistakes)
 
 ## Summary
 
-**One-sentence:** Persist long-term agent memory as four committed Markdown files in.
+**One-sentence:** Persist long-term agent memory as four committed Markdown files (decisions.md, patterns.md, mistakes.md, session.md) versioned in-repo so the agent rehydrates context from disk, not chat.
 
-**One-paragraph:** Persist long-term agent memory as four committed Markdown files in .aidocs/memory/ (or .product/memory/): decisions.md (key technical choices), patterns.md (proven implementations), mistakes.md (errors and the fix), and session.md (in-flight state). Every entry is appended (never edited or auto-overwritten by an LLM), every entry carries a date and a citation back to the commit, ticket, or transcript that produced it. Agents read the four files at session start; session.md is the only file that resets between sessions. The convention turns "agent memory" from a vendor-specific RAG black box into a reviewable, diff-able, code-reviewed artifact.
+**One-paragraph:** Versioned Agent-Memory Files (decisions / patterns / mistakes) produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Long-running project where conversational context resets between sessions.
+- Team handoff where a new agent operator needs prior-decisions context.
+- Self-improvement loop: agent records its own mistakes for future runs.
+- SDD workflow where session.md tracks current feature + task state.
 
 ## Applies If (ALL must hold)
 
-- Long-lived projects (>3 months) where agent context resets every session and rebuilds from scratch.
-- Multi-agent setups (Claude Code + Codex + autoheal cron) that must share institutional knowledge.
-- Teams where a human reviewer should approve every change to "what the agent believes about this codebase".
-- Replacing vendor-specific memory features whose contents you cannot inspect or version.
+- Project spans > 1 month and / or > 5 sessions.
+- Decisions and patterns repeatedly bite the agent across sessions.
+- Repo allows .aidocs/memory/ or .claude/memory/ committed.
+- Operator agrees to maintain the files (or wires a hook to update them).
 
 ## Skip If (ANY kills it)
 
-- One-shot agent invocations or short-lived feature branches — the four-file overhead is wasted.
-- Highly volatile prototypes where today's "decision" is tomorrow's discard.
-- Non-deterministic transient state (queue depths, in-flight ticket IDs) — those belong in a runtime store, not in versioned memory.
+- One-off task — no future session to remember.
+- Solo author + memory in head — overhead > value.
+- Files would leak secrets — keep memory ephemeral or encrypted.
+- Team refuses to commit AI artefacts to the repo.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| .aidocs/memory/ dir | writable dir at repo root | repo lead |
+| File templates | decisions.md / patterns.md / mistakes.md / session.md | this methodology |
+| CLAUDE.md sync rule | agent loads memory on session start | agent config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[kb-agents-md-context-pyramid]] | Memory complements AGENTS.md context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `memory_init` | haiku | Mechanical template instantiation. |
+| `session_close_update` | sonnet | Decide which lessons graduate to patterns.md. |
+| `mistakes_classify` | sonnet | Tag mistakes for future avoidance. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decisions.md` | Decisions log template. |
+| `templates/patterns.md` | Patterns library template. |
+| `templates/mistakes.md` | Mistakes log template. |
+| `templates/session.md` | Session state template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-versioned-agent-memory-files.py` | Validate the memory-bundle structure. | pre-merge of memory change |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[kb-agents-md-context-pyramid]]
+- [[kb-ai-assisted-lessons-learned-synthesis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

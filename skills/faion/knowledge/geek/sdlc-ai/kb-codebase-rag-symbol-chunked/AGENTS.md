@@ -3,71 +3,98 @@ slug: kb-codebase-rag-symbol-chunked
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When building a vector index for a coding agent, chunk by AST symbol — one chunk per top-level function, class, or method, padded with the file path, the enclosing class signature, and 1-2 sibling-doc-comments — instead of fixed character or line windows.
-content_id: "d0df6586e4f756c5"
-tags: [rag, codebase-indexing, symbol-chunking, mcp, vector-search]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Build the coding-agent vector index by chunking on AST symbol boundaries — one chunk per function/class/method — padded with file path, enclosing class signature, and sibling doc comments.
+content_id: "85bcd5425c694cf0"
+complexity: deep
+produces: config
+est_tokens: 4200
+tags: [rag, codebase-indexing, symbol-chunking, ast, vector-search]
 ---
 # Codebase RAG with Symbol-Boundary Chunking
 
 ## Summary
 
-**One-sentence:** When building a vector index for a coding agent, chunk by AST symbol — one chunk per top-level function, class, or method, padded with the file path, the enclosing class signature, and 1-2 sibling-doc-comments — instead of fixed character or line windows.
+**One-sentence:** Build the coding-agent vector index by chunking on AST symbol boundaries — one chunk per function/class/method — padded with file path, enclosing class signature, and sibling doc comments.
 
-**One-paragraph:** When building a vector index for a coding agent, chunk by AST symbol — one chunk per top-level function, class, or method, padded with the file path, the enclosing class signature, and 1-2 sibling-doc-comments — instead of fixed character or line windows. Each chunk carries metadata {path, symbol, kind, signature, sha} and is keyed by sha:path:symbol so retrieval returns whole, compilable units, never half-functions. Re-embed only chunks whose sha changed; the index is rebuilt incrementally on every commit and consumed by the agent via an MCP "code search" tool, never by string-grepping the index.
+**One-paragraph:** Codebase RAG with Symbol-Boundary Chunking produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Building or rebuilding a vector index for a coding agent on a real codebase ≥ 50 KLOC.
+- Replacing a sliding-window or fixed-line chunker that yields poor recall.
+- Multi-language repo where one chunker must work across languages.
+- Agent needs to retrieve self-contained, runnable code units — not arbitrary slices.
 
 ## Applies If (ALL must hold)
 
-- Repos large enough that the agent cannot keep the whole tree in context (>10k LOC).
-- Multi-language repos where one chunker (tree-sitter) covers everything.
-- Q&A / "explain this codebase" agents that surface context to humans, not just to other agents.
-- Onboarding flows where the agent narrates "here's the auth pipeline" by stitching retrieved chunks.
+- Codebase ≥ 50 KLOC where fixed-window chunks lose semantic boundaries.
+- An AST parser exists for every language in the repo (tree-sitter, LSP, or native).
+- Vector store supports metadata filters (file path, symbol kind).
+- Coding agent consumes top-K chunks and needs each chunk to be self-contained.
 
 ## Skip If (ANY kills it)
 
-- Repos under ~5k LOC — full-tree context fits in a single Claude/GPT call.
-- Agents that exclusively edit code with a working LSP / symbol index — a vector index is duplicate work.
-- Compliance-restricted code where the embedding model would leak source to a third-party API.
+- Codebase < 5 KLOC — full-file context fits the model window.
+- Repo is mainly prose / config — symbol chunking gains nothing.
+- AST parser unavailable for the dominant language — fall back to line chunks.
+- Real-time latency budget < 50 ms per query — symbol chunking adds index-time cost.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Codebase clone | git repo | source control |
+| AST parser config | tree-sitter grammars or LSP | language-eng |
+| Vector store | Qdrant / Weaviate / pgvector | platform |
+| Embedding model | bge-large or voyage-code-3 etc. | ml-eng |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[kb-symbol-index-fresh-tags]] | Symbol index is the upstream artefact |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `ast_parse_repo` | haiku | Mechanical AST walk. |
+| `chunk_padding_strategy` | sonnet | Choose context windows per symbol. |
+| `metadata_attach` | haiku | Add file path + symbol kind attrs. |
+| `retrieval_eval` | opus | MRR / recall@K eval design. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/chunker-config.yaml` | Tree-sitter / LSP chunker configuration. |
+| `templates/retrieval-eval-set.jsonl` | Sample eval set (query → expected chunk ids). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-codebase-rag-symbol-chunked.py` | Validate the chunker config against the schema. | pre-merge of chunker change |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[kb-symbol-index-fresh-tags]]
+- [[kb-agents-md-context-pyramid]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

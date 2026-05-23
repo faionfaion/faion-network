@@ -1,63 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI IaC Hallucination Detector Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the hallucination-report shape, finding kinds, and deprecation-handling rules.</summary>
-
-  <section title="Required hallucination-report fields">
-    <list>
-      <item><code>pr_branch</code> (string)</item>
-      <item><code>provider_versions</code> (object: provider_name → pinned version string)</item>
-      <item><code>schema_cache</code> (object: provider_name → fetched_at_utc + schema_hash)</item>
-      <item><code>iac_files</code> (array of repo-relative paths)</item>
-      <item><code>findings</code> (array of objects)</item>
-      <item><code>verdict</code> (enum: clean, hallucination, deprecation, mixed)</item>
-    </list>
-    <reference path="templates/hallucination-report.json">Authoritative JSON Schema for the hallucination report.</reference>
+<text id="02-output-contract" title="AI IaC Hallucination Detector Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for ai-iac-hallucination-detector output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-iac-hallucination-detector.json",
+  "type": "object",
+  "required": [
+    "scanned_files",
+    "hallucinations",
+    "verdict"
+  ],
+  "properties": {
+    "scanned_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "hallucinations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hallucination"
+      }
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    }
+  },
+  "$defs": {
+    "hallucination": {
+      "type": "object",
+      "required": [
+        "category",
+        "file",
+        "line",
+        "fabricated_name",
+        "suggestion"
+      ],
+      "properties": {
+        "category": {
+          "enum": [
+            "resource-type",
+            "attribute-name",
+            "module-source",
+            "data-source",
+            "deprecated-resource"
+          ]
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fabricated_name": {
+          "type": "string"
+        },
+        "suggestion": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+    ]]></code>
   </section>
-
-  <section title="Finding kinds">
-    <list>
-      <item><code>hallucination_argument</code>: argument name is NOT in schema for the resource type</item>
-      <item><code>hallucination_resource</code>: resource type does NOT exist in schema (e.g. `aws_route53_zone_record`)</item>
-      <item><code>deprecation_argument</code>: argument IS in schema but marked deprecated; carries `replacement` field</item>
-      <item><code>type_mismatch</code>: argument exists but the value's type does not match schema (list vs object, string vs number)</item>
-      <item><code>required_missing</code>: schema marks an argument required; diff omits it</item>
-    </list>
-  </section>
-
-  <section title="Deprecation handling">
-    <list>
-      <item>Deprecation findings emit `replacement` field copied verbatim from the schema's deprecation_message.</item>
-      <item>Severity defaults to `advise` (vs `block` for hallucination_argument / hallucination_resource).</item>
-      <item>When the deprecation horizon is within 90 days (per provider release notes), severity upgrades to `block`.</item>
-    </list>
-  </section>
-
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "scanned_files": ["main.tf"],
+  "hallucinations": [
+    {"category": "resource-type", "file": "main.tf", "line": 12, "fabricated_name": "aws_dynamodb_globaltable", "suggestion": "Did you mean aws_dynamodb_global_table?"}
+  ],
+  "verdict": "fail"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "hallucinations": [
+    {"category": "typo"}
+  ]
+}
+    ]]></code>
+    <note>Missing `scanned_files` and `verdict`; `category` value `typo` not in enum; required fields missing from hallucination.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>verdict `clean` while findings array is non-empty.</description>
-      <reason>Self-contradictory; defeats the report.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Finding with `recommendation` referencing a resource type not in schema.</description>
-      <reason>r5 violation. Recommendations must be schema-validated.</reason>
-    </antipattern>
-    <antipattern>
-      <description>schema_cache.fetched_at_utc older than 24h.</description>
-      <reason>Stale schema; deprecation horizon may have shifted.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Detector runs without provider_versions populated.</description>
-      <reason>r2 violation. Validation against unpinned schema is meaningless.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>provider_versions covers every provider used in the diff.</item>
-      <item>schema_cache freshness within 24h.</item>
-      <item>Every finding includes a recommendation; recommendations re-validated.</item>
-      <item>verdict matches the findings array semantics (clean iff empty).</item>
-      <item>Deprecation findings carry `replacement` from schema, not LLM-generated alternative.</item>
+      <item>missing required fields</item>
+      <item>wildcard values where enum is required</item>
+      <item>values outside enum / pattern / numeric bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-ai-iac-hallucination-detector.py">Validator script</reference>
 </text>

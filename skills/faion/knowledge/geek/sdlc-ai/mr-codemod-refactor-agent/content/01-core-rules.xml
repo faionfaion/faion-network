@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mr-codemod-refactor-agent Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mr-codemod-refactor-agent. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Codemod-First Refactor Agent Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For any cross-cutting refactor touching ≥20 call-sites, the agent MUST first run an AST codemod (jscodeshift, ts-morph, libcst, semgrep, codemod.com / Hypermod) and stage its output as a separate commit. The LLM tail-pass MUST run only after the codemod commit and MUST be limited to files the codemod could not safely edit (template literals, Markdown, comments, fixtures). The PR MUST contain ONE logical refactor; multiple unrelated renames MUST be split into separate PRs.</statement>
-      <rationale source="v1-source">codemod.com, Martin Fowler's "Codemods: API Refactoring Tooling", and Vercel's AI SDK 5→6 migration explicitly converged on this split because the LLM-only path produced inconsistent renames at scale. The "one logical group" rule keeps the diff reviewable and the codemod re-runnable.</rationale>
+
+    <rule id="codemod-first" testable="true" depth="essential">
+      <statement>Cross-cutting refactors touching &gt; 20 call sites MUST be expressed as a codemod first; hand-edit is reserved for the residue.</statement>
+      <rationale source="Codemod research (Lebrija + Stripe + Meta)">Codemod is reviewable as one transform; hand-edits multiply review surface.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Cross-cutting refactor PRs MUST be produced by a three-role pipeline: (a) Architect agent emits a written migration plan listing files to touch and out-of-scope items; (b) Migration agent writes a re-runnable codemod and runs it; (c) Validator agent re-runs the codemod on the produced branch and asserts `git diff --quiet`. The Validator MUST run inside CI, not only locally.</statement>
-      <rationale source="v1-source">The idempotence assertion (`re-run produces no diff`) catches every failure mode: a missed call-site, a wrong AST matcher, a hand-edit that broke determinism. Augment Code's multi-file refactor study and OpenAI's sandboxed migration cookbook both adopt this pipeline.</rationale>
+    <rule id="ast-tool-required" testable="true" depth="essential">
+      <statement>Codemod MUST use an AST-aware tool (jscodeshift, ts-morph, ast-grep, comby, Roslyn refactor). Regex sed is forbidden.</statement>
+      <rationale source="Codemod tool comparison">Regex misses string literals, comments, and macro contexts AST handles.</rationale>
     </rule>
+    <rule id="tests-after-each-batch" testable="true" depth="essential">
+      <statement>Codemod runs in batches (or one go); tests MUST run after each batch and fail the run on regression.</statement>
+      <rationale source="Codemod safety practice">Behavioural verification protects against semantic codemod errors.</rationale>
+    </rule>
+    <rule id="two-agent-author-reviewer" testable="true" depth="essential">
+      <statement>Multi-agent setup splits roles: transform-author (opus) + reviewer (opus); transform-author cannot self-approve.</statement>
+      <rationale source="Multi-agent safety patterns">Single agent shortcuts review; separation enforces second-pair-of-eyes.</rationale>
+    </rule>
+    <rule id="pr-documents-transform" testable="true" depth="essential">
+      <statement>PR body MUST include the codemod source + before/after diff samples + count of sites touched.</statement>
+      <rationale source="PR-review research">Reviewers need the transform to reason about correctness, not just the diff.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If refactor &lt; 5 files OR no AST tool exists for the language OR refactor needs semantic judgement per site, STOP and hand-edit.</statement>
+      <rationale source="Methodology hygiene">Codemod overhead beats benefit on small / un-codemod-able refactors.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

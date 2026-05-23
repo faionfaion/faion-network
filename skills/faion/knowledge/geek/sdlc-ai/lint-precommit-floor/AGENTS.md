@@ -3,71 +3,97 @@ slug: lint-precommit-floor
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every repository with code MUST install a pre-commit framework that runs format, lint, secret-scan and type-check hooks before a commit is created — never afterward.
-content_id: "13e48fc58cfe4e28"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Every repo with code MUST install a pre-commit framework (pre-commit, lefthook, husky) running format + lint + secret-scan + type-check on staged files BEFORE the commit is created.
+content_id: "15b348a0deaf62da"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [lint, pre-commit, lefthook, husky, git-hooks]
 ---
 # Pre-Commit Hooks as the Non-Negotiable Merge Floor
 
 ## Summary
 
-**One-sentence:** Every repository with code MUST install a pre-commit framework that runs format, lint, secret-scan and type-check hooks before a commit is created — never afterward.
+**One-sentence:** Every repo with code MUST install a pre-commit framework (pre-commit, lefthook, husky) running format + lint + secret-scan + type-check on staged files BEFORE the commit is created.
 
-**One-paragraph:** Every repository with code MUST install a pre-commit framework that runs format, lint, secret-scan and type-check hooks before a commit is created — never afterward. The framework is pre-commit (Python, broadest plug-in ecosystem) for polyglot repositories, lefthook (Go, parallel) for monorepos with throughput pressure, or husky (Node) for pure JavaScript stacks. AI agents NEVER bypass with --no-verify; on any hook failure they read the output, fix the root cause, and re-stage. The list of installed hooks is documented in the repository AGENTS.md so the agent sees the contract before it writes the first line.
+**One-paragraph:** Pre-Commit Hooks as the Non-Negotiable Merge Floor produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Any code repo where humans + agents both commit.
+- Repo where CI catches lint after push, wasting cycles.
+- Team that has had a secret leak from forgotten `.env` commits.
+- Multi-language repo where each language needs its own format/lint.
 
 ## Applies If (ALL must hold)
 
-- Every repository that contains code, including throwaway prototypes that may grow.
-- Polyglot repositories where multiple language linters need consistent invocation (pre-commit or lefthook).
-- Monorepos with parallel hook execution requirements (lefthook).
-- Teams using AI coding agents — the hook list is the agent's compile-time contract.
+- Repo has code (not pure docs).
+- Team agrees on a single hook framework.
+- CI also runs the same checks as a safety net.
+- Languages in repo have working linters / formatters.
 
 ## Skip If (ANY kills it)
 
-- Single-file gist repositories with no merge workflow — overhead exceeds the benefit.
-- Read-only or archived repositories — no commits arrive that the hook could gate.
-- Documentation-only repositories with no executable artifacts — a markdownlint hook still helps but the framework choice is overkill if there is one file.
+- Repo is pure prose (use markdownlint via different path).
+- Team rejects local hooks (controversial — push back).
+- Hook framework not installable on the dev machines (Windows blockers).
+- Single-author throwaway — overhead > value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| .pre-commit-config.yaml or lefthook.yml | committed config | lead |
+| Local install script | make hooks / setup.sh | platform |
+| CI mirror | same checks run in CI | ci-eng |
+| Secret scanner | trufflehog / gitleaks integrated | security |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-staged-only-not-whole-tree]] | Hook discipline complement |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `framework_pick` | sonnet | pre-commit vs lefthook vs husky. |
+| `hook_set_draft` | sonnet | Per-language entries. |
+| `ci_mirror` | haiku | CI workflow that runs the same. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/.pre-commit-config.yaml` | Sample pre-commit config. |
+| `templates/lefthook.yml` | Sample Lefthook config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-precommit-floor.py` | Validate hook-config artefact. | pre-merge of hook config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[lint-staged-only-not-whole-tree]]
+- [[lint-ruff-and-biome-as-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

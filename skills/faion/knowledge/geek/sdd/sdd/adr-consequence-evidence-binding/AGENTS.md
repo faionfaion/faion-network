@@ -3,77 +3,94 @@ slug: adr-consequence-evidence-binding
 tier: geek
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for adr consequence evidence binding that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "1c260ffb07b68782"
-tags: [adr, playbook, sdd]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an ADR whose Consequences section is bound to measurable evidence (fitness function, KPI, test, log query) so the decision can be re-evaluated objectively.
+content_id: "2ee36d32d053df39"
+complexity: medium
+produces: decision-record
+est_tokens: 3400
+tags: ["sdd", "adr", "evidence", "consequences", "fitness"]
 ---
 # ADR Consequence Evidence Binding
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for adr consequence evidence binding that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Produces an ADR whose Consequences section is bound to measurable evidence (fitness function, KPI, test, log query) so the decision can be re-evaluated objectively.
 
-**One-paragraph:** End-to-end playbook for adr consequence evidence binding that walks an operator from trigger to closed outcome with named artefacts at each step. ADR Consequences are usually hand-waved. This methodology binds each Consequence to a specific file path, dependency version, or fitness-function ID and fails CI when the binding goes stale. Directly counters ADR decay.
+**One-paragraph:** ADR Consequence Evidence Binding produces a decision-record that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Архітектурне рішення з вимірюваним наслідком, не лише текстом.
+- Decision re-evaluation: дивимось на binding evidence, а не memoir.
+- ADR supersession detection: коли evidence показує, що рішення застаріло.
+- Audit: regulator бачить cause→effect→evidence.
+- Onboarding: junior читає ADR і одразу бачить, як його перевірити.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by adr consequence evidence binding end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Architectural decision has measurable consequences (latency, cost, error rate, complexity).
+- Team has CI / monitoring capable of producing the evidence signal.
+- Decision is expected to be re-evaluated at least once.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Consequence is purely qualitative and cannot be measured.
+- No CI / monitoring infrastructure exists to capture evidence.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Decision context | Markdown | architect |
+| Measurable target list | JSON / Markdown | architect + dev lead |
+| Evidence-source inventory | Markdown | DevOps |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdd/sdd/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[adr-supersession-detection]] | evidence drives supersession detection |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-adr-consequence-evidence-binding` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ADR-evidence-template.md` | MADR-shape ADR template with evidence-binding section |
+| `templates/evidence-anchor.schema.json` | JSON Schema for a single evidence-anchor entry |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-adr-consequence-evidence-binding.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdd/sdd/`
-- peer methodologies: see siblings under `geek/sdd/sdd/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[adr-supersession-detection]]
+- [[architecture-repo-scaffolding-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

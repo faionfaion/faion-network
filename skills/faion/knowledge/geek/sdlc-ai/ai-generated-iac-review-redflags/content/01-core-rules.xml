@@ -1,100 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI IaC Red-Flags Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules every red-flag review uses. Hard rules; reviewer MUST scan each flag class on every AI-IaC PR.</summary>
-
-  <section title="The five rules">
-
-    <rule id="r1-catalogue-immutability" testable="true" depth="essential">
-      <statement>The 8-pattern catalogue (`templates/redflag-catalogue.md`) is the authoritative list. The reviewer MUST scan every flag class on every AI-IaC PR. AI assistants are FORBIDDEN from editing the catalogue; CODEOWNERS protection enforces this.</statement>
-      <rationale source="Self-modifying-AI guard pattern">The catalogue's value depends on its stability. If the AI can edit the rules that catch it, the catalogue is theatre. CODEOWNERS protection is the structural defence.</rationale>
+<text id="01-core-rules" title="AI-Generated IaC Review Red-Flags Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules with rationale + source for ai-generated-iac-review-redflags. Includes terminal skip-this-methodology rule.</summary>
+  <section title="Rule set">
+    <rule id="no-hardcoded-creds" testable="true" depth="essential">
+      <statement>No resource block may contain literal access keys, secret keys, passwords, or bearer tokens; secrets MUST come from a vault data source (`vault_generic_secret`, `aws_secretsmanager_secret_version`).</statement>
+      <rationale source="AWS Well-Architected SEC03 + GitGuardian 2024">AWS Well-Architected SEC03 + GitGuardian 2024 — hardcoded creds in IaC are the most common breach vector.</rationale>
     </rule>
-
-    <rule id="r2-provider-schema-authoritative" testable="true" depth="essential">
-      <statement>Provider schema (Terraform Registry / Pulumi schema / Helm values JSON-schema) is the source of truth for argument names, types, and deprecation status. The reviewer / scanner MUST consult schema on every flagged argument. Decisions based on "the AI said" or memory are REJECTED.</statement>
-      <rationale source="Hallucination empirical floor">AI assistants emit deprecated arguments at high rate (`aws_s3_bucket.acl` post v4.0, `kubernetes_pod_v1.spec.dns_policy` legacy values). Schema is the only mechanism that catches deprecation without manual research.</rationale>
+    <rule id="no-open-ingress" testable="true" depth="essential">
+      <statement>Security groups / NSGs / firewall rules MUST NOT contain `0.0.0.0/0` or `::/0` on ports other than 80/443. Wider opens require an explicit `allow-public-ingress = true` tag with justification.</statement>
+      <rationale source="industry practice">CIS AWS Foundations 5.2 + Azure Security Baseline NS-1.</rationale>
     </rule>
-
-    <rule id="r3-regex-then-ast" testable="true" depth="essential">
-      <statement>The scan MUST run regex pre-pass for fast pattern detection (secret-looking strings, "TODO" placeholders, "REPLACE-ME"), then AST-level validation for argument-level hallucination. Regex-only is insufficient; AST-only is too slow. The two-stage pass is non-negotiable.</statement>
-      <rationale source="Static-analysis cost-vs-coverage curves">Regex catches secret-shaped strings and obvious placeholders in &lt; 1s. AST validation catches structural errors but takes 5-30s. Run regex first, gate AST on regex pass, and the reviewer waits seconds, not minutes.</rationale>
+    <rule id="no-public-bucket" testable="true" depth="essential">
+      <statement>S3 / GCS / Azure Blob buckets MUST set `public_access_block` (or equivalent) to deny all public access unless explicitly tagged `public-website = true`.</statement>
+      <rationale source="industry practice">AWS S3 Block Public Access default-on policy (2023) + CIS AWS 2.1.5.</rationale>
     </rule>
-
-    <rule id="r4-secret-scrub" testable="true" depth="essential">
-      <statement>Any string that matches a secret-detection regex (high-entropy, key-shaped prefixes like `AKIA`, `sk-`, `ghp_`, `xoxb-`) MUST flag `block` regardless of whether the value is real. The reviewer MUST verify the value is not a real secret AND scrub it from git history if it is.</statement>
-      <rationale source="Faion sibling rule `sec-secrets-defense-in-depth`; real-world AI-chat secret leaks">AI assistants paste real credentials from chat context into IaC files when the operator includes secrets in the prompt. The block-on-shape rule prevents the most common path from chat to committed secret.</rationale>
+    <rule id="state-lock-enabled" testable="true" depth="essential">
+      <statement>Terraform / OpenTofu backends MUST configure state locking (DynamoDB for S3, GCS native, Azure Blob native). Pulumi must use a backend with locking.</statement>
+      <rationale source="Terraform docs">Terraform docs — concurrent apply without lock is the textbook way to corrupt state.</rationale>
     </rule>
-
-    <rule id="r5-tag-policy-enforcement" testable="true" depth="essential">
-      <statement>Resources MUST carry tags as defined in `tag-policy.yaml` (typically: owner, environment, cost-center, data-classification). AI-generated resources frequently omit tags or use generic placeholders ("ai-generated", "default"). The scanner MUST flag every untagged or placeholder-tagged resource.</statement>
-      <rationale source="FinOps + governance practice">Untagged resources are uncountable. Cost attribution, security blast-radius, lifecycle management all depend on tag presence. AI assistants do not invent organisation-specific tags; the policy file is the source of truth.</rationale>
+    <rule id="mandatory-tags" testable="true" depth="essential">
+      <statement>Every taggable resource MUST carry `owner`, `cost-center`, `env`, `data-classification` tags as defined in the tag policy.</statement>
+      <rationale source="FinOps Foundation">FinOps Foundation — untagged resources cannot be charged back and become orphans.</rationale>
     </rule>
-
+    <rule id="no-wildcard-iam" testable="true" depth="essential">
+      <statement>IAM policies MUST NOT combine `Action: *` with `Resource: *`. Wildcards are allowed on one axis only with explicit justification comment.</statement>
+      <rationale source="industry practice">AWS IAM least-privilege guidance + Cloudsplaining defaults.</rationale>
+    </rule>
+    <rule id="encryption-at-rest" testable="true" depth="essential">
+      <statement>Storage resources (RDS, EBS, S3, GCS, Azure SQL) MUST set `encrypted = true` / equivalent; KMS key MUST be customer-managed for `data-classification = pii|phi|pci`.</statement>
+      <rationale source="industry practice">CIS Cloud Foundations + GDPR Art. 32.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the change has no `plan` diff or targets a personal sandbox, the methodology returns `skipped`.</statement>
+      <rationale source="industry practice">Avoids noise on no-op changes.</rationale>
+    </rule>
   </section>
-
-  <section title="The eight red flags (catalogue summary)">
-    <list>
-      <item><code>RF-01</code> hallucinated provider argument (schema says no such field)</item>
-      <item><code>RF-02</code> invented resource name (`aws_route53_zone_record` instead of `aws_route53_record`)</item>
-      <item><code>RF-03</code> drifted version constraint (required_providers unpinned, helm chart version range too wide)</item>
-      <item><code>RF-04</code> copied secret verbatim (high-entropy string, key-shaped prefix)</item>
-      <item><code>RF-05</code> for_each / count misuse (for_each over a list of unstable keys, count where for_each is correct)</item>
-      <item><code>RF-06</code> dangling output (output references a resource attribute that no longer exists)</item>
-      <item><code>RF-07</code> count-of-list shape mismatch (helm values list vs object, terraform list(object) vs object)</item>
-      <item><code>RF-08</code> missing or placeholder tags</item>
-    </list>
-    <reference path="templates/redflag-catalogue.md">The 8-pattern catalogue with concrete examples per flag.</reference>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="bad" title="RF-01 + RF-03 in one diff">
-      <code lang="hcl"><![CDATA[
-terraform {
-  required_providers {
-    aws = {}        # RF-03: no version constraint
-  }
-}
-
-resource "aws_s3_bucket" "logs" {
-  acl = "private"   # RF-01: aws_s3_bucket.acl deprecated in v4 provider
-}
-      ]]></code>
-      <note>RF-03 detected by regex (no version field). RF-01 detected by AST (schema lookup: `acl` removed; replaced by `aws_s3_bucket_acl` resource).</note>
-    </example>
-
-    <example type="good" title="Diff after red-flag repair">
-      <code lang="hcl"><![CDATA[
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.40"
-    }
-  }
-}
-
-resource "aws_s3_bucket" "logs" {
-  bucket = "acme-logs-${var.env}"
-  tags = {
-    owner             = "platform-team"
-    environment       = var.env
-    cost_center       = "platform"
-    data_classification = "internal"
-  }
-}
-
-resource "aws_s3_bucket_acl" "logs" {
-  bucket = aws_s3_bucket.logs.id
-  acl    = "private"
-}
-      ]]></code>
-      <note>RF-01, RF-03, RF-08 all satisfied. Schema-correct resource decomposition, version pinned, tags present.</note>
-    </example>
-
-  </section>
-
   <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
   </see-also>
 </text>

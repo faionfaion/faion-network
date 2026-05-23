@@ -3,71 +3,98 @@ slug: lint-megalinter-polyglot
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Polyglot repositories (three or more languages, e.
-content_id: "4c3a7beeccaceec4"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: For polyglot repos (≥3 languages), wire MegaLinter as one CI job that runs the right per-language linters with SARIF output instead of N hand-rolled jobs.
+content_id: "9ed9f393ac539279"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [lint, megalinter, ci, polyglot, sarif]
 ---
 # MegaLinter as the Polyglot Quality Umbrella in CI
 
 ## Summary
 
-**One-sentence:** Polyglot repositories (three or more languages, e.
+**One-sentence:** For polyglot repos (≥3 languages), wire MegaLinter as one CI job that runs the right per-language linters with SARIF output instead of N hand-rolled jobs.
 
-**One-paragraph:** Polyglot repositories (three or more languages, e.g., Python + TypeScript + Terraform + Markdown) MUST run MegaLinter in CI as a single GitHub Action or GitLab job. MegaLinter auto-detects the languages present, dispatches 100+ underlying linters in parallel via Python multiprocessing, and emits a unified SARIF report so the agent and the security UI both consume one feed. Pick a flavor (security, python, javascript, terraform, dotnet, cupcake) to keep the runner image lean. MegaLinter MUST NOT run as a pre-commit hook — its image is too heavy for the local commit lifecycle; reserve it for CI and let per-language tools (ruff, biome) cover the local hook floor.
+**One-paragraph:** MegaLinter as the Polyglot Quality Umbrella in CI produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Repo with ≥ 3 languages (Python + JS + Go + YAML + Docker etc).
+- CI maintenance burden: 6+ linter jobs that drift.
+- Need SARIF output for GitHub code-scanning.
+- Want a single place to declare per-language exclusions.
 
 ## Applies If (ALL must hold)
 
-- Polyglot repositories with three or more languages or stack zones (Python + TS + Terraform + Markdown is the canonical example).
-- Monorepos where each package may use different linters and a single CI job is simpler than per-language workflow shards.
-- Repositories that need uniform SARIF output for GitHub Advanced Security or GitLab UltimateSecurity.
-- Quarterly hygiene scans that want every linter in one report without per-tool maintenance.
+- Repo has ≥ 3 file types needing lint coverage.
+- CI can mount the MegaLinter Docker image.
+- Team accepts MegaLinter's curated linter set per language.
+- GitHub Advanced Security (or equivalent SARIF consumer) available.
 
 ## Skip If (ANY kills it)
 
-- Single-language repositories — ruff (Python), biome (JS/TS), or golangci-lint (Go) cover the same ground with sub-second startup; MegaLinter's image overhead dwarfs the value.
-- Local pre-commit hooks — MegaLinter's image is multi-gigabyte and adds tens of seconds of pull/start time, breaking the sub-second hook contract.
-- Throwaway prototype repos with one or two files of code — install ruff or biome and stop.
+- Single-language repo — direct linter is simpler.
+- Air-gapped CI — MegaLinter image pull blocked.
+- Custom linter pipeline already tuned and trusted.
+- Repo too small to justify the image-pull overhead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| .mega-linter.yml | committed MegaLinter config | platform |
+| CI job | GH Actions / GitLab CI / Azure step | ci-eng |
+| SARIF upload step | code-scanning / artifact upload | ci-eng |
+| Per-language exclusions | documented list | lang owners |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-precommit-floor]] | Local hooks are the per-language local floor |
+| [[lint-staged-only-not-whole-tree]] | Local discipline complements full-tree CI |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `config_draft` | sonnet | Pick which flavours / disable list. |
+| `ci_workflow_draft` | haiku | Wire MegaLinter step. |
+| `sarif_consumer_wire` | sonnet | Upload + dashboard hookup. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/.mega-linter.yml` | Committed MegaLinter config. |
+| `templates/megalinter-workflow.yml` | GH Actions job. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-megalinter-polyglot.py` | Validate the MegaLinter config artefact. | pre-merge of lint config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[lint-precommit-floor]]
+- [[lint-shellcheck-hadolint-iac-floor]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

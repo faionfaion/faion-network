@@ -1,22 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mr-error-tracker-draft-pr Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Error-Tracker to Draft-PR Pipeline Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/mr-error-tracker-draft-pr.json",
+  "type": "object",
+  "required": [
+    "tracker",
+    "thresholds",
+    "structured_signal_keys",
+    "draft_only",
+    "regression_test_required",
+    "codeowners_present"
+  ],
+  "properties": {
+    "tracker": {
+      "enum": [
+        "sentry",
+        "bugsink",
+        "rollbar",
+        "starsling"
+      ]
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "event_count_min",
+        "fixability_score_min"
+      ],
+      "properties": {
+        "event_count_min": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fixability_score_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "structured_signal_keys": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "stack_trace",
+          "breadcrumbs",
+          "distributed_trace",
+          "linked_repo",
+          "recent_diffs"
+        ]
+      }
+    },
+    "draft_only": {
+      "const": true
+    },
+    "regression_test_required": {
+      "const": true
+    },
+    "codeowners_present": {
+      "const": true
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tracker": "sentry",
+  "thresholds": {
+    "event_count_min": 50,
+    "fixability_score_min": 0.7
+  },
+  "structured_signal_keys": [
+    "stack_trace",
+    "breadcrumbs",
+    "distributed_trace",
+    "linked_repo",
+    "recent_diffs"
+  ],
+  "draft_only": true,
+  "regression_test_required": true,
+  "codeowners_present": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tracker": "homemade",
+  "thresholds": {
+    "event_count_min": 0
+  },
+  "draft_only": false,
+  "regression_test_required": false,
+  "structured_signal_keys": [],
+  "codeowners_present": false
+}
+]]></code>
+    <note>tracker not in enum; thresholds too low; draft_only + regression_test_required must be True; signal_keys &lt; 5.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">draft_only == false (agent marks ready or merges)</pattern>
+    <pattern id="f2">regression_test_required == false</pattern>
+    <pattern id="f3">structured_signal_keys missing any required key</pattern>
+  </section>
+
+  <reference path="scripts/validate-error-tracker-draft-pr.py">Validator script</reference>
 </text>

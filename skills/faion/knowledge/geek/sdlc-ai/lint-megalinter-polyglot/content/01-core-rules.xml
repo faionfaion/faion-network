@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lint-megalinter-polyglot Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lint-megalinter-polyglot. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="MegaLinter as the Polyglot Quality Umbrella in CI Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Polyglot repositories MUST configure MegaLinter as a CI job (oxsecurity/megalinter@v8 or pinned SHA) that runs on pull_request and push and uploads SARIF via github/codeql-action/upload-sarif. The same repository MUST NOT register MegaLinter inside .pre-commit-config.yaml, lefthook.yml, or .husky/pre-commit; pre-commit hooks MUST stay on the per-language native binaries (ruff, biome, hadolint, terraform fmt) so the local commit completes in under one second.</statement>
-      <rationale source="v1-source">MegaLinter ships as a multi-gigabyte container and takes tens of seconds to start; running it on every commit makes humans use --no-verify and trains agents to do the same. Native tools at the hook give the same coverage on the staged diff in milliseconds, while the CI MegaLinter run ratchets up the gate with rules that need cross-file context (markdownlint, link-check, vale, gitleaks history scan).</rationale>
+
+    <rule id="single-ci-job" testable="true" depth="essential">
+      <statement>Polyglot repo (≥ 3 languages) MUST run MegaLinter as ONE CI job, not N hand-rolled linter jobs.</statement>
+      <rationale source="MegaLinter docs">Per-language jobs drift; single MegaLinter ensures consistent versioning across languages.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Repositories MUST select a MegaLinter flavor that matches the languages actually present in git ls-files. The selection MUST follow: pure Python → python; pure JS/TS → javascript; IaC-heavy (Terraform, K8s, Dockerfile) → terraform; mixed JS+Py+docs → cupcake; security-only quarterly scan → security. Repositories MUST NOT use the unflavored default image unless three or more flavor families apply.</statement>
-      <rationale source="v1-source">The flavor changes pull time from minutes to seconds and runtime memory from gigabytes to megabytes. CI quotas, especially on GitHub free runners and on Hetzner self-hosted runners, are dominated by image pull; the flavor is the single biggest knob for keeping MegaLinter sustainable as a default gate.</rationale>
+    <rule id="config-committed" testable="true" depth="essential">
+      <statement>.mega-linter.yml MUST be committed with explicit enable list (or disable list) and per-language excludes.</statement>
+      <rationale source="MegaLinter configuration guide">Default config enables too many linters; explicit selection prevents noise.</rationale>
     </rule>
+    <rule id="sarif-output" testable="true" depth="essential">
+      <statement>MegaLinter MUST emit SARIF; CI uploads SARIF to GitHub code-scanning (or equivalent).</statement>
+      <rationale source="GitHub Advanced Security docs">SARIF feeds the security tab + lets findings persist across PRs.</rationale>
+    </rule>
+    <rule id="pinned-flavour-image" testable="true" depth="essential">
+      <statement>Workflow MUST pin a specific MegaLinter flavour image SHA (e.g. oxsecurity/megalinter@sha256:...).</statement>
+      <rationale source="Supply-chain practice">Floating tags change behaviour; pinned SHA is reproducible.</rationale>
+    </rule>
+    <rule id="complement-local-hooks" testable="true" depth="essential">
+      <statement>MegaLinter is the CI floor; local pre-commit hooks remain the developer floor (don&apos;t replace one with the other).</statement>
+      <rationale source="Lint architecture practice">Local hooks are fast feedback; CI is the merge gate. Replacing locals with image pull is too slow.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo is single-language OR CI cannot pull Docker images OR repo too small, STOP.</statement>
+      <rationale source="Methodology hygiene">MegaLinter&apos;s value is polyglot consolidation; outside that, cost &gt; value.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

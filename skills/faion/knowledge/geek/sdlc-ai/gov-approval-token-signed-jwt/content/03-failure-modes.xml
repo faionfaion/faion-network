@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gov-approval-token-signed-jwt Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gov-approval-token-signed-jwt as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Issuing a long-lived (24h+) token with `scope: "*"` to "make the on-call workflow easier".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The first leaked or socially harvested token grants the agent unlimited writes for a day; the entire identity boundary collapses to one bearer string.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>The agent's own service account both issues and consumes the approval token.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Self-approval erases the human-in-the-loop; an audit cannot distinguish autonomous action from approved action.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Approval Token as Signed JWT Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments of gov-approval-token-signed-jwt. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="hs256-symmetric-key" severity="high">
+      <symptom>Approval tokens signed with HS256; same key on issuer + verifier; key leak forges tokens.</symptom>
+      <root-cause source="industry practice">Author defaulted to HS256.</root-cause>
+      <fix>Use ES256/EdDSA; private key in HSM; verifier holds public key only.</fix>
+    </antipattern>
+    <antipattern id="wildcard-scope" severity="high">
+      <symptom>Token claims `scope: *`; one token can deploy any service.</symptom>
+      <root-cause source="industry practice">Scope catalog not enforced.</root-cause>
+      <fix>Reject wildcard claims; scope catalog allowlist.</fix>
+    </antipattern>
+    <antipattern id="replay-window-uncapped" severity="medium">
+      <symptom>Token TTL = 24h; agent replays the same token across 30 deploys.</symptom>
+      <root-cause source="industry practice">No `jti` tracking; long expiry.</root-cause>
+      <fix>Mandate `jti` + ≤15min expiry; verifier consumes `jti` on first use.</fix>
+    </antipattern>
   </section>
 </text>

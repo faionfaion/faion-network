@@ -3,77 +3,95 @@ slug: ai-cr-impact-suggestion
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for ai cr impact suggestion that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "cebc9470c9b43d25"
-tags: [ai, playbook, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an AI-drafted impact-analysis comment for each PR, listing affected modules, test coverage gaps, and risk hot-spots, gated by a named reviewer.
+content_id: "8dbe562384f864a2"
+complexity: medium
+produces: report
+est_tokens: 3800
+tags: ["ai", "code-review", "impact", "playbook", "sdlc-ai"]
 ---
-# AI Cr Impact Suggestion
+# AI Code-Review Impact Suggestion
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for ai cr impact suggestion that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Produces an AI-drafted impact-analysis comment for each PR, listing affected modules, test coverage gaps, and risk hot-spots, gated by a named reviewer.
 
-**One-paragraph:** End-to-end playbook for ai cr impact suggestion that walks an operator from trigger to closed outcome with named artefacts at each step. An AI methodology to scan a CR + the requirements/trace store and pre-compute likely impacted stories, tests, designs for BA review. High-leverage geek-tier offering.
+**One-paragraph:** AI Code-Review Impact Suggestion produces a report that fixes a recurring decision in the sdlc-ai domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Per-PR impact comment, не read-after-the-fact summary.
+- Test coverage gap: автоматично видно, що не покрите.
+- Risk hot-spots: high-churn files у diff.
+- Reviewer prep: дивиться impact перед reading diff.
+- Audit: видно why we considered PR risky / safe.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by ai cr impact suggestion end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Repo has accessible module + dependency graph.
+- PR coverage tooling exists (e.g. coverage.py / istanbul).
+- Reviewer workflow accepts AI-drafted comments.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Repo has no module graph or coverage tooling.
+- PR is trivial (config typo / docs only) — impact analysis is overhead.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| PR diff | git diff | VCS |
+| Module dependency graph | JSON / DOT | build system |
+| Coverage report | JSON / lcov | test suite |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[mr-graph-vs-diff-reviewer]] | impact suggestion uses graph reviewer signal |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/05-examples.xml` | supplemental | One worked example end-to-end | 400 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-cr-impact-suggestion` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/impact-comment.md` | Markdown comment skeleton with module list + coverage + hot-spot + AI flag |
+| `templates/impact.schema.json` | JSON Schema for the impact artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-cr-impact-suggestion.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: see siblings under `geek/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[mr-graph-vs-diff-reviewer]]
+- [[adr-ai-drafted-with-review]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

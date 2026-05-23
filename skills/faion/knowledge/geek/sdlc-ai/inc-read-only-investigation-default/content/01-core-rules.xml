@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="inc-read-only-investigation-default Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for inc-read-only-investigation-default. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Read-Only Investigation by Default Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules with rationale + source for inc-read-only-investigation-default. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The SRE agent's persistent ServiceAccount MUST have only the *-readonly role bound at boot. Mutation verbs (patch, delete, create, update) MUST live in a separate role that is unbound by default. The agent MUST NOT receive write credentials via static kubeconfig, long-lived secrets, or environment variables.</statement>
-      <rationale source="v1-source">If write credentials exist on the agent's host, prompt safety is irrelevant — any process compromise grants full privilege. A second binding controlled by a separate workflow is the only durable enforcement.</rationale>
+    <rule id="default-deny-writes" testable="true" depth="essential">
+      <statement>Agent RBAC default policy MUST be Deny on all write verbs; allowed writes MUST be explicitly enumerated.</statement>
+      <rationale source="AWS IAM least-privilege + Kubernetes RBAC docs">AWS IAM least-privilege + Kubernetes RBAC docs — default-allow is the precondition for every prod-incident-from-agent.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Trust escalation MUST require an explicit /agent escalate-trust &lt;incident_id&gt; invocation by the verified on-caller, MUST require fresh MFA proof issued within the last 60 seconds, MUST create a remediate RoleBinding with TTL of 60 minutes or less, and MUST auto-revoke on whichever fires first: incident-close webhook or TTL deadline. Escalations MUST NOT outlive their incident.</statement>
-      <rationale source="v1-source">The most common postmortem finding for agent-related incidents is "the elevation never expired". A self-revoking binding makes the leak structurally impossible; MFA binds the elevation to a specific human at a specific moment for the audit log.</rationale>
+    <rule id="read-only-tooling" testable="true" depth="essential">
+      <statement>Allowed read tooling: log search, dashboard fetch, code search, runbook fetch, alert inspection, PagerDuty status read. Anything not on the allowlist is denied.</statement>
+      <rationale source="industry practice">Treat tool allowlist as zero-trust; opt-in not opt-out.</rationale>
+    </rule>
+    <rule id="write-requires-token" testable="true" depth="essential">
+      <statement>Every write action (rollback, flag toggle, scale, restart, schema migrate) MUST present a signed approval token (`gov-approval-token-signed-jwt`) bound to that action class.</statement>
+      <rationale source="industry practice">Approval-token discipline; chain to the JWT approval methodology.</rationale>
+    </rule>
+    <rule id="action-class-bounded" testable="true" depth="essential">
+      <statement>Approval tokens MUST be bound to action classes (e.g. `rollback:payments-service`); a token for `rollback` cannot authorise `restart`.</statement>
+      <rationale source="Capability-based security">Capability-based security — over-scoped tokens are the root of agent escalation incidents.</rationale>
+    </rule>
+    <rule id="trust-ratchet-audited" testable="true" depth="essential">
+      <statement>First successful write of an action class MUST be recorded in the trust ratchet (action class, approver, agent id, evidence); subsequent writes reference the ratchet entry.</statement>
+      <rationale source="Trust escalation requires audit precedent">Trust escalation requires audit precedent — silent first-time writes erode the policy floor.</rationale>
+    </rule>
+    <rule id="read-only-cannot-be-disabled-mid-incident" testable="true" depth="essential">
+      <statement>Mid-incident escalation of agent permissions MUST require a separate human approval + audit entry; agent cannot be granted broad permissions in panic.</statement>
+      <rationale source="industry practice">Post-incident audits repeatedly find permissions granted in haste and never revoked.</rationale>
+    </rule>
+    <rule id="revert-to-default-after-incident" testable="true" depth="essential">
+      <statement>Post-incident, agent permissions MUST be reverted to default Deny set; permission grants are time-bounded.</statement>
+      <rationale source="industry practice">Tokens leak into the next incident otherwise.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If agent has no execution surface or team has no incident-response automation, return `skipped`.</statement>
+      <rationale source="industry practice">Avoids overhead on non-applicable contexts.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

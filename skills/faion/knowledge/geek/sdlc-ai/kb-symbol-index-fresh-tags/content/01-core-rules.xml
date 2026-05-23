@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="kb-symbol-index-fresh-tags Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for kb-symbol-index-fresh-tags. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Symbol Index as Always-Fresh LSP/ctags Artifact Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The repo MUST commit a symbol index (e.g. tags, .serena/symbols.db, or LSIF/SCIP file) at a known path declared in the project AGENTS.md. A pre-commit hook MUST regenerate the index from staged changes and re-stage it. CI MUST run scripts/check_tags_fresh.sh (or equivalent) — regenerate into a temp dir, diff against the committed copy, exit non-zero on any difference. Vendored, generated, and build-output dirs MUST be in the index exclude list.</statement>
-      <rationale source="v1-source">Agents that consult an out-of-date index produce confidently wrong answers (point to deleted files, miss new functions). The drift gate is the only mechanic that keeps the artifact trustworthy across long-lived repos and parallel branches. The exclude list keeps the index from being dominated by node_modules-class noise.</rationale>
+
+    <rule id="committed-index-file" testable="true" depth="essential">
+      <statement>Symbol index lives in the repo at a stable path (.symbol-index/ or tags) and is committed.</statement>
+      <rationale source="Sourcegraph index strategy notes">Committed index means every clone is immediately usable; agents avoid expensive on-first-use builds.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The project AGENTS.md MUST declare the symbol index path and required lookup order: agents query the index for any "where is &lt;Symbol&gt; defined", "find references to &lt;Symbol&gt;", or "what calls &lt;Symbol&gt;" question; agents fall back to grep ONLY for non-symbol literals (strings, regex patterns, comments). Coding-agent system prompts (Claude Code skill, Cursor rule, Codex AGENTS.md) MUST embed this protocol verbatim. PR templates MUST include a checkbox: "Symbol-index queries used where applicable".</statement>
-      <rationale source="v1-source">Forcing the index to be the first lookup cuts agent context cost on real refactors by 5-20x (Cognition Devin and Cursor team published numbers in 2025-2026). The grep fallback for non-symbol literals stops the rule from being absolute and unworkable. Embedding the protocol in AGENTS.md and the PR template gates both runtime behaviour and review behaviour with the same source of truth.</rationale>
+    <rule id="refresh-on-precommit" testable="true" depth="essential">
+      <statement>Pre-commit hook regenerates the index on changed files; full rebuild only on scheduled CI.</statement>
+      <rationale source="Pre-commit hook practice">Incremental refresh keeps the index fresh on every commit without slowing the developer.</rationale>
     </rule>
+    <rule id="ci-gate-on-stale" testable="true" depth="essential">
+      <statement>CI fails the build if the committed index does not match a fresh regeneration.</statement>
+      <rationale source="CI hygiene">Without the gate the committed index drifts and the agent reads stale data.</rationale>
+    </rule>
+    <rule id="lsp-or-ctags-only" testable="true" depth="essential">
+      <statement>Use an LSP-based tool (Serena, SourceGraph SCIP) OR universal-ctags. Hand-rolled grep-indexers are forbidden.</statement>
+      <rationale source="Static analysis tool comparisons">Hand-rolled tools miss inheritance, generics, macros; LSP/ctags handle them.</rationale>
+    </rule>
+    <rule id="agent-query-shape" testable="true" depth="essential">
+      <statement>Agent queries the index via Bash invocation returning JSON (symbol → file:line, kind, refs), never via Read of binary blobs.</statement>
+      <rationale source="Agent tool integration patterns">JSON output is parseable; binary indexes are opaque to LLMs.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo &lt; 5 KLOC OR LSP/ctags unavailable for the language OR full rebuild &gt; 60s and incremental broken, STOP and use plain grep.</statement>
+      <rationale source="Methodology hygiene">On small or unsupported repos the index costs more than it returns.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

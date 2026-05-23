@@ -1,39 +1,36 @@
-# Runbook: <AlertName>
+<!-- purpose: runbook markdown skeleton with tagged steps -->
+<!-- consumes: runbook parser -->
+<!-- produces: parsed step list + execution -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens -->
 
-> service: <service-name>
-> owner: <team-handle>
-> severity_default: SEV2
+# Runbook: <name>
 
-## Symptoms
+Owner: <team-handle>  ·  Last drilled: <YYYY-MM-DD>  ·  Severity scope: SEV2+
 
-- What firing alerts look like (alert names, sample message text).
-- Customer-visible behavior (one bullet per affected surface).
+## Preconditions
+- Service: <name>
+- On-call ack received
 
-## Diagnose
+## Steps
 
-<!-- All Diagnose steps are read-only and always agent-runnable. -->
+### `[read]` id=check-replica-lag
+```bash
+psql -c "select client_addr, state, sync_state, replay_lag from pg_stat_replication"
+```
 
-- Check pod health: `kubectl top pods -n <ns>`
-- Check current connections: `prom-query 'pg_stat_activity_count{db="<svc>"}'`
-- Tail recent logs: `kubectl logs -n <ns> deploy/<svc> --tail=200`
-- Recent deploys: `gh run list --workflow=deploy --limit=5`
+### `[approval-required]` id=promote-replica
+```bash
+patronictl failover --candidate <replica>
+```
 
-## Remediate
+### `[verify]` id=verify-traffic
+```bash
+curl -fsS https://api/healthz
+```
+assertion: `status==200`
 
-<!--
-Each step MUST end with one of:
-  <!-- agent:auto -->         agent runs unattended
-  <!-- agent:approval -->     agent waits for signed approval
-A step without a tag is invalid and the agent will refuse to start.
--->
-
-- Scale read replicas: `kubectl scale --replicas=+1 sts/<svc>-replica` <!-- agent:auto -->
-- Clear stale connections: `psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state='idle' AND state_change &lt; now() - interval '10m'"` <!-- agent:auto -->
-- Restart leader pod: `kubectl rollout restart sts/<svc>-primary` <!-- agent:approval -->
-- Failover primary: `patroni failover --candidate <svc>-replica-1` <!-- agent:approval -->
-
-## Escalate
-
-- Page <team-handle> if Remediate did not lower the alert within 15 minutes.
-- File a SEV1 if customer-impacting and revenue is affected.
-- Link the postmortem template: `runbooks/_postmortem.md`.
+### `[read]` id=collect-evidence
+```bash
+kubectl logs -l app=payments --since=10m > /tmp/evidence.log
+```

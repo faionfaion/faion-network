@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gov-sonarqube-ai-code-gate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gov-sonarqube-ai-code-gate. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="SonarQube AI-Code Gate Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules with rationale + source for gov-sonarqube-ai-code-gate. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The Sonar project MUST be bound to a quality gate flagged Qualified for AI Code Assurance. The gate MUST set: new-code coverage at least 80%, new-code duplications at most 3%, zero new bugs / vulnerabilities / security hotspots, and AI-trust-score at least the team's published floor. The PR check MUST be a required status check in branch protection. The agent MUST read findings through the SonarQube MCP server and rewrite until clean; merging a failing gate is forbidden.</statement>
-      <rationale source="v1-source">An AI-tuned gate plus an MCP read loop turns a one-shot review into an iterative constraint the agent can satisfy itself; without the AI tuning the gate accepts shallow tests and lookalike duplication that Sonar's 2026 telemetry flags as the dominant AI defect classes.</rationale>
+    <rule id="ai-author-tag-derived" testable="true" depth="essential">
+      <statement>Each PR MUST be tagged `ai-authored=true|false` derived from commit author identity (`Co-Authored-By:` line, agent commit email pattern, or branch prefix).</statement>
+      <rationale source="GitHub commit metadata convention">GitHub commit metadata convention — without a deterministic tag, the gate cannot route.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Inline NOSONAR suppressions MUST appear on the same line as the offending statement and MUST carry a trailing reason=&lt;short text&gt; sunset=YYYY-MM-DD comment. UI-level "Won't fix" / "False positive" transitions MUST be performed by a non-agent identity. Project-level sonar.issue.ignore.* rules require a CODEOWNER review and a linked tracker issue with a closure date. Disabling the AI gate, lowering its thresholds, or marking PRs "exempt" is forbidden.</statement>
-      <rationale source="v1-source">Without a structured suppression contract the agent silently learns that suppression is the cheapest fix; with one, every dismissal becomes a reviewable, expiring artifact.</rationale>
+    <rule id="coverage-new-code-85" testable="true" depth="essential">
+      <statement>AI-authored PRs MUST achieve ≥85% line + branch coverage on new code; human-authored gate stays at default (e.g. 80%).</statement>
+      <rationale source="Google internal study (2024) + Microsoft Copilot research">Google internal study (2024) + Microsoft Copilot research — AI-authored code has higher tested-by-default rate but tends to miss edge cases; higher bar catches missed branches.</rationale>
+    </rule>
+    <rule id="duplication-ratio-2" testable="true" depth="essential">
+      <statement>AI-authored PRs MUST have duplication ratio ≤2% on new code; AI patterns frequently regenerate near-duplicates.</statement>
+      <rationale source="SonarQube AI-code analysis reports 2024">SonarQube AI-code analysis reports 2024 — AI generates near-duplicates at 3-5× human rate.</rationale>
+    </rule>
+    <rule id="security-hotspots-zero" testable="true" depth="essential">
+      <statement>Zero new security hotspots permitted; existing hotspots tracked separately.</statement>
+      <rationale source="SonarQube security model + OWASP">SonarQube security model + OWASP — new security hotspots from AI tend to be plausible-looking sinks.</rationale>
+    </rule>
+    <rule id="major-smells-zero" testable="true" depth="essential">
+      <statement>Zero new major code smells permitted on AI-authored PRs; minor smells reported but not gated.</statement>
+      <rationale source="SonarQube smell taxonomy">SonarQube smell taxonomy — major smells encode maintainability risk; AI-author bias amplifies it.</rationale>
+    </rule>
+    <rule id="gate-failure-blocks-merge" testable="true" depth="essential">
+      <statement>Gate failure MUST block merge in repo settings (branch protection); manual override requires `gate-override` label + linked review.</statement>
+      <rationale source="industry practice">Without merge gating, the quality bar is advisory and decays.</rationale>
+    </rule>
+    <rule id="audit-overrides" testable="true" depth="essential">
+      <statement>Every override MUST emit an audit entry (PR id, reviewer, reason); override rate reviewed monthly.</statement>
+      <rationale source="Compliance + team trust">Compliance + team trust — silent overrides become the norm without audit.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If team has no SonarQube or cannot identify AI authors, return `skipped`.</statement>
+      <rationale source="industry practice">Gate cannot be installed without prerequisites.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

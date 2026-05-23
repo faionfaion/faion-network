@@ -1,44 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Internal RFC Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Internal RFC Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Internal RFC Template Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. The validator script enforces required keys, evidence-link presence, and slug match. Forbidden patterns: missing evidence array, slug mismatch, free-form version strings.</summary>
 
-  <output-contract>
-    <required>
-      <field name="rfc_id" type="string" required="true">RFC-NNNN sequential</field>
-      <field name="status" type="string" required="true">Draft|Discussion|Accepted|Rejected|Superseded</field>
-      <field name="sections" type="object" required="true">{motivation, proposal, alternatives, open_questions}</field>
-      <field name="comment_window" type="object" required="true">{opened_at, closes_at, decision_date}</field>
-      <field name="superseded_by" type="string" required="true">RFC-NNNN if applicable</field>
-      <field name="decider" type="string" required="true">named decider or committee</field>
-      <field name="owner" type="string" required="true">RFC author</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">sections.length &gt; 7</pattern>
-      <pattern id="f2">status missing OR not in the 5 canonical values</pattern>
-      <pattern id="f3">comment_window &lt; 7 days</pattern>
-      <pattern id="f4">rejected RFC deleted instead of archived</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/internal-rfc-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>rfc_id populated with a typed value</item>
-      <item>status populated with a typed value</item>
-      <item>sections populated with a typed value</item>
-      <item>comment_window populated with a typed value</item>
-      <item>superseded_by populated with a typed value</item>
-      <item>decider populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/internal-rfc-template.json",
+  "title": "Internal RFC Template",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "owner",
+    "produced_at",
+    "evidence",
+    "body"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "internal-rfc-template"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri-reference"
+      },
+      "minItems": 1
+    },
+    "body": {
+      "type": "object"
+    },
+    "ai_drafted": {
+      "type": "boolean"
+    },
+    "reviewer": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "internal-rfc-template",
+  "version": "1.0.0",
+  "owner": "tech-lead@example.com",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "evidence": [
+    "https://example.com/adr/0007",
+    "./docs/decision-log.md#2026-05-22"
+  ],
+  "body": {
+    "summary": "real content here"
+  },
+  "ai_drafted": false,
+  "reviewer": "tech-lead@example.com"
+}
+]]></code>
+    <note>Required fields present, slug matches, evidence non-empty, version is semver.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "v1",
+  "evidence": []
+}
+]]></code>
+    <note>Slug mismatched, version not semver, evidence empty, body + owner + produced_at missing. Forbidden patterns: missing required keys, evidence=[], non-semver version, slug != expected.</note>
+  </example>
+
+  <reference path="scripts/validate-internal-rfc-template.py">Validator script (stdlib only, supports --self-test).</reference>
 </text>

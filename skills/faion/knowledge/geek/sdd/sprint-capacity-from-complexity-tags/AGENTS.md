@@ -3,57 +3,94 @@ slug: sprint-capacity-from-complexity-tags
 tier: geek
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-summary: Time-estimate-free sprint capacity model that allocates a bi-weekly sprint slot budget from per-task complexity tags (XS/S/M/L/XL) and token-cost estimates, calibrated by a rolling completion ratio.
-content_id: "a6ddc08c59e21743"
-tags: [sdd, sprint-planning, capacity, complexity-tags, no-time-estimate, p6-product-dev-team]
+summary: Produces a time-estimate-free sprint capacity model that allocates a bi-weekly slot budget from per-task complexity tags (XS/S/M/L/XL), calibrated by rolling completion ratio.
+content_id: "edd800d51e9f16c7"
+complexity: medium
+produces: config
+est_tokens: 3400
+tags: ["sdd", "sprint-planning", "capacity", "complexity-tags", "no-time-estimate"]
 ---
 # Sprint Capacity From Complexity Tags
 
 ## Summary
 
-**One-sentence:** A sprint capacity model that takes per-task complexity tags (XS/S/M/L/XL) and token estimates, applies a rolling completion factor per developer, and emits a sprint slot budget — no hours, no story points, no time estimates.
+**One-sentence:** Produces a time-estimate-free sprint capacity model that allocates a bi-weekly slot budget from per-task complexity tags (XS/S/M/L/XL), calibrated by rolling completion ratio.
 
-**One-paragraph:** Faion bans time estimates in SDD work, which kills the usual sprint capacity math (velocity in story points / hours per developer). This methodology replaces it with a complexity-tag accounting scheme: every task in `tasks/todo/` carries a `complexity: XS|S|M|L|XL` tag and a `est_tokens` field. Each tag maps to a fixed slot weight (XS=1, S=2, M=3, L=5, XL=8). Per-developer capacity is computed from the prior 3 sprints' completion ratio (slots completed / slots committed) — a calibration constant, not a forecast. The output is a sprint commitment in slots, not hours. Sponsors and PMs get predictability without anyone lying about durations.
+**One-paragraph:** Sprint Capacity From Complexity Tags produces a config that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Avoid time estimates — використовуємо complexity tags замість годин.
+- Bi-weekly sprint slot budget: XS=1, S=2, M=4, L=8, XL=16 slots.
+- Rolling calibration: коригуємо вагу на основі останніх 3 спринтів.
+- Spend-cap: коли capacity вичерпано, нові tasks автоматично blocked.
+- Async planning: команда не торгується годинами, лише tag value.
 
 ## Applies If (ALL must hold)
 
-- Team uses SDD with `tasks/todo/TASK_*.md` files containing `complexity` and `est_tokens` frontmatter.
-- Sprint cadence is fixed (typically bi-weekly).
-- Team has at least 3 completed sprints of historical data per developer (or 1 sprint with explicit cold-start factor).
-- Team has agreed to ban time estimates per the faion-network constitution.
+- Team rejects time estimates as unreliable.
+- Tasks carry complexity tags (XS/S/M/L/XL) or can be tagged.
+- Team has ≥3 completed sprints to calibrate weights.
 
 ## Skip If (ANY kills it)
 
-- Team still uses hours or story-point velocity — adopt that workflow's playbook instead, do not run both.
-- No SDD task files exist; tasks live only in Jira/Linear without `complexity` tags.
-- Solo developer with no team coordination need — use `tiny-bets-quarterly-cadence` instead.
-- Fewer than 3 sprints of history AND team unwilling to set a cold-start factor — capacity is not predictable enough.
+- Team still uses time estimates and prefers them.
+- Fewer than 3 sprints of history — calibration impossible.
 
 ## Prerequisites
 
-- `tasks/todo/TASK_*.md` files for the candidate sprint, each with `complexity` and `est_tokens` frontmatter.
-- Prior 3 sprints' completion log (slots committed vs slots completed per developer).
-- Per-developer slot budget anchor (default: 10 slots per bi-weekly sprint at 100% completion factor).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tagged backlog | JSON / tracker export | tracker |
+| Sprint history | JSON | tracker |
+| Team size + sprint length | YAML | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdd/sdd/` | SDD lifecycle and task frontmatter conventions. |
-| `geek/sdd/definition-of-done-multi-role` | "Done" semantics that close out a slot. |
+| [[pm-tech-lead-grooming-agenda]] | grooming consumes the capacity model |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Five rules for tag-to-slot mapping, rolling completion factor, and sprint commitment ceiling. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-sprint-capacity-from-complexity-tags` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/capacity-model.yml` | YAML capacity model: tag→slot weights + team size + sprint length |
+| `templates/capacity.schema.json` | JSON Schema for the capacity model |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-sprint-capacity-from-complexity-tags.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdd/`
-- peer: `definition-of-done-multi-role`, `pm-tech-lead-grooming-agenda`, `tech-debt-slot-quota-policy`
-- external: faion-network constitution — "No Time Estimates" section
+- [[pm-tech-lead-grooming-agenda]]
+- [[tech-debt-slot-quota-policy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

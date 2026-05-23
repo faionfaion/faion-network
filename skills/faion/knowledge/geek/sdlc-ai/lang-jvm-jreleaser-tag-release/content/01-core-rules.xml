@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lang-jvm-jreleaser-tag-release Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lang-jvm-jreleaser-tag-release. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="JVM One-Tag Release via JReleaser Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every JVM library or CLI release MUST be triggered by a git tag matching v[0-9]+.[0-9]+.[0-9]+(-rc[0-9]+)? and execute exactly one CI job invoking ./mvnw -DskipTests -Prelease deploy &amp;&amp; jreleaser full-release (or the Gradle equivalent). Manual mvn deploy, manual GitHub Release creation, and manual CHANGELOG.md edits in the release commit are forbidden. AI agents may bump the version in source files, but the publish step must be the workflow.</statement>
-      <rationale source="v1-source">Tag-as-trigger gives a single, auditable provenance line ("commit X tagged v1.4.0 produced artifacts Y") and removes every step a human (or agent) might forget. Per JReleaser docs and JEP-style "one source of truth" guidance.</rationale>
+
+    <rule id="single-tag-trigger" testable="true" depth="essential">
+      <statement>A push of a SemVer tag (vMAJOR.MINOR.PATCH) MUST be the sole release trigger; ad-hoc local `mvn deploy` is forbidden.</statement>
+      <rationale source="JReleaser docs + Maven Central guidelines">One trigger → reproducible artefacts. Local deploys produce unsigned / unauditable builds.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>jreleaser.yml MUST configure deploy.maven.mavenCentral.sonatype with url: https://central.sonatype.com/api/v1/publisher and applyMavenCentralRules: true. Signing MUST be enabled (signing.active: ALWAYS, signing.armored: true, with GPG key + passphrase in env vars / OIDC, never in the file). Agents are forbidden from setting signing.active: NEVER to "fix" a CI failure.</statement>
-      <rationale source="v1-source">OSSRH-targeted configs deploy nowhere in 2026; Central Portal rules (POM completeness, sources/javadoc jars, signed checksums) are stricter than legacy OSSRH and JReleaser bakes them in.</rationale>
+    <rule id="jreleaser-yml-committed" testable="true" depth="essential">
+      <statement>jreleaser.yml MUST be committed with distribution / signing / changelog config; secrets via env, never in YAML.</statement>
+      <rationale source="JReleaser secret-management docs">Committed config makes the release reproducible; secrets in YAML leak to source.</rationale>
     </rule>
+    <rule id="conventional-commits-required" testable="true" depth="essential">
+      <statement>Changelog generation depends on Conventional Commits; repo MUST enforce them (commitlint / pre-commit).</statement>
+      <rationale source="Conventional Commits spec">Without conventional commits, JReleaser changelog is noise.</rationale>
+    </rule>
+    <rule id="gpg-signing-mandatory" testable="true" depth="essential">
+      <statement>All published artefacts MUST be GPG-signed; signing key in CI secret store.</statement>
+      <rationale source="Maven Central requirements">Maven Central rejects unsigned artefacts; downstream consumers expect signatures.</rationale>
+    </rule>
+    <rule id="github-release-tied" testable="true" depth="essential">
+      <statement>JReleaser MUST create the GitHub release with changelog + artefact uploads in the same run as the Maven Central staging.</statement>
+      <rationale source="Release engineering practice">Two sources of release truth diverge; one orchestrator avoids it.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo doesn&apos;t publish externally OR team won&apos;t adopt conventional commits OR JVM is just one slice of a polyglot release, STOP.</statement>
+      <rationale source="Methodology hygiene">JReleaser&apos;s value is JVM + central registry; outside that, cost &gt; value.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

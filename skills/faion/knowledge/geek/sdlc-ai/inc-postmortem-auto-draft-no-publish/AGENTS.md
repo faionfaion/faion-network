@@ -3,71 +3,95 @@ slug: inc-postmortem-auto-draft-no-publish
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When an incident is resolved, an LLM agent (Rootly, incident.
-content_id: "0d4ad416bdac868c"
-tags: [postmortem, incident-response, auto-draft, blameless, hypothesis-marking]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: AI agent assembles a postmortem first draft (timeline, contributing factors, action item placeholders) within 2h of incident close; humans review and only humans publish.
+content_id: "f64a38309f06d564"
+complexity: medium
+produces: report
+est_tokens: 4400
+tags: [incident, postmortem, ai-drafting, human-review, sdlc-ai]
 ---
-# Postmortem Auto-Draft, Never Auto-Publish
+# Auto-Draft Postmortem, No Auto-Publish
 
 ## Summary
 
-**One-sentence:** When an incident is resolved, an LLM agent (Rootly, incident.
+**One-sentence:** AI agent assembles a postmortem first draft (timeline, contributing factors, action item placeholders) within 2h of incident close; humans review and only humans publish.
 
-**One-paragraph:** When an incident is resolved, an LLM agent (Rootly, incident.io, FireHydrant pattern) drafts the postmortem from structured signals — Slack channel transcript, alert + deploy timeline, ChatOps /incident actionitem calls, linked PRs — into a fixed template (Summary / Timeline / Impact / Root Cause Hypothesis / Contributing Factors / Action Items) with tone=blameless. The draft lands as a non-published document assigned to the incident commander; humans edit, accept the root-cause framing, and publish. The agent must never auto-publish, never invent facts beyond the structured signal set, and must mark every speculative claim (hypothesis).
+**One-paragraph:** AI agents are excellent at synthesising incident-channel transcripts, alerts, dashboards, and rollback PRs into a postmortem first draft — and terrible at deciding what's politically safe to publish. This methodology lets the agent assemble the draft within 2 hours of incident close, mark every claim with its evidence source, surface contributing factors as candidates, and STOP. Humans review, edit, and publish. Output is a draft postmortem with a hard `published=false` flag until a named human signs off.
+
+**Ефективно для:**
+
+- Team runs incident response with structured channels (PagerDuty + Slack + dashboards + rollback PRs).
+- Postmortems are required for SEV2+ incidents and the writing burden is a blocker to publication.
+- There is appetite for AI assistance with human-in-the-loop control.
 
 ## Applies If (ALL must hold)
 
-- Teams that currently skip postmortems because writing them is painful.
-- Incident-management tools with an autodraft API (Rootly, incident.io, FireHydrant, PagerDuty) or a custom pipeline over Slack + alert + deploy data.
-- Engineering cultures that have already adopted blameless postmortem norms.
-- Regulated environments where a fast, accurate first-draft helps meet 72-hour reporting windows (EU NIS2, SOC2 incident reporting).
+- Team runs incident response with structured channels (PagerDuty + Slack + dashboards + rollback PRs).
+- Postmortems are required for SEV2+ incidents and the writing burden is a blocker to publication.
+- There is appetite for AI assistance with human-in-the-loop control.
 
 ## Skip If (ANY kills it)
 
-- Highly regulated incidents (legal, safety, financial) where every sentence must be authored by a human from scratch.
-- Tiny teams (5 or fewer engineers) where the human writes faster than they can review an LLM draft.
-- Teams without a structured timeline source (no Slack channel per incident, no alerts, no deploy log) — the agent will hallucinate without grounding.
+- Incident lacks structured artifacts (no on-call log, no chat archive) — agent has nothing to synthesise.
+- Team has no postmortem culture / no SEV definitions — install the culture first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Incident channel archive | json | Slack export / Teams archive |
+| PagerDuty timeline | json | PD incident API |
+| Dashboards URLs | yaml | Service catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-inc-postmortem-auto-draft-no-publish` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/postmortem-draft.md` | Draft skeleton with placeholders + flags |
+| `templates/draft-metadata.json` | JSON metadata sibling to draft |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-inc-postmortem-auto-draft-no-publish.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

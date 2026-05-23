@@ -3,77 +3,95 @@ slug: adr-supersession-detection
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Detection protocol for adr supersession detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships.
-content_id: "eef48e88715b1f95"
-tags: [adr, detection, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a report of ADRs likely superseded by newer decisions, by comparing evidence anchors and decision context across the ADR corpus.
+content_id: "166ef13150d6343c"
+complexity: medium
+produces: report
+est_tokens: 3800
+tags: ["adr", "supersession", "detection", "sdlc-ai", "audit"]
 ---
 # ADR Supersession Detection
 
 ## Summary
 
-**One-sentence:** Detection protocol for adr supersession detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships.
+**One-sentence:** Produces a report of ADRs likely superseded by newer decisions, by comparing evidence anchors and decision context across the ADR corpus.
 
-**One-paragraph:** Detection protocol for adr supersession detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships. When a new ADR contradicts an Accepted one, faion CLI should detect the conflict and propose a supersession PR. Today ADR collections rot because supersession is manual.
+**One-paragraph:** ADR Supersession Detection produces a report that fixes a recurring decision in the sdlc-ai domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Quarterly ADR hygiene: знайти, що застаріло.
+- Onboarding: junior не читає obsolete ADR.
+- Audit prep: показати regulator clean ADR set.
+- Pre-RFC check: можливо існуючий ADR покриває.
+- Decision graph integrity: superseded → linked.
 
 ## Applies If (ALL must hold)
 
-- You instrument or audit for the specific failure mode addressed by adr supersession detection.
-- Signals are observable in code, logs, or artefacts you control.
-- Each detection has a remediation path — detection without repair is theater.
-- False-positive rate budget is set before deploying the detector.
+- ADR corpus has ≥10 entries.
+- ADRs follow a parseable template (MADR / Nygard).
+- Quarterly review cadence exists.
 
 ## Skip If (ANY kills it)
 
-- Detectors with no remediation path — alarm fatigue without action is worse than silence.
-- Hypothetical failure modes never observed in production data.
-- Costs of false positive > cost of missed failure (e.g., halting prod on flaky signal).
+- ADR corpus < 10 entries — manual review faster.
+- ADRs are free-form prose and cannot be parsed.
 
 ## Prerequisites
 
-- Signal source instrumented (log line, metric, lint rule, scanner).
-- Channel for alerts agreed (Slack, PagerDuty, dashboard).
-- Remediation playbook or runbook ready for each detector firing.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ADR directory | Markdown set | architect |
+| Evidence anchor inventory | JSON | faion-network |
+| Detection thresholds | YAML | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[adr-consequence-evidence-binding]] | supersession compares evidence anchors across ADRs |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/05-examples.xml` | supplemental | One worked example end-to-end | 400 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `signal_capture` | haiku | Pattern matcher, no judgment |
-| `severity_assignment` | sonnet | Anchored severity per detector hit |
-| `policy_synthesis` | opus | When detectors accumulate, propose root-cause fix |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-adr-supersession-detection` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/supersession-report.md` | Markdown report listing candidate pairs with overlap % |
+| `templates/supersession.schema.json` | JSON Schema for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-adr-supersession-detection.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: see siblings under `geek/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[adr-consequence-evidence-binding]]
+- [[adr-ai-drafted-with-review]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

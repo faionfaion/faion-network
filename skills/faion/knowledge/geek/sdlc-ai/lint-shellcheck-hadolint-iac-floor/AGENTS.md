@@ -3,71 +3,98 @@ slug: lint-shellcheck-hadolint-iac-floor
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every repository with shell scripts, Dockerfiles, Compose files, GitHub Actions workflows, Kubernetes manifests, Terraform, or YAML configuration MUST run a per-format infrastructure linter at the same hook tier as code linters.
-content_id: "8b27d28f7af23a58"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Every repo with shell / Dockerfile / Compose / GH Actions / Kubernetes / Terraform / YAML MUST run a per-format IaC linter at the same hook tier as code linters — shellcheck, hadolint, yamllint, actionlint, tflint.
+content_id: "ae357ecc943a92a0"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [shellcheck, hadolint, iac, linting, infrastructure]
 ---
 # Infrastructure-as-Code Lint Floor (shellcheck, hadolint, yamllint, actionlint, tflint)
 
 ## Summary
 
-**One-sentence:** Every repository with shell scripts, Dockerfiles, Compose files, GitHub Actions workflows, Kubernetes manifests, Terraform, or YAML configuration MUST run a per-format infrastructure linter at the same hook tier as code linters.
+**One-sentence:** Every repo with shell / Dockerfile / Compose / GH Actions / Kubernetes / Terraform / YAML MUST run a per-format IaC linter at the same hook tier as code linters — shellcheck, hadolint, yamllint, actionlint, tflint.
 
-**One-paragraph:** Every repository with shell scripts, Dockerfiles, Compose files, GitHub Actions workflows, Kubernetes manifests, Terraform, or YAML configuration MUST run a per-format infrastructure linter at the same hook tier as code linters. The minimum set is shellcheck for *.sh and bash-shebanged files, hadolint for any Dockerfile*, yamllint for .yaml/.yml, actionlint for .github/workflows/, and tflint (plus terraform validate) for HCL. Findings block at the same level as code-lint findings; hooks run pre-commit on the staged file set and CI runs the whole tree once per PR. AI agents fix flagged issues at the source (pin apt versions, drop latest tags, quote shell variables) rather than disabling the rule.
+**One-paragraph:** Infrastructure-as-Code Lint Floor (shellcheck, hadolint, yamllint, actionlint, tflint) produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Any repo with mixed bash + Dockerfile + YAML + Terraform.
+- Production deploy where one bad bash quoting bites repeatedly.
+- CI-heavy repo where a broken actionlint blows the next run.
+- Compliance-driven team needing IaC governance evidence.
 
 ## Applies If (ALL must hold)
 
-- Every repository that contains at least one Dockerfile, shell script, GitHub Actions workflow, Kubernetes manifest, Terraform file or non-trivial YAML config (i.e., effectively every production repo).
-- Polyglot monorepos where app-code linters skip the IaC tree entirely.
-- Repos with self-hosted CI or community-contributed workflows where action injection is a real attack surface.
-- Hardening sprints after an incident traceable to a shell or Dockerfile bug.
+- Repo has any of: bash, Dockerfile, GH Actions, k8s manifests, Terraform.
+- CI can run multiple linters in parallel.
+- Pre-commit framework already in place.
+- Team accepts adding the right linter per file type.
 
 ## Skip If (ANY kills it)
 
-- Pure prose / Markdown / asset repos with no scripts, no CI workflows, no IaC — there is nothing for these tools to see.
-- Throwaway prototype repos where the operational surface is hand-managed and never deployed automatically.
-- Repos under active migration where IaC is being rewritten — schedule a one-shot baseline reset, then turn the hooks back on.
+- Pure-Python / pure-Go repo with no IaC.
+- Team has IaC validation via Terraform Cloud / Atlantis that overlaps.
+- Bash scripts are trivial and never run in prod.
+- Team won't fix shellcheck warnings — gate becomes noise.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Linter binaries | shellcheck / hadolint / yamllint / actionlint / tflint | dev-env |
+| Pre-commit hook set | per-tool entries | platform |
+| CI mirror | same checks in CI | ci-eng |
+| Exclusions list | .shellcheckrc / .hadolint.yaml / .yamllint | lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-precommit-floor]] | Hook framework hosts IaC linters |
+| [[lint-megalinter-polyglot]] | MegaLinter alternative for ≥ 3 languages |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `linter_pick_per_format` | sonnet | Map file glob → linter. |
+| `config_draft` | sonnet | Per-tool rc files. |
+| `ci_wire_up` | haiku | Add per-linter CI step. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/.shellcheckrc` | ShellCheck config. |
+| `templates/.hadolint.yaml` | Hadolint config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-shellcheck-hadolint-iac-floor.py` | Validate the IaC-lint-config artefact. | pre-merge of IaC lint config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[lint-precommit-floor]]
+- [[lint-megalinter-polyglot]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

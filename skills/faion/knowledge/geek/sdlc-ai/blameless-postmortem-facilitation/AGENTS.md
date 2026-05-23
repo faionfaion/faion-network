@@ -3,78 +3,95 @@ slug: blameless-postmortem-facilitation
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Blameless Postmortem Facilitation: codified AI-in-SDLC practice that turns the recurring 'p6-product-dev-team/Quarterly OKR cascade, weekly review, post-quarter retro' decision into a repeatable, auditable artefact.
-content_id: "4e1833664d78821e"
-tags: [blameless-postmortem-facilitation, sdd-ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Facilitation playbook for blameless postmortems: timeline reconstruction, contributing-factor analysis, action items with owners + deadlines, distributed-only language enforcement.
+content_id: "43f7b5395884835e"
+complexity: deep
+produces: report
+est_tokens: 4800
+tags: [incident, postmortem, blameless, sre, sdlc-ai]
 ---
 # Blameless Postmortem Facilitation
 
 ## Summary
 
-**One-sentence:** Blameless Postmortem Facilitation: codified AI-in-SDLC practice that turns the recurring 'p6-product-dev-team/Quarterly OKR cascade, weekly review, post-quarter retro' decision into a repeatable, auditable artefact.
+**One-sentence:** Facilitation playbook for blameless postmortems: timeline reconstruction, contributing-factor analysis, action items with owners + deadlines, distributed-only language enforcement.
 
-**One-paragraph:** Blameless Postmortem Facilitation addresses the gap identified by the p6-product-dev-team/Quarterly OKR cascade, weekly review, post-quarter retro playbook: Geek tier has `inc-postmortem-auto-draft-no-publish` (LLM drafts the timeline) but no facilitation guide for the actual blameless meeting: how to run it, ground rules, 5-whys variant, action-item commit rules, who-owns-the-followup. Solo founders skip this; teams of 5+ desperately need it because incidents bring out blame culture Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Most postmortems devolve into either blame-the-individual or vague-platitudes. Blameless postmortems are a discipline: facilitator-guided, evidence-led, with a strict language convention (no 'should have', no individual names in cause text, contributing factors not root causes). This methodology codifies the facilitation script — timeline from observed events, contributing-factor tree, action items with owner + deadline + verifier, language-lint pass — and emits a report that audit can trust without a re-litigation cycle.
+
+**Ефективно для:**
+
+- Incident severity is SEV2 or worse, or customer impact is sustained ≥30 min.
+- Team operates a no-blame culture (or wants to install one and has leadership backing).
+- An on-call responder owns the postmortem and a separate facilitator runs the session.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p6-product-dev-team/Quarterly OKR cascade, weekly review, post-quarter retro OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Incident severity is SEV2 or worse, or customer impact is sustained ≥30 min.
+- Team operates a no-blame culture (or wants to install one and has leadership backing).
+- An on-call responder owns the postmortem and a separate facilitator runs the session.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Incident was a planned drill / chaos game-day — different framing applies.
+- Severity is SEV4+ self-healing — handled by async note, not full postmortem.
 
 ## Prerequisites
 
-- recent context for the p6-product-dev-team/Quarterly OKR cascade, weekly review, post-quarter retro task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Incident timeline raw | json | PagerDuty / on-call log + chat archive |
+| Service catalog | yaml | Team `services.yaml` |
+| Postmortem template | md | Repo at `docs/postmortem-template.md` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdd-ai/sdlc-ai-operator` | parent role skill — provides the operating context for this methodology |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-blameless | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-blameless-postmortem-facilitation` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/blameless-postmortem-facilitation.json` | JSON schema for the Blameless Postmortem Facilitation output contract |
-| `templates/blameless-postmortem-facilitation.md` | Markdown skeleton with the required fields |
+| `templates/postmortem.md` | Postmortem markdown skeleton |
+| `templates/language-lint-rules.txt` | Forbidden phrase list |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-blameless-postmortem-facilitation.py` | Enforce Blameless Postmortem Facilitation output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-blameless-postmortem-facilitation.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdd-ai/`
-- upstream playbook: `p6-product-dev-team/Quarterly OKR cascade, weekly review, post-quarter retro`
-- external: [Allspaw 2012](https://www.kitchensoap.com/2012/10/25/on-being-a-senior-engineer/) · [Google SRE Postmortem chapter](https://sre.google/sre-book/postmortem-culture/)
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

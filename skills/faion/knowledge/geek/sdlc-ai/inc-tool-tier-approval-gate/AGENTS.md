@@ -3,71 +3,94 @@ slug: inc-tool-tier-approval-gate
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Classify every tool the SRE agent can invoke into three fixed tiers and enforce the policy at the tool-execution layer (MCP server / wrapper), never at the prompt: T0 read-only (free), T1 safe mutation (auto with mandatory audit), T2 destructive (always requires a signed human approval token).
-content_id: "3121cda3afe88742"
-tags: [incident-response, approval-gate, tool-safety, sre-agent, governance]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Tools the agent can use are tiered (T0 read / T1 mutable-self / T2 customer-impact / T3 multi-cluster); higher tiers require additional approval gates.
+content_id: "24c982577fd7ff03"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [agent-safety, rbac, tool-tiers, approval, sdlc-ai]
 ---
-# Tool-Tier Approval Gate (T0/T1/T2)
+# Tool-Tier Approval Gate
 
 ## Summary
 
-**One-sentence:** Classify every tool the SRE agent can invoke into three fixed tiers and enforce the policy at the tool-execution layer (MCP server / wrapper), never at the prompt: T0 read-only (free), T1 safe mutation (auto with mandatory audit), T2 destructive (always requires a signed human approval token).
+**One-sentence:** Tools the agent can use are tiered (T0 read / T1 mutable-self / T2 customer-impact / T3 multi-cluster); higher tiers require additional approval gates.
 
-**One-paragraph:** Classify every tool the SRE agent can invoke into three fixed tiers and enforce the policy at the tool-execution layer (MCP server / wrapper), never at the prompt: T0 read-only (free), T1 safe mutation (auto with mandatory audit), T2 destructive (always requires a signed human approval token). Each tool ships with a tier label in a registry; the executor refuses any T2 call that lacks a verified approval token bound to the same `(tool, target, incident_id)` and TTL ≤ 5 minutes. Unknown tools default to T2.
+**One-paragraph:** Treating every agent tool with the same RBAC blunts safety on dangerous tools and friction on safe ones. This methodology tiers tools by blast radius (T0 read-only, T1 mutable-self-only, T2 customer-impact, T3 multi-cluster / cross-tenant) and gates each tier with progressively stricter approval: T0 free, T1 audit log only, T2 signed token, T3 two-person rule + cooling period. Output is the tool catalog YAML + per-tier gate config consumed by the agent runtime.
+
+**Ефективно для:**
+
+- Agent has access to ≥5 distinct tools (Bash, kubectl, Terraform, secrets-manager, deploy, etc.).
+- Blast radius varies substantially across tools (read-grep vs cluster-wide rolling restart).
+- Approval infrastructure exists (signed tokens, two-person rule) or can be installed.
 
 ## Applies If (ALL must hold)
 
-- Always, for any production agent that can call any side-effecting tool (kubectl, cloud APIs, databases, deploy systems).
-- Designing or reviewing an MCP server that exposes infrastructure tools.
-- Adopting Microsoft's Agent Governance Toolkit, OpenAI Agents SDK, or building a custom tool registry.
-- Preparing for SOC2 or EU AI Act compliance reviews of agentic workflows.
+- Agent has access to ≥5 distinct tools (Bash, kubectl, Terraform, secrets-manager, deploy, etc.).
+- Blast radius varies substantially across tools (read-grep vs cluster-wide rolling restart).
+- Approval infrastructure exists (signed tokens, two-person rule) or can be installed.
 
 ## Skip If (ANY kills it)
 
-- Pure read-only agents that hold no write credentials anywhere — the gate is unnecessary scaffolding.
-- Single-developer experiments running locally against throwaway resources — overhead exceeds value.
-- Pre-production environments with no real data — adopt as you near customer traffic, not before.
+- Agent has only 1-2 tools — tiering overhead exceeds benefit.
+- Existing flat RBAC works because all tools are read-only.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tool catalog | yaml | Repo at `agents/tools.yaml` |
+| Approval verifier | config | From `gov-approval-token-signed-jwt` |
+| Two-person rule mechanism | config | Team policy + audit |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-inc-tool-tier-approval-gate` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tools.yaml` | Tool tier catalog |
+| `templates/gate-runtime.py` | Reference tier gate evaluator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-inc-tool-tier-approval-gate.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

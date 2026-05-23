@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lang-ruby-sorbet-strict-floor Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lang-ruby-sorbet-strict-floor. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ruby Sorbet Strict Floor with Tapioca RBI Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every Ruby file under directories writable by an AI agent MUST start with # typed: true or # typed: strict. CI MUST run bundle exec srb tc and bundle exec tapioca check-shims; both must exit 0 before merge. Agents are forbidden from downgrading a file's sigil to silence errors; they must fix the type instead.</statement>
-      <rationale source="v1-source">Sorbet at typed: true rejects calls to methods Sorbet does not see in any RBI, which is exactly the failure mode of LLM-invented methods. Without srb tc in CI, the typecheck is advisory and agents will route around it (per Shopify's adoption write-up).</rationale>
+
+    <rule id="typed-true-floor" testable="true" depth="essential">
+      <statement>Every Ruby file the agent may modify autonomously MUST declare `# typed: true` (or stricter: strict / strong).</statement>
+      <rationale source="Sorbet docs">Without a sigil, Sorbet ignores the file; agent edits propagate uncaught type errors.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every project ships bin/tapioca; the workflow is tapioca init once, then tapioca gem after Gemfile.lock changes, tapioca dsl after model/concern changes. RBIs (sorbet/rbi/gems/*.rbi, sorbet/rbi/dsl/*.rbi) MUST be committed. CI MUST run bundle exec tapioca check-shims AND bundle exec tapioca dsl --verify — any divergence fails the build.</statement>
-      <rationale source="v1-source">Without check-shims and dsl --verify, an agent can edit code that invalidates a checked-in RBI, get a green local typecheck against the stale RBI, and ship a method call that breaks at boot. The verify pass is the determinism guarantee.</rationale>
+    <rule id="tapioca-rbis-committed" testable="true" depth="essential">
+      <statement>RBIs for every gem (and Rails DSL) MUST be generated via `bundle exec tapioca` and committed under sorbet/rbi/.</statement>
+      <rationale source="Tapioca docs">Without RBIs, Sorbet can&apos;t resolve gem methods; type checks are partial.</rationale>
     </rule>
+    <rule id="ci-runs-srb-tc" testable="true" depth="essential">
+      <statement>CI MUST run `bundle exec srb tc` and fail on any error.</statement>
+      <rationale source="CI hygiene">Local checks are skipped; CI is the gate.</rationale>
+    </rule>
+    <rule id="tapioca-check-shims" testable="true" depth="essential">
+      <statement>CI MUST also run `bundle exec tapioca check-shims` to catch stale RBIs.</statement>
+      <rationale source="Tapioca docs">Outdated RBIs let bugs through; the check ensures freshness.</rationale>
+    </rule>
+    <rule id="no-untyped-without-justification" testable="true" depth="essential">
+      <statement>T.unsafe / T.untyped usage MUST carry a comment justifying it; agents are forbidden from inserting it without one.</statement>
+      <rationale source="Internal — type audits">Type escape hatches accumulate; named justifications make them reviewable.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Ruby &lt; 2.7 OR project relies on heavy meta-programming Sorbet can&apos;t model OR team has Steep/RBS, STOP.</statement>
+      <rationale source="Methodology hygiene">Forcing Sorbet over Steep / on incompatible Ruby creates noise without value.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

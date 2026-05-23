@@ -3,71 +3,94 @@ slug: kb-agents-md-context-pyramid
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Organize every directory's agent context as a three-tier pyramid: `CLAUDE.
-content_id: "2dc070e487c86727"
-tags: [agents-md, context-management, knowledge-base, claude-code, multi-agent]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Project AGENTS.md follow a 4-tier context pyramid: 20-line root, per-directory leaves, .agents/ deep-dives, .aidocs/ SDD lifecycle — agents load only relevant tiers.
+content_id: "c5b10fbcd1b25001"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [agents-md, context-pyramid, documentation-convention, knowledge-base, sdlc-ai]
 ---
-# AGENTS.md Context Pyramid (CLAUDE.md → AGENTS.md → .agents/INDEX.md)
+# AGENTS.md Context Pyramid
 
 ## Summary
 
-**One-sentence:** Organize every directory's agent context as a three-tier pyramid: `CLAUDE.
+**One-sentence:** Project AGENTS.md follow a 4-tier context pyramid: 20-line root, per-directory leaves, .agents/ deep-dives, .aidocs/ SDD lifecycle — agents load only relevant tiers.
 
-**One-paragraph:** Organize every directory's agent context as a three-tier pyramid: `CLAUDE.md` is a one-line `@AGENTS.md` hook (the only thing Claude Code auto-loads), `AGENTS.md` is a 20-80 line essential brief auto-loaded via `@`-ref AND directly readable by non-Claude-Code agents (Agent SDK, Codex, aider, Cursor), and `.agents/INDEX.md` is the on-demand catalogue of deep references. The convention is enforced per directory — every source folder gets its own `CLAUDE.md` + `AGENTS.md` pair so agents entering at any depth get a calibrated brief without bulk-loading the whole tree.
+**One-paragraph:** Project context for AI agents tends toward two failure modes: too little (agent has no anchor and hallucinates) or too much (every read loads 50KB of context, burning budget). The Context Pyramid solves both: a 4-tier scheme where the root AGENTS.md is ≤80 lines and lives at the project root, every directory with logic has its own AGENTS.md (≤80 lines), deep references live in `.agents/<topic>.md` loaded only on demand, and lifecycle docs live in `.aidocs/`. Output is the AGENTS.md tree + an audit of compliance per directory.
+
+**Ефективно для:**
+
+- Multi-directory project with ≥10 directories containing logic.
+- AI agents (Claude Code, Cursor, Copilot) work in the repo and load context per task.
+- Team values onboarding speed for both humans and agents.
 
 ## Applies If (ALL must hold)
 
-- Any repo where multiple agent kinds (Claude Code + Codex + aider + custom Agent SDK) need to share project context.
-- Multi-package monorepos where each subpackage has different commands, gotchas, and dependencies.
-- Long-lived projects where decision history and architecture deep-dives must stay searchable but not auto-loaded.
-- Migrating from a single bloated `CLAUDE.md` to a routing-friendly layout.
+- Multi-directory project with ≥10 directories containing logic.
+- AI agents (Claude Code, Cursor, Copilot) work in the repo and load context per task.
+- Team values onboarding speed for both humans and agents.
 
 ## Skip If (ANY kills it)
 
-- Single-file scripts or one-off notebooks — the convention's overhead exceeds the benefit.
-- Generated directories (build output, vendored deps) — they get rewritten and the docs would drift.
-- Trivial leaf folders with under three files and no agent-relevant logic — keep the parent's `AGENTS.md` instead.
+- Single-file or single-directory project — pyramid overhead exceeds benefit.
+- Team uses a different convention (e.g. `CLAUDE.md` only) and won't migrate.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo file tree | files | Current git HEAD |
+| AGENTS.md template | md | Repo at `.faion/AGENTS-TEMPLATE.md` |
+| Audit script | py | Repo at `scripts/audit-agents-md.py` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-kb-agents-md-context-pyramid` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/AGENTS.md.template` | Per-directory AGENTS.md skeleton |
+| `templates/CLAUDE.md.template` | Claude Code pointer skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-kb-agents-md-context-pyramid.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+- [[ci-eval-gate-config]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,0 +1,18 @@
+# purpose: reference Dockerfile that passes every red-flag rule
+# consumes: app source under ./
+# produces: hardened runtime image
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~250 tokens
+
+FROM python:3.12.4-slim-bookworm@sha256:0000000000000000000000000000000000000000000000000000000000000000 AS builder
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv pip install uv && uv sync --frozen
+
+FROM python:3.12.4-slim-bookworm@sha256:0000000000000000000000000000000000000000000000000000000000000000 AS runtime
+RUN useradd -r -u 10001 app
+WORKDIR /app
+COPY --from=builder /app /app
+USER app
+HEALTHCHECK --interval=15s --timeout=3s --start-period=10s CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz').status==200 else 1)"]
+ENTRYPOINT ["python", "-m", "app"]

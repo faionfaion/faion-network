@@ -1,19 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mr-error-tracker-draft-pr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mr-error-tracker-draft-pr. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Error-Tracker to Draft-PR Pipeline Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Configure auto-run with BOTH thresholds set: `min_events &gt;= 10` AND `min_fixability &gt;= 0.7`. Below either gate, the issue stays in tracker triage and is opened to an agent only via explicit `/autofix` slash command from a human. Disabling either threshold (`null`, `0`, `false`) MUST fail config validation.</statement>
-      <rationale source="v1-source">Sentry Seer's documented defaults; changelog and product docs describe this two-gate behaviour as the production-stable trigger that converted Autofix from preview to GA. Single-gate setups in third-party variants (Starsling) reverted to two gates after early-2026 token-cost incidents.</rationale>
+
+    <rule id="threshold-required" testable="true" depth="essential">
+      <statement>Pipeline fires only when event_count ≥ N AND fixability_score ≥ S, both configured in threshold-policy.yaml.</statement>
+      <rationale source="Sentry Autofix + Bugsink integration guides">Unbounded firing floods reviewer queue; thresholds keep signal-to-noise high.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The PR body MUST contain (a) the alert URL inside a `Sentry alert:` (or vendor equivalent) line, (b) a `Root cause` section of one to three sentences, (c) a `Test added:` line with the test file path, and (d) a reviewer checklist with at least one unchecked item ("I have validated the patch addresses the alert"). The tracker side MUST be configured to render the PR URL on the alert page (Seer SCM Settings, Rollbar PR webhook, Bugsink GitHub integration). A PR with any of (a)/(b)/(c) missing fails the policy check and must not be merged.</statement>
-      <rationale source="v1-source">Reviewers under load default to "merge if CI green"; the missing-context PR is exactly where unrelated patches sneak in. The alert backlink also protects against duplicate PRs from re-triggered agents on the same alert.</rationale>
+    <rule id="structured-signal-required" testable="true" depth="essential">
+      <statement>Webhook payload MUST include stack_trace + breadcrumbs + distributed_trace + linked_repo + recent_diffs. Free-text alerts are filtered out.</statement>
+      <rationale source="Error tracker schemas">Without structured signal the agent guesses; structured input enables deterministic patch proposal.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>The agent MUST open the PR with `draft: true`. The author MUST be a dedicated identity (GitHub App preferred over PAT, or `seer-by-sentry[bot]` / `bugsink-bot` / equivalent) — never the human who installed the integration. The PR MUST carry the label `agent:&lt;tracker&gt;` (e.g., `agent:seer`, `agent:rollbar`). Branch protection MUST require at least one approving review from a CODEOWNERS-listed human on agent-authored commits, with `Require approval of the most recent reviewable push` enabled so any new commit by the agent re-triggers review. A merge by the bot identity MUST be denied by repository policy.</statement>
-      <rationale source="v1-source">GitHub does not provide first-class "bot-only path" branch protection; the combination of bypass-list (NOT containing the bot), `Require approval of most recent push`, and a label-aware policy bot (palantir/policy-bot or label-based-pr-policy-action) is the documented workaround. Microsoft's Azure governance pattern and igotasite4that's coding-agent security write-up converge on this exact triad.</rationale>
+    <rule id="draft-pr-not-direct-merge" testable="true" depth="essential">
+      <statement>Agent opens DRAFT PR only; never marks ready for review nor merges. Human reviewer transitions to ready.</statement>
+      <rationale source="Agent safety + OWASP">Auto-merge of agent-authored patch is the documented worst failure mode.</rationale>
     </rule>
+    <rule id="regression-test-required" testable="true" depth="essential">
+      <statement>Every draft PR MUST include a regression test that reproduces the original exception. Pure patch PRs are rejected.</statement>
+      <rationale source="Regression-test practice">Patch without test = no protection against recurrence.</rationale>
+    </rule>
+    <rule id="codeowners-routes-review" testable="true" depth="essential">
+      <statement>CODEOWNERS file MUST cover the locus; PR auto-requests the right owner.</statement>
+      <rationale source="GitHub CODEOWNERS docs">Unrouted draft PRs sit; routed ones get triaged.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If tracker doesn&apos;t emit structured signal OR repo has no tests OR exception cluster is flaky / intermittent, STOP.</statement>
+      <rationale source="Methodology hygiene">Pipeline relies on signal quality; skip when quality is too low.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

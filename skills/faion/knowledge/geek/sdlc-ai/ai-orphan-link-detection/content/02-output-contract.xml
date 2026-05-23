@@ -1,31 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Orphan Link Detection Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Orphan Link Detection deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="detector_id" format="stable_id" />
-      <field name="signal_definition" type="string" />
-      <field name="threshold" type="string" />
-      <field name="remediation_runbook" format="url_or_path" />
-      <field name="false_positive_target" format="float_0_to_1" />
-    </required>
-    <forbidden>
-      <pattern id="f1">detector without remediation_runbook</pattern>
-      <pattern id="f2">threshold expressed in vague language</pattern>
-      <pattern id="f3">false_positive_target unset</pattern>
-      <pattern id="f4">detector with no last_review_date</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Adjust threshold only with reason and review-date update.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="AI Orphan-Link Detection Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for ai-orphan-link-detection output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-orphan-link-detection.json",
+  "type": "object",
+  "required": [
+    "scanned_files",
+    "orphans",
+    "verdict"
+  ],
+  "properties": {
+    "scanned_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "orphans": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/orphan"
+      }
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    }
+  },
+  "$defs": {
+    "orphan": {
+      "type": "object",
+      "required": [
+        "category",
+        "file",
+        "line",
+        "link_text",
+        "target",
+        "remediation"
+      ],
+      "properties": {
+        "category": {
+          "enum": [
+            "missing-file",
+            "missing-anchor",
+            "external-404",
+            "methodology-slug-unknown",
+            "deprecated-target"
+          ]
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "link_text": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "remediation": {
+          "type": "string",
+          "minLength": 5
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "scanned_files": ["docs/setup.md"],
+  "orphans": [
+    {"category": "missing-file", "file": "docs/setup.md", "line": 14, "link_text": "config guide", "target": "./config.md", "remediation": "Move config.md into docs/ or update the link"}
+  ],
+  "verdict": "fail"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "orphans": []
+}
+    ]]></code>
+    <note>Missing `scanned_files` and `verdict`.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Signal + threshold concrete</item>
-      <item>Remediation link reachable</item>
-      <item>FP target set</item>
-      <item>Last review ≤90d</item>
+      <item>missing required fields</item>
+      <item>wildcard values where enum is required</item>
+      <item>values outside enum / pattern / numeric bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-ai-orphan-link-detection.py">Validator script</reference>
 </text>

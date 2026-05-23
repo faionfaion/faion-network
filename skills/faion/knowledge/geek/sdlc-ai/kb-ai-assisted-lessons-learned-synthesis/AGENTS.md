@@ -3,70 +3,82 @@ slug: ai-assisted-lessons-learned-synthesis
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4554a0024e3c4f3b"
-summary: AI-assisted recipe for clustering retro notes across multiple projects to produce a synthesized lessons-learned doc with attributable themes and action items.
-tags: [retro, lessons-learned, ai-agent, project-management, clustering, synthesis]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: AI-assisted synthesis of multi-project retro corpora into a 2-3 page lessons-learned report with verbatim citations, themed clusters, and named-owner action items.
+content_id: "6a2db68111f779c4"
+complexity: deep
+produces: report
+est_tokens: 4800
+tags: [retro, lessons-learned, ai-agent, clustering, synthesis]
 ---
 # AI-Assisted Lessons-Learned Synthesis
 
 ## Summary
 
-**One-sentence:** AI-assisted recipe for clustering retro notes across multiple projects to produce a synthesized lessons-learned doc with attributable themes and action items.
+**One-sentence:** AI-assisted synthesis of multi-project retro corpora into a 2-3 page lessons-learned report with verbatim citations, themed clusters, and named-owner action items.
 
-**One-paragraph:** Annual delivery-process maturity reviews and project closures produce sprawling retro notes; manual synthesis takes 8-15 hours and quality varies with the synthesizer. Mechanism: ingest 6-24 months of project retros (Markdown / Confluence / Notion exports), use an LLM to (1) deduplicate similar lessons, (2) cluster into themes with quote evidence, (3) score each theme by recurrence + severity, (4) propose 5-10 prioritized action items with named owners. The agent's output is ALWAYS traceable: every theme links back to verbatim quotes from source retros. Output: a 2-3 page synthesized doc + a longer themed appendix for deep dives.
+**One-paragraph:** AI-Assisted Lessons-Learned Synthesis produces a report artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Annual / semi-annual lessons-learned review across ≥ 5 written retros.
+- Multi-project programme where retros are heterogeneous and manual synthesis takes days.
+- Delivery-process maturity audits that need traceable evidence per claim.
+- Knowledge-transfer for new leadership inheriting a retro corpus.
 
 ## Applies If (ALL must hold)
 
-- you have ≥ 5 project retros from the past 18 months in a searchable format
-- retros are written (not verbal-only) — text required for ingestion
-- a project manager or delivery lead owns the synthesis
-- AI tooling available (Claude Code, Claude API, or similar)
-- annual / semi-annual review cadence has a deadline
+- ≥ 5 project retros from the past 18 months in searchable text format.
+- Retros are written (not verbal-only) and have minimal structure (what went well / didn't / actions).
+- Project manager or delivery lead owns the synthesis and signs the final.
+- LLM API access (Claude or equivalent) and a sample budget exists.
 
 ## Skip If (ANY kills it)
 
-- &lt; 5 retros — too small a sample for meaningful clustering
-- retros not written down — start with the retro-writing methodology first
-- single team / single project — manual synthesis is faster than agent setup
-- highly sensitive retro content (HR incidents, IP disputes) — keep manual to avoid AI processing of confidential material
+- < 5 retros — sample too small for honest clustering.
+- Retros only verbal / on whiteboards — start with the retro-writing methodology first.
+- Single team, single project — manual synthesis is faster than tooling setup.
+- HR-adjacent or IP-dispute retro content — keep manual; never feed to LLM.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- folder of retro docs accessible (Markdown / PDF / HTML export)
-- retro docs structured with sections (what went well / didn't / actions)
-- agreement on the audience for the synthesis (founder, leadership, all-hands)
-- LLM API access + sample budget
-- a baseline of past synthesis quality so the agent output can be calibrated
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Retro corpus | Markdown / PDF / HTML / Notion exports | team archive |
+| Synthesis audience profile | 1-paragraph note | PM / leadership |
+| LLM access + budget | API key + cost ceiling | ops |
+| Past synthesis baseline | previous year's lessons-learned doc | archive |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/kb-codebase-rag-symbol-chunked` | RAG pattern adapted for retro docs |
-| `geek/sdlc-ai/kb-versioned-agent-memory-files` | Memory of previous synthesis informs next cycle |
-| `pro/pm/project-manager/agile-ceremonies-setup` | Source of retro templates the synthesis assumes |
+| [[kb-codebase-rag-symbol-chunked]] | RAG pattern adapted for retro corpora |
+| [[kb-versioned-agent-memory-files]] | Memory of previous synthesis informs next cycle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: verbatim citations, no fabricated themes, severity + recurrence scoring, named owners on actions, human edit pass | ~900 |
-| `content/02-output-contract.xml` | essential | Synthesis doc schema, theme + evidence schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (hallucinated themes, recency bias, anonymity collapse, PII leak, action without owner, scope explosion) | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `retro_ingestion_and_dedup` | sonnet | Per-doc parsing + near-duplicate detection |
-| `theme_clustering` | opus | Cross-doc synthesis, semantic grouping |
-| `severity_recurrence_scoring` | sonnet | Per-theme deterministic scoring |
-| `action_item_proposal_with_owner` | opus | Cross-theme reasoning + org-knowledge |
-| `executive_summary_draft` | sonnet | Templated narrative compression |
+| `retro_ingestion_and_dedup` | sonnet | Per-doc parsing + near-duplicate detection. |
+| `theme_clustering` | opus | Cross-doc synthesis, semantic grouping. |
+| `severity_recurrence_scoring` | sonnet | Per-theme deterministic scoring. |
+| `action_item_proposal_with_owner` | opus | Cross-theme reasoning + org knowledge. |
+| `executive_summary_draft` | sonnet | Templated narrative compression. |
 
 ## Templates
 
@@ -81,11 +93,13 @@ tags: [retro, lessons-learned, ai-agent, project-management, clustering, synthes
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/ingest-retros.py` | Load retro docs into a normalized JSON structure | Synthesis kickoff |
-| `scripts/validate-synthesis.py` | Verify every theme has ≥ 2 verbatim quotes + traceable sources | Pre-publication |
+| `scripts/validate-lessons-learned-synthesis.py` | Verify every theme has ≥ 2 verbatim quotes + traceable sources | pre-publication |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: `kb-ai-assisted-quarter-retro-synthesis`, `kb-versioned-agent-memory-files`
-- external: [Norm Kerth - Project Retrospectives (2001)](https://www.amazon.com/Project-Retrospectives-Handbook-Team-Reviews/dp/0932633447) · [Esther Derby - Agile Retrospectives](https://pragprog.com/titles/dlret/agile-retrospectives/) · [Anthropic - Long context for document synthesis](https://www.anthropic.com/news/100k-context-windows)
+- [[kb-ai-assisted-quarter-retro-synthesis]]
+- [[kb-versioned-agent-memory-files]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

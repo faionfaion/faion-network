@@ -1,68 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Sprint Capacity From Complexity Tags Core Rules">
-  <summary>Five testable rules that turn per-task complexity tags into a sprint slot commitment without any time estimate.</summary>
+<text id="01-core-rules" title="Sprint Capacity From Complexity Tags Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules grounding the sprint-capacity-from-complexity-tags methodology. Each rule pairs a binary check with sourced rationale. The terminal `skip-this-methodology` rule is the safety valve invoked by the decision tree when preconditions fail.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule testable="true">
-      <statement>Every task entering sprint planning MUST carry a `complexity` frontmatter value drawn from the closed set {XS, S, M, L, XL}. Untagged tasks are rejected from the sprint candidate pool, not silently defaulted.</statement>
-      <rationale>Silent defaulting (e.g., "assume M") makes capacity math look fine but produces systematic over-commitment because triage rarely upgrades the silent tag. Forcing an explicit tag at intake keeps the signal honest.</rationale>
-    </rule>
-
-    <rule testable="true">
-      <statement>The tag-to-slot mapping is FIXED for the team: XS=1, S=2, M=3, L=5, XL=8. The mapping MUST NOT be re-tuned mid-sprint or per developer. Drift goes into the completion factor, not the table.</statement>
-      <rationale>Two moving parts (tag weights AND completion factors) make the model unfalsifiable. Pinning one constant table lets the rolling factor carry all learning — the model stays diagnosable when it misfires.</rationale>
-    </rule>
-
-    <rule testable="true">
-      <statement>Per-developer capacity = `anchor_slots * rolling_completion_factor`, where `rolling_completion_factor` is the slot-weighted average of (slots completed / slots committed) over the previous 3 sprints, clamped to the range [0.5, 1.2]. Cold-start (no history) uses a factor of 0.7.</statement>
-      <rationale>An unbounded rolling factor amplifies a single bad sprint into a doomed next sprint; clamping inside [0.5, 1.2] absorbs noise. The 0.7 cold-start factor is the historical median observed across faion-network telemetry — biased low because new teams underestimate.</rationale>
-    </rule>
-
-    <rule testable="true">
-      <statement>Sprint commitment MUST NOT exceed the sum of per-developer capacities. The planner MAY pull in extra XS/S tasks to the "stretch" bucket, but stretch slots do NOT count against the rolling completion factor.</statement>
-      <rationale>Hard cap on committed slots stops the "we'll just push a bit more" drift that destroys the completion factor's signal. Segregating a stretch bucket gives slack without polluting the data.</rationale>
-    </rule>
-
-    <rule testable="true">
-      <statement>At sprint close, the team MUST log per-developer (`slots_committed`, `slots_completed`, `incomplete_task_ids`) into the sprint ledger. A sprint without this entry blocks the next planning session — no data, no plan.</statement>
-      <rationale>The model is empirical: without per-sprint ledger entries the rolling factor decays into folklore. Making the ledger a planning-gate forces the team to keep the data fresh.</rationale>
-    </rule>
-
+<rule id="tags-canonical" testable="true" depth="essential">
+  <statement>Allowed tags MUST be exactly XS, S, M, L, XL — no custom letters.</statement>
+  <rationale source="faion-network capacity spec">Custom tags fragment calibration and prevent cross-team comparisons.</rationale>
+</rule>
+<rule id="no-time-units" testable="true" depth="essential">
+  <statement>Capacity model MUST express output in slots, not hours / days.</statement>
+  <rationale source="faion-network no-time-estimates rule">Time units re-introduce the failure mode this methodology removes.</rationale>
+</rule>
+<rule id="rolling-window-3" testable="true" depth="essential">
+  <statement>Calibration MUST use trailing 3 sprints; older data ignored.</statement>
+  <rationale source="Industry — agile velocity calibration">Older data biases weights toward outdated practices.</rationale>
+</rule>
+<rule id="overflow-blocks" testable="true" depth="essential">
+  <statement>When a sprint's planned slot sum &gt; capacity, planner MUST refuse the sprint.</statement>
+  <rationale source="faion-network capacity spec">Overflowing sprints create silent debt.</rationale>
+</rule>
+<rule id="calibration-after-each-sprint" testable="true" depth="essential">
+  <statement>After each sprint, weights MUST be recalibrated and committed.</statement>
+  <rationale source="faion-network capacity spec">Stale weights mislead planning within 1 quarter.</rationale>
+</rule>
+<rule id="skip-this-methodology" testable="true" depth="essential">
+  <statement>Author MUST stop and route elsewhere when the decision-tree resolves to a skip leaf; partial application of this methodology against an unfit input is forbidden.</statement>
+  <rationale source="faion-network methodology spec">Forcing the methodology onto a mismatched input produces low-quality artefacts and erodes trust in the corpus.</rationale>
+</rule>
   </section>
 
-  <section title="Canonical examples">
-
-    <example type="good">
-      <code lang="yaml"><![CDATA[
-# Developer: alex
-# History (3 sprints): committed [10, 12, 11], completed [9, 10, 10]
-# rolling_completion_factor = (9+10+10) / (10+12+11) = 29/33 ≈ 0.879
-# anchor_slots = 10
-# capacity = 10 * 0.879 ≈ 8.8 → round down to 8 slots
-
-candidate_tasks:
-  - id: TASK_201, complexity: M  # 3 slots
-  - id: TASK_202, complexity: S  # 2 slots
-  - id: TASK_203, complexity: M  # 3 slots
-# committed = 8 slots — at cap. STOP.
-
-stretch_bucket:
-  - id: TASK_210, complexity: XS  # not counted toward factor
-      ]]></code>
-      <note>Capacity is derived, not negotiated. Stretch is segregated so the rolling factor stays clean.</note>
-    </example>
-
-    <example type="bad">
-      <code lang="yaml"><![CDATA[
-# Developer: alex — "feels confident this sprint"
-# capacity: 15 slots (manual)
-# committed: TASK_201 (M), TASK_202 (S), TASK_203 (M), TASK_204 (L), TASK_205 (M)
-# total = 3+2+3+5+3 = 16 slots
-# rationale: "we'll burn down faster"
-      ]]></code>
-      <note>Manual capacity override and over-commit — guarantees a missed sprint AND a corrupted factor for the next plan. Both forbidden by the rules.</note>
-    </example>
-
-  </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

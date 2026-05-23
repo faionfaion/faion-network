@@ -3,77 +3,95 @@ slug: ai-orphan-link-detection
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Detection protocol for ai orphan link detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships.
-content_id: "7d8a17cde2e47b5c"
-tags: [ai, detection, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Detector that finds broken / orphaned markdown links in AI-generated documentation (relative paths, anchor refs, methodology cross-links) and emits a per-file remediation report.
+content_id: "5ca2462ade22d245"
+complexity: medium
+produces: report
+est_tokens: 3800
+tags: [docs, link-check, ai-review, markdown, sdlc-ai]
 ---
-# AI Orphan Link Detection
+# AI Orphan-Link Detection
 
 ## Summary
 
-**One-sentence:** Detection protocol for ai orphan link detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships.
+**One-sentence:** Detector that finds broken / orphaned markdown links in AI-generated documentation (relative paths, anchor refs, methodology cross-links) and emits a per-file remediation report.
 
-**One-paragraph:** Detection protocol for ai orphan link detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships. Traceability decays. A geek-tier methodology using LLM + graph traversal to detect orphan requirements, broken stories, and trace gaps in Jira/ADO export — a USP for the geek tier.
+**One-paragraph:** AI agents write docs that look polished but link to files that don't exist (`see docs/setup.md`), anchors that drifted (`#configuration` after the section was renamed), or methodology slugs that the agent imagined. This methodology runs a deterministic crawler over `*.md` files, resolves every link, classifies orphans by category (missing-file, missing-anchor, external-404, methodology-slug-unknown), and emits a remediation report keyed by file + line.
+
+**Ефективно для:**
+
+- AI-authored markdown / MDX is in the PR.
+- Documentation site or repo enforces link integrity (docs are user-facing or onboarding-critical).
+- There is a known graph of valid methodology slugs / page paths to validate against.
 
 ## Applies If (ALL must hold)
 
-- You instrument or audit for the specific failure mode addressed by ai orphan link detection.
-- Signals are observable in code, logs, or artefacts you control.
-- Each detection has a remediation path — detection without repair is theater.
-- False-positive rate budget is set before deploying the detector.
+- AI-authored markdown / MDX is in the PR.
+- Documentation site or repo enforces link integrity (docs are user-facing or onboarding-critical).
+- There is a known graph of valid methodology slugs / page paths to validate against.
 
 ## Skip If (ANY kills it)
 
-- Detectors with no remediation path — alarm fatigue without action is worse than silence.
-- Hypothetical failure modes never observed in production data.
-- Costs of false positive > cost of missed failure (e.g., halting prod on flaky signal).
+- The doc is a personal scratchpad with no consumers.
+- Links are all external (treat as content-marketing post; use a different link-check tool).
 
 ## Prerequisites
 
-- Signal source instrumented (log line, metric, lint rule, scanner).
-- Channel for alerts agreed (Slack, PagerDuty, dashboard).
-- Remediation playbook or runbook ready for each detector firing.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Markdown files | md/mdx | PR diff |
+| Methodology slug index | json | knowledge/<domain>/INDEX.xml union |
+| Site URL map | json | Gatsby/Next/Hugo build output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `signal_capture` | haiku | Pattern matcher, no judgment |
-| `severity_assignment` | sonnet | Anchored severity per detector hit |
-| `policy_synthesis` | opus | When detectors accumulate, propose root-cause fix |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-orphan-link-detection` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/orphan-report.json` | Report skeleton |
+| `templates/worked-example.md` | Worked example narrative |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-orphan-link-detection.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: see siblings under `geek/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

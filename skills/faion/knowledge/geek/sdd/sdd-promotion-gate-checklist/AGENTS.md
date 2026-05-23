@@ -3,65 +3,94 @@ slug: sdd-promotion-gate-checklist
 tier: geek
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-summary: "Formal backlog→todo promotion checklist that replaces gut-feel reviewer approval with a binary-pass artefact for SDD task-expansion gating."
-content_id: "930d2725fb26054b"
-tags: [sdd-promotion-gate-checklist, sdd, geek]
+summary: Produces a binary-pass checklist that gates feature promotion from `backlog/` → `todo/` in the SDD lifecycle, replacing gut-feel approval.
+content_id: "c5ab052722ee3fe2"
+complexity: medium
+produces: checklist
+est_tokens: 3400
+tags: ["sdd", "promotion", "gate", "checklist", "backlog"]
 ---
 # SDD Promotion Gate Checklist
 
 ## Summary
 
-**One-sentence:** A binary-pass checklist that reviewers run before moving an SDD feature from `backlog/` to `todo/`, ensuring every task is materialised, sized, and dependency-resolved.
+**One-sentence:** Produces a binary-pass checklist that gates feature promotion from `backlog/` → `todo/` in the SDD lifecycle, replacing gut-feel approval.
 
-**One-paragraph:** SDD lifecycle says `backlog/ → todo/` is a promotion gate, but no methodology defines what the reviewer actually checks. Reviewers fall back on gut feel, which lets half-expanded features into the executor's claim queue and breaks parallel waves. This methodology defines the canonical 7-item gate (task files exist, AC mapped, deps DAG-clean, token budget set, test-plan referenced, owner named, blockers documented) plus a signed gate record that lives in the feature's `.aidocs/_progress/` folder. Output is a versioned `promotion-gate.md` decision record.
+**One-paragraph:** SDD Promotion Gate Checklist produces a checklist that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Gate backlog→todo: тільки після binary-pass checklist.
+- Reviewer onboarding: чіткий критерій, не gut-feel.
+- Async approvals: reviewer заповнює галочки без зустрічі.
+- Audit/compliance: evidence коли і чому фіча промотована.
+- Velocity hygiene: блокувати недопромочені фічі від todo/.
 
 ## Applies If (ALL must hold)
 
-- feature currently sits in `.aidocs/backlog/F-NNN/` with `implementation-plan.md` present
-- task expansion has produced `tasks/todo/TASK_NN.md` files (not only inline tree)
-- a human reviewer (or escalated reviewer agent) is about to approve promotion
-- tier == geek (gating enforced by tier-manifest)
+- Team uses SDD lifecycle with backlog/todo/in-progress/done dirs.
+- Promotion decisions are currently made informally.
+- Reviewer role exists with authority to block.
 
 ## Skip If (ANY kills it)
 
-- feature is a single-task hotfix that bypasses the formal lifecycle (`emergency/` track)
-- repo does not use the `backlog/ → todo/` workflow at all (CIA exception)
-- the feature already lives in `todo/` or later — apply retroactive audit instead
+- Team does not use SDD lifecycle.
+- Project has < 10 features in backlog — overhead exceeds value.
 
 ## Prerequisites
 
-- read `docs/directory-structure.md` lifecycle table
-- access to the feature's `.aidocs/<state>/F-NNN/` tree
-- token-budget calculator or convention (e.g. ~50k per TASK)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature directory | .aidocs/backlog/<feature>/ | feature author |
+| Reviewer roster | YAML | PM |
+| Promotion policy | Markdown | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdd/sdd-planning` | parent — defines plan/spec/design contracts that gate inputs reference |
-| `solo/sdd/sdd` | execution model the promoted tasks will run under |
+| [[definition-of-done-multi-role]] | promotion gate enforces per-role DoD readiness |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 binary-pass checklist rules + 1 worked example | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `enumerate_tasks` | haiku | filesystem walk + presence check |
-| `verify_dag` | sonnet | parse `depends_on:` fields, detect cycles |
-| `approve_or_reject` | opus | judgement on token estimates + AC coverage |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-sdd-promotion-gate-checklist` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/promotion-gate-checklist.md` | Markdown checklist with binary criteria + evidence column |
+| `templates/promotion-gate.schema.json` | JSON Schema for the gate artefact |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-sdd-promotion-gate-checklist.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdd/`
-- `geek/sdd/sdd-planning`
-- `solo/sdd/sdd`
-- upstream playbook: `p6-product-dev-team/Sprint planning with SDD task expansion (bi-weekly)`
+- [[definition-of-done-multi-role]]
+- [[ai-assisted-specification-writing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

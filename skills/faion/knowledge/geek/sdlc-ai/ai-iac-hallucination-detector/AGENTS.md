@@ -3,84 +3,95 @@ slug: ai-iac-hallucination-detector
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f1162c57f5f7e461"
-summary: Pre-merge detector that validates AI-generated Terraform / Helm against the official provider schema, catching invented fields and resource names before they break a plan.
-tags: [iac, hallucination, terraform, helm, schema-validation, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Detector that catches AI-fabricated cloud resource types, attribute names, and module paths in Terraform/Pulumi before plan: validates every resource against provider schemas and registry index.
+content_id: "ce4634905be15b62"
+complexity: medium
+produces: report
+est_tokens: 4500
+tags: [terraform, iac, hallucination, schema-validation, ai-review]
 ---
 # AI IaC Hallucination Detector
 
 ## Summary
 
-**One-sentence:** A pre-merge detector that validates AI-generated Terraform / Helm / Pulumi against the official provider schema, catching invented resource fields, fabricated resource types, and version-incompatible arguments before they break a plan or surface in production.
+**One-sentence:** Detector that catches AI-fabricated cloud resource types, attribute names, and module paths in Terraform/Pulumi before plan: validates every resource against provider schemas and registry index.
 
-**One-paragraph:** AI assistants frequently emit IaC that references resource attributes that do not exist in the current provider version — `aws_s3_bucket.acl` after v4 deprecation, `kubernetes_deployment.spec.strategy.rolling` instead of `rolling_update`, helm-chart values whose keys do not exist in `values.schema.json`. This methodology defines a deterministic detector that loads the provider schema (from Terraform Registry, Pulumi schema, or chart `values.schema.json`), parses every resource in the diff with an AST parser (hcl, helm-go-template), and asserts that every attribute and resource type exists in the schema. Output: a `hallucination-report.json` with each finding tagged by severity and a recommended fix; CI refuses merge until the diff is schema-clean or every finding is waived through CODEOWNERS.
+**One-paragraph:** LLMs frequently fabricate IaC: non-existent resource types (`aws_dynamodb_globaltable` instead of `aws_dynamodb_global_table`), invented attributes (`encryption = true` on a resource that uses `server_side_encryption_configuration`), and bogus module sources (`hashicorp/awesome-stuff/aws`). The detector compares every block against the canonical provider schema (downloaded via `terraform providers schema -json`) and the public registry index, flags unknowns, and emits a structured report. Output gates `plan` — fabrications must be resolved before any apply.
+
+**Ефективно для:**
+
+- An AI agent generated Terraform / OpenTofu / Pulumi / CloudFormation that targets a real cloud account.
+- The cloud provider exposes a machine-readable schema (Terraform providers do; CloudFormation has the CFN registry).
+- The change has not yet reached `terraform plan` — we want to fail fast, before plan errors leak into shared CI.
 
 ## Applies If (ALL must hold)
 
-- IaC diff was authored or substantially edited by an AI assistant.
-- An official provider schema or values schema is available (Terraform Registry, Pulumi registry, chart values.schema.json).
-- CI can fetch the schema for the version pinned in the repo.
-- The diff is destined for a non-sandbox environment.
+- An AI agent generated Terraform / OpenTofu / Pulumi / CloudFormation that targets a real cloud account.
+- The cloud provider exposes a machine-readable schema (Terraform providers do; CloudFormation has the CFN registry).
+- The change has not yet reached `terraform plan` — we want to fail fast, before plan errors leak into shared CI.
 
 ## Skip If (ANY kills it)
 
-- Diff is from Renovate / Dependabot — deterministic dependency bumps need different validation.
-- IaC uses a provider with no public schema available (rare; document the exception inline).
-- The `ai-generated-iac-review-gate` already runs schema validation as part of its drift check — coordinate to avoid double-validation.
-- Provider version is unpinned — fix RF-03 first via `ai-generated-iac-review-redflags`.
+- The IaC is a documentation example or a generated diagram — not intended to apply.
+- The provider is in-house with no published schema; manual review remains the gate.
 
 ## Prerequisites
 
-- Provider version pinned in `required_providers` (Terraform) or `version` (Helm).
-- A local schema cache or live access to the provider registry.
-- Tree-sitter (hcl) or alternative parser available in CI.
-- `redflag-scan.py` from the sibling methodology may be reused; this methodology focuses on the schema-validation branch.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| IaC source files | tf/ts/yaml | PR diff |
+| Provider schemas | json | `terraform providers schema -json` |
+| Registry index snapshot | json | Terraform Registry public API + 24h cache |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/ai-generated-iac-review-redflags` | Sibling: this detector is the AST-validation half of the red-flag catalogue. |
-| `geek/sdlc-ai/ai-generated-iac-review-gate` (under `geek/infra/server-craft/`) | Sibling: this detector feeds the gate's drift check. |
-| `geek/sdlc-ai/sec-trivy-pinned-supply-chain-scan` | Version pin discipline; required for accurate schema lookup. |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: schema-as-source, version-pin requirement, AST parsing required, deprecation warning, no LLM-suggested fixes without re-validation | ~1100 |
-| `content/02-output-contract.xml` | essential | Hallucination-report shape, finding kinds, deprecation handling | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: schema stale, partial AST coverage, fix loop divergence | ~1000 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `parse-iac-ast` | haiku | Mechanical: tree-sitter parse |
-| `schema-validate` | haiku | Mechanical: schema lookup per node |
-| `fix-suggest` | sonnet | Bounded judgement: find the correct schema-valid replacement |
-| `pr-comment-compose` | sonnet | Structured comment composition |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-iac-hallucination-detector` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/hallucination-report.json` | JSON schema for the hallucination report |
-| `templates/pr-comment.md` | Reviewer-facing comment template |
+| `templates/hallucination-report.json` | Report skeleton |
+| `templates/worked-example.md` | End-to-end worked detection narrative |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/detect.py` | Parse IaC diff; validate against provider schema; emit report | CI on IaC diff |
-| `scripts/schema-fetch.sh` | Fetch provider schema for pinned version | Daily / on version change |
+| `scripts/validate-ai-iac-hallucination-detector.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: `ai-generated-iac-review-redflags`, `ai-generated-iac-review-gate`, `ai-base-image-cve-triage`
-- external: [Terraform Provider Schemas](https://developer.hashicorp.com/terraform/cli/commands/providers/schema) · [Helm values.schema.json](https://helm.sh/docs/topics/charts/#schema-files) · [Pulumi Schema](https://www.pulumi.com/docs/iac/concepts/resources/properties/)
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gov-license-compliance-scan Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gov-license-compliance-scan. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="License Compliance Scan Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules with rationale + source for gov-license-compliance-scan. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every repo MUST commit a `license-policy.yml` (or equivalent FOSSA / Black Duck policy) listing `allow`, `flag`, and `deny` SPDX identifiers per build target. The CI MUST fail when any dependency resolves to a `deny` license OR introduces a license not in `allow` / `flag`. For proprietary SaaS the deny list MUST include at minimum `GPL-2.0-only`, `GPL-3.0-only`, `AGPL-3.0-only`, `SSPL-1.0`. The agent MUST refuse to add a dependency whose declared license is not on the allowlist; if uncertain, escalate to a human, never silently accept. On every dependency change the agent MUST regenerate `NOTICE` / `THIRD_PARTY.md` from the lockfile, not by hand.</statement>
-      <rationale source="v1-source">Encoding the policy as machine-readable data turns license review from a once-a-quarter human task into a per-PR build gate; the agent gets a deterministic boundary instead of having to "decide" what is acceptable.</rationale>
+    <rule id="scanner-pinned" testable="true" depth="essential">
+      <statement>Scanner version MUST be pinned in CI (Docker tag or checksum); 'latest' is forbidden because scanner-rule drift changes verdicts silently.</statement>
+      <rationale source="Software Bill of Materials (SBOM) practice">Software Bill of Materials (SBOM) practice — pinned scanner is the only way to make verdicts diff-reviewable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every tagged release MUST produce a CycloneDX 1.6 OR SPDX 2.3 SBOM regenerated from the lockfile (`pnpm-lock.yaml`, `uv.lock`, `Cargo.lock`, `go.sum`, `pom.xml`, etc.). The SBOM MUST be signed with `cosign attest` (keyless OIDC or KMS) and attached to the GitHub Release / artifact registry. The SBOM MUST be regenerated — NEVER hand-edited. The CI MUST fail the release if the SBOM is missing or its signature does not verify. Older SBOMs MUST be retained for the regulatory window (EU CRA: 10 years from end-of-support).</statement>
-      <rationale source="v1-source">A signed SBOM is the only evidence an auditor can trust; a hand-edited or unsigned SBOM is unfalsifiable and provides no compliance value when a CVE is reported against a transitive dep.</rationale>
+    <rule id="allowlist-explicit" testable="true" depth="essential">
+      <statement>Allowed SPDX ids MUST be enumerated in `compliance/licenses.yaml`; unknown licenses default to denied.</statement>
+      <rationale source="SPDX license list">SPDX license list — default-deny is the only safe policy for legal exposure.</rationale>
+    </rule>
+    <rule id="denylist-includes-copyleft" testable="true" depth="essential">
+      <statement>Denylist MUST include AGPL-*, GPL-3.0*, GPL-2.0* (without classpath exception), SSPL-* by default; exceptions require written justification + legal sign-off.</statement>
+      <rationale source="SFLC + Heather Meeker license guidance">SFLC + Heather Meeker license guidance — strong copyleft in distributed product is the highest-risk class.</rationale>
+    </rule>
+    <rule id="transitive-deps-included" testable="true" depth="essential">
+      <statement>Scan MUST resolve transitive dependencies (not just direct); license risk lives in the deep graph.</statement>
+      <rationale source="Snyk + GitHub dependency-graph guidance">Snyk + GitHub dependency-graph guidance — direct-only scans miss the dominant risk surface.</rationale>
+    </rule>
+    <rule id="new-deps-block-on-deny" testable="true" depth="essential">
+      <statement>PRs that introduce a denylisted SPDX id MUST be blocked; override requires `legal-approved` label + linked exception record.</statement>
+      <rationale source="Compliance audit best practice">Compliance audit best practice — silent merges of GPL deps are the most cited audit findings.</rationale>
+    </rule>
+    <rule id="nightly-main-scan" testable="true" depth="essential">
+      <statement>Nightly scan MUST run on main and emit a tracking ticket on any new finding; transitive deps can shift without PR.</statement>
+      <rationale source="Renovate / Dependabot drift patterns">Renovate / Dependabot drift patterns — transitive upgrades introduce new licenses outside PR scope.</rationale>
+    </rule>
+    <rule id="sbom-published" testable="true" depth="essential">
+      <statement>Per-release SBOM (CycloneDX or SPDX) MUST be published alongside the artifact; downstream consumers must be able to verify.</statement>
+      <rationale source="EU CRA + US EO 14028 SBOM requirements">EU CRA + US EO 14028 SBOM requirements — SBOM publication is becoming regulatory baseline.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If product has zero external distribution + low IP exposure, return `skipped`.</statement>
+      <rationale source="industry practice">Avoids overhead on internal-only tools.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

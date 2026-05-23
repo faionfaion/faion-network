@@ -3,73 +3,99 @@ slug: mr-error-tracker-draft-pr
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When a production exception crosses a tunable event-count and fixability threshold inside an error tracker (Sentry Seer/Autofix, Bugsink, Rollbar, Starsling), a coding agent ingests the structured signal {stack_trace, breadcrumbs, distributed_trace, linked_repo, recent_diffs}, proposes a code patch plus a regression test, and opens a draft pull request that is bidirectionally linked to the alert.
-content_id: "40eadbb6d3d122b7"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: When a prod exception crosses event-count + fixability thresholds in the error tracker (Sentry/Bugsink/Rollbar/Starsling), an agent ingests the structured signal, proposes a patch + regression test, and opens a draft PR bidirectionally linked to the alert.
+content_id: "65d8f37cbff1f148"
+complexity: deep
+produces: playbook-step
+est_tokens: 4100
 tags: [error-tracker, pull-request, sentry, draft-pr, codeowners]
 ---
 # Error-Tracker to Draft-PR Pipeline
 
 ## Summary
 
-**One-sentence:** When a production exception crosses a tunable event-count and fixability threshold inside an error tracker (Sentry Seer/Autofix, Bugsink, Rollbar, Starsling), a coding agent ingests the structured signal {stack_trace, breadcrumbs, distributed_trace, linked_repo, recent_diffs}, proposes a code patch plus a regression test, and opens a draft pull request that is bidirectionally linked to the alert.
+**One-sentence:** When a prod exception crosses event-count + fixability thresholds in the error tracker (Sentry/Bugsink/Rollbar/Starsling), an agent ingests the structured signal, proposes a patch + regression test, and opens a draft PR bidirectionally linked to the alert.
 
-**One-paragraph:** When a production exception crosses a tunable event-count and fixability threshold inside an error tracker (Sentry Seer/Autofix, Bugsink, Rollbar, Starsling), a coding agent ingests the structured signal {stack_trace, breadcrumbs, distributed_trace, linked_repo, recent_diffs}, proposes a code patch plus a regression test, and opens a draft pull request that is bidirectionally linked to the alert. The PR is never auto-merged: the alert URL lives in the PR body, the alert page links back to the PR, and a human in CODEOWNERS clicks Merge after review. Sentry Seer is the canonical implementation, with min_events: 10 and min_fixability: 0.7 as the standard auto-run gate.
+**One-paragraph:** Error-Tracker to Draft-PR Pipeline produces a playbook-step artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Production exception with > N events affecting > M users.
+- Reproducible-via-trace exception with clear stack + breadcrumbs.
+- Repo has CODEOWNERS so PR routes to right reviewer.
+- Recent diff covers the exception locus — high-fix-confidence.
 
 ## Applies If (ALL must hold)
 
-- Production runtime errors with a clean stack trace and source map (NullPointer, KeyError, IntegrityError, TypeError).
-- Repeatable exceptions whose first frame maps 1:1 to a code line in a linked repository.
-- Cross-service errors where a distributed trace already correlates the failure across BE+FE.
-- Repos where Sentry, Bugsink, or Rollbar is already wired and SCM Settings can list the GitHub/GitLab repo.
+- Error tracker integrated and emits structured webhooks.
+- Repo linked in tracker; recent diffs accessible.
+- Agent has commit + PR draft authority on a branch.
+- Reviewer policy: draft-PR is reviewed before any merge.
 
 ## Skip If (ANY kills it)
 
-- One-off errors below the event threshold (< 10 events) — noisy, expensive, low fixability.
-- Errors with no stack trace (network timeout, OOM, kernel panic, SIGKILL) — the agent has nothing to anchor to.
-- Business-logic bugs where the "fix" is a product decision, not a code edit — agent will pattern-match the wrong shape.
-- Strict-compliance repos where draft PRs from bots are still treated as production code on import — escalate to human-only triage.
-- Solo or hackathon repos where the operational overhead exceeds the fix value.
+- Tracker doesn't expose structured signal — manual triage faster.
+- Repo has no tests — patch can't be validated.
+- Exception cluster is intermittent / flaky — codemod-style fix risky.
+- Reviewer load already saturated — surge of draft PRs is harm, not help.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Error tracker webhook | Sentry/Bugsink/etc. | platform |
+| Repo + agent token | draft-PR rights | platform |
+| Threshold policy | event-count + fixability score | lead |
+| CODEOWNERS file | routing for autodrafts | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[mr-graph-vs-diff-reviewer]] | Code review against draft PR |
+| [[lint-autofix-vs-flag-decision-rule]] | Sibling policy |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `signal_ingest` | haiku | Parse webhook payload. |
+| `repro_and_diff_locate` | sonnet | Find recent diff overlapping locus. |
+| `patch_and_test_draft` | opus | Propose patch + regression test. |
+| `pr_open_and_link` | haiku | Open draft PR, link alert. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/draft-pr-body.md` | Draft PR body with alert link + patch rationale. |
+| `templates/threshold-policy.yaml` | Event-count + fixability threshold config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-error-tracker-draft-pr.py` | Validate the playbook-step artefact. | pre-merge of pipeline change |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[mr-graph-vs-diff-reviewer]]
+- [[inc-postmortem-auto-draft-no-publish]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

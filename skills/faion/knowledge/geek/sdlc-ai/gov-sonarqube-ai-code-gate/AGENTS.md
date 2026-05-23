@@ -3,72 +3,94 @@ slug: gov-sonarqube-ai-code-gate
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Repos where a meaningful share of code is AI-generated MUST run SonarQube/SonarCloud with the "Sonar way for AI Code" quality gate (or a custom gate marked Qualified for AI Code Assurance) and connect Sonar's MCP server to the coding agent.
-content_id: "0d5c6c974c99a9eb"
-tags: [sonarqube, quality-gate, ai-code, governance, mcp]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: SonarQube quality-gate config that holds AI-generated code to a higher bar than human-authored: coverage, duplication, security hotspots, AI-author tag, gated merge.
+content_id: "8bee55ff6689d0ce"
+complexity: medium
+produces: config
+est_tokens: 4300
+tags: [governance, sonarqube, ai-code, quality-gate, sdlc-ai]
 ---
-# SonarQube AI Code Quality Gate
+# SonarQube AI-Code Gate
 
 ## Summary
 
-**One-sentence:** Repos where a meaningful share of code is AI-generated MUST run SonarQube/SonarCloud with the "Sonar way for AI Code" quality gate (or a custom gate marked Qualified for AI Code Assurance) and connect Sonar's MCP server to the coding agent.
+**One-sentence:** SonarQube quality-gate config that holds AI-generated code to a higher bar than human-authored: coverage, duplication, security hotspots, AI-author tag, gated merge.
 
-**One-paragraph:** Repos where a meaningful share of code is AI-generated MUST run SonarQube/SonarCloud with the "Sonar way for AI Code" quality gate (or a custom gate marked Qualified for AI Code Assurance) and connect Sonar's MCP server to the coding agent. The gate enforces stricter thresholds for cognitive complexity, duplication, security-hotspot density, and the AI-code trust score; the agent reads findings via MCP and rewrites until the gate is green. PRs that do not pass the AI-tuned gate cannot be merged, regardless of who or what authored the diff.
+**One-paragraph:** AI-generated code is statistically more likely to contain duplication, security hotspots, and untested branches. This methodology defines a SonarQube quality-gate profile with stricter thresholds for AI-authored changes (coverage ≥85% on new code, duplication ≤2%, zero security hotspots, zero major code smells) and a per-PR `ai-author` tag that routes the gate. Output is the SonarQube `quality-gate.json` + `sonar-project.properties` + CI wiring.
+
+**Ефективно для:**
+
+- Team uses SonarQube (Community 10+, Enterprise, or Sonar Cloud) and runs scans per PR.
+- AI agents author or modify code in the repo, identifiable via commit author / co-author / branch naming.
+- There is leadership support for a higher quality bar on AI-authored code.
 
 ## Applies If (ALL must hold)
 
-- Any team where AI-authored commits exceed ~25% of weekly diff volume (Copilot, Claude Code, Cursor, Codex, Devin).
-- Regulated industries (finance, healthcare, government) where audit evidence of an AI-aware quality gate is a procurement/SOC2 requirement.
-- Enterprise-scale monorepos that already report quality dashboards to leadership.
-- Any repo emitting libraries to other teams where shallow-test and lookalike-bug regressions are expensive to chase down.
+- Team uses SonarQube (Community 10+, Enterprise, or Sonar Cloud) and runs scans per PR.
+- AI agents author or modify code in the repo, identifiable via commit author / co-author / branch naming.
+- There is leadership support for a higher quality bar on AI-authored code.
 
 ## Skip If (ANY kills it)
 
-- Tiny solo projects — overhead exceeds value; ruff + biome + semgrep cover most of the same surface for free.
-- Pure greenfield prototypes under daily API churn — the gate's duplication metric will fight the architecture before it stabilizes.
-- Read-only or vendored mirrors — there is no PR surface to gate.
-- Internal demos / spike branches that will be deleted — bootstrap cost is not recoverable.
+- Team uses no static analysis platform that supports per-PR quality gates.
+- AI-author identification is impossible (no commit metadata convention; mixed author commits).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| SonarQube server URL | url | Team infra catalog |
+| Authentication token | string | Vault / GitHub secret |
+| AI-author convention | yaml | Repo at `governance/ai-authoring.yaml` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-gov-sonarqube-ai-code-gate` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ai-quality-gate.json` | SonarQube quality gate JSON spec |
+| `templates/sonar-project.properties` | sonar-project.properties wiring |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gov-sonarqube-ai-code-gate.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -3,77 +3,94 @@ slug: ai-pair-onboarding-script
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for ai pair onboarding script that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "02b219bc8fb1d2ef"
-tags: [ai, playbook, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Onboarding script that bootstraps a new dev's AI-pair setup: validates Claude Code install, plants AGENTS.md, configures allowed-tools, runs a smoke task — all in <10 min.
+content_id: "969de8496a5f12d1"
+complexity: medium
+produces: playbook-step
+est_tokens: 4100
+tags: [onboarding, claude-code, developer-experience, ai-pair, automation]
 ---
-# AI Pair Onboarding Script
+# AI-Pair Onboarding Script
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for ai pair onboarding script that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Onboarding script that bootstraps a new dev's AI-pair setup: validates Claude Code install, plants AGENTS.md, configures allowed-tools, runs a smoke task — all in <10 min.
 
-**One-paragraph:** End-to-end playbook for ai pair onboarding script that walks an operator from trigger to closed outcome with named artefacts at each step. Onboarding methodologies are generic. For an AI-native team, day-1 needs a scripted Claude Code / Cursor pair session that walks the repo via AGENTS.md, teaches the SDD lifecycle, and ships a trivial PR. Currently each manager improvises.
+**One-paragraph:** A new developer joining a team that uses AI pair programming wastes 1-3 days figuring out which agent (Claude Code / Cursor / Copilot), which permission scope, which AGENTS.md conventions, and which slash commands matter. The script collapses this into a guided 10-minute bootstrap: detects installed agents, validates tool versions, plants the team's canonical `AGENTS.md` + `.claude/settings.json`, runs a smoke task ('summarise this repo') and confirms the agent fires within the team's configured allowed-tools. Output is a JSON report stamping `ready_to_pair = true` once every gate passes.
+
+**Ефективно для:**
+
+- New engineer joining a team where AI pair programming is the default workflow.
+- Team has a canonical `AGENTS.md` + `.claude/settings.json` (or Cursor `.cursorrules`) checked into the repo.
+- Workstation has shell access — script runs locally, not on a CI runner.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by ai pair onboarding script end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- New engineer joining a team where AI pair programming is the default workflow.
+- Team has a canonical `AGENTS.md` + `.claude/settings.json` (or Cursor `.cursorrules`) checked into the repo.
+- Workstation has shell access — script runs locally, not on a CI runner.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Engineer is rotating in for under a week and will not author code.
+- Team has no AI-pair workflow standardised — running the script is premature.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo URL | url | Hiring manager / onboarding doc |
+| Team AGENTS.md | md | Repo at `AGENTS.md` |
+| Allowed-tools manifest | json | Repo at `.claude/settings.json` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-pair-onboarding-script` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/onboarding-report.json` | Report skeleton |
+| `templates/bootstrap.sh` | Reference bash bootstrap script |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-pair-onboarding-script.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: see siblings under `geek/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

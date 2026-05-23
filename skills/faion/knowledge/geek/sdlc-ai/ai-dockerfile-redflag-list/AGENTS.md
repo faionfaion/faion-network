@@ -3,77 +3,94 @@ slug: ai-dockerfile-redflag-list
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for ai dockerfile redflag list that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "7fa5d0f40c7db4cf"
-tags: [ai, playbook, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Red-flag checklist that scans AI-authored Dockerfiles for the 12 highest-blast-radius patterns (latest tag, root user, curl|sh, missing healthcheck, ARG secrets) and emits a JSON report.
+content_id: "2f7c82e125554d38"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: [docker, ai-review, security, checklist, sdlc-ai]
 ---
-# AI Dockerfile Redflag List
+# AI-Generated Dockerfile Red-Flag List
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for ai dockerfile redflag list that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Red-flag checklist that scans AI-authored Dockerfiles for the 12 highest-blast-radius patterns (latest tag, root user, curl|sh, missing healthcheck, ARG secrets) and emits a JSON report.
 
-**One-paragraph:** End-to-end playbook for ai dockerfile redflag list that walks an operator from trigger to closed outcome with named artefacts at each step. Specific common AI-generation pitfalls (latest tags, root user, curl|sh installs, missing healthcheck, secret in ARG) need to be a single referenceable list.
+**One-paragraph:** AI coding agents produce Dockerfiles that look plausible but reproduce well-known antipatterns: floating tags, root-as-default, curl|sh installers, ARG-leaked secrets, no healthcheck, no multi-stage build. This methodology codifies a 12-item red-flag list executed against every AI-authored Dockerfile before merge. Output is a JSON report listing matched red-flags with severity + remediation, suitable for CI gating.
+
+**Ефективно для:**
+
+- An AI coding agent (Claude Code, Cursor, Copilot) authored or edited a `Dockerfile` / `Containerfile`.
+- The image is built and pushed automatically on merge — no human eyeballs guarantee a base review.
+- The runtime is internet-exposed (web server, API, worker pulling from a queue) so blast radius matters.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by ai dockerfile redflag list end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- An AI coding agent (Claude Code, Cursor, Copilot) authored or edited a `Dockerfile` / `Containerfile`.
+- The image is built and pushed automatically on merge — no human eyeballs guarantee a base review.
+- The runtime is internet-exposed (web server, API, worker pulling from a queue) so blast radius matters.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Dockerfile is hand-authored by a senior engineer with image-signing in place.
+- The image is build-once-throwaway (single-CI-step scratch container, never pushed).
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Dockerfile path | text | git diff / PR payload |
+| Image base policy | yaml | team `security/base-images.yaml` |
+| Allowed registry list | yaml | team `security/registries.yaml` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ai-dockerfile-redflag-list` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/redflag-report.json` | JSON skeleton for the validator output |
+| `templates/Dockerfile.template` | Reference Dockerfile satisfying every red-flag rule |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-dockerfile-redflag-list.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: see siblings under `geek/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

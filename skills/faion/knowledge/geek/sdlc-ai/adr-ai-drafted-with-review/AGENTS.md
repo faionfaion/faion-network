@@ -3,77 +3,94 @@ slug: adr-ai-drafted-with-review
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for adr ai drafted with review that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "65f3f88f30d60b5a"
-tags: [adr, sdlc-ai, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Drafts an ADR via LLM from a decision-context bundle, then routes through a mandatory human-review gate with named approver before commit.
+content_id: "7d98ee81143e6cfd"
+complexity: medium
+produces: decision-record
+est_tokens: 3400
+tags: ["adr", "sdlc-ai", "ai-drafted", "human-review", "decision"]
 ---
-# ADR AI Drafted With Review
+# ADR AI-Drafted With Review
 
 ## Summary
 
-**One-sentence:** Reusable template for adr ai drafted with review that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Drafts an ADR via LLM from a decision-context bundle, then routes through a mandatory human-review gate with named approver before commit.
 
-**One-paragraph:** Reusable template for adr ai drafted with review that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. Existing ADR methodology is solo-tier and assumes human authoring. The real architect pain (per brief: ADR decay) is that ADRs are written once and never revisited. A CLI loop that drafts an ADR from a Y-statement + codebase RAG, then enforces graph-aware review, is the differentiator faion can own. Combines kb-codebase-rag-symbol-chunked + mr-graph-vs-diff-reviewer + Nygard/MADR templates.
+**One-paragraph:** ADR AI-Drafted With Review produces a decision-record that fixes a recurring decision in the sdlc-ai domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Швидкий чорновий ADR з context bundle.
+- Named approver gate — LLM не комітить ADR сам.
+- Audit trail: коли LLM драфтував, коли людина approve.
+- Cost-control: tokenization budget per ADR.
+- Onboarding: junior бачить шаблон ADR + workflow.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by adr ai drafted with review (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Team accepts AI-drafted ADRs as input.
+- Named approver workflow exists or can be established.
+- Decision context bundle (related ADRs, code refs) can be assembled within token budget.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Team rejects AI-drafted decision records.
+- No named approver available within decision window.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Decision context bundle | Markdown + code refs | architect |
+| Approver roster | YAML | tech lead |
+| ADR template | Markdown | faion-network |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[adr-consequence-evidence-binding]] | AI drafts using evidence-binding shape |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-adr-ai-drafted-with-review` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ADR-AI-template.md` | ADR skeleton with AI-attribution frontmatter + approver field |
+| `templates/ai-adr-prompt.md` | LLM prompt template for ADR drafting |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-adr-ai-drafted-with-review.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodologies: see siblings under `geek/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[adr-consequence-evidence-binding]]
+- [[adr-supersession-detection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -3,77 +3,94 @@ slug: alert-triage-decision-tree
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Alert Triage Decision Tree: codified AI-in-SDLC practice that turns the recurring 'p6-product-dev-team/Sentry / Datadog alert triage (in-hours)' decision into a repeatable, auditable artefact.
-content_id: "917cb1734f137f39"
-tags: [alert-triage-decision-tree, sdlc-ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Deterministic decision tree for on-call alert triage: maps alert signal (severity, blast radius, freshness) to a routing decision (page / async / autosuppress) with named owner and SLA.
+content_id: "af9ed17dedc1b034"
+complexity: medium
+produces: decision-record
+est_tokens: 4000
+tags: [incident, alerting, on-call, decision-tree, sdlc-ai]
 ---
 # Alert Triage Decision Tree
 
 ## Summary
 
-**One-sentence:** Alert Triage Decision Tree: codified AI-in-SDLC practice that turns the recurring 'p6-product-dev-team/Sentry / Datadog alert triage (in-hours)' decision into a repeatable, auditable artefact.
+**One-sentence:** Deterministic decision tree for on-call alert triage: maps alert signal (severity, blast radius, freshness) to a routing decision (page / async / autosuppress) with named owner and SLA.
 
-**One-paragraph:** Alert Triage Decision Tree addresses the gap identified by the p6-product-dev-team/Sentry / Datadog alert triage (in-hours) playbook: We have inc-* runbook + read-only-investigation pages but no flat decision tree for the first 5 minutes after an alert fires (noise / dup / new / escalate). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Pager fatigue kills incident response. Most teams either page-everything (humans go numb) or hand-tune alerts forever (drift wins). This methodology installs a deterministic triage tree run by the on-call AI agent (or the on-call human) on every fresh alert: classify severity from signal (saturation, error rate, customer-impact proxy), check blast radius, check freshness, then route — page, async ticket, or auto-suppress with audit. Output is a JSON triage record per alert with route + owner + SLA, written to the audit log.
+
+**Ефективно для:**
+
+- Team operates a production system with a paging surface (PagerDuty, Opsgenie, Splunk On-Call).
+- Alert volume exceeds 10/day or pager-skip rate exceeds 20%.
+- There is an on-call rotation with a defined SLA per severity tier.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p6-product-dev-team/Sentry / Datadog alert triage (in-hours) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team operates a production system with a paging surface (PagerDuty, Opsgenie, Splunk On-Call).
+- Alert volume exceeds 10/day or pager-skip rate exceeds 20%.
+- There is an on-call rotation with a defined SLA per severity tier.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Team has zero paging surface (alerts go to a chat channel that nobody owns).
+- Service is not production — staging-only alerts go to logs, not the tree.
 
 ## Prerequisites
 
-- recent context for the p6-product-dev-team/Sentry / Datadog alert triage (in-hours) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Alert payload | json | Alertmanager / Datadog webhook |
+| Service catalog | yaml | Team `services.yaml` with owners + severity tiers |
+| Runbook index | yaml | Team `runbooks.yaml` with runbook URL per alert name |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/sdlc-ai-operator` | parent role skill — provides the operating context for this methodology |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-alert-triage-decision-tree` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/alert-triage-decision-tree.json` | JSON schema for the Alert Triage Decision Tree output contract |
-| `templates/alert-triage-decision-tree.md` | Markdown skeleton with the required fields |
+| `templates/triage-record.json` | Triage record skeleton |
+| `templates/tree-config.yaml` | Triage tree configuration YAML |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-alert-triage-decision-tree.py` | Enforce Alert Triage Decision Tree output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-alert-triage-decision-tree.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- upstream playbook: `p6-product-dev-team/Sentry / Datadog alert triage (in-hours)`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[inc-read-only-investigation-default]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

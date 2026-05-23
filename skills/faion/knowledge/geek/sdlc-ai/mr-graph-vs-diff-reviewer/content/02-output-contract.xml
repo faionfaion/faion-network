@@ -1,22 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mr-graph-vs-diff-reviewer Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Graph-Indexed vs Diff-Only AI Reviewers Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/mr-graph-vs-diff-reviewer.json",
+  "type": "object",
+  "required": [
+    "decision_record_path",
+    "candidates_evaluated",
+    "eval_pr_count",
+    "chosen_architecture",
+    "scorecard"
+  ],
+  "properties": {
+    "decision_record_path": {
+      "type": "string"
+    },
+    "candidates_evaluated": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "architecture"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "architecture": {
+            "enum": [
+              "diff-only",
+              "graph-indexed"
+            ]
+          }
+        }
+      }
+    },
+    "eval_pr_count": {
+      "type": "integer",
+      "minimum": 5
+    },
+    "chosen_architecture": {
+      "enum": [
+        "diff-only",
+        "graph-indexed"
+      ]
+    },
+    "scorecard": {
+      "type": "object",
+      "required": [
+        "precision",
+        "recall",
+        "coverage_pct"
+      ],
+      "properties": {
+        "precision": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "recall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "coverage_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "decision_record_path": "docs/decisions/0007-ai-reviewer.md",
+  "candidates_evaluated": [
+    {
+      "name": "CodeRabbit",
+      "architecture": "diff-only"
+    },
+    {
+      "name": "Greptile",
+      "architecture": "graph-indexed"
+    }
+  ],
+  "eval_pr_count": 8,
+  "chosen_architecture": "graph-indexed",
+  "scorecard": {
+    "precision": 0.78,
+    "recall": 0.62,
+    "coverage_pct": 84
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "decision_record_path": "",
+  "candidates_evaluated": [
+    {
+      "name": "X",
+      "architecture": "diff-only"
+    }
+  ],
+  "eval_pr_count": 2,
+  "chosen_architecture": "neither"
+}
+]]></code>
+    <note>decision_record_path required; ≥ 2 candidates; eval_pr_count &lt; 5; chosen_architecture must be diff-only/graph-indexed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">candidates_evaluated &lt; 2 (no comparison)</pattern>
+    <pattern id="f2">decision_record_path empty (no ADR)</pattern>
+    <pattern id="f3">eval_pr_count &lt; 5</pattern>
+  </section>
+
+  <reference path="scripts/validate-graph-vs-diff-reviewer.py">Validator script</reference>
 </text>

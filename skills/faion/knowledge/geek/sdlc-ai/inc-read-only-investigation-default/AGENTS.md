@@ -3,71 +3,94 @@ slug: inc-read-only-investigation-default
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The SRE agent boots with mode=read_only and is bound to a *-readonly Kubernetes / cloud RBAC role that grants only get/list/watch/log/describe.
-content_id: "8f0c270b9b596906"
-tags: [rbac, sre-agent, read-only, escalation, least-privilege]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: During incidents the AI agent operates in read-only mode by default; write actions require explicit per-action approval token; trust-escalation script tracks the trust ratchet.
+content_id: "4762f290d6d2e42b"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [incident, agent-safety, rbac, read-only, trust-escalation]
 ---
-# Read-Only Investigation Mode by Default
+# Read-Only Investigation by Default
 
 ## Summary
 
-**One-sentence:** The SRE agent boots with mode=read_only and is bound to a *-readonly Kubernetes / cloud RBAC role that grants only get/list/watch/log/describe.
+**One-sentence:** During incidents the AI agent operates in read-only mode by default; write actions require explicit per-action approval token; trust-escalation script tracks the trust ratchet.
 
-**One-paragraph:** The SRE agent boots with mode=read_only and is bound to a *-readonly Kubernetes / cloud RBAC role that grants only get/list/watch/log/describe. To perform any mutation it must transition to mode=remediate, which requires (a) a human-issued /agent escalate-trust <incident_id> command, (b) a fresh MFA challenge against the on-caller, and (c) a time-boxed elevated role (default 60 minutes) that auto-revokes when the incident closes or the timer expires. The mode is enforced by RBAC, not by the prompt — a jailbroken or confused agent that "decides" to mutate cannot, because its credentials forbid it. This is the Azure SRE Agent / Causely pattern that became the consensus floor in 2026.
+**One-paragraph:** During production incidents, the worst AI mistake is a confident write action — a rollback to the wrong commit, a misapplied feature flag, a 'helpful' restart that destroys debug state. This methodology pins agents to read-only RBAC by default (Read, Grep, Glob, log/dashboard access, runbook fetch) and requires an explicit per-action signed approval token (`gov-approval-token-signed-jwt`) before any write. A trust-escalation script tracks the ratchet — once an agent earns write rights for a specific action class, the audit log captures the precedent.
+
+**Ефективно для:**
+
+- AI agent (Claude Code, custom SRE bot) participates in incident response.
+- Production systems can be materially harmed by misapplied write actions (rollbacks, flags, infra mutations).
+- Platform supports per-action RBAC (Kubernetes RBAC, AWS IAM, etc.) and signed approval tokens.
 
 ## Applies If (ALL must hold)
 
-- First 6–12 months of any production agent rollout.
-- Any environment where a misfired mutation costs more than a delayed remediation.
-- Multi-tenant clusters where blast radius can cross customer boundaries.
-- Compliance regimes that demand "least privilege by default" (SOC2 CC6.3, ISO 27001 A.9.2.3).
+- AI agent (Claude Code, custom SRE bot) participates in incident response.
+- Production systems can be materially harmed by misapplied write actions (rollbacks, flags, infra mutations).
+- Platform supports per-action RBAC (Kubernetes RBAC, AWS IAM, etc.) and signed approval tokens.
 
 ## Skip If (ANY kills it)
 
-- Pre-production / sandbox clusters with no real data and full reset capability — friction without payoff.
-- Mature setups where specific T1 actions (restart pod) have run thousands of times safely and graduate to always-on. T2 stays gated forever.
-- Single-developer toolchains where there is no separation of duties to enforce.
+- Agent is a chat-only assistant with no execution surface — no writes possible.
+- Team has no incident-response automation at all — install the basics first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Agent RBAC config | yaml | Repo at `incident/agent-rbac.yaml` |
+| Approval token verifier | config | From `gov-approval-token-signed-jwt` |
+| Action class catalog | yaml | Repo at `incident/action-classes.yaml` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/sdlc-ai/AGENTS.md` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-inc-read-only-investigation-default` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agent-rbac.yaml` | Agent RBAC manifest |
+| `templates/escalate_trust.py` | Trust ratchet manager |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-inc-read-only-investigation-default.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- Parent: `geek/sdlc-ai/AGENTS.md`
+- [[kb-agents-md-context-pyramid]]
+- [[gov-conventional-commits-enforced]]
+- [[ci-eval-gate-config]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,22 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="inc-runbook-as-markdown-tagged-steps Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Runbook as Markdown with Tagged Steps Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for inc-runbook-as-markdown-tagged-steps output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/inc-runbook-as-markdown-tagged-steps.json",
+  "type": "object",
+  "required": [
+    "runbook_path",
+    "steps",
+    "dry_run",
+    "audit_url"
+  ],
+  "properties": {
+    "runbook_path": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "minItems": 2
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "audit_url": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "tag",
+        "command"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "tag": {
+          "enum": [
+            "read",
+            "write",
+            "approval-required",
+            "verify",
+            "wait"
+          ]
+        },
+        "command": {
+          "type": "string"
+        },
+        "approval_token_jti": {
+          "type": "string"
+        },
+        "assertion": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "runbook_path": "docs/runbooks/db-failover.md",
+  "steps": [
+    {"id": "check-replica-lag", "tag": "read", "command": "psql -c 'select * from pg_stat_replication'"},
+    {"id": "promote-replica", "tag": "approval-required", "command": "patronictl failover", "approval_token_jti": "uuid-1"},
+    {"id": "verify-traffic", "tag": "verify", "command": "curl https://api/healthz", "assertion": "status==200"}
+  ],
+  "dry_run": false,
+  "audit_url": "https://audit/runbook/db-failover/run-42"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "runbook_path": "docs/runbooks/db-failover.md",
+  "steps": [{"id": "x", "tag": "WRITE"}]
+}
+    ]]></code>
+    <note>tag `WRITE` not in enum; missing `command`, `dry_run`, `audit_url`.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>missing required fields</item>
+      <item>wildcard values where enum is required</item>
+      <item>values outside enum / pattern / numeric bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-inc-runbook-as-markdown-tagged-steps.py">Validator script</reference>
 </text>

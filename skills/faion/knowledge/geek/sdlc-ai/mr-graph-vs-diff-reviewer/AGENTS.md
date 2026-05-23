@@ -3,71 +3,97 @@ slug: mr-graph-vs-diff-reviewer
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Two architectures of AI code reviewers co-exist and behave differently.
-content_id: "0efd899c8b9df9c7"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Two AI reviewer architectures (graph-indexed vs diff-only) co-exist. Pick by PR size, repo complexity, and impact-analysis need — record the decision and revisit per repo.
+content_id: "1d8997d27ae80f73"
+complexity: medium
+produces: decision-record
+est_tokens: 3600
 tags: [code-review, pull-request, graph-indexed, diff-only, ai-reviewer]
 ---
 # Graph-Indexed vs Diff-Only AI Reviewers
 
 ## Summary
 
-**One-sentence:** Two architectures of AI code reviewers co-exist and behave differently.
+**One-sentence:** Two AI reviewer architectures (graph-indexed vs diff-only) co-exist. Pick by PR size, repo complexity, and impact-analysis need — record the decision and revisit per repo.
 
-**One-paragraph:** Two architectures of AI code reviewers co-exist and behave differently. Diff-only reviewers (Sourcery, GitHub Copilot Code Review, Codeball) read the patch plus its nearest neighbours — fast, cheap, blind to cross-file impact. Graph-indexed reviewers (Greptile, CodeRabbit Pro, Qodo Merge 2.0 multi-agent) build a repo-wide knowledge graph and trace ripple effects — slower, expensive, catch cross-module breakage that the diff-only class misses entirely. Pick diff-only for monorepos with strong module isolation and <100k LOC; pick graph-indexed for legacy/polyglot codebases >500k LOC where one rename quietly breaks five callers.
+**One-paragraph:** Graph-Indexed vs Diff-Only AI Reviewers produces a decision-record artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- Picking the right AI reviewer tool for a repo.
+- Comparing CodeRabbit / Bito-style diff-only vs Greptile / Sourcegraph-style graph-indexed.
+- Large monorepo where diff-only misses cross-file impact.
+- Small repo where graph-indexed is over-engineered.
 
 ## Applies If (ALL must hold)
 
-- Selecting an AI reviewer for a new repo or migrating from a basic comment bot.
-- Re-evaluating after a repo crosses a size or polyglot threshold (e.g. acquisition, framework migration).
-- Auditing an existing reviewer that "feels noisy" or "missed an obvious break" — usually wrong architecture.
-- Cost-control reviews where the reviewer line item exceeds the budget for actual incident-prevention value.
+- Repo wants AI code review.
+- ≥ 2 candidate tools are evaluable (one diff-only, one graph-indexed).
+- Repo has the right data: > 5 PRs / week for diff-only, > 100 KLOC for graph-indexed payoff.
+- Team can sign off on a decision record per repo.
 
 ## Skip If (ANY kills it)
 
-- One-off open-source contribution flow where the maintainer reads every PR manually anyway.
-- Repos with strict zero-third-party-app policy on source — pick a self-hosted PR-Agent variant or skip entirely.
-- Tiny PR pipelines (<5 PRs/day) — the per-PR cost difference is negligible; pick on UX, not architecture.
+- Repo doesn't want AI review.
+- Only one tool available — no comparison needed.
+- Repo too small for either to matter — human review suffices.
+- Compliance forbids external code analysis tools.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tool candidates | ≥ 2 reviewer tools accessible | platform |
+| Eval PR set | 5-10 historical PRs to test against | lead |
+| Decision-record location | ADR or .aidocs/decisions.md | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[mr-codemod-refactor-agent]] | Reviewer evaluates codemod PRs |
+| [[kb-codebase-rag-symbol-chunked]] | Graph reviewer often uses similar index |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `eval_runner` | sonnet | Run both tools on eval PR set. |
+| `scorecard_compile` | sonnet | Compile precision/recall/coverage. |
+| `decision_record_draft` | opus | Write the ADR. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | ADR template. |
+| `templates/eval-scorecard.md` | Tool comparison scorecard. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-graph-vs-diff-reviewer.py` | Validate the decision-record artefact. | pre-merge of ADR |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[mr-codemod-refactor-agent]]
+- [[lint-autofix-vs-flag-decision-rule]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

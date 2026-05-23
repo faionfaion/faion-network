@@ -1,39 +1,153 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Blameless Postmortem Facilitation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Blameless Postmortem Facilitation output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/blameless-postmortem-facilitation.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Blameless Postmortem Facilitation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for blameless-postmortem-facilitation output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/blameless-postmortem-facilitation.json",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "severity",
+    "timeline",
+    "contributing_factors",
+    "action_items",
+    "language_lint_passed",
+    "facilitator",
+    "on_call_responder"
+  ],
+  "properties": {
+    "incident_id": {
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "sev1",
+        "sev2",
+        "sev3"
+      ]
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      },
+      "minItems": 5
+    },
+    "contributing_factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 3
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/action_item"
+      },
+      "minItems": 1
+    },
+    "language_lint_passed": {
+      "type": "boolean",
+      "const": true
+    },
+    "facilitator": {
+      "type": "string"
+    },
+    "on_call_responder": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": [
+        "timestamp",
+        "what",
+        "evidence_url"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "what": {
+          "type": "string"
+        },
+        "evidence_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "action_item": {
+      "type": "object",
+      "required": [
+        "title",
+        "owner",
+        "deadline",
+        "verifier"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date"
+        },
+        "verifier": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "incident_id": "inc-2026-05-12",
+  "severity": "sev2",
+  "timeline": [
+    {"timestamp": "2026-05-12T14:02:00Z", "what": "Error rate spike on /checkout", "evidence_url": "https://dash/abc"},
+    {"timestamp": "2026-05-12T14:05:00Z", "what": "On-call paged", "evidence_url": "https://pd/123"},
+    {"timestamp": "2026-05-12T14:08:00Z", "what": "Responder ack", "evidence_url": "https://pd/123#ack"},
+    {"timestamp": "2026-05-12T14:21:00Z", "what": "Rollback initiated", "evidence_url": "https://gh/pr/9"},
+    {"timestamp": "2026-05-12T14:34:00Z", "what": "Error rate restored", "evidence_url": "https://dash/abc"}
+  ],
+  "contributing_factors": ["staging diverged from prod schema", "rollout did not pause on saturation signal", "alert threshold tuned for previous load"],
+  "action_items": [
+    {"title": "Add schema-parity gate to rollout", "owner": "platform-team", "deadline": "2026-06-01", "verifier": "sre-lead"}
+  ],
+  "language_lint_passed": true,
+  "facilitator": "alex.k",
+  "on_call_responder": "sam.l"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "incident_id": "inc-2026-05-12",
+  "contributing_factors": ["Sam should have caught it"],
+  "language_lint_passed": false
+}
+    ]]></code>
+    <note>Modal blame phrasing in `contributing_factors`; language_lint_passed must be true; required fields missing.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/blameless-postmortem-facilitation.json</item>
+      <item>missing required fields</item>
+      <item>wildcard values where enum is required</item>
+      <item>values outside enum / pattern / numeric bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-blameless-postmortem-facilitation.py">Validator script</reference>
 </text>

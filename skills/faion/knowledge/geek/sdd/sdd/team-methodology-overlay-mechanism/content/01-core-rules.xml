@@ -1,85 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Overlay — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules for overlay directory layout, precedence resolution, and audit.</summary>
+<text id="01-core-rules" title="Team Methodology Overlay Mechanism Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules grounding the team-methodology-overlay-mechanism methodology. Each rule pairs a binary check with sourced rationale. The terminal `skip-this-methodology` rule is the safety valve invoked by the decision tree when preconditions fail.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-directory-layout" testable="true">
-      <statement>Overlays live at EXACTLY two locations, no others: (a) USER `~/.faion/overrides/&lt;tier&gt;/&lt;group&gt;/&lt;slug&gt;/` (b) REPO `&lt;repo&gt;/.faion/overrides/&lt;tier&gt;/&lt;group&gt;/&lt;slug&gt;/`. Each overlay mirrors the methodology directory structure (`AGENTS.md` + `content/*.xml` + optional templates/scripts).</statement>
-      <rationale source="Helm values + git config FILES precedence">Two-level precedence (user, project) covers ~95% of real cases (npm, pip, git, Docker all use this pattern). Adding more levels (machine-wide, group-wide) is rarely needed and adds discovery cost.</rationale>
-    </rule>
-
-    <rule id="r2-precedence-order" testable="true">
-      <statement>Precedence is FIXED: REPO &gt; USER &gt; SHIPPED. For a methodology path P, the resolver checks `&lt;repo&gt;/.faion/overrides/P/` first, then `~/.faion/overrides/P/`, then the shipped `faion-network/skills/faion/knowledge/P/`. The first match wins per-file (not per-directory).</statement>
-      <rationale source="git config docs / 12-factor config order">Per-file resolution lets a team override AGENTS.md but inherit content/*.xml from upstream. Per-directory resolution would force teams to copy entire methodologies for one-line changes.</rationale>
-    </rule>
-
-    <rule id="r3-merge-semantics" testable="true">
-      <statement>Three explicit merge modes declared in `templates/overrides-config.yaml`: REPLACE (default — overlay file replaces shipped file), PREPEND (overlay content inserted before shipped), APPEND (overlay content inserted after shipped). Modes apply per-file. PREPEND/APPEND only work on `content/*.xml` files with the same `&lt;text id&gt;`.</statement>
-      <rationale source="GitHub CODEOWNERS / nginx include semantics">Most overrides want REPLACE; some (e.g. company-specific failure-modes) want APPEND. Explicit declaration prevents silent merge surprises.</rationale>
-    </rule>
-
-    <rule id="r4-conflict-validator" testable="true">
-      <statement>The validator MUST detect and surface 4 conflict types: (a) overlay file has different `content_id` than shipped (version skew), (b) overlay declares APPEND but shipped file's schema doesn't allow extensions, (c) overlay overrides a methodology marked `non-overridable: true` in shipped frontmatter, (d) overlay introduces a frontmatter key not in REQUIRED_FRONTMATTER_KEYS.</statement>
-      <rationale source="Helm template validation + JSON Schema gates">Silent overlay errors cause hard-to-debug behaviour in production. Pre-runtime validation is the only sustainable boundary.</rationale>
-    </rule>
-
-    <rule id="r5-audit-log" testable="true">
-      <statement>Every resolved methodology view MUST emit an audit event listing: methodology path, source (REPO/USER/SHIPPED), merge mode, overlay maintainer, resolved_at timestamp. Audit log persists to `.faion/audit/overlay-log.ndjson`.</statement>
-      <rationale source="SOC-2 control evidence requirements">Compliance audits ask "show me what content actually ran for engagement X". Without an audit log, the team cannot prove the answer. The ndjson log is cheap and machine-grepable.</rationale>
-    </rule>
-
-  </section>
-
-  <section title="Resolution flow">
-
-    <example type="good" title="Resolved view for ADR template">
-      <code lang="text"><![CDATA[
-Methodology path: pro/dev/software-developer/adr-architecture-decisions/
-
-Step 1: check repo/.faion/overrides/pro/dev/.../adr.../
-  found: templates/adr-template.md       → use repo's
-  not found: AGENTS.md                   → continue
-  not found: content/*.xml               → continue
-
-Step 2: check ~/.faion/overrides/pro/dev/.../adr.../
-  found: AGENTS.md                       → use user's
-  not found: content/*.xml               → continue
-
-Step 3: shipped
-  found: content/*.xml                   → use shipped
-
-Audit event: {
-  path: "pro/dev/.../adr-architecture-decisions",
-  sources: {
-    "templates/adr-template.md": "REPO",
-    "AGENTS.md": "USER",
-    "content/01-core-rules.xml": "SHIPPED",
-    "content/02-output-contract.xml": "SHIPPED",
-    "content/03-failure-modes.xml": "SHIPPED"
-  },
-  merge_modes: { "templates/adr-template.md": "REPLACE" },
-  resolved_at: "2026-05-20T14:23:00Z"
-}
-      ]]></code>
-      <note>r2 + r5: per-file resolution with full audit. Team's template wins; methodology rules stay shipped.</note>
-    </example>
-
-    <example type="bad" title="Directory-level override (r2 violation)">
-      <code lang="text"><![CDATA[
-Team copies entire `pro/dev/software-developer/adr-architecture-decisions/`
-into their overrides folder to change ONE line in templates/adr-template.md.
-
-Six months later: shipped adds new failure modes (CVE-driven).
-Team's copy is stale; team never sees the new rules.
-      ]]></code>
-      <note>Violates r2 per-file principle. Directory-level forks defeat the overlay's purpose.</note>
-    </example>
-
+<rule id="precedence-deterministic" testable="true" depth="essential">
+  <statement>Precedence chain MUST be: project-overlay &gt; user-overlay &gt; faion-base; no other order allowed.</statement>
+  <rationale source="faion-network overlay spec">Inconsistent precedence makes audits impossible.</rationale>
+</rule>
+<rule id="overlay-paths-named" testable="true" depth="essential">
+  <statement>Overlays MUST live in `.faion/overlays/project/` or `.faion/overlays/user/`; other paths ignored.</statement>
+  <rationale source="faion-network overlay spec">Wild overlay locations defeat tooling.</rationale>
+</rule>
+<rule id="conflict-must-log" testable="true" depth="essential">
+  <statement>Whenever an overlay shadows a base methodology, a `conflict.log` entry MUST record overlay path + base path + timestamp.</statement>
+  <rationale source="faion-network audit policy">Silent shadowing causes confusion months later.</rationale>
+</rule>
+<rule id="schema-compatibility" testable="true" depth="essential">
+  <statement>An overlay MUST conform to the same content/02-output-contract.xml schema as the base it replaces.</statement>
+  <rationale source="faion-network methodology spec">Schema drift breaks downstream tooling.</rationale>
+</rule>
+<rule id="annual-review" testable="true" depth="essential">
+  <statement>Each active overlay MUST be reviewed annually; un-reviewed → demoted to draft.</statement>
+  <rationale source="faion-network governance">Stale overlays accumulate and decay.</rationale>
+</rule>
+<rule id="skip-this-methodology" testable="true" depth="essential">
+  <statement>Author MUST stop and route elsewhere when the decision-tree resolves to a skip leaf; partial application of this methodology against an unfit input is forbidden.</statement>
+  <rationale source="faion-network methodology spec">Forcing the methodology onto a mismatched input produces low-quality artefacts and erodes trust in the corpus.</rationale>
+</rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

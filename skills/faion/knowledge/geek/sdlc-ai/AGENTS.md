@@ -1,112 +1,95 @@
-# SDLC + AI Methodologies
+---
+slug: sdlc-ai
+tier: geek
+group: sdlc-ai
+domain: sdlc-ai
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a routing decision-record that picks among 78 SDLC+AI methodologies (lang/lint/test/tracker/kb/task/mr/inc/sec/gov) for a given task signal.
+content_id: "20eff135fbee0f93"
+complexity: medium
+produces: decision-record
+est_tokens: 3400
+tags: ["sdlc-ai", "domain-index", "routing", "overview"]
+---
+# SDLC + AI Domain Overview
 
-Geek-tier knowledge base of methodologies that wire AI coding agents (Claude Code, Cursor, Codex, aider, Windsurf) into the deterministic SDLC floor: language toolchains, lint/format, tests, trackers, knowledge bases, task lifecycle, merge automation, incident response, security, governance.
+## Summary
 
-## Scope
+**One-sentence:** Produces a routing decision-record that picks among 78 SDLC+AI methodologies (lang/lint/test/tracker/kb/task/mr/inc/sec/gov) for a given task signal.
 
-Each methodology is a self-contained folder with `CLAUDE.md`, `AGENTS.md`, `content/*.xml`, optional `templates/` and `scripts/`. Routing is via the methodology `AGENTS.md` (under 80 lines, strict shape per `docs/skill-authoring.md`).
+**One-paragraph:** SDLC + AI Domain Overview produces a decision-record that fixes a recurring decision in the sdlc-ai domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
 
-## Categories
+**Ефективно для:**
 
-| Prefix | Domain | Target |
-|--------|--------|--------|
-| `lang-` | Language / package mgmt / build | 10 |
-| `lint-` | Linters, formatters, hooks | 6 |
-| `test-` | Testing frameworks and tactics | 6 |
-| `tracker-` | Issue trackers + agent integration | 5 |
-| `kb-` | Knowledge base, docs, agent memory | 4 |
-| `task-` | Task / spec / branch lifecycle | 5 |
-| `mr-` | Merge request / PR review automation | 5 |
-| `inc-` | Incident response, on-call | 4 |
-| `sec-` | Supply chain + SAST + secrets | 3 |
-| `gov-` | Governance, audit, identity | 4 |
+- Підібрати правильну sub-methodology у sdlc-ai домені.
+- Onboarding: огляд того, що домен охоплює.
+- Audit: бачимо повний inventory методологій + last-review.
+- Cross-cluster pick: lang vs lint vs test — швидкий router.
+- Domain health check: які кластери порожні?
 
-## How To Use
+## Applies If (ALL must hold)
 
-1. Pick the category by the active task — language work → `lang-`, hook fix → `lint-`, etc.
-2. List the matching methodology folders.
-3. Read each candidate's `AGENTS.md` (cheap — under 80 lines).
-4. Load only the `content/*.xml` files relevant to the decision.
-5. Apply, then run the deterministic checks named in the methodology.
+- Task signal involves wiring AI coding agents into the SDLC floor.
+- Multiple sub-methodologies are candidates and disambiguation is needed.
+- Reader is new to the sdlc-ai domain.
 
-## Full Methodology Index
+## Skip If (ANY kills it)
 
-Every methodology folder, grouped by category prefix.
+- Task is clearly outside sdlc-ai (e.g. UX research, marketing).
+- Reader already knows the exact methodology slug.
 
-**`lang-` — Language / package mgmt / build:**
-- `lang-csharp-roslyn-analyzer-errors`: Roslyn analyzer errors as floor
-- `lang-go-tygo-frontend-contract`: Go → TS contract via tygo
-- `lang-jvm-jreleaser-tag-release`: JVM tag-release via JReleaser
-- `lang-php-phpstan9-psalm-taint`: PHPStan 9 + Psalm taint floor
-- `lang-ruby-sorbet-strict-floor`: Ruby Sorbet strict floor
-- `lang-swift-harmonize-arch-tests`: Swift arch test harmonization
-- `pnpm-catalogs`: pnpm catalogs for monorepo versioning
-- `pyproject-single-source`: pyproject.toml as single version source
-- `ts-strict-isolated`: TS strict + isolatedModules floor
-- `uv-lockfile-floor`: `uv.lock` as Python lockfile floor
+## Prerequisites
 
-**`lint-` — Linters, formatters, hooks:**
-- `lint-autofix-vs-flag-decision-rule`: When to autofix vs flag
-- `lint-megalinter-polyglot`: MegaLinter for polyglot repos
-- `lint-precommit-floor`: pre-commit as deterministic floor
-- `lint-ruff-and-biome-as-default`: Ruff + Biome as defaults
-- `lint-shellcheck-hadolint-iac-floor`: Shell / Docker / IaC floor
-- `lint-staged-only-not-whole-tree`: Lint staged, not the tree
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal | Markdown / JSON | user |
+| Domain INDEX.xml | XML | faion-network |
 
-**`test-` — Testing frameworks and tactics:**
-- `test-consumer-contract-from-spec`: Consumer contracts from spec
-- `test-golden-master-legacy-rewrite`: Golden master for rewrites
-- `test-mutation-feedback-loop`: Mutation testing feedback loop
-- `test-property-based-llm-invariants`: Property tests for LLM invariants
-- `test-self-healing-locators-audited`: Self-healing locators with audit
-- `test-tdd-red-green-split-agents`: TDD with split red / green agents
+## Assumes Loaded
 
-**`tracker-` — Issue trackers + agent integration:**
-- `tracker-ai-triage-classify-route`: AI triage and routing
-- `tracker-github-copilot-workspace`: GitHub Copilot Workspace
-- `tracker-gitlab-duo-developer-flow`: GitLab Duo developer flow
-- `tracker-jira-rovo-mcp-agents`: Jira + Rovo MCP agents
-- `tracker-linear-agent-as-assignee`: Linear agent as assignee
+| Methodology | Why |
+|-------------|-----|
+| none | This methodology has no upstream dependencies. |
 
-**`kb-` — Knowledge base, docs, agent memory:**
-- `kb-agents-md-context-pyramid`: AGENTS.md context pyramid
-- `kb-codebase-rag-symbol-chunked`: Codebase RAG, symbol-chunked
-- `kb-symbol-index-fresh-tags`: Fresh symbol index (ctags)
-- `kb-versioned-agent-memory-files`: Versioned agent memory files
+## Content (load on demand)
 
-**`task-` — Task / spec / branch lifecycle:**
-- `task-agent-drafts-spec-before-coding`: Agent drafts spec first
-- `task-agent-fixable-triage-gate`: Triage gate for agent fixes
-- `task-plan-mode-locked-execution`: Plan-mode locked execution
-- `task-spec-kit-three-step`: spec-kit three-step flow
-- `task-worktree-runtime-isolation`: Worktree runtime isolation
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
-**`mr-` — Merge request / PR review automation:**
-- `mr-codemod-refactor-agent`: Codemod refactor agent
-- `mr-error-tracker-draft-pr`: Error tracker drafts PR
-- `mr-graph-vs-diff-reviewer`: Graph-aware vs diff-only reviewer
-- `mr-renovate-ai-handoff`: Renovate → AI handoff
-- `mr-slash-command-surface`: Slash-command surface for MR ops
+## Task Routing
 
-**`inc-` — Incident response, on-call:**
-- `inc-postmortem-auto-draft-no-publish`: Auto-draft postmortems, no auto-publish
-- `inc-read-only-investigation-default`: Read-only by default during incidents
-- `inc-runbook-as-markdown-tagged-steps`: Runbooks as tagged markdown
-- `inc-tool-tier-approval-gate`: Tool-tier approval gate
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-sdlc-ai` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
-**`sec-` — Supply chain + SAST + secrets:**
-- `sec-codeql-autofix-on-pr`: CodeQL autofix on PR
-- `sec-secrets-defense-in-depth`: Secrets defense in depth
-- `sec-trivy-pinned-supply-chain-scan`: Trivy pinned supply-chain scan
+## Templates
 
-**`gov-` — Governance, audit, identity:**
-- `gov-approval-token-signed-jwt`: Approval tokens as signed JWT
-- `gov-conventional-commits-enforced`: Conventional commits enforced
-- `gov-license-compliance-scan`: License compliance scan
-- `gov-sonarqube-ai-code-gate`: SonarQube AI-code gate
+| File | Purpose |
+|------|---------|
+| `templates/routing-decision.md` | Markdown decision record naming task signal + chosen candidates + rationale |
+| `templates/sdlc-ai-route.schema.json` | JSON Schema for the routing decision artefact |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-sdlc-ai.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- Sibling: `geek/ai/ai-agents/` (agent-construction methodologies)
-- Sibling: `geek/ai/llm-integration/semantic-xml-content/` (closed XML tag glossary)
-- Spec: `docs/skill-authoring.md` (methodology folder structure)
+- [[kb-agents-md-context-pyramid]]
+- [[lint-precommit-floor]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

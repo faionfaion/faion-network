@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lint-ruff-and-biome-as-default Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lint-ruff-and-biome-as-default. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ruff for Python and Biome for JS/TS as the Sole Linter+Formatter Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules pinning the methodology's preconditions, output shape, and skip path. Each rule pairs a binary check with rationale + named source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For every Python source file, the agent MUST run `ruff check --fix` and then `ruff format` after each edit; for every JS/TS/JSX/TSX source file, the agent MUST run `biome check --write` after each edit. Repositories MUST NOT also configure black, flake8, isort, autoflake, pyupgrade, ESLint, or Prettier — these tools' configs (.flake8, .eslintrc, .prettierrc) MUST be removed when migrating.</statement>
-      <rationale source="v1-source">One canonical formatter per language gives the agent a fixed, sub-second autofix step; the formatter's output is the file's canonical form, so subsequent edits never trigger formatting churn. Both tools are single static Rust binaries with no plug-in resolution, which is why their cold-start beats the legacy chain by 10–100x and makes the inner loop reflexion-friendly.</rationale>
+
+    <rule id="ruff-sole-python" testable="true" depth="essential">
+      <statement>New Python projects MUST use ruff as the SOLE linter + formatter; black / flake8 / isort / pyupgrade / autoflake / pydocstyle are removed.</statement>
+      <rationale source="ruff project docs">ruff covers &gt; 900 rules + format and runs 10-100x faster; multi-tool chain is legacy churn.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Python projects MUST place all ruff configuration in `pyproject.toml` under the `[tool.ruff]` and `[tool.ruff.lint]` tables; the legacy files `.flake8`, `setup.cfg [flake8]`, `tox.ini [isort]`, `pyproject.toml [tool.black]`, `pyproject.toml [tool.isort]` MUST be removed during migration. JavaScript/TypeScript projects MUST place all biome configuration in `biome.json` (or `biome.jsonc`) at the project root with the `$schema` field set; `.eslintrc*`, `.prettierrc*`, and `.editorconfig` (for JS-only repos) MUST be removed.</statement>
-      <rationale source="v1-source">A single config file means the agent reads one place to know what rules apply. Stale `.eslintrc` next to `biome.json` confuses contributors and IDEs alike, leaks rules that biome does not honor, and breaks the determinism that the formatter's autofix loop depends on.</rationale>
+    <rule id="biome-sole-js" testable="true" depth="essential">
+      <statement>Where prettier+eslint is over-engineered (new project, no entrenched eslint plugins), biome is the SOLE formatter + linter for JS/TS.</statement>
+      <rationale source="biomejs.dev docs">biome covers format + lint + import sort with one binary; prettier+eslint setup churn is real.</rationale>
     </rule>
+    <rule id="config-in-pyproject-or-biomejson" testable="true" depth="essential">
+      <statement>ruff config lives in pyproject.toml [tool.ruff]; biome config in biome.json. No .ruff.toml / external configs.</statement>
+      <rationale source="Tool config conventions">Single source per tool prevents config drift across files.</rationale>
+    </rule>
+    <rule id="rule-selection-explicit" testable="true" depth="essential">
+      <statement>ruff rule selection MUST be explicit (no `select = [&apos;ALL&apos;]` blindly); document why each group is on.</statement>
+      <rationale source="Internal — ruff adoption audits">Implicit ALL pulls in noisy rules that mask important findings.</rationale>
+    </rule>
+    <rule id="pre-commit-and-ci" testable="true" depth="essential">
+      <statement>Both tools MUST run as pre-commit hooks AND in CI.</statement>
+      <rationale source="Lint architecture">Hook = fast feedback; CI = merge gate.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If legacy eslint with heavy custom rules OR external mandate pins different tooling OR project depends on plugins not in ruff/biome, STOP.</statement>
+      <rationale source="Methodology hygiene">Migration churn on legacy projects &gt; value.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,31 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ADR Supersession Detection Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a ADR Supersession Detection deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="detector_id" format="stable_id" />
-      <field name="signal_definition" type="string" />
-      <field name="threshold" type="string" />
-      <field name="remediation_runbook" format="url_or_path" />
-      <field name="false_positive_target" format="float_0_to_1" />
-    </required>
-    <forbidden>
-      <pattern id="f1">detector without remediation_runbook</pattern>
-      <pattern id="f2">threshold expressed in vague language</pattern>
-      <pattern id="f3">false_positive_target unset</pattern>
-      <pattern id="f4">detector with no last_review_date</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Adjust threshold only with reason and review-date update.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Signal + threshold concrete</item>
-      <item>Remediation link reachable</item>
-      <item>FP target set</item>
-      <item>Last review ≤90d</item>
-    </list>
+<text id="02-output-contract" title="ADR Supersession Detection Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. The validator script enforces required keys, evidence-link presence, and slug match. Forbidden patterns: missing evidence array, slug mismatch, free-form version strings.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/adr-supersession-detection.json",
+  "title": "ADR Supersession Detection",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "owner",
+    "produced_at",
+    "evidence",
+    "body"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "adr-supersession-detection"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri-reference"
+      },
+      "minItems": 1
+    },
+    "body": {
+      "type": "object"
+    },
+    "ai_drafted": {
+      "type": "boolean"
+    },
+    "reviewer": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "adr-supersession-detection",
+  "version": "1.0.0",
+  "owner": "tech-lead@example.com",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "evidence": [
+    "https://example.com/adr/0007",
+    "./docs/decision-log.md#2026-05-22"
+  ],
+  "body": {
+    "summary": "real content here"
+  },
+  "ai_drafted": false,
+  "reviewer": "tech-lead@example.com"
+}
+]]></code>
+    <note>Required fields present, slug matches, evidence non-empty, version is semver.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "v1",
+  "evidence": []
+}
+]]></code>
+    <note>Slug mismatched, version not semver, evidence empty, body + owner + produced_at missing. Forbidden patterns: missing required keys, evidence=[], non-semver version, slug != expected.</note>
+  </example>
+
+  <reference path="scripts/validate-adr-supersession-detection.py">Validator script (stdlib only, supports --self-test).</reference>
 </text>

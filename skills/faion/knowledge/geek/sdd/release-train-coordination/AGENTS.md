@@ -3,82 +3,94 @@ slug: release-train-coordination
 tier: geek
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "61a7b9445c8031f6"
-summary: Release Train Coordination — pinned method for the product-dev team: fixed shape + named owner + evidence anchors + outcome review, so cross-role handoff: pm -> architect -> dev -> qa -> devops in one loop stops being folklore and starts being a reviewable operating tool.
-tags: [sdd, geek, method, release, train, coordination]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Generates a release-train artefact (window, freeze rules, branch policy, captain rotation) that closes the cross-role handoff loop.
+content_id: "ab468e8c1c4c4d49"
+complexity: medium
+produces: config
+est_tokens: 3400
+tags: ["sdd", "release", "coordination", "train", "team"]
 ---
 # Release Train Coordination
 
 ## Summary
 
-**One-sentence:** Release Train Coordination — pinned method for the product-dev team: fixed shape + named owner + evidence anchors + outcome review, so cross-role handoff: pm -> architect -> dev -> qa -> devops in one loop stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Generates a release-train artefact (window, freeze rules, branch policy, captain rotation) that closes the cross-role handoff loop.
 
-**One-paragraph:** In spec-driven delivery, the product-dev team runs cross-role handoff: pm -> architect -> dev -> qa -> devops in one loop on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Solo deploys when ready. Team needs release coordination: weekly release window, code-freeze rules, hot-fix vs feature-release branches, release captain rotation. Faion's deploy methodologies are infra-mechanical, not coordination-social `release-train-coordination` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the product-dev team starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Release Train Coordination produces a config that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Регулярний release window замість 'коли готово'.
+- Code-freeze rules видимі для всіх ролей.
+- Hot-fix vs feature-release branches — фіксований policy.
+- Captain rotation: фейр rotation + owner accountability.
+- Cross-role handoff: pm → architect → dev → qa → devops у одному циклі.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop`
-- the product-dev team owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Team has ≥3 active developers shipping to a shared environment.
+- Multiple releases per quarter where coordination matters.
+- Hot-fix path is distinct from feature-release path.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Solo developer or 'deploy when ready' shop.
+- Single release per quarter — release train is heavier than needed.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the product-dev team.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Release cadence target | Markdown / YAML | tech lead |
+| Branch model | Markdown | tech lead |
+| Captain rotation roster | YAML | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdd/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[definition-of-done-multi-role]] | release train enforces DoD per role |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-release-train-coordination` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/release-train.yml` | YAML config with window + freeze + branch model + rotation |
+| `templates/captain-runbook.md` | Markdown runbook for the active release captain |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-release-train-coordination.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdd/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[definition-of-done-multi-role]]
+- [[sprint-capacity-from-complexity-tags]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

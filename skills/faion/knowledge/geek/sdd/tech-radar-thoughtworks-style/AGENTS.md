@@ -3,69 +3,94 @@ slug: tech-radar-thoughtworks-style
 tier: geek
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: `tech-radar.md` with Adopt / Trial / Assess / Hold quadrants — the shared opinion past-5-devs teams need before 7 state-mgmt libs ship.
-content_id: "290144f7bf962b44"
-tags: [tech-radar-thoughtworks-style, sdd, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a `tech-radar.md` artefact with Adopt / Trial / Assess / Hold quadrants that captures the team's shared opinion on tooling and patterns.
+content_id: "16226ff300a7d8e0"
+complexity: medium
+produces: decision-record
+est_tokens: 3400
+tags: ["sdd", "tech-radar", "adoption", "thoughtworks", "tooling"]
 ---
-
-# Tech Radar (ThoughtWorks-style)
+# Tech Radar (ThoughtWorks-Style)
 
 ## Summary
 
-**One-sentence:** `tech-radar.md` with Adopt / Trial / Assess / Hold quadrants — the shared opinion past-5-devs teams need before 7 state-mgmt libs ship.
+**One-sentence:** Produces a `tech-radar.md` artefact with Adopt / Trial / Assess / Hold quadrants that captures the team's shared opinion on tooling and patterns.
 
-**One-paragraph:** Companies past 5 devs need a tech-radar (Adopt/Trial/Assess/Hold). Without it: PRs introduce 7 different state-mgmt libs because no shared opinion exists. faion has no methodology for authoring or maintaining one. Output: tech-radar template + quarterly review process + decision authority.
+**One-paragraph:** Tech Radar (ThoughtWorks-Style) produces a decision-record that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Запобігти 7 state-mgmt libs у одній репі — фіксована позиція команди.
+- Quarterly tech radar review: що ввести / прибрати.
+- Onboarding: junior бачить, що команда поточно ADOPT.
+- Audit: чому ми обрали X, а не Y — у радарі видно.
+- Cross-team alignment: один радар на дивізіон.
 
 ## Applies If (ALL must hold)
 
-- engineering team ≥5
-- decisions about libraries / patterns recur
-- named tech leadership with authority
+- Team has ≥5 engineers and growing tech surface.
+- Tooling/library choices have become contentious.
+- Quarterly review cadence exists or can be established.
 
 ## Skip If (ANY kills it)
 
-- team <5 — over-engineered
-- team is constrained to a single tech stack (no choices to make)
-- team uses TW's hosted radar — augment, don't duplicate
+- Solo or 2-person team — radar is overkill.
+- Team has a working radar on cadence already.
 
 ## Prerequisites
 
-- list of current technologies in active use
-- named radar maintainers (≥2 for rotation)
-- review cadence agreement
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tooling inventory | Markdown | tech lead |
+| Adoption / hold candidates | Markdown | team |
+| Quarterly review schedule | YAML | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/sdd/sdd` | parent skill — provides operating context for this methodology |
-| `solo/dev/architecture-decision-records` | peer methodology — produces inputs or consumes outputs |
-| `geek/sdlc-ai/methodology-contribution-flow-open-authorship` | peer methodology — produces inputs or consumes outputs |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-tech-radar-thoughtworks-style` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/tech-radar.md` | Markdown radar with quadrants + entries + evidence column |
+| `templates/tech-radar.schema.json` | JSON Schema for the radar artefact |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-tech-radar-thoughtworks-style.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
-- peer methodology: `solo/dev/architecture-decision-records`
-- peer methodology: `geek/sdlc-ai/methodology-contribution-flow-open-authorship`
-- peer methodology: `pro/dev/team-rfc-process-for-devs`
-- external: https://www.thoughtworks.com/radar; https://www.thoughtworks.com/radar/how-to-byor
+- [[adr-consequence-evidence-binding]]
+- [[internal-rfc-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

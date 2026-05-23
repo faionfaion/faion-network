@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gov-approval-token-signed-jwt Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gov-approval-token-signed-jwt. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Approval Token as Signed JWT Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules with rationale + source for gov-approval-token-signed-jwt. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>An approval token MUST be a JWT (RS256 / EdDSA) with at minimum these claims: `iss` (approval service), `sub` (human approver identity from SSO/IdP), `aud` (agent identity), `iat`, `exp` (≤300 seconds from `iat`), `jti` (unique, recorded for replay protection), `scope` (object: `tool`, `target`, `args_hash`), `correlation_id` (incident or task ID). The agent's tool layer MUST verify signature, `aud` match, `exp` not passed, `jti` not seen before, `scope.tool` matches the call, `scope.target` matches the call, and `scope.args_hash` matches `sha256(canonical(args))`. Failing any check, the call MUST be refused and an audit record emitted.</statement>
-      <rationale source="v1-source">Short expiry plus single-use plus args-hash binding means a token leaked or socially harvested cannot be replayed against a different call — the cryptographic envelope is the audit evidence.</rationale>
+    <rule id="token-is-signed-jwt" testable="true" depth="essential">
+      <statement>Approval tokens MUST be JWTs (RFC 7519) signed with `ES256` or `EdDSA`; HS256 / unsigned tokens MUST be rejected.</statement>
+      <rationale source="RFC 7519 + OWASP JWT cheat sheet">RFC 7519 + OWASP JWT cheat sheet — asymmetric signing prevents the verifier from forging tokens.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The agent MUST request approval via a workflow that posts a unique URL to a chat thread; the URL MUST require the approver's SSO/IdP login, MUST display the exact `tool`, `target`, and `args_hash` before signing, and MUST issue a JWT whose `sub` matches the SSO subject. The agent MUST present the JWT on the tool call; verification MUST happen at the policy enforcement point, NOT cached in the agent's memory. `jti` MUST be recorded in a tamper-evident store (signed append-only log or HSM-backed DB); replay attempts MUST be denied AND alerted. Approvals MUST NOT be self-issued by the agent's identity, and the approver's identity MUST NOT match `aud` (no self-approval). All denials and approvals MUST be retained per the org's compliance window.</statement>
-      <rationale source="v1-source">Chat surfaces are mutable and unsigned; SSO + KMS-signed callback turns a 3-second human action into a non-repudiable, auditable artifact that satisfies SOC2 CC6 and EU AI Act post-deployment monitoring.</rationale>
+    <rule id="expiry-bounded-short" testable="true" depth="essential">
+      <statement>`exp` claim MUST be ≤15 minutes from `iat`; longer-lived tokens enable replay across context drift.</statement>
+      <rationale source="OWASP token lifecycle guidance">OWASP token lifecycle guidance — short expiry caps replay window.</rationale>
+    </rule>
+    <rule id="nonce-one-time" testable="true" depth="essential">
+      <statement>Each token MUST carry a `jti` (nonce); verifier MUST record `jti` in the revocation store on first use and reject replays.</statement>
+      <rationale source="RFC 7519 §4.1.7">RFC 7519 §4.1.7 — `jti` is the canonical replay defense.</rationale>
+    </rule>
+    <rule id="audience-and-scope-explicit" testable="true" depth="essential">
+      <statement>`aud` MUST identify the target resource (cluster id / repo / database); `scope` claim MUST name the action verb. Wildcards forbidden.</statement>
+      <rationale source="OAuth 2.0 audience binding">OAuth 2.0 audience binding — wildcard scopes are equivalent to root grants.</rationale>
+    </rule>
+    <rule id="issuer-rooted-in-hsm" testable="true" depth="essential">
+      <statement>Signing key MUST live in HSM or cloud KMS with non-exportable property; software-only signing keys MUST be rejected.</statement>
+      <rationale source="NIST SP 800-57">NIST SP 800-57 — software keys leak; HSM-rooted issuer is the policy floor.</rationale>
+    </rule>
+    <rule id="revocation-list-checked" testable="true" depth="essential">
+      <statement>Verifier MUST consult a revocation list keyed by `jti` (one-time nonce) + by issuer-published revocation set (`crl_url`).</statement>
+      <rationale source="OAuth token revocation RFC 7009">OAuth token revocation RFC 7009 — without revocation, compromised tokens live until `exp`.</rationale>
+    </rule>
+    <rule id="audit-log-mandatory" testable="true" depth="essential">
+      <statement>Every issue + verify + reject MUST write an audit entry (issuer, audience, scope, jti, decision); audit log MUST be tamper-evident.</statement>
+      <rationale source="SOC 2 CC7">SOC 2 CC7 — without audit, approval ceremony is theatre.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If agents do not touch privileged actions, or existing cryptographic approval flow is in place, return `skipped`.</statement>
+      <rationale source="industry practice">Avoids reinstalling approval over existing flow.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

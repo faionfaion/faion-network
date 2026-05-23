@@ -1,80 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ADR Decay Detector Agent Core Rules" version="1.0.0" est_tokens="950" depth="essential">
-  <summary>Five hard rules for an AI agent that detects ADR-vs-code drift.</summary>
-
-  <section title="The five rules">
-
-    <rule id="r1-extract-testable-propositions" testable="true" depth="essential">
-      <statement>For each ADR the agent extracts a list of testable propositions in the form: subject + operator + observable. Examples: "package_manager == pnpm", "db_engine IN [postgres]", "no_redis_in_critical_path", "service.auth_lib == 'auth0_sdk'". Propositions that cannot be evaluated against an observable artifact (file, manifest, IaC, dependency tree) are flagged "non-testable" and SKIPPED, not faked.</statement>
-      <rationale source="formal verification practice; MADR template guidance">Narrative ADRs ("we prefer modern tooling") cannot be auto-checked. The extractor must refuse to invent observable mappings — refusing is correct behavior. Forced extraction of vague ADRs produces 60-80% false positives.</rationale>
+<text id="01-core-rules" title="ADR Decay Detector Agent Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules with rationale + source for kb-adr-decay-detector-agent. Includes terminal skip-this-methodology rule.</summary>
+  <section title="Rule set">
+    <rule id="scan-all-adrs" testable="true" depth="essential">
+      <statement>Detector MUST scan every ADR in `docs/adr/` (or configured root); selective scans miss decay.</statement>
+      <rationale source="industry practice">ADR decay is non-local; a contradiction can appear far from the ADR location.</rationale>
     </rule>
-
-    <rule id="r2-never-auto-edit-adrs" testable="true" depth="essential">
-      <statement>The agent NEVER edits, supersedes, or marks ADRs as "deprecated" automatically. Output is always a report for human triage. Auto-editing destroys the historical decision record and violates ADR immutability.</statement>
-      <rationale source="ADR immutability principle - Nygard 2011, MADR docs">ADRs are immutable historical records. Superseding is a deliberate human decision documented as a new ADR. An agent that "tidies up" ADRs erases the org's decision archaeology.</rationale>
+    <rule id="contradiction-evidence-anchored" testable="true" depth="essential">
+      <statement>Contradiction findings MUST cite both the ADR section and the conflicting code (file + line); free-form 'this seems wrong' rejected.</statement>
+      <rationale source="industry practice">Evidence-anchored findings hold up in review; non-evidenced findings get dismissed and erode trust.</rationale>
     </rule>
-
-    <rule id="r3-scoped-scan-targets" testable="true" depth="essential">
-      <statement>Each proposition has a declared scope: which globs / manifests / files / IaC modules to scan. Scope is set during proposition extraction. A "no_mongodb" proposition does NOT scan node_modules, docs, or test fixtures — only production source + IaC. Out-of-scope evidence is rejected.</statement>
-      <rationale source="security scanner false-positive reduction; AWS prescriptive guidance">Unscoped scans produce 100x more "violations" than real drift. A mongodb-driver in a vendored test fixture is not a violation of "no mongodb in production". Scope confines the agent to artifacts that actually represent the decision boundary.</rationale>
+    <rule id="supersession-link-required" testable="true" depth="essential">
+      <statement>Supersession (`replaces:` / `superseded-by:`) MUST be a markdown link to the superseding ADR; orphan supersedes flagged.</statement>
+      <rationale source="industry practice">Without link the graph rots; readers can't navigate decisions.</rationale>
     </rule>
-
-    <rule id="r4-human-triage-required" testable="true" depth="essential">
-      <statement>Every violation surfaces with: (a) the ADR id + decision text, (b) the file/line evidence, (c) a "possible repairs" list (update ADR / fix code / dispute violation), (d) confidence score. Agent recommends — never auto-applies. Triage SLA: human reviews report within 1 week.</statement>
-      <rationale source="human-in-the-loop ML governance; Anthropic agent design principles">Auto-applied "fixes" by LLM-based detectors are the #1 source of correctness regressions in coding agents. Human triage with surfaced evidence creates a feedback loop that improves the agent over time. The 1-week SLA prevents the report from becoming wallpaper.</rationale>
+    <rule id="missing-artifact-flagged" testable="true" depth="essential">
+      <statement>ADRs referencing files / modules / libraries that no longer exist MUST be flagged with the broken path.</statement>
+      <rationale source="industry practice">Dead references signal decisions ground-truth has shifted.</rationale>
     </rule>
-
-    <rule id="r5-idempotent-runs" testable="true" depth="essential">
-      <statement>Two scans of the same ADRs + same commit MUST produce the same violation set. The agent must record (commit_sha, adr_set_hash, model_version, timestamp) in every report. Non-idempotency = bug; investigate before trusting the next run.</statement>
-      <rationale source="reproducibility principles; LLM determinism mitigations">LLM outputs are inherently non-deterministic. Idempotency must be enforced by structure: use temperature=0, structured output schemas, deterministic glob ordering, and a content hash of the input. Random violation appearances destroy trust in the agent within 2-3 runs.</rationale>
+    <rule id="status-drift-flagged" testable="true" depth="essential">
+      <statement>ADRs with status `accepted` but no implementation evidence (file path, PR, deploy) MUST be flagged.</statement>
+      <rationale source="industry practice">`accepted` without evidence is aspirational, not decision-of-record.</rationale>
     </rule>
-
+    <rule id="weekly-cadence" testable="true" depth="essential">
+      <statement>Detector MUST run weekly (or on schedule per team); ad-hoc runs miss steady-state decay.</statement>
+      <rationale source="industry practice">Weekly cadence catches drift before next quarter's review.</rationale>
+    </rule>
+    <rule id="findings-routed-to-review" testable="true" depth="essential">
+      <statement>Findings MUST be routed to the architecture review queue (Linear ticket / Jira issue / GitHub issue); console-only output is ignored.</statement>
+      <rationale source="industry practice">Discoverability is the killer of decay detection.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If &lt;5 ADRs exist or ADRs are pure prose, return `skipped`.</statement>
+      <rationale source="industry practice">Automation overhead exceeds benefit.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Proposition extracted from a real ADR">
-      <code lang="text"><![CDATA[
-ADR-007: Postgres as Sole Persistence Layer
-Decision: "All persistent data goes to PostgreSQL 15+. Redis is permitted
-only as a cache (TTL ≤ 24h) with cache-miss fallback to Postgres."
-
-Extracted propositions:
-  P1: subject="db_engine"        operator="∈"  observable={"postgres"}
-      scope: services/*/migrations/, infra/terraform/*.tf
-  P2: subject="redis_usage"      operator="cache_only_with_ttl"
-      observable_constraint: ttl_seconds ≤ 86400
-      scope: services/*/cache/, services/*/redis_*.py
-  P3: subject="redis_as_primary" operator="absent"
-      scope: services/*/repository/
-
-Each is testable. P1 fails if a MongoDB migration is found.
-P2 fails if Redis SET without TTL or TTL &gt; 86400.
-P3 fails if any repository class reads from Redis as source of truth.
-      ]]></code>
-      <note>Illustrates r1 (testable propositions) and r3 (scoped scan targets).</note>
-    </example>
-
-    <example type="bad" title="Vague ADR forced into testable form">
-      <code lang="text"><![CDATA[
-ADR-014: We Will Be Cloud-Native
-
-Forced extraction:
-  P1: subject="cloud_native"  operator="=="  observable=true
-      scope: <everywhere>
-
-Result: 100% of code "passes" or "fails" depending on prompt. Useless.
-Repair: agent flags ADR-014 as "non-testable, narrative only" and skips it.
-The architect can either rewrite the ADR with testable claims or accept it
-as out-of-scope for automated detection.
-      ]]></code>
-      <note>Illustrates r1 refusal-to-fake behavior.</note>
-    </example>
-
-  </section>
-
   <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
   </see-also>
 </text>

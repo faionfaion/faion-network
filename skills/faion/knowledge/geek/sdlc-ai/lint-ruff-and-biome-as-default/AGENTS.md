@@ -3,71 +3,97 @@ slug: lint-ruff-and-biome-as-default
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: For new Python projects, ruff is the SOLE linter and formatter — it replaces black, flake8, isort, pyupgrade, autoflake and pydocstyle, ships 900+ rules, and runs 10–100x faster than the previous Python toolchain.
-content_id: "44abccf90399f43e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: For new Python projects, ruff is the SOLE linter + formatter (replaces black/flake8/isort/pyupgrade/autoflake/pydocstyle). For JS/TS, biome is the SOLE formatter + linter where prettier+eslint is over-engineered.
+content_id: "37188d9687132c77"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [ruff, biome, linting, formatting, python]
 ---
 # Ruff for Python and Biome for JS/TS as the Sole Linter+Formatter
 
 ## Summary
 
-**One-sentence:** For new Python projects, ruff is the SOLE linter and formatter — it replaces black, flake8, isort, pyupgrade, autoflake and pydocstyle, ships 900+ rules, and runs 10–100x faster than the previous Python toolchain.
+**One-sentence:** For new Python projects, ruff is the SOLE linter + formatter (replaces black/flake8/isort/pyupgrade/autoflake/pydocstyle). For JS/TS, biome is the SOLE formatter + linter where prettier+eslint is over-engineered.
 
-**One-paragraph:** For new Python projects, ruff is the SOLE linter and formatter — it replaces black, flake8, isort, pyupgrade, autoflake and pydocstyle, ships 900+ rules, and runs 10–100x faster than the previous Python toolchain. For new JavaScript/TypeScript/JSX/CSS/GraphQL projects, biome is the SOLE linter and formatter — it replaces ESLint and Prettier with 491 rules and a single config file. Both tools have --fix / --write flags that AI agents call after every code edit.
+**One-paragraph:** Ruff for Python and Biome for JS/TS as the Sole Linter+Formatter produces a config artefact for the sdlc-ai domain. It pins observable preconditions, scores candidate decisions against ≥5 testable rules, fails fast on disqualifiers, and emits a schema-validated output. The methodology routes between apply and skip-this-methodology via an explicit decision tree so downstream agents never run it on an unsuitable input.
+
+**Ефективно для:**
+
+- New Python project (no legacy black/flake8 baggage).
+- Python repo migrating off the multi-tool chain.
+- New JS/TS project where prettier+eslint is overkill.
+- Pre-commit hook needs millisecond-fast lint to keep flow.
 
 ## Applies If (ALL must hold)
 
-- Any new Python project — start with ruff in pyproject.toml, no other linter or formatter.
-- Any new JS/TS project — start with biome in biome.json, no ESLint, no Prettier.
-- Any agent-driven workflow where the inner loop is "edit → format → test"; both tools' speed makes the inner loop sub-second.
-- Any monorepo migrating off black/flake8/isort or ESLint/Prettier — migrate one package at a time.
+- Python ≥ 3.9 (ruff supports all current versions).
+- JS/TS project where prettier+eslint isn't already entrenched.
+- Team accepts a single tool decision per language.
+- Custom rules limited (or expressible in ruff/biome).
 
 ## Skip If (ANY kills it)
 
-- Legacy projects with deeply customized ESLint plug-ins that have no biome equivalent yet — migrate incrementally rather than mid-sprint.
-- Projects that ship a public ESLint/Prettier config as a product (e.g., a shareable preset) — biome is not yet a drop-in replacement for that consumption pattern.
-- One-off scripts not part of a package; running a formatter on a single ad-hoc file is overhead.
+- Legacy project with heavy eslint custom rules — migration cost.
+- Project depends on a plugin not in ruff/biome (e.g. eslint-plugin-vue specifics).
+- Team explicitly wants prettier formatting style different from biome.
+- Tooling pinned by external mandate.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| pyproject.toml ruff section | committed config | py lead |
+| biome.json | committed config | frontend lead |
+| Pre-commit hook entries | ruff + biome hooks | platform |
+| CI gate | `ruff check` + `biome ci` | ci-eng |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-precommit-floor]] | Hook framework hosts ruff/biome |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `rule_pick` | sonnet | Choose ruff rule selection per project. |
+| `biome_config_draft` | sonnet | Biome config + ignore set. |
+| `ci_wire_up` | haiku | Add CI steps. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pyproject.toml.fragment` | ruff section. |
+| `templates/biome.json` | Biome config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ruff-and-biome-as-default.py` | Validate the linter-config artefact. | pre-merge of lint config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[lint-precommit-floor]]
+- [[lint-staged-only-not-whole-tree]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.

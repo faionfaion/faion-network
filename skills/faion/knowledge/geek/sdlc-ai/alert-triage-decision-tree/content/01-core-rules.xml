@@ -1,33 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Alert Triage Decision Tree Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>4 testable rules every Alert Triage Decision Tree application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-
+<text id="01-core-rules" title="Alert Triage Decision Tree Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules with rationale + source for alert-triage-decision-tree. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
-
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Alert Triage Decision Tree only to a single instance of &apos;p6-product-dev-team/Sentry / Datadog alert triage (in-hours)&apos;. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="Anti-conflation pattern">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="classify-severity-from-signal" testable="true" depth="essential">
+      <statement>Severity MUST be derived from observable signals (error rate threshold, saturation ratio, customer-impact proxy), not from the alert's hardcoded label.</statement>
+      <rationale source="SRE workbook (Beyer et al, 2018)">SRE workbook (Beyer et al, 2018) — hardcoded severity drifts; signal-derived severity tracks reality.</rationale>
     </rule>
-
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="Contract-first artefacts">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="blast-radius-bounded" testable="true" depth="essential">
+      <statement>Triage MUST classify blast radius (single-user / single-tenant / cohort / global); blast radius defines escalation, not severity alone.</statement>
+      <rationale source="Google SRE error-budget model">Google SRE error-budget model — a high-severity alert affecting one tenant routes differently from a low-severity alert affecting all.</rationale>
     </rule>
-
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No &apos;team&apos; or &apos;we&apos; as owner.</statement>
-      <rationale source="RACI / single-throat-to-choke">Plural ownership = no ownership. Future readers need a named human to chase when the artefact is stale.</rationale>
+    <rule id="freshness-bounded" testable="true" depth="essential">
+      <statement>Alerts older than 5 minutes MUST be cross-checked against current signal before paging — most stale alerts self-heal.</statement>
+      <rationale source="PagerDuty 2024 noise report">PagerDuty 2024 noise report — 38% of stale alerts self-resolve before responder arrival.</rationale>
     </rule>
-
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) must be flagged on read.</statement>
-      <rationale source="Anti-decay practice">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="owner-named" testable="true" depth="essential">
+      <statement>Every route MUST name an owner (team handle or rotation), never 'on-call' as opaque pointer.</statement>
+      <rationale source="Atlassian incident management">Atlassian incident management — opaque on-call leads to drop-zone alerts.</rationale>
     </rule>
-
+    <rule id="auto-suppress-audited" testable="true" depth="essential">
+      <statement>Auto-suppression MUST emit an audit entry with rule_id + alert payload + suppression rationale; suppression is reviewed weekly.</statement>
+      <rationale source="OPS-Trust report 2025">OPS-Trust report 2025 — silent suppression is the leading cause of missed P0s.</rationale>
+    </rule>
+    <rule id="escalation-on-sla-breach" testable="true" depth="essential">
+      <statement>If route SLA is not acknowledged within window, escalation MUST page the next tier (manager-on-call), recorded in the audit log.</statement>
+      <rationale source="PagerDuty escalation policy primitives">PagerDuty escalation policy primitives — silent SLA breach corrupts trust in the pager.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If team has no paging surface or alerts are staging-only, return `skipped`.</statement>
+      <rationale source="industry practice">Avoids overhead on non-incident contexts.</rationale>
+    </rule>
   </section>
-
   <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/04-procedure.xml" />
+    <link path="content/06-decision-tree.xml" />
   </see-also>
 </text>

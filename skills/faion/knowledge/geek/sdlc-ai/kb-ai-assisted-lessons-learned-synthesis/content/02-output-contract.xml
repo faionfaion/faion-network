@@ -1,72 +1,324 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI-Assisted Lessons-Learned Synthesis Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the synthesis doc, themed appendix, and action-item table.</summary>
+<text id="02-output-contract" title="AI-Assisted Lessons-Learned Synthesis Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="synthesis_metadata">
-        <subfield name="window_start" type="iso_date"/>
-        <subfield name="window_end" type="iso_date"/>
-        <subfield name="retros_ingested_count" type="integer" min="5"/>
-        <subfield name="model" type="string"/>
-        <subfield name="model_run_temperature" type="number" max="0.2"/>
-        <subfield name="human_editor" type="string"/>
-        <subfield name="finalized_at" type="iso_datetime"/>
-      </field>
-      <field name="themes" format="list" min_items="3" max_items="12">
-        <subfield name="themes[].theme_id" type="string"/>
-        <subfield name="themes[].title" type="string"/>
-        <subfield name="themes[].description" type="string" max_words="60"/>
-        <subfield name="themes[].severity" enum="0,1,2,3"/>
-        <subfield name="themes[].recurrence_count" type="integer" min="2"/>
-        <subfield name="themes[].evidence_quotes" min_items="2"/>
-        <subfield name="themes[].evidence_quotes[].verbatim_text" type="string"/>
-        <subfield name="themes[].evidence_quotes[].source_doc" type="string"/>
-        <subfield name="themes[].evidence_quotes[].line_range" type="string"/>
-      </field>
-      <field name="action_items" min_items="5" max_items="10">
-        <subfield name="action_items[].title" type="string"/>
-        <subfield name="action_items[].owner_role" type="string"/>
-        <subfield name="action_items[].deadline" type="iso_date"/>
-        <subfield name="action_items[].success_criteria" type="string"/>
-        <subfield name="action_items[].related_theme_ids" min_items="1"/>
-      </field>
-      <field name="long_tail_observations" format="list"/>
-      <field name="human_edit_pass">
-        <subfield name="citation_check_passed" type="boolean"/>
-        <subfield name="citations_verified_count" type="integer"/>
-        <subfield name="edits_made_log" type="string"/>
-      </field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">theme with recurrence_count &lt; 2 in main themes list</pattern>
-      <pattern id="f2">theme with evidence_quotes count &lt; 2</pattern>
-      <pattern id="f3">evidence_quotes[].verbatim_text that does not appear in the cited source_doc at the cited line_range</pattern>
-      <pattern id="f4">action_item with owner_role == "team" / "everyone" / generic</pattern>
-      <pattern id="f5">action_item with deadline &gt; 1 quarter from finalized_at</pattern>
-      <pattern id="f6">finalized_at present but human_edit_pass.citation_check_passed == false</pattern>
-      <pattern id="f7">vague theme titles like "communication", "process", "collaboration" without a specific qualifier</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Single-mention insights move to long_tail_observations; do NOT promote them to themes without 2+ sources.</transformation>
-      <transformation>Verbatim quotes may be trimmed for length while preserving specifics (project names anonymized to roles where retros require confidentiality).</transformation>
-      <transformation>Theme description may add 1-2 sentences of synthesis interpretation, but evidence stays verbatim.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/synthesis-doc.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>≥ 5 retros ingested, sources listed</item>
-      <item>every theme has ≥ 2 verbatim quotes from ≥ 2 source retros</item>
-      <item>citations validated against source docs (script + human pass)</item>
-      <item>severity × recurrence score computed</item>
-      <item>5-10 action items, each with owner role + deadline + success criteria</item>
-      <item>human_edit_pass.citation_check_passed == true before finalize</item>
-      <item>no filler themes (communication / process / collaboration alone)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-assisted-lessons-learned-synthesis.json",
+  "type": "object",
+  "required": [
+    "synthesis_metadata",
+    "themes",
+    "action_items",
+    "human_edit_pass"
+  ],
+  "properties": {
+    "synthesis_metadata": {
+      "type": "object",
+      "required": [
+        "window_start",
+        "window_end",
+        "retros_ingested_count",
+        "model",
+        "human_editor",
+        "finalized_at"
+      ],
+      "properties": {
+        "window_start": {
+          "type": "string",
+          "format": "date"
+        },
+        "window_end": {
+          "type": "string",
+          "format": "date"
+        },
+        "retros_ingested_count": {
+          "type": "integer",
+          "minimum": 5
+        },
+        "model": {
+          "type": "string"
+        },
+        "human_editor": {
+          "type": "string"
+        },
+        "finalized_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "themes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "theme_id",
+          "title",
+          "severity",
+          "recurrence_count",
+          "evidence_quotes"
+        ],
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2,
+              3
+            ]
+          },
+          "recurrence_count": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "evidence_quotes": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "verbatim_text",
+                "source_doc",
+                "line_range"
+              ],
+              "properties": {
+                "verbatim_text": {
+                  "type": "string"
+                },
+                "source_doc": {
+                  "type": "string"
+                },
+                "line_range": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "action_items": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "owner_role",
+          "deadline",
+          "success_criteria"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "owner_role": {
+            "type": "string",
+            "not": {
+              "enum": [
+                "team",
+                "we",
+                "everyone",
+                ""
+              ]
+            }
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date"
+          },
+          "success_criteria": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "human_edit_pass": {
+      "type": "object",
+      "required": [
+        "citation_check_passed"
+      ],
+      "properties": {
+        "citation_check_passed": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "synthesis_metadata": {
+    "window_start": "2025-01-01",
+    "window_end": "2026-04-30",
+    "retros_ingested_count": 8,
+    "model": "claude-opus-4-7",
+    "human_editor": "Jane Doe (Delivery Lead)",
+    "finalized_at": "2026-05-22T10:00:00Z"
+  },
+  "themes": [
+    {
+      "theme_id": "t-001",
+      "title": "Discovery \u2192 spec handoff timing",
+      "severity": 3,
+      "recurrence_count": 4,
+      "evidence_quotes": [
+        {
+          "verbatim_text": "Spec arrived 2 weeks after discovery ended",
+          "source_doc": "project-A-retro.md",
+          "line_range": "L42-43"
+        },
+        {
+          "verbatim_text": "Discovery panel was unreachable for clarification",
+          "source_doc": "project-G-retro.md",
+          "line_range": "L17-18"
+        }
+      ]
+    },
+    {
+      "theme_id": "t-002",
+      "title": "Theme 2",
+      "severity": 2,
+      "recurrence_count": 2,
+      "evidence_quotes": [
+        {
+          "verbatim_text": "q2a",
+          "source_doc": "r2.md",
+          "line_range": "L1-2"
+        },
+        {
+          "verbatim_text": "q2b",
+          "source_doc": "r2b.md",
+          "line_range": "L3-4"
+        }
+      ]
+    },
+    {
+      "theme_id": "t-003",
+      "title": "Theme 3",
+      "severity": 2,
+      "recurrence_count": 2,
+      "evidence_quotes": [
+        {
+          "verbatim_text": "q3a",
+          "source_doc": "r3.md",
+          "line_range": "L1-2"
+        },
+        {
+          "verbatim_text": "q3b",
+          "source_doc": "r3b.md",
+          "line_range": "L3-4"
+        }
+      ]
+    },
+    {
+      "theme_id": "t-004",
+      "title": "Theme 4",
+      "severity": 2,
+      "recurrence_count": 2,
+      "evidence_quotes": [
+        {
+          "verbatim_text": "q4a",
+          "source_doc": "r4.md",
+          "line_range": "L1-2"
+        },
+        {
+          "verbatim_text": "q4b",
+          "source_doc": "r4b.md",
+          "line_range": "L3-4"
+        }
+      ]
+    }
+  ],
+  "action_items": [
+    {
+      "title": "Action 1",
+      "owner_role": "Role 1",
+      "deadline": "2026-08-31",
+      "success_criteria": "Metric 1 hits target"
+    },
+    {
+      "title": "Action 2",
+      "owner_role": "Role 2",
+      "deadline": "2026-08-31",
+      "success_criteria": "Metric 2 hits target"
+    },
+    {
+      "title": "Action 3",
+      "owner_role": "Role 3",
+      "deadline": "2026-08-31",
+      "success_criteria": "Metric 3 hits target"
+    },
+    {
+      "title": "Action 4",
+      "owner_role": "Role 4",
+      "deadline": "2026-08-31",
+      "success_criteria": "Metric 4 hits target"
+    },
+    {
+      "title": "Action 5",
+      "owner_role": "Role 5",
+      "deadline": "2026-08-31",
+      "success_criteria": "Metric 5 hits target"
+    }
+  ],
+  "human_edit_pass": {
+    "citation_check_passed": true
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "themes": [
+    {
+      "title": "Communication issues",
+      "severity": 2,
+      "recurrence_count": 1,
+      "evidence_quotes": []
+    }
+  ],
+  "action_items": [
+    {
+      "title": "Improve things",
+      "owner_role": "team",
+      "deadline": "2027-12-31",
+      "success_criteria": "Better"
+    }
+  ]
+}
+]]></code>
+    <note>Missing required fields; theme with 0 evidence quotes; owner_role=&apos;team&apos; is forbidden generic value; action_items &lt; 5.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">theme with recurrence_count &lt; 2 in main themes list</pattern>
+    <pattern id="f2">theme with evidence_quotes count &lt; 2</pattern>
+    <pattern id="f3">evidence_quotes[].verbatim_text not appearing in source_doc at line_range</pattern>
+    <pattern id="f4">action_item with owner_role in {&apos;team&apos;, &apos;everyone&apos;, &apos;we&apos;, null}</pattern>
+    <pattern id="f5">action_item with deadline &gt; 1 quarter from finalized_at</pattern>
+    <pattern id="f6">human_edit_pass.citation_check_passed == false but finalized_at set</pattern>
+  </section>
+
+  <reference path="scripts/validate-lessons-learned-synthesis.py">Validator script</reference>
 </text>

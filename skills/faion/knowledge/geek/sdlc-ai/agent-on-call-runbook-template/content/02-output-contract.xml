@@ -1,31 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agent On Call Runbook Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent On Call Runbook Template deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
-    </list>
+<text id="02-output-contract" title="Agent On-Call Runbook Template Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces. The validator script enforces required keys, evidence-link presence, and slug match. Forbidden patterns: missing evidence array, slug mismatch, free-form version strings.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agent-on-call-runbook-template.json",
+  "title": "Agent On-Call Runbook Template",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "owner",
+    "produced_at",
+    "evidence",
+    "body"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "agent-on-call-runbook-template"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri-reference"
+      },
+      "minItems": 1
+    },
+    "body": {
+      "type": "object"
+    },
+    "ai_drafted": {
+      "type": "boolean"
+    },
+    "reviewer": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "agent-on-call-runbook-template",
+  "version": "1.0.0",
+  "owner": "tech-lead@example.com",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "evidence": [
+    "https://example.com/adr/0007",
+    "./docs/decision-log.md#2026-05-22"
+  ],
+  "body": {
+    "summary": "real content here"
+  },
+  "ai_drafted": false,
+  "reviewer": "tech-lead@example.com"
+}
+]]></code>
+    <note>Required fields present, slug matches, evidence non-empty, version is semver.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "v1",
+  "evidence": []
+}
+]]></code>
+    <note>Slug mismatched, version not semver, evidence empty, body + owner + produced_at missing. Forbidden patterns: missing required keys, evidence=[], non-semver version, slug != expected.</note>
+  </example>
+
+  <reference path="scripts/validate-agent-on-call-runbook-template.py">Validator script (stdlib only, supports --self-test).</reference>
 </text>
