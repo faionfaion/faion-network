@@ -1,22 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-rolling-update Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Rolling Update Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-rolling-update.json",
+  "type": "object",
+  "required": [
+    "service",
+    "strategy_type",
+    "max_unavailable",
+    "max_surge",
+    "min_ready_seconds",
+    "progress_deadline_seconds",
+    "pdb",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "service": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "strategy_type": {
+      "enum": [
+        "RollingUpdate",
+        "Recreate"
+      ]
+    },
+    "max_unavailable": {
+      "type": "string"
+    },
+    "max_surge": {
+      "type": "string"
+    },
+    "min_ready_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "progress_deadline_seconds": {
+      "type": "integer",
+      "maximum": 600
+    },
+    "pdb": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "min_available": {
+          "type": "string"
+        },
+        "max_unavailable": {
+          "type": "string"
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "acme-api",
+  "strategy_type": "RollingUpdate",
+  "max_unavailable": "25%",
+  "max_surge": "25%",
+  "min_ready_seconds": 30,
+  "progress_deadline_seconds": 600,
+  "pdb": {
+    "name": "acme-api-pdb",
+    "min_available": "50%"
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "api",
+  "strategy_type": "Recreate"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>strategy_type Recreate for production.</description>
+      <reason>User-visible downtime.</reason>
+    </antipattern>
+    <antipattern>
+      <description>progress_deadline_seconds above 600.</description>
+      <reason>Stuck rollouts hide too long.</reason>
+    </antipattern>
+    <antipattern>
+      <description>No paired PDB.</description>
+      <reason>Node drain can take down all replicas.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-rolling-update.py">Validator script</reference>
 </text>

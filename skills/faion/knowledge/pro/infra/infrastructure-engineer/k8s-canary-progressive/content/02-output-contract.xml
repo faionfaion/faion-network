@@ -1,22 +1,179 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-canary-progressive Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Canary and Progressive Delivery Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-canary-progressive.json",
+  "type": "object",
+  "required": [
+    "service",
+    "engine",
+    "strategy",
+    "steps",
+    "analysis",
+    "rollback_seconds",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "service": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "engine": {
+      "enum": [
+        "argo-rollouts",
+        "flagger"
+      ]
+    },
+    "strategy": {
+      "enum": [
+        "canary",
+        "blue-green"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "weight",
+          "pause_seconds"
+        ],
+        "properties": {
+          "weight": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "pause_seconds": {
+            "type": "integer",
+            "minimum": 30
+          }
+        }
+      },
+      "minItems": 3
+    },
+    "analysis": {
+      "type": "object",
+      "required": [
+        "template",
+        "success_condition",
+        "failure_condition"
+      ],
+      "properties": {
+        "template": {
+          "type": "string"
+        },
+        "success_condition": {
+          "type": "string"
+        },
+        "failure_condition": {
+          "type": "string"
+        }
+      }
+    },
+    "rollback_seconds": {
+      "type": "integer",
+      "maximum": 300
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "acme-api",
+  "engine": "argo-rollouts",
+  "strategy": "canary",
+  "steps": [
+    {
+      "weight": 5,
+      "pause_seconds": 300
+    },
+    {
+      "weight": 25,
+      "pause_seconds": 600
+    },
+    {
+      "weight": 50,
+      "pause_seconds": 600
+    },
+    {
+      "weight": 100,
+      "pause_seconds": 60
+    }
+  ],
+  "analysis": {
+    "template": "http-slo-v1",
+    "success_condition": "result[0] < 0.01",
+    "failure_condition": "result[0] >= 0.02"
+  },
+  "rollback_seconds": 180,
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "acme-api",
+  "strategy": "canary",
+  "steps": [
+    {
+      "weight": 100,
+      "pause_seconds": 0
+    }
+  ]
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Single-step weight 100.</description>
+      <reason>No staged progression; defeats canary.</reason>
+    </antipattern>
+    <antipattern>
+      <description>rollback_seconds above 300.</description>
+      <reason>Auto-rollback too slow; blast radius unbounded.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Inline analysis queries per Rollout.</description>
+      <reason>Policy drift across services.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-canary-progressive.py">Validator script</reference>
 </text>

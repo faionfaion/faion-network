@@ -1,56 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="K8s VPA Rightsizing Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of the rightsizing audit log + savings report. Subagent must satisfy this before promoting full rollout.</summary>
+<text id="02-output-contract" title="K8s VPA Rightsizing Runbook Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) describing the report artefact this methodology produces, plus valid + invalid + forbidden examples enforced by `scripts/validate-k8s-vpa-rightsizing-runbook.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="cluster_id" type="string"/>
-      <field name="rollout_stage" type="closed_enum"
-             value="recommend,soak,reconcile,canary,full_rollout,recompute_scheduled"/>
-      <field name="vpa_recommend_mode_confirmed" type="boolean" constraint="value == true"/>
-      <field name="soak_window_days" type="integer" constraint="value &gt;= 7"/>
-      <field name="per_workload_changes" type="array_object"
-             item_required_keys="workload,namespace,before_cpu,before_mem,after_cpu,after_mem,hpa_before,hpa_after,rationale"/>
-      <field name="hpa_envelope_check" type="object"
-             required_keys="passed,headroom_before,headroom_after"
-             constraint="passed == true (headroom_after &gt;= headroom_before)"/>
-      <field name="canary_results" type="object"
-             required_keys="workload_cohort,duration_hours,oomkill_count,throttle_pct,slo_status"
-             constraint="oomkill_count &lt;= 0 OR rollback_workloads documented"/>
-      <field name="savings_report" type="object"
-             required_keys="cpu_reduction_pct,mem_reduction_pct,monthly_savings_usd,before_total_cost,after_total_cost"/>
-      <field name="recompute_schedule" type="object"
-             required_keys="next_review_date,owner"
-             constraint="next_review_date &lt;= today + 90 days"/>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-vpa-rightsizing-runbook.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artefact_id",
+    "produces",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "decision",
+    "rationale",
+    "trace_refs"
+  ],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "produces": {"type": "string", "const": "report"},
+    "owner": {"type": "string", "minLength": 2, "pattern": "^(?!team$|we$|us$).+"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"],
+        "properties": {
+          "name": {"type": "string"},
+          "source": {"type": "string", "format": "uri-reference"}
+        }
+      }
+    },
+    "decision": {"type": "string", "minLength": 1},
+    "rationale": {"type": "string", "minLength": 40},
+    "trace_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "status": {"type": "string", "enum": ["draft", "active", "review", "deprecated"]}
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">vpa_recommend_mode_confirmed == false OR updateMode == Auto on workloads with HPA (violates r1)</pattern>
-      <pattern id="f2">soak_window_days &lt; 7 (violates r2)</pattern>
-      <pattern id="f3">hpa_envelope_check.passed == false OR headroom_after &lt; headroom_before (violates r3)</pattern>
-      <pattern id="f4">rollout_stage == full_rollout without prior canary_results record (violates r4)</pattern>
-      <pattern id="f5">canary_results.oomkill_count &gt; 0 AND rollback_workloads not documented (violates r5)</pattern>
-      <pattern id="f6">per_workload_changes entries with rationale empty or "VPA said so"</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "k8s-vpa-rightsizing-runbook-2026q2-acme",
+  "produces": "report",
+  "owner": "ruslan@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {"name": "trigger-context", "source": "tickets/INFRA-1234"},
+    {"name": "team-roster", "source": "wiki/team-roster"}
+  ],
+  "decision": "Run the procedure; promote to active after 7-day soak.",
+  "rationale": "All Applies-If preconditions hold (owner named, storage available, prior cycle exists). No Skip-If predicate triggered.",
+  "trace_refs": ["tickets/INFRA-1234", "wiki/team-roster"],
+  "status": "active"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Extend soak_window_days beyond 7 days for workloads with monthly patterns (close-of-month batches, billing runs).</transformation>
-      <transformation>Bypass HPA envelope check for non-HPA workloads (StatefulSets without HPA) with documented note.</transformation>
-      <transformation>Add per-workload exceptions list (legacy services with anti-VPA exemption) — exceptions must reference an owning ticket.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "X",
+  "produces": "wrong-shape",
+  "owner": "team",
+  "version": "v1",
+  "last_reviewed": "yesterday",
+  "inputs_used": [],
+  "decision": "",
+  "rationale": "obvious",
+  "trace_refs": []
+}
+]]></code>
+    <note>artefact_id not kebab-case; produces wrong; owner == 'team' (rule r3); version not semver; date not ISO; inputs empty; decision empty; rationale &lt; 40 chars; trace_refs empty (rule r5).</note>
+  </example>
 
-    <schema-reference path="templates/rollout-gates.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>VPA started in recommend mode only</item>
-      <item>Soak window ≥ 7 days documented</item>
-      <item>HPA envelope reconciled per workload</item>
-      <item>Canary cohort ran ≥ 48h with metrics captured</item>
-      <item>OOMKills addressed (rollback or exception)</item>
-      <item>Savings report has cluster-level $ delta</item>
-      <item>Recompute schedule set ≤ 90 days</item>
+      <item>owner in {"team","we","us","",null} (violates r3)</item>
+      <item>version not matching ^\d+\.\d+\.\d+$ (violates r4)</item>
+      <item>last_reviewed older than today - 90 days without a refresh flag (violates r4)</item>
+      <item>inputs_used empty AND decision != "no-op" (violates r5)</item>
+      <item>rationale that does not name any item in inputs_used (violates r5)</item>
+      <item>duplicate artefact_id within the same store (violates r1)</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-k8s-vpa-rightsizing-runbook.py">Validator script (stdlib + --help + --self-test)</reference>
 </text>

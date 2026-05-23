@@ -1,22 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-deployment-workloads Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Deployment Workloads Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-deployment-workloads.json",
+  "type": "object",
+  "required": [
+    "service",
+    "kind",
+    "rationale",
+    "manifest_path",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "service": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "kind": {
+      "enum": [
+        "Deployment",
+        "StatefulSet",
+        "DaemonSet",
+        "Job",
+        "CronJob"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "manifest_path": {
+      "type": "string"
+    },
+    "persistence_required": {
+      "type": "boolean"
+    },
+    "schedule": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "acme-api",
+  "kind": "Deployment",
+  "rationale": "Stateless HTTP API; horizontal scale + rolling-update; no stable identity required.",
+  "manifest_path": "k8s/acme-api/deployment.yaml",
+  "persistence_required": false,
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "platform engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "acme-redis",
+  "kind": "Deployment"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>kind StatefulSet without volumeClaimTemplates.</description>
+      <reason>Deployment-in-disguise + slower rolling guarantee.</reason>
+    </antipattern>
+    <antipattern>
+      <description>kind Deployment for service with persistent identity (DB, queue).</description>
+      <reason>Pods lose identity on restart.</reason>
+    </antipattern>
+    <antipattern>
+      <description>CronJob with no concurrencyPolicy.</description>
+      <reason>Default Allow piles up runs.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-deployment-workloads.py">Validator script</reference>
 </text>

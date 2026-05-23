@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="k8s-rolling-update Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for k8s-rolling-update. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Rolling Update Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `Kubernetes Rolling Update`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="max-unavailable-bounded" testable="true" depth="essential">
+      <statement>maxUnavailable MUST be at most 25 percent (default) or fewer; setting 0 is allowed only when maxSurge is at least 1.</statement>
+      <rationale source="Kubernetes Deployment strategy docs">Without bound a rolling update can drop all replicas; pair with PDB.</rationale>
     </rule>
+
+    <rule id="pdb-required" testable="true" depth="essential">
+      <statement>Production Deployments MUST be paired with a PodDisruptionBudget setting minAvailable or maxUnavailable.</statement>
+      <rationale source="Kubernetes PDB docs">Without PDB, voluntary disruptions (node drain) can take down all replicas at once.</rationale>
+    </rule>
+
+    <rule id="min-ready-seconds" testable="true" depth="essential">
+      <statement>minReadySeconds MUST be at least 10 for production services so a misbehaving pods readiness flap is filtered out.</statement>
+      <rationale source="Kubernetes Deployment docs">Without minReadySeconds a pod can flap ready to not-ready and look healthy.</rationale>
+    </rule>
+
+    <rule id="progress-deadline" testable="true" depth="essential">
+      <statement>progressDeadlineSeconds MUST be set (at most 600s); without deadline, stuck rollouts hide forever.</statement>
+      <rationale source="Kubernetes Deployment progress-deadline docs">Stuck rollouts without deadline never trigger automated rollback.</rationale>
+    </rule>
+
+    <rule id="no-recreate-prod" testable="true" depth="essential">
+      <statement>Production Deployments MUST use strategy.type RollingUpdate; Recreate is forbidden in production.</statement>
+      <rationale source="Kubernetes Deployment strategy docs">Recreate brings down all replicas before new ones start; user-visible downtime.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Applies If preconditions fail OR any Skip If trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

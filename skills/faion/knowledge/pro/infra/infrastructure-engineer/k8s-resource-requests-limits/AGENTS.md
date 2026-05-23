@@ -3,71 +3,96 @@ slug: k8s-resource-requests-limits
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every container in production MUST declare CPU and memory requests and limits.
-content_id: "aa3869a862b7dbd6"
-tags: [kubernetes, resource-management, qos, cpu-limits, memory-limits]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-container request/limit config: CPU + memory pair design, QoS class targeting, headroom ratio, observability hooks - produced as patch spec for Deployment containers."
+content_id: "7924011e55b76a7a"
+complexity: medium
+produces: config
+est_tokens: 3600
+tags: [kubernetes, resources, requests, limits, qos]
 ---
-# Kubernetes Resource Requests, Limits, and QoS Classes
+# Kubernetes Resource Requests and Limits
 
 ## Summary
 
-**One-sentence:** Every container in production MUST declare CPU and memory requests and limits.
+**One-sentence:** Per-container request/limit config: CPU + memory pair design, QoS class targeting, headroom ratio, observability hooks - produced as patch spec for Deployment containers.
 
-**One-paragraph:** Every container in production MUST declare CPU and memory requests and limits. Requests drive scheduler placement (guaranteed minimum); limits drive kubelet enforcement (maximum). The ratio of requests to limits determines the pod's QoS class, which controls eviction order under node pressure. According to 2025 benchmarks, 99.94% of clusters are over-provisioned with average CPU utilization at just 10% — right-sizing is the single biggest lever for cost and stability.
+**One-paragraph:** Per-container request/limit config: CPU + memory pair design, QoS class targeting, headroom ratio, observability hooks - produced as patch spec for Deployment containers. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Every container in every Deployment, StatefulSet, DaemonSet, or Job in a non-trivial environment.
-- When a pod is OOMKilled repeatedly — diagnose and raise memory limit.
-- When CPU throttling metrics show >10% throttled periods — raise or remove CPU limit.
-- When pods fail to schedule with "Insufficient resources" — lower requests or add nodes.
-- When right-sizing using VPA in recommendation mode before locking values.
+- Tuning CPU / memory for a service that OOMs or is starved.
+- Onboarding a new service that has zero requests/limits set.
+- Aligning a workload to a target QoS class (Guaranteed / Burstable).
+- Reducing cluster waste by right-sizing requests.
 
 ## Skip If (ANY kills it)
 
-- Throwaway local dev containers — overhead of tuning exceeds value; use a LimitRange default instead.
-- Init containers in simple scenarios — they run once and exit; defaults from LimitRange suffice unless they do heavy work.
+- Workload size has not been observed for at least one full traffic cycle.
+- Cluster uses Vertical Pod Autoscaler in Auto mode for this workload.
+
+**Ефективно для:**
+
+- Latency-sensitive services що потребують Guaranteed QoS.
+- Spike-prone web services з burstable headroom.
+- Right-sizing на основі VPA recommendation.
+- Cost reductions без regression.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Observed CPU + memory utilisation (p50, p95, p99) | metrics | platform team |
+| Workload latency SLO | doc | team |
+| LimitRange + ResourceQuota in namespace | k8s objects | platform team |
+| VPA recommendation (optional) | k8s object | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/infrastructure-engineer/k8s-limitrange` | Defaults applied per namespace. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Mechanical template fill from prerequisites table. |
+| `populate-policy` | sonnet | Per-clause translation into config fields with judgment. |
+| `review-breach-cases` | opus | Cross-engagement risk + failure-mode synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.json` | Config skeleton matching the output schema. |
+| `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-k8s-resource-requests-limits.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[k8s-limitrange]]
+- [[k8s-resource-quota]]
+- [[k8s-scaling-availability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

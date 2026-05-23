@@ -3,91 +3,99 @@ slug: k8s-vpa-rightsizing-runbook
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Practical recipe for K8s vertical-pod-autoscaler recommend → HPA reconcile → cluster cost reduction, with rollout safety gates.
-content_id: "4211b697159cedcf"
-tags: [k8s,vpa,hpa,rightsizing,cost-optimization,runbook]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Runs the VPA recommend → soak → HPA-reconcile → canary → full-rollout → recompute cycle and produces a per-cluster cost-reduction report with audit trail.
+content_id: "082242fb91cc3425"
+complexity: deep
+produces: report
+est_tokens: 4300
+tags: [k8s, vpa, hpa, rightsizing, cost-optimization, runbook]
 ---
 # K8s VPA Rightsizing Runbook
 
 ## Summary
 
-**One-sentence:** Practical recipe for K8s vertical-pod-autoscaler recommend → HPA reconcile → cluster cost reduction, with rollout safety gates.
+**One-sentence:** Runs the VPA recommend → soak → HPA-reconcile → canary → full-rollout → recompute cycle and produces a per-cluster cost-reduction report with audit trail.
 
-**One-paragraph:** The `k8s-resource-requests-limits` methodology covers what requests + limits mean; this methodology covers HOW to actually go from "I set them once" to "they match real usage." VPA in recommend mode produces target CPU + memory per workload, but applying those recommendations naively breaks HPA scaling, evicts pods, and tanks SLOs. This methodology defines the 6-stage rollout: enable VPA in recommend mode → soak for 7+ days → reconcile with HPA min/max envelopes → canary update on 10% → measure throttling + OOMKills → graduate to full rollout → schedule recurring recompute. Mechanism: explicit guard rails per stage, named gates, and a rollback recipe. Primary output: a per-cluster cost reduction documented in % savings AND a per-workload requests/limits update audit log.
+**One-paragraph:** Runs the VPA recommend → soak → HPA-reconcile → canary → full-rollout → recompute cycle and produces a per-cluster cost-reduction report with audit trail. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Кластер з 20+ workloads і HPA на 30%+ сервісах — потрібен керований переїзд на нові requests/limits.
+- Місячна хмарна оплата кластера >=$1k — економія від rightsizing відбиває витрати на runbook.
+- Команда вже зловила хоча б один OOMKill або throttling інцидент через неправильні requests.
+- VPA controller встановлено; команда готова витримати 7+ днів soak і canary на 10% перед full rollout.
 
 ## Applies If (ALL must hold)
 
-- cluster has ≥ 20 long-running workloads (Deployment / StatefulSet)
+- cluster has >=20 long-running workloads (Deployment / StatefulSet)
 - VPA controller installed OR can be installed safely
-- HPA used on ≥ 30% of workloads
-- cluster cost ≥ $1k / month (saving floor for the runbook overhead)
-- on-call team has playbook authority during rollout window
+- HPA used on >=30% of workloads
+- cluster cost >=$1k / month (saving floor for the runbook overhead)
 
 ## Skip If (ANY kills it)
 
-- cluster is &lt; 20 workloads — manual rightsizing cheaper than VPA infra
+- cluster is < 20 workloads — manual rightsizing cheaper than VPA infra
 - workloads are batch / short-lived jobs only — VPA recommendations meaningless
-- cluster has Cluster Autoscaler in tight-fit mode — VPA changes need separate sequencing
 - regulated environment requires fixed-resource pinning (no autoscaling allowed)
-- cluster has critical workloads with documented anti-VPA exemption
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- Metrics server running, history ≥ 14 days
-- VPA CRDs installed
-- inventory of workloads with HPA + their current requests/limits
-- baseline cluster cost (cloud bill or `kubecost` snapshot)
-- maintenance window scheduled for canary rollout
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/infrastructure-engineer/k8s-resource-requests-limits` | Foundation: what requests + limits mean |
-| `pro/infra/infrastructure-engineer/k8s-scaling-availability` | HPA mechanics; this runbook reconciles VPA with HPA |
-| `pro/infra/devops-engineer/aws-cost-optimization` | Optional cluster-level cost framing |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: recommend-first, soak window, HPA reconciliation, canary 10%, OOMKill rollback gate | ~1000 |
-| `content/02-output-contract.xml` | essential | Per-workload audit log, savings calculation, gate decisions | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (premature apply, HPA conflict, eviction storm, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `vpa_recommendation_parser` | haiku | Extract per-workload target CPU/mem from VPA CRDs |
-| `hpa_envelope_reconciler` | sonnet | Adjust min/max replicas given new per-pod sizing |
-| `canary_safety_evaluator` | sonnet | Read throttling + OOM metrics, decide promote/rollback |
-| `savings_calculator` | haiku | Convert pre/post requests × replica × node-cost into $ savings |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/vpa-recommend-config.yaml` | VPA CRD in recommend mode |
-| `templates/rollout-gates.md` | Per-stage gate criteria (soak, canary, full) |
-| `templates/rollback-recipe.md` | Step-by-step rollback to prior requests |
-| `templates/savings-report.md` | Per-workload before/after savings table |
+| `templates/report.md` | working skeleton matching the `produces=report` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/collect-vpa-recommendations.sh` | Pull per-workload recommendations into a CSV | Soak end |
-| `scripts/oomkill-monitor.sh` | Watch OOMKills during canary | Canary window |
-| `scripts/apply-rightsizing.sh` | Apply rightsizing PR with annotations | Promote stage |
-| `scripts/savings-calc.py` | Compute pre/post $ delta | Post-rollout |
+| `scripts/validate-k8s-vpa-rightsizing-runbook.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
-- peer methodology: `k8s-resource-requests-limits`, `k8s-scaling-availability`
-- external: [VPA GitHub](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler) · [Kubecost VPA guide](https://blog.kubecost.com/blog/vertical-pod-autoscaler/)
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Is VPA controller installed and at least 20 long-running workloads with HPA in scope?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

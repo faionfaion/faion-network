@@ -1,22 +1,163 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-security-hardening Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Security Hardening Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-security-hardening.json",
+  "type": "object",
+  "required": [
+    "namespace",
+    "pod_security_enforce",
+    "network_policy_default_deny",
+    "container_hardening",
+    "image_policy",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "pod_security_enforce": {
+      "enum": [
+        "restricted",
+        "baseline",
+        "privileged"
+      ]
+    },
+    "network_policy_default_deny": {
+      "type": "boolean",
+      "const": true
+    },
+    "container_hardening": {
+      "type": "object",
+      "required": [
+        "run_as_non_root",
+        "read_only_root_fs",
+        "drop_capabilities",
+        "no_new_privileges"
+      ],
+      "properties": {
+        "run_as_non_root": {
+          "type": "boolean",
+          "const": true
+        },
+        "read_only_root_fs": {
+          "type": "boolean",
+          "const": true
+        },
+        "drop_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "no_new_privileges": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "image_policy": {
+      "type": "object",
+      "required": [
+        "engine",
+        "signed_images_only"
+      ],
+      "properties": {
+        "engine": {
+          "enum": [
+            "kyverno",
+            "opa-gatekeeper"
+          ]
+        },
+        "signed_images_only": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "namespace": "acme-prod",
+  "pod_security_enforce": "restricted",
+  "network_policy_default_deny": true,
+  "container_hardening": {
+    "run_as_non_root": true,
+    "read_only_root_fs": true,
+    "drop_capabilities": [
+      "ALL"
+    ],
+    "no_new_privileges": true
+  },
+  "image_policy": {
+    "engine": "kyverno",
+    "signed_images_only": true
+  },
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "head of security"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "namespace": "prod",
+  "pod_security_enforce": "privileged"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>pod_security_enforce other than restricted in production.</description>
+      <reason>Privileged / baseline allow container escape vectors.</reason>
+    </antipattern>
+    <antipattern>
+      <description>network_policy_default_deny false in production.</description>
+      <reason>Implicit allow-all means lateral movement.</reason>
+    </antipattern>
+    <antipattern>
+      <description>drop_capabilities not containing ALL.</description>
+      <reason>Default capability set keeps NET_RAW etc.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-security-hardening.py">Validator script</reference>
 </text>

@@ -1,22 +1,169 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="iac-patterns-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="IaC Testing Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/iac-patterns-testing.json",
+  "type": "object",
+  "required": [
+    "module_name",
+    "test_layers",
+    "policy_gates",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "test_layers": {
+      "type": "object",
+      "required": [
+        "unit",
+        "component",
+        "integration"
+      ],
+      "properties": {
+        "unit": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "component": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "integration": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "policy_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "engine",
+          "policies"
+        ],
+        "properties": {
+          "engine": {
+            "enum": [
+              "opa",
+              "sentinel",
+              "checkov",
+              "terrascan"
+            ]
+          },
+          "policies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "module_name": "vpc-network",
+  "test_layers": {
+    "unit": [
+      "terraform fmt -check",
+      "terraform validate",
+      "tflint"
+    ],
+    "component": [
+      "terraform plan -out plan.bin",
+      "json-assert: resource_count==12"
+    ],
+    "integration": [
+      "terratest examples/simple",
+      "terratest examples/multi-region"
+    ]
+  },
+  "policy_gates": [
+    {
+      "engine": "opa",
+      "policies": [
+        "no-public-buckets",
+        "cmek-required",
+        "no-primitive-roles"
+      ]
+    }
+  ],
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "module_name": "vpc",
+  "test_layers": {}
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>policy_gates empty.</description>
+      <reason>Manual review alone misses subtle violations.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Integration tests without destroy step.</description>
+      <reason>Orphaned cloud resources leak cost.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Component layer with only exit-0 assertion.</description>
+      <reason>Exit 0 plans still wrong; attribute assertions required.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-iac-patterns-testing.py">Validator script</reference>
 </text>

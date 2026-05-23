@@ -3,71 +3,95 @@ slug: k8s-resource-quota
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: ResourceQuota enforces hard aggregate limits on the total resources a namespace can consume: CPU requests/limits, memory requests/limits, storage, and object counts (pods, services, secrets, configmaps, PersistentVolumeClaims).
-content_id: "1ed866f43d2b8bf7"
-tags: [kubernetes, resource-quota, namespace-governance, multi-tenancy, cluster-policy]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Namespace ResourceQuota config: aggregate CPU/memory/storage caps, object-count caps, pod-priority scopes - produced as YAML enforced cluster-wide."
+content_id: "08bcd6472557d8d8"
+complexity: medium
+produces: config
+est_tokens: 3400
+tags: [kubernetes, resourcequota, quota, namespace, multitenancy]
 ---
-# Kubernetes ResourceQuota — Namespace-Level Aggregate Caps
+# Kubernetes ResourceQuota
 
 ## Summary
 
-**One-sentence:** ResourceQuota enforces hard aggregate limits on the total resources a namespace can consume: CPU requests/limits, memory requests/limits, storage, and object counts (pods, services, secrets, configmaps, PersistentVolumeClaims).
+**One-sentence:** Namespace ResourceQuota config: aggregate CPU/memory/storage caps, object-count caps, pod-priority scopes - produced as YAML enforced cluster-wide.
 
-**One-paragraph:** ResourceQuota enforces hard aggregate limits on the total resources a namespace can consume: CPU requests/limits, memory requests/limits, storage, and object counts (pods, services, secrets, configmaps, PersistentVolumeClaims). Where LimitRange governs individual containers, ResourceQuota governs the namespace as a whole. Every shared or production namespace MUST have a ResourceQuota to prevent a single team or runaway workload from consuming all cluster resources (the noisy-neighbor problem).
+**One-paragraph:** Namespace ResourceQuota config: aggregate CPU/memory/storage caps, object-count caps, pod-priority scopes - produced as YAML enforced cluster-wide. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Every shared, production, staging, or team namespace in a multi-tenant cluster.
-- When a deployment scaling incident exhausted all node resources in a namespace — add ResourceQuota immediately after recovery.
-- When implementing chargeback or cost attribution by team — use ResourceQuota as the governance contract.
-- When a namespace needs object count limits (e.g., prevent service proliferation or secret sprawl).
-- When scoping quotas to QoS class or PriorityClass — use scopeSelector.
+- Onboarding a tenant namespace to a shared cluster.
+- Capping the cluster cost a single team can consume.
+- Limiting object counts (PVCs, Services, ConfigMaps) per namespace.
+- Differentiating quotas across pod priority classes.
 
 ## Skip If (ANY kills it)
 
-- Single-team clusters with a single namespace — ResourceQuota overhead is administrative cost with no isolation benefit.
-- Ephemeral test namespaces with a short TTL — spend time on automation to clean them up instead of quota governance.
+- Single-tenant cluster with no multi-tenancy boundary.
+- Namespace is read-only (cluster-owned addons).
+
+**Ефективно для:**
+
+- Multi-team / multi-tenant clusters.
+- Cost allocation by namespace.
+- Fair-share scheduling з priority-class scopes.
+- Compliance setups з hard caps.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Kubernetes namespace | k8s ns | platform team |
+| Cluster capacity baseline | doc | platform team |
+| Tenant SLA / budget | doc | team / FinOps |
+| LimitRange already in place | k8s object | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/infrastructure-engineer/k8s-limitrange` | Per-pod defaults that ResourceQuota relies on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Mechanical template fill from prerequisites table. |
+| `populate-policy` | sonnet | Per-clause translation into config fields with judgment. |
+| `review-breach-cases` | opus | Cross-engagement risk + failure-mode synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.json` | Config skeleton matching the output schema. |
+| `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-k8s-resource-quota.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[k8s-limitrange]]
+- [[k8s-resource-requests-limits]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -3,71 +3,95 @@ slug: k8s-limitrange
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A LimitRange is a namespace-scoped policy that enforces resource constraints at the individual container or pod level.
-content_id: "983c817fffb6440a"
-tags: [kubernetes, limitrange, namespace-policy, resource-governance, multi-tenancy]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-namespace LimitRange config: container defaults, min/max bounds, ratio constraints - produced as a namespaced YAML applied before workloads."
+content_id: "ea7c83c041692e7d"
+complexity: medium
+produces: config
+est_tokens: 3200
+tags: [kubernetes, limitrange, resources, quota, namespace]
 ---
-# Kubernetes LimitRange — Per-Container Resource Governance
+# Kubernetes LimitRange
 
 ## Summary
 
-**One-sentence:** A LimitRange is a namespace-scoped policy that enforces resource constraints at the individual container or pod level.
+**One-sentence:** Per-namespace LimitRange config: container defaults, min/max bounds, ratio constraints - produced as a namespaced YAML applied before workloads.
 
-**One-paragraph:** A LimitRange is a namespace-scoped policy that enforces resource constraints at the individual container or pod level. It provides automatic defaults (so containers without explicit resources still get sensible values), minimum/maximum bounds (preventing extremes), and optional limit-to-request ratio caps. Every namespace in a multi-tenant or production cluster MUST have a LimitRange. Without one, containers that omit the resources block receive BestEffort QoS and can consume unlimited node resources.
+**One-paragraph:** Per-namespace LimitRange config: container defaults, min/max bounds, ratio constraints - produced as a namespaced YAML applied before workloads. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Every namespace in a production or shared cluster — create LimitRange as part of namespace provisioning.
-- When developers frequently forget to set resources on containers (defaults solve this automatically).
-- When a container is being OOMKilled immediately at startup — check if LimitRange max is lower than the required memory.
-- When a single container is consuming an entire node — set LimitRange max.cpu and max.memory.
-- When enforcing commit to a CPU overcommit policy — use maxLimitRequestRatio.
+- Onboarding a new namespace that will host arbitrary workloads.
+- Enforcing sane defaults so pods without explicit requests still get resources.
+- Setting ratio limits (request:limit) to prevent runaway burst.
+- Aligning a namespace with platform-wide resource defaults.
 
 ## Skip If (ANY kills it)
 
-- Single-pod test namespaces where you explicitly manage every container's resources — LimitRange adds admission overhead with no value.
-- When all workloads already have explicit resources and you only need aggregate caps — use ResourceQuota alone.
+- Cluster-wide policy already covers the namespace (no per-ns override needed).
+- Single-tenant dev cluster where defaults dont matter.
+
+**Ефективно для:**
+
+- Shared multi-team clusters.
+- Namespaces що приймають foreign workloads (CI / sandbox).
+- Compliance setups з required defaults.
+- Cost-controlled namespaces з ratio enforcement.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Kubernetes namespace | k8s ns | platform team |
+| Cluster resource baselines | doc | platform team |
+| Workload size profile (small/medium/large) | doc | team |
+| Operator/owner of the namespace | RACI | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/infrastructure-engineer/k8s-resource-requests-limits` | Per-container request/limit conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Mechanical template fill from prerequisites table. |
+| `populate-policy` | sonnet | Per-clause translation into config fields with judgment. |
+| `review-breach-cases` | opus | Cross-engagement risk + failure-mode synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.json` | Config skeleton matching the output schema. |
+| `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-k8s-limitrange.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[k8s-resource-requests-limits]]
+- [[k8s-resource-quota]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

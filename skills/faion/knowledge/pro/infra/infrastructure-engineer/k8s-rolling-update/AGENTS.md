@@ -3,71 +3,96 @@ slug: k8s-rolling-update
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Rolling update is the default and safest Kubernetes deployment strategy for most production workloads.
-content_id: "268faed9f5d8b7ad"
-tags: [kubernetes, rolling-update, zero-downtime, rollback, deployment]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Rolling-update strategy config: maxUnavailable / maxSurge tuning, PodDisruptionBudget pair, minReadySeconds, progressDeadlineSeconds - produced as a Deployment patch."
+content_id: "154e9083c752a510"
+complexity: medium
+produces: config
+est_tokens: 3400
+tags: [kubernetes, rolling-update, pdb, deployment, release]
 ---
-# Kubernetes Rolling Update Strategy
+# Kubernetes Rolling Update
 
 ## Summary
 
-**One-sentence:** Rolling update is the default and safest Kubernetes deployment strategy for most production workloads.
+**One-sentence:** Rolling-update strategy config: maxUnavailable / maxSurge tuning, PodDisruptionBudget pair, minReadySeconds, progressDeadlineSeconds - produced as a Deployment patch.
 
-**One-paragraph:** Rolling update is the default and safest Kubernetes deployment strategy for most production workloads. It gradually replaces old pods with new ones, keeping the service available throughout. Zero-downtime requires maxUnavailable: 0 plus a properly configured readiness probe and minReadySeconds delay. kubectl rollout undo enables fast rollback to any revision in history.
+**One-paragraph:** Rolling-update strategy config: maxUnavailable / maxSurge tuning, PodDisruptionBudget pair, minReadySeconds, progressDeadlineSeconds - produced as a Deployment patch. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Updating image versions, configuration, or environment variables on any Deployment.
-- Tuning rollout speed vs. availability for high-replica Deployments.
-- Debugging a stuck or failed rollout.
-- Executing or documenting a rollback procedure.
+- Rolling out a new image of an existing Deployment.
+- Tuning surge / unavailable for a service with strict latency SLOs.
+- Pairing a rollout with a PodDisruptionBudget for safe drain.
+- Diagnosing flaky deploys (premature ready signal, partial rollout).
 
 ## Skip If (ANY kills it)
 
-- High-risk releases where you need percentage-based traffic control and automated metric analysis — use canary/Argo Rollouts (k8s-canary-progressive).
-- StatefulSets requiring controlled partition rollouts — use updateStrategy.rollingUpdate.partition.
-- Development environments where downtime is acceptable and Recreate is simpler.
+- Stateful workload - use rolling+ordered (StatefulSet) or migration.
+- Cluster supports a progressive-delivery engine (Argo Rollouts / Flagger) - use canary instead.
+
+**Ефективно для:**
+
+- Stateless Deployments з multi-replica шейпом.
+- Latency-sensitive services із strict PDB.
+- Cluster autoscalers що drain nodes.
+- Release ритуали з progressDeadline gating.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing Deployment with >= 2 replicas | k8s object | team |
+| Defined readiness + liveness probes | manifest | team |
+| Latency / availability SLO | doc | team |
+| Optional PodDisruptionBudget | k8s object | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/infrastructure-engineer/k8s-basics` | Baseline workload conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Mechanical template fill from prerequisites table. |
+| `populate-policy` | sonnet | Per-clause translation into config fields with judgment. |
+| `review-breach-cases` | opus | Cross-engagement risk + failure-mode synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.json` | Config skeleton matching the output schema. |
+| `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-k8s-rolling-update.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[k8s-canary-progressive]]
+- [[k8s-deployment-workloads]]
+- [[k8s-scaling-availability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

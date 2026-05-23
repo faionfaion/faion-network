@@ -1,22 +1,180 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-resource-quota Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes ResourceQuota Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-resource-quota.json",
+  "type": "object",
+  "required": [
+    "namespace",
+    "compute",
+    "storage",
+    "objects",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "compute": {
+      "type": "object",
+      "required": [
+        "requests_cpu",
+        "requests_memory",
+        "limits_cpu",
+        "limits_memory"
+      ],
+      "properties": {
+        "requests_cpu": {
+          "type": "string"
+        },
+        "requests_memory": {
+          "type": "string"
+        },
+        "limits_cpu": {
+          "type": "string"
+        },
+        "limits_memory": {
+          "type": "string"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "required": [
+        "requests_storage",
+        "persistentvolumeclaims"
+      ],
+      "properties": {
+        "requests_storage": {
+          "type": "string"
+        },
+        "persistentvolumeclaims": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "objects": {
+      "type": "object",
+      "required": [
+        "pods",
+        "services",
+        "configmaps",
+        "secrets"
+      ],
+      "properties": {
+        "pods": {
+          "type": "integer"
+        },
+        "services": {
+          "type": "integer"
+        },
+        "configmaps": {
+          "type": "integer"
+        },
+        "secrets": {
+          "type": "integer"
+        }
+      }
+    },
+    "scope_selector": {
+      "type": "object"
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "namespace": "acme-team-a",
+  "compute": {
+    "requests_cpu": "10",
+    "requests_memory": "20Gi",
+    "limits_cpu": "40",
+    "limits_memory": "80Gi"
+  },
+  "storage": {
+    "requests_storage": "200Gi",
+    "persistentvolumeclaims": 20
+  },
+  "objects": {
+    "pods": 50,
+    "services": 20,
+    "configmaps": 100,
+    "secrets": 100
+  },
+  "scope_selector": {
+    "matchExpressions": [
+      {
+        "scopeName": "PriorityClass",
+        "operator": "In",
+        "values": [
+          "best-effort"
+        ]
+      }
+    ]
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "team-a lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "namespace": "team-a",
+  "compute": {}
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>ResourceQuota without paired LimitRange.</description>
+      <reason>Cannot enforce per-pod defaults.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Missing storage caps.</description>
+      <reason>PVC explosion drains cluster storage.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Missing object-count caps.</description>
+      <reason>Runaway loops crash etcd.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-resource-quota.py">Validator script</reference>
 </text>

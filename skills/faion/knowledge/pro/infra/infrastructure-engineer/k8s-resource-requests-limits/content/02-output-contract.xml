@@ -1,22 +1,159 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-resource-requests-limits Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Resource Requests and Limits Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-resource-requests-limits.json",
+  "type": "object",
+  "required": [
+    "service",
+    "container",
+    "qos_target",
+    "requests",
+    "limits",
+    "observed",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "service": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "container": {
+      "type": "string"
+    },
+    "qos_target": {
+      "enum": [
+        "Guaranteed",
+        "Burstable"
+      ]
+    },
+    "requests": {
+      "type": "object",
+      "required": [
+        "cpu",
+        "memory"
+      ],
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "memory"
+      ],
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        }
+      }
+    },
+    "observed": {
+      "type": "object",
+      "required": [
+        "cpu_p95",
+        "memory_p99"
+      ],
+      "properties": {
+        "cpu_p95": {
+          "type": "string"
+        },
+        "memory_p99": {
+          "type": "string"
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "acme-api",
+  "container": "api",
+  "qos_target": "Burstable",
+  "requests": {
+    "cpu": "250m",
+    "memory": "256Mi"
+  },
+  "limits": {
+    "memory": "256Mi"
+  },
+  "observed": {
+    "cpu_p95": "200m",
+    "memory_p99": "240Mi"
+  },
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "platform engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "api",
+  "requests": {
+    "cpu": "0",
+    "memory": "0"
+  }
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>requests.cpu 0 or requests.memory 0.</description>
+      <reason>BestEffort QoS in production.</reason>
+    </antipattern>
+    <antipattern>
+      <description>limits.memory not equal to requests.memory when qos_target Guaranteed.</description>
+      <reason>Mismatch downgrades to Burstable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>limits.cpu less than 1.5x requests.cpu on latency-sensitive workloads.</description>
+      <reason>Throttling spikes hurt p99.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-resource-requests-limits.py">Validator script</reference>
 </text>

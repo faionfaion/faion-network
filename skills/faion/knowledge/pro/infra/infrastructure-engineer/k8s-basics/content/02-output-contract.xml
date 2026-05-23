@@ -1,22 +1,217 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="k8s-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Basics Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-basics.json",
+  "type": "object",
+  "required": [
+    "name",
+    "namespace",
+    "image",
+    "labels",
+    "probes",
+    "security_context",
+    "resources",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "image": {
+      "type": "string",
+      "pattern": ".+:.+"
+    },
+    "labels": {
+      "type": "object",
+      "required": [
+        "app.kubernetes.io/name",
+        "app.kubernetes.io/instance",
+        "app.kubernetes.io/component"
+      ],
+      "properties": {
+        "app.kubernetes.io/name": {
+          "type": "string"
+        },
+        "app.kubernetes.io/instance": {
+          "type": "string"
+        },
+        "app.kubernetes.io/component": {
+          "type": "string"
+        }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "required": [
+        "readiness",
+        "liveness"
+      ],
+      "properties": {
+        "readiness": {
+          "type": "object"
+        },
+        "liveness": {
+          "type": "object"
+        },
+        "startup": {
+          "type": "object"
+        }
+      }
+    },
+    "security_context": {
+      "type": "object",
+      "required": [
+        "runAsNonRoot",
+        "runAsUser"
+      ],
+      "properties": {
+        "runAsNonRoot": {
+          "type": "boolean",
+          "const": true
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": [
+        "requests"
+      ],
+      "properties": {
+        "requests": {
+          "type": "object",
+          "required": [
+            "cpu",
+            "memory"
+          ],
+          "properties": {
+            "cpu": {
+              "type": "string"
+            },
+            "memory": {
+              "type": "string"
+            }
+          }
+        },
+        "limits": {
+          "type": "object"
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "name": "acme-api",
+  "namespace": "acme-prod",
+  "image": "registry.example.com/acme/api:1.4.0",
+  "labels": {
+    "app.kubernetes.io/name": "acme-api",
+    "app.kubernetes.io/instance": "acme-api-prod",
+    "app.kubernetes.io/component": "api"
+  },
+  "probes": {
+    "readiness": {
+      "httpGet": {
+        "path": "/healthz",
+        "port": 8080
+      },
+      "periodSeconds": 5
+    },
+    "liveness": {
+      "httpGet": {
+        "path": "/healthz",
+        "port": 8080
+      },
+      "periodSeconds": 10,
+      "initialDelaySeconds": 30
+    }
+  },
+  "security_context": {
+    "runAsNonRoot": true,
+    "runAsUser": 10001
+  },
+  "resources": {
+    "requests": {
+      "cpu": "100m",
+      "memory": "128Mi"
+    },
+    "limits": {
+      "cpu": "500m",
+      "memory": "512Mi"
+    }
+  },
+  "owner": {
+    "name": "Andriy Koval",
+    "role": "platform engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "name": "api",
+  "image": "acme/api:latest"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Image tag latest or no tag.</description>
+      <reason>Breaks rollbacks + reproducibility.</reason>
+    </antipattern>
+    <antipattern>
+      <description>runAsNonRoot false or runAsUser 0.</description>
+      <reason>Root containers magnify escape blast radius.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Missing readinessProbe or livenessProbe.</description>
+      <reason>Traffic hits unhealthy / deadlocked pods.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-k8s-basics.py">Validator script</reference>
 </text>

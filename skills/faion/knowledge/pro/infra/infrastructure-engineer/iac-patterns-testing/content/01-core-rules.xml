@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="iac-patterns-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for iac-patterns-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="IaC Testing Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `IaC Testing Patterns`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Level 1 — Static Analysis: run terraform fmt, terraform validate, and tflint on every PR. Also run checkov or tfsec for security scanning. These must pass before any plan.</statement>
-      <rationale source="v1-source">Static analysis catches structural errors (missing required arguments, deprecated syntax, misconfigured provider blocks) in seconds without cloud credentials. They are the lowest-cost gate.</rationale>
+
+    <rule id="unit-fmt-validate" testable="true" depth="essential">
+      <statement>Every PR MUST run fmt -check + validate + linter (tflint / pulumi preview --diff); any failure blocks merge.</statement>
+      <rationale source="Test pyramid (Cohn) adapted to IaC">Fast feedback at the cheapest layer of the test pyramid.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Level 2 — Unit Testing: use native terraform test (.tftest.hcl files in tests/) with command = plan and mock providers. Test: default inputs produce correct plan, all input validations reject invalid values, outputs match expected values.</statement>
-      <rationale source="v1-source">Plan-only tests with mocks run in seconds, require no cloud credentials, and validate the module's contract without creating real resources.</rationale>
+
+    <rule id="policy-as-code" testable="true" depth="essential">
+      <statement>Org policies (no public buckets, CMEK required, no primitive roles) MUST be enforced via policy-as-code (OPA / Sentinel / Checkov) in CI; manual review alone is forbidden.</statement>
+      <rationale source="Open Policy Agent docs, HashiCorp Sentinel docs">Manual policy enforcement misses subtle violations and decays under load.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Level 3 — Integration Testing: use Terratest (Go) to deploy real resources in a dedicated test environment. Always defer terraform.Destroy to ensure cleanup. Validate resource properties via cloud SDK calls after apply.</statement>
-      <rationale source="v1-source">Only integration tests catch issues that surface only after apply: IAM propagation delays, service quotas, cross-resource dependency ordering, and eventual-consistency bugs.</rationale>
+
+    <rule id="integration-on-real-cloud" testable="true" depth="essential">
+      <statement>Production-bound modules MUST have at least one integration test that applies + destroys against a real cloud sandbox.</statement>
+      <rationale source="Terratest docs, HashiCorp testing guidance">Provider-side validation differs from local; integration tests catch what plan cannot.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Level 4 — Policy Testing: use OPA/Conftest or Sentinel to enforce compliance rules (encryption required, naming conventions, required tags, no public access). Policy tests run against the plan output (JSON) before apply.</statement>
-      <rationale source="v1-source">Policy-as-code makes compliance requirements testable and auditable; a Conftest rule that blocks public S3 buckets is more reliable than a wiki page or manual review.</rationale>
+
+    <rule id="destroy-mandatory" testable="true" depth="essential">
+      <statement>Integration tests MUST destroy resources at teardown even on failure; orphaned resources are forbidden.</statement>
+      <rationale source="Terratest patterns">Cost leaks accumulate quickly + auditor flags abandoned cloud resources.</rationale>
     </rule>
+
+    <rule id="plan-diff-asserts" testable="true" depth="essential">
+      <statement>Component-level tests MUST assert specific plan properties (resource counts, key attribute values), not just exit code 0.</statement>
+      <rationale source="Terraform plan-json docs">Exit-0 plans still produce wrong resources; attribute assertions catch shape drift.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Applies If preconditions fail OR any Skip If trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

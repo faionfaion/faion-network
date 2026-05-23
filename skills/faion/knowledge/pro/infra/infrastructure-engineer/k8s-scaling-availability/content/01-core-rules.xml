@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="k8s-scaling-availability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for k8s-scaling-availability. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Scaling and Availability Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `Kubernetes Scaling and Availability`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="hpa-v2-only" testable="true" depth="essential">
+      <statement>HorizontalPodAutoscaler MUST use apiVersion autoscaling/v2; v1 is forbidden for new workloads.</statement>
+      <rationale source="Kubernetes HPA v2 docs">v2 supports multi-metric scaling + stabilization windows; v1 leaves regressions on the table.</rationale>
     </rule>
+
+    <rule id="min-max-bounds" testable="true" depth="essential">
+      <statement>HPA MUST set minReplicas at least 2 (production) AND maxReplicas greater than minReplicas; unbounded scale is forbidden.</statement>
+      <rationale source="Kubernetes HPA docs, FinOps practice">Single-replica services lose availability on disruption; unbounded max bankrupts on traffic anomaly.</rationale>
+    </rule>
+
+    <rule id="stabilization-window" testable="true" depth="essential">
+      <statement>HPA behavior.scaleDown.stabilizationWindowSeconds MUST be at least 300; default 0 causes thrash.</statement>
+      <rationale source="Kubernetes HPA behavior docs">Default scale-down responds to every dip; thrashing pods cost more than over-provision.</rationale>
+    </rule>
+
+    <rule id="topology-spread" testable="true" depth="essential">
+      <statement>Multi-AZ services MUST set topologySpreadConstraints with topologyKey topology.kubernetes.io/zone AND maxSkew 1.</statement>
+      <rationale source="Kubernetes topology-spread docs">Without spread, scheduler can co-locate all replicas in one zone; zone outage equals total outage.</rationale>
+    </rule>
+
+    <rule id="pdb-pair" testable="true" depth="essential">
+      <statement>Every horizontally-scaled production Deployment MUST be paired with a PodDisruptionBudget.</statement>
+      <rationale source="Kubernetes PDB docs">Without PDB, simultaneous drains across zones can violate availability target.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Applies If preconditions fail OR any Skip If trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
