@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-tdd-red-green-split-agents Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-tdd-red-green-split-agents. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="TDD with Red and Green in Separate Agents Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the test-tdd-red-green-split-agents methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The RED sub-agent skill frontmatter MUST list only `Read` and `Write` (no `Edit`), and Write MUST be path-restricted to `tests/`. The GREEN sub-agent skill frontmatter MUST list only `Read` and `Edit` (no `Write`), and Edit MUST be path-restricted to `src/`. Neither skill may include `Bash` for file moves. Any deviation fails the gate and the cycle aborts.</statement>
-      <rationale source="v1-source">Tool-permission discipline is the only mechanism that prevents a single LLM context from "fixing" a failing test by mutating it; trust-based prompts ("please do not edit the test file") fail under sufficiently long sessions.</rationale>
+
+    <rule id="disjoint-tool-permissions" testable="true" depth="essential">
+      <statement>RED tool set MUST include Write(tests/) + Read(src/) and exclude Edit/Write(src/). GREEN tool set MUST include Edit/Write(src/) + Read(tests/) and exclude Write(tests/). Overlap is forbidden.</statement>
+      <rationale source="Anthropic sub-agent tool-scoping docs">Overlap = the agent that owns both can cheat by editing the test. Disjoint sets remove that lever entirely.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Between RED and GREEN turns the orchestrator MUST: (1) run the project's test command on the new test, (2) require exit code != 0, (3) abort and surface "first-try-pass" if exit code == 0, (4) pass to GREEN ONLY the failing test diff and the runner's failure stanza — never the original AC, never the test source. After GREEN, the orchestrator re-runs the same command and refuses to commit unless exit code == 0.</statement>
-      <rationale source="v1-source">A passing first-run test means either the feature already exists or the test does not exercise the spec; either case is a hard signal to halt rather than continue. Keeping the AC out of GREEN's prompt prevents AC paraphrasing from leaking implementation hints back into the test.</rationale>
+    <rule id="ac-only-to-red" testable="true" depth="essential">
+      <statement>RED&apos;s prompt MUST be limited to the acceptance criterion (one sentence) + the source file headers it can read. Implementation hints are forbidden.</statement>
+      <rationale source="Internal — RED-isolation policy">If RED sees impl hints, it writes tests that match the hints, not the spec. The spec is the source of truth.</rationale>
     </rule>
+    <rule id="failure-only-to-green" testable="true" depth="essential">
+      <statement>GREEN&apos;s prompt MUST be limited to the failing test diff and the runner output. The acceptance criterion text is not passed to GREEN.</statement>
+      <rationale source="Internal — GREEN-isolation policy">If GREEN sees the spec, it can paraphrase the spec into code that matches without making the test pass for the right reason.</rationale>
+    </rule>
+    <rule id="orchestrator-verifies-transition" testable="true" depth="essential">
+      <statement>The orchestrator MUST observe an actual `pytest -q` (or framework equivalent) RED state before invoking GREEN, and a GREEN state after. Skipping either observation is forbidden.</statement>
+      <rationale source="TDD literature (Beck, Kent) + Internal — orchestrator policy">Without explicit RED/GREEN observations, the loop degenerates into `agent writes code + tests pass somehow`.</rationale>
+    </rule>
+    <rule id="merge-only-on-green" testable="true" depth="essential">
+      <statement>Merge to the integration branch is allowed only on observed GREEN with the RED-then-GREEN transition recorded in CI logs. Direct merges that skip the loop are rejected.</statement>
+      <rationale source="Internal — merge-gate policy">Without an audit-trail gate, the split-agent ceremony is theatre — the project gains nothing over single-agent TDD.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tracker-gitlab-duo-developer-flow Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tracker-gitlab-duo-developer-flow. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitLab Duo Agent Platform Developer Flow Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the tracker-gitlab-duo-developer-flow methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every coding agent action against a GitLab project MUST be invoked through a named Duo flow declared in `.gitlab/duo-flows.yaml`. Triggers MUST be either (a) issue label transitions (`agent:implement`, `agent:review`) or (b) scheduled pipelines. Direct API calls to `merge_requests` from outside Duo are forbidden in production projects. The flow definition MUST set `require_human_review: true` for any change touching a protected branch and MUST NOT exceed the assignee's project role; protected-branch settings, CODEOWNERS, and approval rules apply to flow output exactly as they apply to human MRs.</statement>
-      <rationale source="v1-source">GitLab Duo's flow contract makes the platform — not external webhooks — the system of record for "an agent did this". Side webhooks or external runners bypass the audit log and protected-branch enforcement, recreating the shared-token anti-pattern Duo was built to retire. Tying triggers to label transitions also gives auditors one surface to review: the project's label history is the agent invocation log.</rationale>
+
+    <rule id="min-gitlab-18-8" testable="true" depth="essential">
+      <statement>GitLab version MUST be ≥ 18.8. Earlier versions hit the locking bug + feature-flag config issues in incident #21171 and are out of scope.</statement>
+      <rationale source="GitLab incident #21171 (2026-Q1)">Running on pre-18.8 silently corrupts MR locking, producing duplicate merge attempts; the methodology cannot guarantee correctness there.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The canonical Duo pipeline MUST chain Developer Flow into Code Review Flow: the `agent:implement` label triggers Developer Flow, the resulting MR-opened event triggers Code Review Flow with at least the `security` standard enabled. The project MUST run GitLab 18.8 or later before enabling any Duo flow; pre-18.8 deployments are explicitly out of scope because of the locking bug plus feature-flag misconfiguration documented in GitLab incident #21171. A pre-18.8 detection check MUST run on flow-config load and refuse the run with a "version floor not met" error.</statement>
-      <rationale source="v1-source">The composed pipeline is what GitLab's Duo reference architecture targets — Developer alone misses the SAST false-positive filtering that Code Review Flow's `security` standard delivers. The 18.8 floor is non-negotiable: the locking bug in earlier versions causes the Developer Flow to deadlock on MR creation under concurrent label triggers, producing zombie runs the platform cannot clean up. Refusing at config-load time prevents the deadlock from occurring in production.</rationale>
+    <rule id="label-triggered-only" testable="true" depth="essential">
+      <statement>Flows MUST be triggered by issue labels (`agent:implement`, `agent:review`, `agent:ci-fix`) or scheduled pipelines. Raw API triggers from external services are forbidden.</statement>
+      <rationale source="GitLab Duo Agent Platform spec">Labels and scheduled pipelines route through the same authorization model as humans; raw API triggers bypass it.</rationale>
     </rule>
+    <rule id="approval-rules-preserved" testable="true" depth="essential">
+      <statement>Flow output MUST still pass the project&apos;s approval-rule policy before merge. Flows MUST NOT use API tokens that bypass approval rules.</statement>
+      <rationale source="GitLab approval rules docs">Bypass tokens defeat the entire compliance regime; humans approve, agents propose.</rationale>
+    </rule>
+    <rule id="flow-per-task-type" testable="true" depth="essential">
+      <statement>Developer Flow → issue→MR. Code Review Flow → automated review. Software Development Flow → multi-step plan-before-execute. CI/CD Flows → pipeline migrations + failing-build fixes. Routing MUST match task type.</statement>
+      <rationale source="GitLab Duo named-flows docs">Reusing one flow for every task defeats the purpose of named flows; routing must be deliberate.</rationale>
+    </rule>
+    <rule id="audit-trail-via-flow-log" testable="true" depth="essential">
+      <statement>Every flow invocation MUST emit a flow log entry (`duo_flow_invocations` audit event) including label trigger, actor, MR ID, and outcome.</statement>
+      <rationale source="GitLab audit-event docs">Compliance audits require a per-invocation log; without it, flows look like ghost automation.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

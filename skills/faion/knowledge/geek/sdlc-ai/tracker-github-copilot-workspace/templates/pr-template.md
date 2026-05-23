@@ -1,3 +1,9 @@
+<!-- purpose: PR description template embedding Workspace metadata + snapshot link. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
+<!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
+
 <!-- .github/pull_request_template.md -->
 <!-- CI fails if either Closes-N line or Workspace snapshot URL is missing. -->
 

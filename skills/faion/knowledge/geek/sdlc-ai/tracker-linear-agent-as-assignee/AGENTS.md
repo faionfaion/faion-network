@@ -3,72 +3,94 @@ slug: tracker-linear-agent-as-assignee
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Treat AI coding agents (Cursor, Devin, Claude Code, Copilot) as first-class Linear assignees with their own user identity, not as a shared bot account.
-content_id: "12bdfaa8d886ebce"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an agent-identity + delegation-contract config so coding agents (Cursor, Devin, Claude, Copilot) appear as distinct Linear assignees with checkpoint comments, never as shared bot accounts.
+content_id: "fe40f81a74ec8d25"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [linear, agent-assignee, mcp, audit-trail, checkpoint-comments]
 ---
 # Linear Agent as First-Class Assignee
 
 ## Summary
 
-**One-sentence:** Treat AI coding agents (Cursor, Devin, Claude Code, Copilot) as first-class Linear assignees with their own user identity, not as a shared bot account.
+**One-sentence:** Treat AI coding agents as first-class Linear assignees with their own user identity; on assignment the agent posts a task list, periodic checkpoints, and a PR link as comments, via Linear's hosted MCP (GA April 2026).
 
 **One-paragraph:** Treat AI coding agents (Cursor, Devin, Claude Code, Copilot) as first-class Linear assignees with their own user identity, not as a shared bot account. Assigning an issue to an agent triggers the delegation contract: the agent posts a task list, periodic checkpoints with elapsed time, and finally a PR link as comments back on the issue, while the human teammate remains the primary owner who clears spec/approval gates and merges. The integration runs over Linear's hosted MCP server (GA April 2026) so the agent inherits the user's project permissions and writes to the issue activity log under its own identity. The literal rule: every agent action against a Linear issue MUST be a comment, status change, or PR link tied to a real assignment event — never a silent background side-effect.
 
+**Ефективно для:**
+
+- Linear orgs з multi-agent fleet (Cursor / Devin / Claude / Copilot).
+- Audit-driven teams: action log per agent identity.
+- Delegation flow: human owner + agent assignee, clean handoff.
+- Checkpoint cadence keеps humans оrientated by elapsed time.
+
 ## Applies If (ALL must hold)
 
-- Self-contained engineering tickets with concrete acceptance criteria written in the Linear issue body.
-- Triage backlog with high-volume duplicate, label, or routing work where Linear's Triage Intelligence is the upstream stage.
-- Bug fixes scoped to a single repo where Code Intelligence + the repo's MCP server can supply enough context.
-- Teams already on Linear that want agent attribution in audit trails without standing up a separate identity service.
+- Org tracks work in Linear with assignment-driven workflow.
+- Multiple coding agents (Cursor / Devin / Claude / Copilot) are in use.
+- Linear MCP server is reachable and licensed.
 
 ## Skip If (ANY kills it)
 
-- Ambiguous discovery tickets with no acceptance criteria — the agent has nothing to anchor its checkpoints on and will fabricate intent.
-- Cross-cutting refactors that touch architectural decisions or multiple repos — Linear-MCP is single-issue and single-repo per assignment.
-- Tickets requiring live user interviews or non-codebase context the agent cannot fetch through MCP — the gap surfaces only after the agent ships a wrong-spec PR.
-- Self-hosted-only environments — Linear's MCP and agent identity story is Linear-cloud only.
+- Tracker is not Linear (Jira/Asana/Notion) — use the matching tracker methodology.
+- Org wants one shared bot account (anti-pattern, but explicit choice).
+- Linear MCP not yet enabled on the org plan.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Linear org with MCP enabled | Linear setting | admin |
+| Coding agent supports Linear MCP | client docs | Cursor / Devin / Claude / Copilot |
+| Issue assignment policy | Markdown | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-output` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agent-identity.yaml` | Per-vendor Linear user setup (display name, avatar, scope). |
+| `templates/checkpoint-comment.md` | Checkpoint comment template (elapsed time + current step). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tracker-linear-agent-as-assignee.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[tracker-jira-rovo-mcp-agents]]
+- [[tracker-github-copilot-workspace]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

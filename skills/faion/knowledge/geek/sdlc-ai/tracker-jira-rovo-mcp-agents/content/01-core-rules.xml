@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tracker-jira-rovo-mcp-agents Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tracker-jira-rovo-mcp-agents. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Jira via Atlassian Rovo MCP, Permission-Inheriting Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the tracker-jira-rovo-mcp-agents methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every agent action against Jira, Confluence, or JSM MUST pass through the Rovo Remote MCP server using the assignee's OAuth grant. Raw REST API access (PAT, api/2/issue calls with a bot user's token) is forbidden in production agents. The agent MUST never request a scope wider than the assignee's role; if it must perform a destructive action the assignee lacks (e.g., issue:delete), it MUST escalate via JSM approval, not by reading a service-account secret. Audit IDs from MCP responses MUST land in the agent's structured log as the linkable record of "who did what".</statement>
-      <rationale source="v1-source">Atlassian's stated guarantee is that agents inherit the user's permissions, project configurations, workflows, and audit trails. A side-channel REST token defeats every word of that guarantee and is the anti-pattern Rovo MCP was built to retire. Storing audit IDs locally is what makes the inherited audit trail usable for incident review.</rationale>
+
+    <rule id="rovo-mcp-only-bridge" testable="true" depth="essential">
+      <statement>Every AI-to-Jira/Confluence/JSM access MUST go through the Rovo Remote MCP server. Direct Jira REST API calls from AI clients are forbidden.</statement>
+      <rationale source="Atlassian Rovo MCP docs (GA April 2026)">Direct API calls bypass permission inheritance + audit trail; centralizing through Rovo MCP is what makes the access governable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Any agent that runs as part of a Jira ticket lifecycle MUST be wired in as an on_enter handler on a specific workflow status (e.g., In Design, Ready for Implementation). The handler MUST declare permissions: inherit_from_assignee so the agent cannot exceed user scope. The next status transition (advancing past the agent's column) MUST require a human approver encoded in the Jira workflow, NOT a Slack reaction or out-of-band ack. Side webhooks that trigger agent work without a workflow handler are forbidden in production projects.</statement>
-      <rationale source="v1-source">Embedding in the workflow makes the agent's role legible to the same people who already maintain the project — admins, project leads, auditors. Routing the human gate through Jira's transition approver list inherits the existing reviewer matrix instead of duplicating it. April 2026 Atlassian docs make this the canonical extension point precisely because side webhooks were the source of audit gaps in pre-Rovo deployments.</rationale>
+    <rule id="permission-inheritance-mandatory" testable="true" depth="essential">
+      <statement>The Rovo MCP server MUST run actions as the inviting Jira user, inheriting that user&apos;s project permissions. Service-account impersonation that exceeds the user&apos;s scope is forbidden.</statement>
+      <rationale source="Atlassian permission-inheritance spec">If the agent can exceed user permissions, the audit trail lies about who did what.</rationale>
     </rule>
+    <rule id="audit-trail-native" testable="true" depth="essential">
+      <statement>Every AI action MUST appear in the native Jira audit log with the inviting user&apos;s identity + the AI client name. Custom audit channels are not a substitute.</statement>
+      <rationale source="Jira audit-log docs">Compliance reviews query the native log; bespoke channels are invisible to them.</rationale>
+    </rule>
+    <rule id="no-cross-project-bleed" testable="true" depth="essential">
+      <statement>MCP scope MUST be limited to projects the inviting user can access. Cross-project queries that traverse outside that scope are forbidden, even when technically possible.</statement>
+      <rationale source="Atlassian Rovo scope spec">Permission inheritance is per-project; treating MCP as a global key collapses the model.</rationale>
+    </rule>
+    <rule id="single-mcp-installation" testable="true" depth="essential">
+      <statement>An org MUST run exactly one Rovo MCP installation (one URL, one auth domain). Multiple parallel installations fragment audit trails and confuse permission inheritance.</statement>
+      <rationale source="Internal — single-source-of-truth policy">Two MCPs running in parallel split audit logs and let an attacker who breaches one bypass the other&apos;s review.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

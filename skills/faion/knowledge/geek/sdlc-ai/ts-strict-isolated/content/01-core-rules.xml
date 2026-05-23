@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ts-strict-isolated Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ts-strict-isolated. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="TypeScript Strict + isolatedDeclarations + Project References Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the ts-strict-isolated methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every tsconfig.json sets compilerOptions.strict: true, noUncheckedIndexedAccess: true, exactOptionalPropertyTypes: true. Library tsconfigs additionally set isolatedDeclarations: true and composite: true.</statement>
-      <rationale source="v1-source">strict enables noImplicitAny, strictNullChecks, strictFunctionTypes, etc. — the baseline. noUncheckedIndexedAccess forces narrowing on arr[i] and obj[key], the #1 LLM blind spot. exactOptionalPropertyTypes separates "missing key" from "key set to undefined", killing partial-update bugs. isolatedDeclarations requires explicit return types on every export so non-tsc tools can emit .d.ts.</rationale>
+
+    <rule id="strict-true-required" testable="true" depth="essential">
+      <statement>Every tsconfig.json MUST set `&quot;strict&quot;: true`. Disabling strict at the project root is forbidden; per-file `// @ts-nocheck` is also forbidden.</statement>
+      <rationale source="TypeScript docs (compiler options)">Strict is the floor for AI-generated TS quality; below it, the compiler stops being a safety net.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every library package's tsconfig sets composite: true and lists every internal dependency under references: [{ path: "../&lt;dep&gt;" }]. Application packages add references to all libraries they import. Run tsc --build from the root; never tsc -p per package in CI.</statement>
-      <rationale source="v1-source">Without composite, declaration emit is incremental-incompatible and editor navigation re-checks across boundaries. With it, each package builds once, downstream packages reuse .d.ts, total CI time drops 3–10x on large monorepos. tsc --build orchestrates the dependency graph; ad-hoc per-package builds skip the graph and rebuild redundantly.</rationale>
+    <rule id="no-unchecked-index" testable="true" depth="essential">
+      <statement>Every tsconfig.json MUST set `&quot;noUncheckedIndexedAccess&quot;: true`. Without it, `arr[i]` is typed `T` instead of `T | undefined` and runtime crashes hide from the compiler.</statement>
+      <rationale source="TypeScript docs (noUncheckedIndexedAccess)">AI-generated code routinely indexes arrays without bounds checks; the flag turns that into a compile error.</rationale>
     </rule>
+    <rule id="exact-optional-property-types" testable="true" depth="essential">
+      <statement>Every tsconfig.json MUST set `&quot;exactOptionalPropertyTypes&quot;: true` so `{ x?: T }` cannot be satisfied by `{ x: undefined }`.</statement>
+      <rationale source="TypeScript docs (exactOptionalPropertyTypes)">Without it, `undefined` vs missing-key bugs sneak through; AI-generated payloads often confuse the two.</rationale>
+    </rule>
+    <rule id="isolated-declarations-libs" testable="true" depth="essential">
+      <statement>Libraries / shared packages MUST set `&quot;isolatedDeclarations&quot;: true`. Apps may opt out only if the team uses tsc as the sole emitter.</statement>
+      <rationale source="TypeScript 5.5+ docs">Without it, fast emitters (Biome/oxc/swc) cannot produce `.d.ts` and the build falls back to slow tsc inference.</rationale>
+    </rule>
+    <rule id="composite-and-refs" testable="true" depth="essential">
+      <statement>Monorepo packages MUST set `&quot;composite&quot;: true` and declare `references` to dependency packages. Hand-rolled path mappings without references are forbidden.</statement>
+      <rationale source="TypeScript project references docs">References make build order explicit; path-mapping-only setups silently break on changing dependency graphs.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

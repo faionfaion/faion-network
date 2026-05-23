@@ -1,3 +1,9 @@
+# purpose: Shell script wiring axe-playwright into CI as a deploy gate.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-1200 tokens when loaded as context
+
 #!/usr/bin/env bash
 # ci-a11y-gate.sh — Fail build if new Critical a11y violations introduced vs baseline.
 # Usage: ./ci-a11y-gate.sh [baseline-file]

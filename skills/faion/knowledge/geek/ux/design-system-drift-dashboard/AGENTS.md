@@ -3,78 +3,93 @@ slug: design-system-drift-dashboard
 tier: geek
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "cfa369d411a46123"
-summary: Design System Drift Dashboard delivers a concrete, testable methodology that turns the recurring task of 'Design system v1 to v2 migration (12 weeks)' into an auditable artefact, addressing the gap: Quantitative tracking of adoption + drift over time is missing; needed to make mi
-tags: [ux, geek, instrumentation, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a quantitative drift report tracking token adoption, hardcoded values, and v1→v2 migration ROI across every consumer repo on a weekly cadence.
+content_id: "eb9fd56c71b2e484"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [design-systems, drift, tokens, adoption, migration, instrumentation]
 ---
 # Design System Drift Dashboard
 
 ## Summary
 
-**One-sentence:** Design System Drift Dashboard delivers a concrete, testable methodology that turns the recurring task of 'Design system v1 to v2 migration (12 weeks)' into an auditable artefact, addressing the gap: Quantitative tracking of adoption + drift over time is missing; needed to make migration ROI visible.
+**One-sentence:** Produces a quantitative drift report tracking token adoption, hardcoded values, and v1→v2 migration ROI across every consumer repo on a weekly cadence.
 
-**One-paragraph:** Quantitative tracking of adoption + drift over time is missing; needed to make migration ROI visible. Design System Drift Dashboard closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Design system v1 to v2 migration (12 weeks)' (role-ux-ui-designer, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Design-system v1→v2 migrations stall because adoption is invisible — teams keep paying for old tokens while new ones rot in storybook. This methodology produces a dashboard report that scans every consumer repo for hardcoded colours / spacings / typography, computes adoption % per component, and surfaces drift week over week. Output is a JSON drift report + Markdown exec summary tied to a sign-off threshold (≥90 % adoption + ≤2 % drift) that gates closure of the migration epic.
+
+**Ефективно для:** tech lead, що рухає v1→v2 міграцію дизайн-системи і потребує weekly metric для stakeholders.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Design system v1 to v2 migration (12 weeks)' (role: role-ux-ui-designer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Multi-team migration v1→v2 design system at scale (≥3 consumer repos).
+- Tokens codified in machine-readable source (Style Dictionary, JSON, CSS vars).
+- CI has access to clone consumer repos and read source files.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Single repo, single team — manual visual inspection is faster.
+- Tokens not codified machine-readably.
+- Migration already accepted — switch to ds-ops methodology.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Consumer repo list | JSON array of clone URLs | platform team |
+| v2 token map | JSON / Style Dictionary | design system team |
+| Token→component mapping | YAML | design system team |
+| Sign-off threshold | JSON | engineering leadership |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ux/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| [[ai-enhanced-design-systems]] | Token automation context. |
+| [[ai-design-assistant-patterns]] | Companion design-tool integration patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `design_system_drift_dashboard_template_fill` | haiku | Template fill, no judgment |
-| `design_system_drift_dashboard_evidence_check` | sonnet | Bounded comparison + judgment |
-| `design_system_drift_dashboard_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-report` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/drift-report.md` | Markdown skeleton: scan date, adoption %, drift count, top-10 hardcoded findings, signoff verdict. |
+| `templates/drift-report.json` | JSON template matching the output contract. |
+| `templates/_smoke-test.json` | Filled minimum-viable drift report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-design-system-drift-dashboard.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/` (see neighbouring methodologies)
-- triggering activity: `role-ux-ui-designer/Design system v1 to v2 migration (12 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-enhanced-design-systems]]
+- [[ai-design-assistant-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.

@@ -1,19 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="uv-lockfile-floor Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for uv-lockfile-floor. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="uv as the Python Lockfile Floor Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the uv-lockfile-floor methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Commit uv.lock to the repo. Run installs with `uv sync --frozen` in CI and `uv sync` locally; mutate dependencies only via `uv add` / `uv remove` / `uv lock --upgrade`.</statement>
-      <rationale source="v1-source">Reproducible installs require both the manifest (pyproject.toml) and the resolved transitive set (uv.lock). Committing the lock is the only way two agents on two machines compute the same env.</rationale>
+
+    <rule id="uv-is-the-resolver" testable="true" depth="essential">
+      <statement>Every Python project MUST use `uv` for dependency resolution. `pip-compile`, `poetry lock`, or `pipenv lock` MUST NOT be present alongside `uv.lock`.</statement>
+      <rationale source="Astral uv docs (2026)">Mixing resolvers produces silently divergent environments; uv is the floor because it owns Python install + resolve + run.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Never invoke `pytest`, `python`, `mypy`, `ruff`, or any other project tool bare. Always wrap in `uv run &lt;cmd&gt;`; for global tooling, use `uv tool install` / `uv tool run`.</statement>
-      <rationale source="v1-source">uv re-verifies the lockfile against pyproject.toml on every `uv run`. A bare `pytest` may pick up a stale system-Python interpreter and report a false green.</rationale>
+    <rule id="lockfile-committed" testable="true" depth="essential">
+      <statement>`uv.lock` MUST be committed and updated via `uv lock` (not hand-edited). PRs that modify dependencies without updating the lockfile are rejected.</statement>
+      <rationale source="Astral uv lock docs">Without a committed lock, agents and CI resolve differently than developers; this is the canonical reproducibility break.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>In CI, install with `uv sync --frozen --no-dev` (or `--all-extras` per matrix), never `uv sync --upgrade`.</statement>
-      <rationale source="v1-source">`--frozen` fails the build if pyproject.toml and uv.lock disagree. Without it, CI quietly relocks and you lose the auditability of the committed lockfile.</rationale>
+    <rule id="uv-run-for-tools" testable="true" depth="essential">
+      <statement>AI agents MUST invoke Python tools via `uv run &lt;cmd&gt;` (e.g., `uv run pytest`, `uv run mypy`). Bare `pytest` / `python` calls are forbidden in agent prompts and AGENTS.md.</statement>
+      <rationale source="Internal — agent-prompt audit">Bare invocations pick up the wrong virtualenv or wrong Python version; `uv run` guarantees the lockfile&apos;s environment.</rationale>
     </rule>
+    <rule id="python-version-pinned" testable="true" depth="essential">
+      <statement>`pyproject.toml` MUST specify an exact `requires-python` constraint (e.g., `&gt;=3.12,&lt;3.13`). Floating constraints (`&gt;=3.10`) are forbidden.</statement>
+      <rationale source="PEP 621 + uv Python-version docs">Floating constraints let one dev run on 3.10 and another on 3.13; type-checker and runtime behaviour diverges in subtle ways.</rationale>
+    </rule>
+    <rule id="agents-md-snippet" testable="true" depth="essential">
+      <statement>Every Python project&apos;s `AGENTS.md` MUST include the `uv run` rule snippet (provided by `templates/agents-md-snippet.md`) so the AI prompt knows to use `uv run`.</statement>
+      <rationale source="Internal — context-pyramid policy">Without an AGENTS.md snippet, even a perfectly configured project gets bare commands from naive agents.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

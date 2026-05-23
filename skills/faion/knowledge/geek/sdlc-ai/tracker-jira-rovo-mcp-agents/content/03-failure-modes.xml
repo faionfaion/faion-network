@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="tracker-jira-rovo-mcp-agents Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for tracker-jira-rovo-mcp-agents as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Jira via Atlassian Rovo MCP, Permission-Inheriting Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments of this methodology. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>One shared service account with jira-admins group used by every agent.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Audit log says "service-account did everything"; the agent layer is opaque to compliance, and any compromise of the secret grants admin to whoever holds it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent posts a Slack message asking for thumbs-up to move the ticket forward.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The approval lives in Slack, not in Jira; the audit log on the issue shows the agent advanced status with no record of who approved. Use Jira's transition approver list instead.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="direct-rest-api" severity="medium">
+      <symptom>An AI client bypasses Rovo MCP and calls Jira REST directly via a service-account token. Permission inheritance lost; audit trail wrong identity.</symptom>
+      <root-cause source="Internal — tracker-jira-rovo-mcp-agents antipattern audit">Service-account token issued to AI clients.</root-cause>
+      <fix>Revoke direct Jira tokens from AI clients; route every call through Rovo MCP.</fix>
+    </antipattern>
+    <antipattern id="multi-mcp-shadow" severity="medium">
+      <symptom>Two parallel MCP installations (one official, one a developer&apos;s experiment). Audit log fragmented.</symptom>
+      <root-cause source="Internal — tracker-jira-rovo-mcp-agents antipattern audit">No single-installation policy.</root-cause>
+      <fix>Enforce a single Rovo MCP URL via DNS allowlist; reject all others at the network layer.</fix>
+    </antipattern>
+    <antipattern id="cross-project-leak" severity="medium">
+      <symptom>MCP queries traverse outside the inviting user&apos;s projects. Confidential project data exposed.</symptom>
+      <root-cause source="Internal — tracker-jira-rovo-mcp-agents antipattern audit">Scope filter not enforced server-side.</root-cause>
+      <fix>Restrict scope_projects at the MCP config level; reject any query referencing outside-scope projects.</fix>
+    </antipattern>
+
   </section>
 </text>

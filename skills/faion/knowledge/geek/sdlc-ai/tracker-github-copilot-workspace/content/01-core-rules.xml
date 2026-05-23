@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tracker-github-copilot-workspace Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tracker-github-copilot-workspace. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitHub Copilot Workspace Four-Gate Pipeline Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the tracker-github-copilot-workspace methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The agent MUST produce four artefacts in strict order: (a) `spec.md` containing current-state and desired-state bullet lists, (b) `plan.md` listing per-file changes with line-range hints, (c) `diff.patch` containing the actual edit, (d) the PR. Each gate emits its artefact, waits for an explicit human "approve" event (UI button click in Workspace, or a `:white_check_mark:` reaction on the gate comment for headless runs), and only then advances. The agent MUST refuse to generate gate N+1 if gate N has no approval event in its journal; refusal lands as a comment "blocked at gate N" and the run aborts.</statement>
-      <rationale source="v1-source">GitHub's four-stage gate is the documented Copilot Workspace contract precisely so reviewers can edit the spec/plan cheaply before the diff exists. The ~30% agentic PR fail-rate reported in April 2026 concentrates in runs that skipped intermediate gates, because misread intent flows downstream and burns a review cycle on rework.</rationale>
+
+    <rule id="four-gates-required" testable="true" depth="essential">
+      <statement>Every Workspace-driven PR MUST pass four gates in order: spec → plan → diff → PR. Skipping or merging gates is a hard refusal.</statement>
+      <rationale source="GitHub Copilot Workspace docs (2026)">The four-gate sequence is the only mechanism that gives reviewers durable artifacts at each abstraction layer; skipping gates collapses the pipeline.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every agent-opened PR MUST include in its body (a) a single line matching `^(Closes|Fixes) #[0-9]+` referencing the source issue, and (b) a Workspace snapshot URL on the line `Workspace snapshot: https://github.com/copilot/spaces/&lt;id&gt;`. A repository CI check MUST grep both lines and fail the PR if either is missing. Editing the PR body to remove either line MUST re-trigger the failing check, blocking merge until restored. The agent MUST NOT edit the snapshot URL after open; if the spec or plan changes, it opens a fresh PR.</statement>
-      <rationale source="v1-source">April 2026 saw a documented GitHub bug where Copilot agent stripped the link text from the PR body; the closing keyword's absence left issues open across an entire org. Making both lines required and CI-enforced is the only way to guarantee the round-trip given that any tooling can mutate the body. Snapshot URL stability matters because reviewers cite it in their review comments — overwriting it invalidates that audit trail.</rationale>
+    <rule id="human-edit-each-gate" testable="true" depth="essential">
+      <statement>The human MUST have an explicit edit point at each gate. Auto-progression that bypasses the edit step is forbidden.</statement>
+      <rationale source="GitHub Copilot Workspace UX spec">Without an edit gate, the human becomes a rubber-stamp; the gate ceases to be a control.</rationale>
     </rule>
+    <rule id="snapshot-link-in-pr" testable="true" depth="essential">
+      <statement>Every Workspace PR MUST include an auto-attached comment with a read-only snapshot link to the Workspace that produced the diff.</statement>
+      <rationale source="Internal — review-artifact policy">Reviewers cannot interrogate the spec/plan from the diff alone; the snapshot link is the bridge.</rationale>
+    </rule>
+    <rule id="issue-to-diff-aborts" testable="true" depth="essential">
+      <statement>Agents configured to go straight from issue to diff (bypassing spec + plan) MUST abort with a non-zero exit. CI rejects PRs without Workspace metadata.</statement>
+      <rationale source="Internal — pipeline-enforcement policy">Without an abort, the gates become optional; teams will skip them under pressure.</rationale>
+    </rule>
+    <rule id="workspace-only-for-non-trivial" testable="true" depth="essential">
+      <statement>Workspace is required for PRs touching &gt; 1 file OR adding &gt; 50 LoC. Trivial fixes MAY bypass with a `trivial:` PR prefix.</statement>
+      <rationale source="Internal — scope policy">Forcing Workspace on every typo fix drains velocity; the gate exists for non-trivial work.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

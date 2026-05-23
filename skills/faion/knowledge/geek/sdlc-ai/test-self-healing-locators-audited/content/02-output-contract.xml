@@ -1,22 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="test-self-healing-locators-audited Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Self-Healing Locators with Mandatory Audit Diff Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the config artefact this methodology produces, plus one valid example, one invalid example, and the forbidden-pattern list. The companion validator (`scripts/validate-test-self-healing-locators-audited.py`) enforces the same constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/test-self-healing-locators-audited.json",
+  "title": "HealerPolicy",
+  "type": "object",
+  "required": [
+    "framework",
+    "match_dimensions",
+    "heal_diff_path",
+    "auto_apply_to_next_run",
+    "blocklisted_pages",
+    "rollback_window_days",
+    "scope"
+  ],
+  "properties": {
+    "framework": {
+      "enum": [
+        "playwright",
+        "cypress",
+        "selenium",
+        "webdriverio"
+      ]
+    },
+    "match_dimensions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "role",
+          "accessible_name",
+          "css",
+          "xpath",
+          "text"
+        ]
+      },
+      "contains": {
+        "const": "role"
+      },
+      "minItems": 2
+    },
+    "heal_diff_path": {
+      "type": "string"
+    },
+    "auto_apply_to_next_run": {
+      "type": "boolean",
+      "const": false
+    },
+    "blocklisted_pages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "rollback_window_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30
+    },
+    "scope": {
+      "enum": [
+        "changed-only",
+        "whole-suite"
+      ]
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "framework": "playwright",
+  "match_dimensions": [
+    "role",
+    "accessible_name"
+  ],
+  "heal_diff_path": "tests/e2e/healed-selectors.diff",
+  "auto_apply_to_next_run": false,
+  "blocklisted_pages": [
+    "/checkout",
+    "/login",
+    "/account/settings"
+  ],
+  "rollback_window_days": 7,
+  "scope": "changed-only"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "framework": "playwright",
+  "match_dimensions": [
+    "css"
+  ],
+  "auto_apply_to_next_run": true,
+  "blocklisted_pages": [],
+  "rollback_window_days": 0,
+  "scope": "whole-suite"
+}
+]]></code>
+    <note>Match on CSS only (no role); auto-apply enabled; blocklist empty; rollback window zero; whole-suite scope.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden>
+      <pattern id="f1">match_dimensions == [css] or [text] alone (role missing)</pattern>
+      <pattern id="f2">auto_apply_to_next_run == true</pattern>
+      <pattern id="f3">blocklisted_pages empty when app has payment/auth flows</pattern>
+      <pattern id="f4">scope == whole-suite on every run</pattern>
+    </forbidden>
+  </section>
+
+  <reference path="scripts/validate-test-self-healing-locators-audited.py">Validator script enforcing this contract.</reference>
 </text>

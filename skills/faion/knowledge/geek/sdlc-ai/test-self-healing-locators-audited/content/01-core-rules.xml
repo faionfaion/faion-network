@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-self-healing-locators-audited Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-self-healing-locators-audited. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Self-Healing Locators with Mandatory Audit Diff Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the test-self-healing-locators-audited methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The healer MUST extract the original locator's accessibility role AND accessible name (case-insensitive, whitespace-normalized regex). A heal candidate is acceptable ONLY when its role equals the original role AND its accessible name matches the original name pattern. Heals based on tag, CSS class, XPath structural index, or text-only matching are forbidden and MUST be rejected before being written to the diff.</statement>
-      <rationale source="v1-source">Role+name = "what the user thinks the element is"; class/structure = "how the framework rendered it last week." Drift in the latter is ubiquitous and harmless; drift in the former is a real change that should fail the test, not be auto-healed.</rationale>
+
+    <rule id="role-and-name-match" testable="true" depth="essential">
+      <statement>A healed candidate MUST share the original locator&apos;s WAI-ARIA role AND accessible name. Mismatch on either dimension rejects the heal.</statement>
+      <rationale source="WAI-ARIA + Playwright/Cypress healer docs">CSS-only heals click buttons with matching text but different roles; role+name is the smallest pair that prevents wrong-button clicks.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>When the healer accepts a candidate, it MUST write the change as a unified diff to `healed-selectors.diff` (committed to the repo) and EXIT NONZERO so the CI run fails. A separate `healer-apply` job MUST refuse to run unless `healed-selectors.diff` carries an approving review marker (e.g., commit message tag `healer:approved` or a YAML side-car). High-stakes flow files (payments, auth) listed in `healer-policy.json` MUST be excluded from auto-heal entirely.</statement>
-      <rationale source="v1-source">Without the diff gate, a wrong heal becomes the new ground truth on the next CI run; with the gate, every heal is a code-review event the team sees and can reject.</rationale>
+    <rule id="heal-diff-required" testable="true" depth="essential">
+      <statement>Every heal MUST be emitted as a diff in `healed-selectors.diff` (or platform equivalent). CI MUST NOT auto-apply heals to the next run without a human-merged diff.</statement>
+      <rationale source="Internal — heal-audit policy">Silent healing makes tests look stable while they drift; the diff is what makes drift visible.</rationale>
     </rule>
+    <rule id="payment-or-pii-blocklist" testable="true" depth="essential">
+      <statement>Selectors on payment, auth, or PII screens MUST be blocklisted from auto-healing entirely. Failures on those screens require a human triage.</statement>
+      <rationale source="Internal — high-stakes-screen policy">A wrong-button click on `Pay` is unrecoverable; healing must not be allowed to take that risk.</rationale>
+    </rule>
+    <rule id="rollback-window" testable="true" depth="essential">
+      <statement>A merged heal MUST be reversible within 7 days via a single CLI command pointing at the heal-diff commit.</statement>
+      <rationale source="Internal — change-revert policy">Healing introduces silent behavior changes; without a one-shot rollback the team cannot recover when a heal turns out wrong post-merge.</rationale>
+    </rule>
+    <rule id="scoped-to-changed-pages" testable="true" depth="essential">
+      <statement>Healing MUST be scoped to selectors that broke since the last successful run; healing every selector every run is forbidden.</statement>
+      <rationale source="Healer plugin best-practice docs">Whole-suite healing introduces drift even on stable selectors and floods the heal-diff with noise.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

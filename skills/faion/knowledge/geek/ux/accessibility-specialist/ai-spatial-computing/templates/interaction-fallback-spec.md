@@ -1,26 +1,20 @@
-# Spatial Interaction Spec: [Feature Name]
+<!-- purpose: Markdown skeleton: surface + primary modality + tier-2 + tier-3 + dwell + retention + consent. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-## Primary: Gaze + Dwell
-- Trigger: user gazes at element for [N]ms
-- Latency requirement: &lt;50ms visual feedback
-- Accessibility: supports motor impairments; adjustable dwell time setting
+# AI + Spatial Computing Accessibility — interaction-fallback-spec.md
 
-## Secondary: Voice Command
-- Trigger: "[command phrase]"
-- ASR model: on-device (Whisper tiny) | cloud (Whisper large)
-- Fallback phrase: "[alternative phrasing]"
-- Latency requirement: &lt;200ms response start
+Skeleton for the spec artefact this methodology produces.
 
-## Tertiary: Controller Button
-- Button mapping: [button] on [controller]
-- Works without head tracking: yes / no
+Fill the fields below per task; the validator at `scripts/validate-ai-spatial-computing.py` enforces the schema in `content/02-output-contract.xml`.
 
-## Not supported via
-- Touch (device has no touchscreen)
-- Keyboard (no physical keyboard in session)
+## Required fields
 
-## Privacy
-- Eye tracking data: processed on-device, not stored
-- Voice data: on-device | cloud — retention: [Xd]
-- Scene scan: local only | uploaded for anchoring — retention: [Xd]
-- Consent required: yes — presented at [onboarding / feature first-use]
+- `hardware` — fill from task context.
+- `modalities` — fill from task context.
+- `fallback_tiers` — fill from task context.
+- `ondevice_p95_ms` — fill from task context.
+- `consent_screen` — fill from task context.
+- `human_signoff_recorded` — fill from task context.

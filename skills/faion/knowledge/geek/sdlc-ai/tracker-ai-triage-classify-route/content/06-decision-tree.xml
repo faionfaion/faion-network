@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AI Triage, Classify, and Route Inbound Issues Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml. Every leaf references a rule id (including `skip-this-methodology`).</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is the issue tracker volume ≥ 100 open issues AND is CODEOWNERS maintained?</root-question>
+
+      <branch when="issue_count &lt; 100 OR codeowners_missing == true">
+        <conclusion ref="skip-this-methodology" verdict="manual triage faster or routing source missing"/>
+      </branch>
+      <branch when="severity == blocker AND oncall_confirmed == false">
+        <conclusion ref="blocker-requires-oncall" verdict="reject: blocker without on-call confirmation"/>
+      </branch>
+      <branch when="dedupe_cosine_threshold &lt; 0.85">
+        <conclusion ref="dedupe-cosine-threshold" verdict="reject: dedupe threshold too lenient"/>
+      </branch>
+      <branch when="audit_comment_emitted == false">
+        <conclusion ref="audit-comment-required" verdict="reject: silent triage"/>
+      </branch>
+      <branch when="route_team not from CODEOWNERS">
+        <conclusion ref="codeowners-derived-routing" verdict="reject: ad-hoc routing"/>
+      </branch>
+      <branch when="steps_executed_out_of_order == true">
+        <conclusion ref="six-step-fixed-order" verdict="reject: pipeline order broken"/>
+      </branch>
+      <branch when="all_above_pass == true">
+        <conclusion ref="audit-comment-required" verdict="accept: triage decision valid"/>
+      </branch>
+
+  </decision-tree>
+
+  <example trace="tracker-ai-triage-classify-route-happy-path">
+    Inbound issue PROJ-4521 → bug, major, no dupe, /area/checkout, @org/payments, assignee alice → audit comment posted.
+  </example>
+</text>

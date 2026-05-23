@@ -1,3 +1,9 @@
+<!-- purpose: Checkpoint comment template (elapsed time + current step). -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
+<!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
+
 <!--
   Agent checkpoint comment for a Linear issue.
   Post one comment per state transition: started, in-progress, blocked,

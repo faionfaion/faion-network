@@ -1,3 +1,9 @@
+<!-- purpose: SKILL.md for the GREEN sub-agent with disjoint tool whitelist. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
+<!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
+
 ---
 name: tdd-green
 description: |

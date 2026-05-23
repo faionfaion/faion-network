@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tracker-gitlab-duo-developer-flow Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="GitLab Duo Agent Platform Developer Flow Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the config artefact this methodology produces, plus one valid example, one invalid example, and the forbidden-pattern list. The companion validator (`scripts/validate-tracker-gitlab-duo-developer-flow.py`) enforces the same constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/tracker-gitlab-duo-developer-flow.json",
+  "title": "DuoFlowsConfig",
+  "type": "object",
+  "required": [
+    "gitlab_version",
+    "flows",
+    "approval_rules_respected",
+    "audit_log_emitted"
+  ],
+  "properties": {
+    "gitlab_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+"
+    },
+    "flows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "trigger_label",
+          "task_type"
+        ],
+        "properties": {
+          "name": {
+            "enum": [
+              "developer",
+              "code-review",
+              "software-development",
+              "ci-cd"
+            ]
+          },
+          "trigger_label": {
+            "type": "string",
+            "pattern": "^agent:"
+          },
+          "task_type": {
+            "enum": [
+              "issue-to-mr",
+              "review",
+              "multi-step",
+              "pipeline-migration",
+              "build-fix"
+            ]
+          }
+        }
+      }
+    },
+    "approval_rules_respected": {
+      "type": "boolean",
+      "const": true
+    },
+    "audit_log_emitted": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "gitlab_version": "18.9",
+  "flows": [
+    {
+      "name": "developer",
+      "trigger_label": "agent:implement",
+      "task_type": "issue-to-mr"
+    },
+    {
+      "name": "code-review",
+      "trigger_label": "agent:review",
+      "task_type": "review"
+    },
+    {
+      "name": "ci-cd",
+      "trigger_label": "agent:ci-fix",
+      "task_type": "build-fix"
+    }
+  ],
+  "approval_rules_respected": true,
+  "audit_log_emitted": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "gitlab_version": "18.5",
+  "flows": [
+    {
+      "name": "developer",
+      "trigger_label": "auto",
+      "task_type": "issue-to-mr"
+    }
+  ],
+  "approval_rules_respected": false,
+  "audit_log_emitted": false
+}
+]]></code>
+    <note>Version below floor; trigger label not `agent:*`; approval rules bypassed; audit log disabled.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden>
+      <pattern id="f1">gitlab_version &lt; 18.8</pattern>
+      <pattern id="f2">trigger_label not matching `^agent:`</pattern>
+      <pattern id="f3">approval_rules_respected == false</pattern>
+      <pattern id="f4">audit_log_emitted == false</pattern>
+    </forbidden>
+  </section>
+
+  <reference path="scripts/validate-tracker-gitlab-duo-developer-flow.py">Validator script enforcing this contract.</reference>
 </text>

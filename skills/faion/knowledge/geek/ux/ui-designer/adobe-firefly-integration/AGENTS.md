@@ -2,75 +2,93 @@
 slug: adobe-firefly-integration
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use Adobe Firefly Services REST API to batch-generate commercial-safe images, apply Generative Fill to placeholder regions, and produce vector assets from text prompts.
-content_id: "8ae553d58f3928d8"
-tags: [firefly, generative-ai, asset-generation, api-integration, automation]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Firefly Services REST client that batch-generates commercial-safe images, applies Generative Fill to placeholder regions, and audits prompts for brand compliance.
+content_id: "17ccea04f994a691"
+complexity: medium
+produces: code
+est_tokens: 4200
+tags: [adobe, firefly, generative-ai, asset-generation, commercial-safe, api]
 ---
 # Adobe Firefly Integration
 
 ## Summary
 
-**One-sentence:** Use Adobe Firefly Services REST API to batch-generate commercial-safe images, apply Generative Fill to placeholder regions, and produce vector assets from text prompts.
+**One-sentence:** Produces a Firefly Services REST client that batch-generates commercial-safe images, applies Generative Fill to placeholder regions, and audits prompts for brand compliance.
 
-**One-paragraph:** Use Adobe Firefly Services REST API to batch-generate commercial-safe images, apply Generative Fill to placeholder regions, and produce vector assets from text prompts. Firefly is trained on licensed content with clear generative-credit accounting — it is the correct tool when commercial IP safety is required. All generated assets require a human brand-alignment review before production promotion.
+**One-paragraph:** Adobe Firefly Services exposes commercial-safe generative endpoints (text-to-image, generative-fill, generative-expand, vectorisation) trained only on Adobe Stock + public-domain. The agent surface is the REST API, not the desktop UI. This methodology produces a Firefly client that batch-generates assets from structured prompts, runs them through a brand-compliance audit (forbidden terms, style adherence, alt-text), and stores outputs with provenance metadata so downstream tools can prove commercial safety.
+
+**Ефективно для:** design ops engineer, що масово генерує commercial-safe imagery (e-commerce, marketing) і потребує provenance + audit trail.
 
 ## Applies If (ALL must hold)
 
-- Generating commercial-safe image assets for UI mockups, marketing banners, or product visuals
-- Creating vector assets in Illustrator via text-to-vector prompts for icon sets
-- Removing or replacing image backgrounds in Photoshop for product shots or hero images
-- Producing asset variations (color, style, format) from a single source for A/B testing
-- Applying AI-generated text effects and typography variations at scale
+- Generating commercial-safe imagery at scale (≥10 assets per pipeline run).
+- Brand compliance must be auditable (forbidden terms + style adherence).
+- Output must carry provenance metadata (model version + prompt hash + Adobe content credentials).
 
 ## Skip If (ANY kills it)
 
-- Design requires a coherent custom illustration style — Firefly outputs generic aesthetics
-- Iterating on UI layout or component design — Figma is the correct tool
-- Team has no Adobe CC enterprise licenses — generative credits are consumed per generation and the API requires enterprise plan
-- Output must strictly match an established illustration system — Firefly cannot learn custom styles
-- Speed is critical and assets must integrate directly into Figma without round-trips
+- Single ad-hoc image — use the desktop UI.
+- Output goes to a context that prohibits AI-generated imagery (some news / editorial).
+- Commercial safety not required — cheaper open-source models suffice.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Adobe Firefly Services API credentials | secret | secrets manager |
+| Brand prompt rules (forbidden + required terms) | YAML | brand team |
+| Asset request batch | JSON array of prompt + dimensions + style | marketing |
+| Output bucket + provenance metadata schema | config | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-plugin-ecosystem]] | Plugin vs REST API boundary. |
+| [[figma-ai-ecosystem]] | Companion design-platform surfaces. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-code` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/firefly_client.py` | Python client: OAuth + batch submit + poll + provenance attach. |
+| `templates/brand-rules.yaml` | Brand pre-filter rules skeleton (forbidden + required terms + style adherence). |
+| `templates/_smoke-test.json` | Filled minimum-viable single-asset request. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-adobe-firefly-integration.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[ai-plugin-ecosystem]]
+- [[figma-ai-ecosystem]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the code; mis-routing leads to producing the wrong artefact shape.

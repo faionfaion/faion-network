@@ -2,73 +2,93 @@
 slug: ai-design-assistant-patterns
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Four interaction patterns for embedding AI assistance into design tools: sidebar (always-on contextual suggestions), modal (focused batch generation), inline (micro-corrections on selected elements), and review (audit passes against a structured rubric).
-content_id: "8ca2a4fd707493f8"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a decision record selecting one of four AI-assistant patterns (sidebar / modal / inline / review-mode) for a design-tool integration and locks the pattern for the product.
+content_id: "49ab440eccfa6bcf"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
 tags: [design-systems, ai-assisted-design, figma-plugins, ux-patterns, agent-design]
 ---
 # AI Design Assistant Patterns
 
 ## Summary
 
-**One-sentence:** Four interaction patterns for embedding AI assistance into design tools: sidebar (always-on contextual suggestions), modal (focused batch generation), inline (micro-corrections on selected elements), and review (audit passes against a structured rubric).
+**One-sentence:** Produces a decision record selecting one of four AI-assistant patterns (sidebar / modal / inline / review-mode) for a design-tool integration and locks the pattern for the product.
 
-**One-paragraph:** Four interaction patterns for embedding AI assistance into design tools: sidebar (always-on contextual suggestions), modal (focused batch generation), inline (micro-corrections on selected elements), and review (audit passes against a structured rubric). Choose one pattern per tool — mixing them creates UX confusion. Review-mode is the most agent-native: the agent receives a design artifact, applies a rubric, and returns structured JSON feedback for a human to act on.
+**One-paragraph:** Mixing assistant patterns inside a single design tool creates UX confusion — users learn one mental model, get jarred when context shifts to another. This methodology picks ONE pattern per tool, justified by task duration + context window + agent-vs-human trigger. Review-mode is the most agent-native: the agent receives a design artifact, applies a rubric, returns structured JSON feedback a human acts on. Output: a one-page decision record with chosen pattern, rationale, fallback behaviour, telemetry plan.
+
+**Ефективно для:** PM / staff designer, що додає AI assistant у Figma plugin / design tool і потребує заморозити pattern перед розробкою.
 
 ## Applies If (ALL must hold)
 
-- Implementing a contextual AI assistant inside a Figma plugin where the assistant reacts to selected/edited content
-- Building a review-mode assistant that audits a design artifact and returns structured feedback
-- Automating design documentation: converting Figma JSON or component specs into human-readable specs
-- Evaluating which interaction pattern fits a given tool's UX before committing to implementation
+- Embedding AI assistance inside a design tool (Figma plugin, internal canvas, web design app).
+- Decision is being made BEFORE implementation begins.
+- ≥2 candidate patterns are seriously considered (sidebar / modal / inline / review).
 
 ## Skip If (ANY kills it)
 
-- The design problem is novel or strategic — assistant patterns support execution, not vision-setting
-- The assistant would make irreversible changes autonomously — all AI design actions must be reversible or human-confirmed
-- Context window is insufficient for the full design artifact (Figma file JSON above 200k tokens) — the assistant will hallucinate missing details
-- The user base has low AI literacy — assistant patterns require users to interpret and validate output
+- Pattern already in production for >6 months — too costly to re-pattern.
+- Single-shot prompt UX with no follow-up — no pattern needed.
+- Tool is non-design (IDE, terminal) — use a different decision framework.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Task description (what the assistant does) | markdown | PM |
+| Expected interaction frequency | JSON (per session) | research |
+| Trigger source (human-action vs agent-poll) | string | engineering |
+| Context-window budget | tokens | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-enhanced-design-systems]] | DS instrumentation context. |
+| [[figma-ai-ecosystem]] | Figma plugin sandbox boundaries. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-decision-record` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/decision-record.md` | Markdown skeleton: pattern + rationale + trigger + telemetry + fallback. |
+| `templates/score-table.json` | Scoring rubric for sidebar / modal / inline / review. |
+| `templates/_smoke-test.md` | Filled review-mode decision record example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-design-assistant-patterns.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[ai-enhanced-design-systems]]
+- [[figma-ai-ecosystem]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.

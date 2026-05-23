@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tracker-linear-agent-as-assignee Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tracker-linear-agent-as-assignee. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Linear Agent as First-Class Assignee Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the tracker-linear-agent-as-assignee methodology plus the `skip-this-methodology` safety rule. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The agent MUST NOT begin work on a Linear issue unless it received the matching IssueAssigned webhook with assignee.id equal to its own Linear user id within the last poll window. The agent MUST post one checkpoint comment within two minutes of acceptance, additional checkpoints at every state transition (started, blocked, ready-for-review), and exactly one final comment containing the PR URL when it opens the PR. Background work without a corresponding comment fails the audit and the run aborts.</statement>
-      <rationale source="v1-source">Linear's product contract treats the assignee as the primary owner; the comment cadence makes the agent's work visible at the same surface humans use, so reviewers do not have to leave Linear to track progress and the activity log captures every state transition under the agent's own identity.</rationale>
+
+    <rule id="distinct-agent-identity" testable="true" depth="essential">
+      <statement>Every coding agent MUST have its own Linear user account (`agent-cursor`, `agent-devin`, etc.), not share a single `bot` account. Avatar and display name reflect the underlying vendor.</statement>
+      <rationale source="Linear MCP docs (2026) + Internal — identity policy">Shared bot accounts collapse the audit trail — every action looks the same; per-vendor accounts let reviewers see which agent did what.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The agent MUST connect to Linear MCP under its own bot-user OAuth token with role Member or below in every project it touches. The agent MUST be denied workspace-admin scope, MUST NOT use the human assignee's token, and MUST be removed from any project where its declared scope (see templates/agent-identity.yaml) does not list tracker.issue.comment and tracker.issue.update_status. Token issuance MUST log the (agent_id, project_id, scope) triple to the audit sink.</statement>
-      <rationale source="v1-source">Atlassian's "agents respect permissions, project configurations, workflows, and audit trails" articulates the invariant Linear also enforces: a runtime that can do more than its assignee can is a privilege-escalation primitive, and shared admin tokens defeat the per-action audit attribution that the agent-as-assignee model is built to provide.</rationale>
+    <rule id="delegation-contract-on-assign" testable="true" depth="essential">
+      <statement>When an issue is assigned to an agent identity, the agent MUST within 60 seconds post a task list, an ETA, and switch the issue to `In Progress`. Silent agents are non-compliant.</statement>
+      <rationale source="Internal — delegation-contract policy">An assignment with no contract reply makes the human wonder if the agent saw the work; the contract closes that uncertainty in one comment.</rationale>
     </rule>
+    <rule id="checkpoint-cadence" testable="true" depth="essential">
+      <statement>While work is active the agent MUST post a checkpoint comment every 10-15 minutes including elapsed time + current step. No-progress windows ≥ 30 min require a `blocked:` comment.</statement>
+      <rationale source="Internal — visibility policy">Long silences erode trust; checkpoints give the human a permanent feel for whether the agent is making progress or stuck.</rationale>
+    </rule>
+    <rule id="pr-link-final-comment" testable="true" depth="essential">
+      <statement>On completion the agent MUST post a final comment containing the PR link + a one-line summary, then transition the issue to `In Review`. The agent does NOT transition to `Done`.</statement>
+      <rationale source="Internal — ownership policy">Done is the human owner&apos;s transition (after merge); agents stop at In Review so humans retain control of closure.</rationale>
+    </rule>
+    <rule id="no-silent-side-effects" testable="true" depth="essential">
+      <statement>Every agent action on a Linear issue MUST appear as a comment, status change, or PR link tied to an assignment event. Mutating the issue without a visible record is forbidden.</statement>
+      <rationale source="Internal — audit policy">Silent side-effects (label changes, hidden field updates) make the agent&apos;s behavior unaccountable.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in `## Applies If` are not all true, or any item in `## Skip If` holds. The decision tree routes to this rule on those branches.</statement>
+      <rationale source="F-066 v3 spec">A methodology that runs on the wrong input wastes tokens and produces misleading artifacts. The explicit skip rule is the safety valve.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
