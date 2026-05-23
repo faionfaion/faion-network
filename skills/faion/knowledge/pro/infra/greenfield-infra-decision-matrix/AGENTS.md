@@ -3,78 +3,99 @@ slug: greenfield-infra-decision-matrix
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "26e19627746f5d30"
-summary: "Greenfield Infra Decision Matrix — testable methodology for platform, k8s, networking, cost models. DevOps engineers waste days re-deciding self-host vs managed, EKS vs ECS vs Cloud Run, Terraform vs Pulumi. A single decision-matrix methodology with weighting and red-flags would short-circuit this for every new engagement (P4 outsource: pitch faster; P6 p..."
-tags: [infra, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pre-build decision matrix for greenfield infra: self-host vs managed, EKS vs ECS vs Cloud Run, Terraform vs Pulumi, single-region vs multi-region, with weighting + red-flags + go/no-go criteria."
+content_id: "3c7b232876fd705b"
+complexity: medium
+produces: decision-record
+est_tokens: 3900
+tags: [infra, pro, decision-matrix, greenfield, platform]
 ---
+
 # Greenfield Infra Decision Matrix
 
 ## Summary
 
-**One-sentence:** Greenfield Infra Decision Matrix — testable methodology for platform, k8s, networking, cost models. DevOps engineers waste days re-deciding self-host vs managed, EKS vs ECS vs Cloud Run, Terraform vs Pulumi. A single decision-matrix methodology with weighting and red-flags would short-circuit this for every new engagement (P4 outsource: pitch faster; P6 p...
+**One-sentence:** Pre-build decision matrix for greenfield infra: self-host vs managed, EKS vs ECS vs Cloud Run, Terraform vs Pulumi, single-region vs multi-region, with weighting + red-flags + go/no-go criteria.
 
-**One-paragraph:** Greenfield Infra Decision Matrix closes a known gap in infra practice: DevOps engineers waste days re-deciding self-host vs managed, EKS vs ECS vs Cloud Run, Terraform vs Pulumi. A single decision-matrix methodology with weighting and red-flags would short-circuit this for every new engagement (P4 outsource: pitch faster; P6 product: avoid wrong-tier infra). The methodology is anchored to the recurring activity 'Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks) (role: role-devops-engineer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** DevOps engineers waste days re-deciding 'self-host vs managed', 'EKS vs ECS vs Cloud Run', 'Terraform vs Pulumi', 'single-region vs multi-region' on every greenfield engagement. The decisions look unique but follow the same axes: team-skill, compliance, scale-target, cost-curve, vendor-lock-in tolerance, recovery requirements. This methodology pins a decision matrix per axis with weighting + red-flag list (e.g. 'compliance requires data sovereignty → managed cloud out'). Outcome: a 1-page decision record with rationale per cell. Used at project kickoff + revisited yearly.
+
+**Ефективно для:**
+
+- Greenfield kickoff: 1 година матрицю → 1-page decision record.
+- Уникнення re-deciding 'EKS vs ECS' на кожному проєкті.
+- Red-flags: compliance / sovereignty switches off cells автоматично.
+- Revisit yearly — capture коли decision стане stale.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks) (role: role-devops-engineer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Greenfield infra (no legacy constraint that pre-decides)
+- Multi-month commitment expected (decision matters)
+- Team has authority to choose tech (not vendor-locked)
+- Stakeholders (product, engineering, security) available for the kickoff session
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Brownfield with existing platform — extend, don't re-decide
+- Trivial scope (single Lambda, single S3 bucket) — overhead exceeds value
+- Compliance / contractual mandate already pre-decides (e.g. SaaS contract requires GCP)
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stakeholder kickoff slot (2h block) | calendar | engineering leader |
+| Workload sketch (scale, latency, compliance constraints) | product brief | product owner |
+| Budget envelope (rough monthly cost ceiling) | finance input | finance |
+| Team skill inventory | internal HR | engineering leader |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[terraform]] | Tool-choice axis references this |
+| [[us-uk-eu-compliance-matrix]] | Compliance constraints feed red-flags |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `greenfield_infra_decision_matrix_template_fill` | haiku | Template fill, no judgement |
-| `greenfield_infra_decision_matrix_evidence_check` | sonnet | Bounded comparison + judgement |
-| `greenfield_infra_decision_matrix_synthesis` | opus | Cross-input synthesis + final write-up |
+| `constraint_gathering` | sonnet | Facilitated structured intake |
+| `scoring_session` | opus | Cross-tradeoff synthesis with team |
+| `decision_record_draft` | sonnet | Bounded ADR writing |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-greenfield-infra-decision-matrix.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks) (role: role-devops-engineer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[headroom-cost-model]]
+- [[edge-and-cdn-strategy]]
+- [[terraform]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

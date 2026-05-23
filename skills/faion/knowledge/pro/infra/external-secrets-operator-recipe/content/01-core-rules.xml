@@ -1,42 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="External Secrets Operator Recipe Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of External Secrets Operator Recipe must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every step is dry-run before its first real execution. Dry-run artefact (output capture) is stored with the runbook version.</statement>
-      <rationale source="SRE runbook discipline (Google SRE book, 2016)">SRE runbook discipline (Google SRE book, 2016).</rationale>
+<text id="01-core-rules" title="External Secrets Operator Recipe Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the External Secrets Operator Recipe methodology. Each rule pairs a binary check + sourced rationale.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-cluster-secret-store-identity" testable="true" depth="essential">
+      <statement>ClusterSecretStore MUST use cloud-identity auth (IRSA on EKS, Workload Identity on GKE, OIDC for Vault). Static token auth forbidden in production.</statement>
+      <rationale source="ESO production patterns">Static token in ClusterSecretStore = static credential in cluster; same breach surface as the keys ESO is supposed to eliminate.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Each step has an explicit success signal (command exit, dashboard delta, alert silence). Steps without success signals are rejected.</statement>
-      <rationale source="Anti-vague-step principle">'check it works' is not a step.</rationale>
+    <rule id="r2-refresh-interval-calibrated" testable="true" depth="essential">
+      <statement>ExternalSecret refreshInterval MUST be calibrated to backend rate limits (default 1h is sensible; &lt;5min for high-rotation secrets like database creds with dynamic generation).</statement>
+      <rationale source="Vault + AWS Secrets Manager rate limits">Sub-minute refresh hits backend rate limits; hour-long refresh delays rotation by an hour.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Rollback path is written before forward path. A runbook without a documented rollback is incomplete.</statement>
-      <rationale source="Change-management practice from ITIL v4">Change-management practice from ITIL v4.</rationale>
+    <rule id="r3-rbac-namespace-scoped" testable="true" depth="essential">
+      <statement>ESO RBAC MUST scope each ExternalSecret to a namespace + service account. Cluster-wide secret access via ClusterExternalSecret only with named approver.</statement>
+      <rationale source="Kubernetes RBAC least-privilege">Wide RBAC turns one pod compromise into all-secret exfiltration.</rationale>
     </rule>
+    <rule id="r4-sync-failure-alert" testable="true" depth="essential">
+      <statement>Sync failure MUST page on-call within 5 min: failure metric (eso_externalsecret_sync_calls_error_total) + log pattern. Silent staleness forbidden.</statement>
+      <rationale source="ESO observability docs">ESO failures mean secrets go stale; stale secrets cause auth errors that look like bugs.</rationale>
+    </rule>
+    <rule id="r5-rotation-test-runbook" testable="true" depth="essential">
+      <statement>Each backend secret MUST have a rotation test in runbook: rotate at backend, wait refreshInterval + grace, confirm pod picked up new value via cert/env/health check.</statement>
+      <rationale source="secret rotation playbooks">Untested rotation pipeline often breaks at the pod-restart step.</rationale>
+    </rule>
+    <rule id="r6-secret-not-mounted-as-env" testable="true" depth="essential">
+      <statement>Mounted secrets MUST go to /var/run/secrets/&lt;name&gt;/ as files, not env vars. App reloads via SIGHUP or polling. Env-var injection requires named approver.</statement>
+      <rationale source="twelve-factor security note + ESO patterns">Env vars persist in process state + crash dumps + logs; file mounts can be re-read on rotation without pod restart.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Secrets-management migration: Vault / KMS / SOPS (4 weeks)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: ≥1 named source per rule (URL, ticket, transcript_id)
-Decision: downstream consumer can act without re-deriving reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger → artefact → decision — with auditability at each step.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: 'we should do this thing'
-Artefact: prose paragraph, no schema
-Evidence: 'industry best practice'
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is a failure mode catalogued in content/03-failure-modes.xml. The methodology exists to prevent exactly this shape.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

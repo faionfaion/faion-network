@@ -1,15 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-cli-setup Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-cli-setup. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS CLI Setup Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `AWS CLI Setup` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Install AWS CLI v2 (not v1) on Linux by downloading the official zip from awscli.amazonaws.com and running the bundled installer. Verify with `aws --version` showing `aws-cli/2.x`.</statement>
-      <rationale source="v1-source">AWS CLI v2 supports SSO, IMDSv2, and all current API features. v1 is no longer recommended and lacks SSO integration.</rationale>
+
+    <rule id="cli-v2-required" testable="true" depth="essential">
+      <statement>All developers MUST run AWS CLI v2 (≥ 2.15). v1 is forbidden because it lacks SSO + auto-credential-refresh support.</statement>
+      <rationale source="AWS CLI v2 release notes">v1 SSO support is missing; mixed v1/v2 leads to silently-stale credentials.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use named profiles (one per account/environment) rather than overwriting the default profile. Always specify --profile or set AWS_PROFILE when running commands against non-default accounts.</statement>
-      <rationale source="v1-source">Named profiles prevent accidental operations in the wrong account. A default profile pointing to production is a common source of destructive incidents.</rationale>
+
+    <rule id="sso-default" testable="true" depth="essential">
+      <statement>Authentication MUST go through IAM Identity Center (SSO) with `aws sso login`; long-lived access keys are forbidden except for service accounts with documented justification.</statement>
+      <rationale source="AWS Identity Center docs; CIS AWS Benchmark">Long-lived keys are the #1 leaked-credential class; SSO + short-lived STS tokens kill that surface.</rationale>
     </rule>
+
+    <rule id="named-profiles" testable="true" depth="essential">
+      <statement>Each account MUST have a named profile (`prod`, `staging`, `dev`) in `~/.aws/config`; `default` profile is reserved for the lowest-blast-radius account.</statement>
+      <rationale source="AWS CLI profile docs">Unnamed `default` profile leads to wrong-account commands; named profiles force explicit selection.</rationale>
+    </rule>
+
+    <rule id="mfa-enforced" testable="true" depth="essential">
+      <statement>Console + CLI access MUST require MFA via SSO MFA enforcement or IAM policy condition; bypass exceptions require security-lead sign-off + 30d expiry.</statement>
+      <rationale source="AWS IAM Best Practices; SOC2 CC6.6">MFA-less roots / IAM users have driven multiple public breaches; enforcement closes the surface.</rationale>
+    </rule>
+
+    <rule id="no-keys-on-disk" testable="true" depth="essential">
+      <statement>Plain-text `~/.aws/credentials` access keys are forbidden. Use SSO cached tokens or a credential helper (aws-vault, leapp, granted).</statement>
+      <rationale source="Internal credential-leak postmortem">Plain-text keys committed to git or backed up to iCloud / Dropbox have repeatedly leaked.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

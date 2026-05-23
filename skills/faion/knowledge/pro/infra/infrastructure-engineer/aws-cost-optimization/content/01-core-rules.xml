@@ -1,19 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-cost-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-cost-optimization. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Cost Optimization Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules every application of `AWS Cost Optimization` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Before purchasing any Reserved Instances or Savings Plans, run a 30-day utilization baseline from Cost Explorer for each instance family. Purchase Compute Savings Plans first (most flexible — covers EC2, Fargate, Lambda across all regions and instance families) at a 1-year no-upfront commitment for the proven baseline only. Cover the remaining stable compute with EC2 Instance Savings Plans or Regional RIs. Leave 20–30% on-demand for burst. Do NOT commit based on a single-day or same-day spend figure — Cost Explorer data is delayed up to 24h.</statement>
-      <rationale source="v1-source">Compute Savings Plans provide up to 66% discount with maximum flexibility — changing instance family, region, or OS does not void the plan. RIs are cheaper (up to 72%) but lock instance family, region, and OS. Buying too much commitment leaves unused reservation that cannot be refunded. Leaving 20–30% on-demand accommodates traffic spikes without over-committing.</rationale>
+
+    <rule id="tag-coverage-floor" testable="true" depth="essential">
+      <statement>Tag coverage MUST be ≥ 95% on (Project, Environment, Owner, ManagedBy) before a FinOps report is produced. Reports run on lower coverage are demoted to `partial`.</statement>
+      <rationale source="AWS Cost Allocation Tags docs; internal FinOps practice">Cost reports on poorly-tagged accounts are noise; tag-coverage gate forces the foundational hygiene first.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every S3 bucket MUST have a lifecycle policy defined at creation time. Buckets holding variable-access data MUST use S3 Intelligent Tiering with a monitoring threshold of 128KB (objects smaller than this are never tiered and incur only Standard cost). Compliance archives MUST use S3 Glacier Instant Retrieval or Glacier Deep Archive after a defined retention boundary. EBS snapshots older than 30 days for non-prod and 90 days for prod MUST be reviewed and deleted if not required for recovery.</statement>
-      <rationale source="v1-source">S3 Standard tier is billed for all stored bytes regardless of access frequency. Intelligent Tiering automatically moves infrequently accessed objects to cheaper tiers without retrieval fees. EBS snapshots are charged per GB stored and accumulate without lifecycle policies — a common source of unexplained storage costs in accounts older than 6 months.</rationale>
+
+    <rule id="savings-plan-target" testable="true" depth="essential">
+      <statement>Compute Savings Plan + RI coverage MUST target ≥ 70% for steady-state workloads. Coverage &lt; 50% is flagged as a finding.</statement>
+      <rationale source="AWS Compute Savings Plans guide; FinOps Foundation benchmark">Below 50% coverage leaves 30-60% of compute at On-Demand pricing — the easiest savings tier.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All VPCs MUST have Gateway VPC endpoints for S3 and DynamoDB enabled — they are free and eliminate NAT processing charges for traffic to those services. EKS/ECS workloads pulling images from ECR or writing logs to CloudWatch MUST use Interface endpoints for ecr.api, ecr.dkr, and logs. Dev and staging VPCs SHOULD use a single NAT Gateway instead of one per AZ — the cost difference for non-production environments with lower traffic is significant relative to the HA benefit.</statement>
-      <rationale source="v1-source">NAT Gateway charges $0.045/GB for all processed data. A EKS node pulling a 1GB container image generates $0.045 in NAT costs. Interface endpoints for ECR cost $0.01/hour plus $0.01/GB — at moderate image pull volume, endpoints pay for themselves. CloudFront reduces data transfer costs from S3 by up to 50% and improves latency for geographically distributed users.</rationale>
+
+    <rule id="graviton-coverage" testable="true" depth="essential">
+      <statement>Graviton coverage MUST be ≥ 60% for new compute and ≥ 30% for existing workloads. Reports below are flagged as findings.</statement>
+      <rationale source="AWS Graviton2/3 cost-performance reports">Graviton is ~20% cheaper; missing it = paying x86 premium.</rationale>
     </rule>
+
+    <rule id="spot-fault-tolerant" testable="true" depth="essential">
+      <statement>Fault-tolerant workloads (batch, dev, CI, async) MUST use Spot with diversified instance pools (≥ 4 types, ≥ 2 AZs). On-Demand for fault-tolerant workloads is flagged as a finding.</statement>
+      <rationale source="AWS Spot Best Practices">Spot is 60-90% cheaper; missing Spot on batch is unjustifiable spend.</rationale>
+    </rule>
+
+    <rule id="scheduler-non-prod" testable="true" depth="essential">
+      <statement>Non-prod environments (dev, staging, sandbox) MUST be stopped overnight + weekends via Instance Scheduler. 24/7 non-prod is flagged.</statement>
+      <rationale source="AWS Instance Scheduler docs">Non-prod schedules save 60-75% on those resources; 24/7 non-prod is silent waste.</rationale>
+    </rule>
+
+    <rule id="rightsizing-cadence" testable="true" depth="essential">
+      <statement>Rightsizing recommendations (Cost Explorer + Compute Optimizer) MUST be reviewed quarterly; underutilised resources (&lt; 20% CPU, &lt; 30% memory for 14d) MUST be downsized or terminated within 30 days of identification.</statement>
+      <rationale source="AWS Compute Optimizer">Recommendations rot; quarterly cadence + 30d action SLA prevents accumulation.</rationale>
+    </rule>
+
+    <rule id="anomaly-detector-on" testable="true" depth="essential">
+      <statement>AWS Cost Anomaly Detector MUST be enabled with a named alert owner + Slack / email destination. Anomalies without an owner are flagged.</statement>
+      <rationale source="AWS Cost Anomaly Detection docs">Cost spikes without an owner are detected post-bill; live detector + named owner catches them within 24h.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

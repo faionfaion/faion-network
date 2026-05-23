@@ -1,42 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Fast Vs Slow Burn Rule Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Fast Vs Slow Burn Rule deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Fast vs Slow Burn Rule Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/fast-vs-slow-burn-rule.json",
+  "type": "object",
+  "required": [
+    "slo_id",
+    "slo_target",
+    "windows",
+    "sli_recording_rule_prefix",
+    "alertmanager_routes",
+    "runbook_urls"
+  ],
+  "properties": {
+    "slo_id": {
+      "type": "string",
+      "description": "string"
+    },
+    "slo_target": {
+      "type": "number",
+      "description": "number"
+    },
+    "windows": {
+      "type": "array",
+      "description": "array (exactly 4 entries: 1h, 6h, 3d, 30d with burn_rate_threshold + routing)"
+    },
+    "sli_recording_rule_prefix": {
+      "type": "string",
+      "description": "string"
+    },
+    "alertmanager_routes": {
+      "type": "object",
+      "description": "object {window: receiver}"
+    },
+    "runbook_urls": {
+      "type": "object",
+      "description": "object {window: url}"
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slo_id": "checkout-api-availability-30d",
+  "slo_target": 0.999,
+  "windows": [
+    {
+      "length": "1h",
+      "burn_rate_threshold": 14.4,
+      "routing": "page"
+    },
+    {
+      "length": "6h",
+      "burn_rate_threshold": 6.0,
+      "routing": "page"
+    },
+    {
+      "length": "3d",
+      "burn_rate_threshold": 1.0,
+      "routing": "ticket"
+    },
+    {
+      "length": "30d",
+      "burn_rate_threshold": 0.1,
+      "routing": "review"
+    }
+  ],
+  "sli_recording_rule_prefix": "level:checkout_api:slo",
+  "alertmanager_routes": {
+    "1h": "oncall-page",
+    "6h": "oncall-page",
+    "3d": "slo-tickets",
+    "30d": "slo-review"
+  },
+  "runbook_urls": {
+    "1h": "https://runbooks/api-availability-1h",
+    "6h": "https://runbooks/api-availability-6h",
+    "3d": "https://runbooks/api-availability-3d",
+    "30d": "https://runbooks/api-availability-30d"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slo_id": "checkout-api",
+  "slo_target": 0.999,
+  "windows": [
+    {
+      "length": "1h",
+      "burn_rate_threshold": 5.0,
+      "routing": "page"
+    }
+  ],
+  "runbook_urls": {}
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>windows count != 4</item>
+      <item>burn_rate_threshold hardcoded without SLO-relative calibration</item>
+      <item>3d or 30d window routed to page</item>
+      <item>1h or 6h window routed to ticket only</item>
+      <item>runbook_urls missing for any window</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-fast-vs-slow-burn-rule.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

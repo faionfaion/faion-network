@@ -1,11 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-ec2-ecs Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-ec2-ecs. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS EC2 + ECS Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules every application of `AWS EC2 + ECS` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="fargate-default" testable="true" depth="essential">
+      <statement>Default launch type MUST be Fargate; EC2 launch type requires explicit justification (GPU, custom kernel, sub-cent cost-per-task at very high scale).</statement>
+      <rationale source="AWS ECS Best Practices">Fargate removes capacity-planning toil; EC2 ECS is rarely cheaper after node-management cost is counted.</rationale>
     </rule>
+
+    <rule id="graviton-tasks" testable="true" depth="essential">
+      <statement>New Fargate tasks MUST use ARM64 / Graviton; x86 requires ADR justification.</statement>
+      <rationale source="AWS Graviton benchmarks; FinOps reports">Graviton is ~20% cheaper + comparable perf for most container workloads.</rationale>
+    </rule>
+
+    <rule id="task-role-not-instance" testable="true" depth="essential">
+      <statement>Tasks MUST use Task IAM Role (not EC2 instance profile). Permissions follow least-privilege per task definition.</statement>
+      <rationale source="AWS ECS Security Best Practices">Instance-profile-only permissions leak across tasks on the same host; task roles isolate cleanly.</rationale>
+    </rule>
+
+    <rule id="awsvpc-network-mode" testable="true" depth="essential">
+      <statement>Network mode MUST be `awsvpc`; `bridge` and `host` are forbidden except for explicit performance-justified cases.</statement>
+      <rationale source="AWS ECS Networking docs">awsvpc gives each task its own ENI + security group; bridge/host modes leak port + IAM context across tasks.</rationale>
+    </rule>
+
+    <rule id="auto-scaling-on" testable="true" depth="essential">
+      <statement>Service auto-scaling MUST be configured: target tracking on CPU or ALB request count per target, min ≥ 2 tasks for prod, max sized to peak + 30% headroom.</statement>
+      <rationale source="AWS Application Auto Scaling docs">Without auto-scaling, services either over-provision (cost) or under-provision (outage).</rationale>
+    </rule>
+
+    <rule id="capacity-provider-strategy" testable="true" depth="essential">
+      <statement>Production services MUST define a capacity provider strategy combining Fargate + Fargate Spot, with Spot weight bounded so total Spot ≤ 50% of capacity.</statement>
+      <rationale source="AWS ECS Capacity Providers docs">Pure Spot is high-risk; pure on-demand is over-priced; weighted mix balances both.</rationale>
+    </rule>
+
+    <rule id="blue-green-rollout" testable="true" depth="essential">
+      <statement>Production deployments MUST use blue/green via CodeDeploy + ALB target group swap; rolling deploys are allowed only in dev / staging.</statement>
+      <rationale source="AWS CodeDeploy ECS blue/green docs">Rolling deploys mix versions and complicate rollback; blue/green is atomic + instant rollback.</rationale>
+    </rule>
+
+    <rule id="container-insights-on" testable="true" depth="essential">
+      <statement>Container Insights MUST be enabled on the cluster; tasks MUST emit `awslogs` to a log group with retention ≥ 30 days.</statement>
+      <rationale source="AWS Container Insights docs">Without metrics + logs, ECS debugging falls back to docker exec — too late.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

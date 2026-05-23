@@ -1,46 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Headroom Cost Model Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Headroom Cost Model must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Headroom Cost Model Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the Headroom Cost Model methodology. Each rule pairs a binary check + sourced rationale.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-resource-inventory-complete" testable="true" depth="essential">
+      <statement>Model MUST inventory every critical resource: compute (per service), db (per instance), network (NAT + LB + transit), storage (per bucket / volume class). Skipped resources flagged.</statement>
+      <rationale source="capacity-planning practice">Missing resources surprise capacity planning during a scale event.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="r2-utilisation-trailing-30d" testable="true" depth="essential">
+      <statement>Utilisation measured as p95 over trailing 30 days, NOT instantaneous. Spike-driven over-provisioning rejected.</statement>
+      <rationale source="FinOps + capacity">Instantaneous spikes inflate cost; p95-30d balances safety + cost.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+    <rule id="r3-70pct-yellow-90pct-red" testable="true" depth="essential">
+      <statement>Headroom thresholds: 70% triggers a re-provision ticket; 90% triggers an immediate re-provision action + on-call notification.</statement>
+      <rationale source="capacity-rule-of-thumb">70% is enough lead time to plan; 90% is the last responsible moment before saturation.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for platform, k8s, networking, cost models">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+    <rule id="r4-cost-per-unit-tracked" testable="true" depth="essential">
+      <statement>Each resource MUST have a cost-per-unit recorded (per vCPU-hour, per GB-month, per request). Cost projection multiplies projected unit demand by unit cost.</statement>
+      <rationale source="FinOps unit economics">Without unit cost, the bill is a mystery; with it, optimisations target the right resource.</rationale>
     </rule>
+    <rule id="r5-quarterly-projection" testable="true" depth="essential">
+      <statement>Quarterly projection MUST forecast next-quarter resource demand (driven by product roadmap traffic forecast) + cost. Projection delta vs current shared with finance + engineering leader.</statement>
+      <rationale source="rolling-forecast pattern">Quarterly cadence aligns with finance + product cycles; surprises avoided.</rationale>
+    </rule>
+    <rule id="r6-anomaly-detection-on-cost" testable="true" depth="essential">
+      <statement>Cost anomalies (&gt;30% deviation from projection) MUST trigger an investigation within 1 business day. Anomaly source documented in the model.</statement>
+      <rationale source="cost-anomaly-runbook">30% deviation is the threshold where projection becomes invalid; 1-day SLA prevents bill snowball.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Capacity headroom check (role: role-devops-engineer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: Tradeoff between capacity safety and cost is under-served by current FinOps + scaling content.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -1,42 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="External Secrets Operator Recipe Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a External Secrets Operator Recipe deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="External Secrets Operator Recipe Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/external-secrets-operator-recipe.json",
+  "type": "object",
+  "required": [
+    "cluster_secret_store",
+    "external_secrets",
+    "rbac_scope",
+    "alert_on_sync_failure",
+    "rotation_test_runbook_path",
+    "mount_type"
+  ],
+  "properties": {
+    "cluster_secret_store": {
+      "type": "object",
+      "description": "object {name, backend, auth_method, identity_ref}"
+    },
+    "external_secrets": {
+      "type": "array",
+      "description": "array (each {name, namespace, refresh_interval, target_path, key_refs})"
+    },
+    "rbac_scope": {
+      "type": "string",
+      "description": "enum (namespace | cluster_with_approver)"
+    },
+    "alert_on_sync_failure": {
+      "type": "boolean",
+      "description": "boolean (true)"
+    },
+    "rotation_test_runbook_path": {
+      "type": "string",
+      "description": "string"
+    },
+    "mount_type": {
+      "type": "string",
+      "description": "enum (file | env_with_approver)"
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "cluster_secret_store": {
+    "name": "vault-prod",
+    "backend": "vault",
+    "auth_method": "kubernetes",
+    "identity_ref": "system:serviceaccount:eso:vault-auth"
+  },
+  "external_secrets": [
+    {
+      "name": "api-db-creds",
+      "namespace": "prod-api",
+      "refresh_interval": "1h",
+      "target_path": "/var/run/secrets/db/",
+      "key_refs": [
+        "prod/api/db-password"
+      ]
+    }
+  ],
+  "rbac_scope": "namespace",
+  "alert_on_sync_failure": true,
+  "rotation_test_runbook_path": "runbooks/secret-rotation.md",
+  "mount_type": "file"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "cluster_secret_store": {
+    "name": "vault-prod",
+    "auth_method": "token",
+    "identity_ref": "static-token"
+  },
+  "external_secrets": [
+    {
+      "refresh_interval": "10s"
+    }
+  ],
+  "rbac_scope": "cluster",
+  "alert_on_sync_failure": false,
+  "mount_type": "env"
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>cluster_secret_store.auth_method == token (static)</item>
+      <item>refresh_interval &lt; 1m</item>
+      <item>rbac_scope == cluster without approver</item>
+      <item>alert_on_sync_failure == false</item>
+      <item>mount_type == env without approver field</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-external-secrets-operator-recipe.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

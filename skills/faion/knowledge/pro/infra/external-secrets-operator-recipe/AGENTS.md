@@ -3,78 +3,97 @@ slug: external-secrets-operator-recipe
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "63f3e1773dcf0bc8"
-summary: External Secrets Operator Recipe delivers a concrete, testable methodology that turns the recurring task of 'Secrets-management migration: Vault / KMS / SOPS (4 weeks)' into an auditable artefact, addressing the gap: k8s secret injection via external-secrets / CSI is the modern p
-tags: [infra, pro, runbook, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Production-ready ESO setup recipe: ClusterSecretStore configuration per backend, ExternalSecret manifests, refresh interval calibration, RBAC, secret-store identity, alerts on sync failure."
+content_id: "4becbeb92163400f"
+complexity: medium
+produces: config
+est_tokens: 3900
+tags: [infra, pro, runbook, eso, kubernetes, secrets]
 ---
+
 # External Secrets Operator Recipe
 
 ## Summary
 
-**One-sentence:** External Secrets Operator Recipe delivers a concrete, testable methodology that turns the recurring task of 'Secrets-management migration: Vault / KMS / SOPS (4 weeks)' into an auditable artefact, addressing the gap: k8s secret injection via external-secrets / CSI is the modern pattern; nothing in faion covers it end-to-end.
+**One-sentence:** Production-ready ESO setup recipe: ClusterSecretStore configuration per backend, ExternalSecret manifests, refresh interval calibration, RBAC, secret-store identity, alerts on sync failure.
 
-**One-paragraph:** k8s secret injection via external-secrets / CSI is the modern pattern; nothing in faion covers it end-to-end. External Secrets Operator Recipe closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Secrets-management migration: Vault / KMS / SOPS (4 weeks)' (role-devops-engineer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** External Secrets Operator (ESO) is the modern Kubernetes secrets-injection standard. Setup is straightforward; production hardening is where teams trip: refresh interval too aggressive (rate-limiting), no alerts on sync failure (silent staleness), wide RBAC (any pod can read any secret), no rotation propagation (rotated backend secret not picked up). This recipe pins the configuration: ClusterSecretStore per backend with identity-based auth (IRSA / Workload Identity), ExternalSecret per service with refresh interval calibrated to backend rate limits, RBAC scoped to namespace, alerts on sync failures, rotation-test runbook.
+
+**Ефективно для:**
+
+- ClusterSecretStore + ExternalSecret замість kubectl create secret.
+- Identity-based auth (IRSA / Workload Identity) — без static keys.
+- Refresh interval calibrated до backend rate limits.
+- Alert на sync failure — silent staleness detected.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Secrets-management migration: Vault / KMS / SOPS (4 weeks)' (role: role-devops-engineer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Kubernetes cluster (>=1.24)
+- Secrets backend in place (Vault / AWS Secrets Manager / GCP Secret Manager / Azure KeyVault)
+- Cloud identity available (IRSA / Workload Identity / OIDC)
+- Need to inject secrets into pods without manual kubectl
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Vendor-managed K8s with pre-installed secrets injection (use vendor's)
+- Single-pod single-secret workload — ESO overhead exceeds value
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Kubernetes cluster admin | kubeconfig | platform team |
+| Secrets backend with identity-based auth | backend URL + role/policy | platform team |
+| Helm + Flux/Argo for ESO install | GitOps repo | DevOps |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[secrets-management]] | Backend choice + identity strategy |
+| [[security-as-code]] | RBAC + admission control |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `external_secrets_operator_recipe_template_fill` | haiku | Template fill, no judgment |
-| `external_secrets_operator_recipe_evidence_check` | sonnet | Bounded comparison + judgment |
-| `external_secrets_operator_recipe_synthesis` | opus | Cross-input synthesis + final write-up |
+| `css_manifest_draft` | sonnet | Backend-specific manifest synthesis |
+| `external_secret_per_service` | haiku | Template fill |
+| `rotation_test_script` | sonnet | Bash + kubectl orchestration |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-external-secrets-operator-recipe.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `role-devops-engineer/Secrets-management migration: Vault / KMS / SOPS (4 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[secrets-management]]
+- [[security-as-code]]
+- [[ssl-tls-setup]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

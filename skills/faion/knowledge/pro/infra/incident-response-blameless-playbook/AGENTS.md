@@ -3,69 +3,97 @@ slug: incident-response-blameless-playbook
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Severity matrix, IC roles, comms templates, blameless retro structure — the operational practice geek/sdlc-ai/postmortem-auto-draft is missing at pro tier.
-content_id: "1d5b87f93344b154"
-tags: [incident-response-blameless-playbook, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Severity matrix + IC RACI + comms templates + blameless retro structure as one versioned artefact, with named owners per role and a published cadence \u2014 the operational scaffold pro-tier teams need."
+content_id: "931f7e832f6cbda0"
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [incident-response, sre, on-call, blameless, infra]
 ---
-
 # Incident Response Blameless Playbook
 
 ## Summary
 
-**One-sentence:** Severity matrix, IC roles, comms templates, blameless retro structure — the operational practice geek/sdlc-ai/postmortem-auto-draft is missing at pro tier.
+**One-sentence:** Severity matrix + IC RACI + comms templates + blameless retro structure as one versioned artefact, with named owners per role and a published cadence — the operational scaffold pro-tier teams need.
 
-**One-paragraph:** Current incident content lives in geek/sdlc-ai (postmortem-auto-draft, runbook-as-markdown) — AI-tool wrappers, not operational practice. A DevOps engineer at pro tier needs severity matrix, IC roles, comms templates, blameless retro. Output: severity matrix + IC RACI + comms templates + retro template.
+**One-paragraph:** Severity matrix + IC RACI + comms templates + blameless retro structure as one versioned artefact, with named owners per role and a published cadence — the operational scaffold pro-tier teams need. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- production system with paying users
-- team ≥3 with on-call rotation
-- manager authority to standardize incident response
+- Production system serves paying users and an incident class is non-trivial (SEV1 within last 90d, or known fragility).
+- Team is ≥ 3 with a real on-call rotation in PagerDuty / Opsgenie / Grafana OnCall.
+- Manager has authority to standardise incident response across the team.
 
 ## Skip If (ANY kills it)
 
-- single-customer or pre-revenue product — over-engineering
-- no on-call rotation — set up rotation first
-- team already runs Google SRE-style incident management — augment, don't duplicate
+- Single-customer / pre-revenue product — playbook overhead does not pay back.
+- No on-call rotation yet — set up rotation before drafting a playbook.
+- Team already runs full Google SRE incident management — augment, do not duplicate.
+
+**Ефективно для:**
+
+- Production team ≥ 3 з paying users і on-call ротацією.
+- Менеджер з повноваженнями стандартизувати incident response.
+- Команди де гасять пожежі по-різному кожного разу.
+- Аудит-ready середовища з вимогою blameless retro як evidence.
 
 ## Prerequisites
 
-- service catalogue with SLOs
-- on-call rotation tool (PagerDuty, Opsgenie, Grafana OnCall)
-- comms channels (Slack #incidents, status page, customer comms list)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent skill — provides operating context for this methodology |
-| `pro/infra/devops-engineer` | peer methodology — produces inputs or consumes outputs |
-| `geek/sdlc-ai/postmortem-auto-draft` | peer methodology — produces inputs or consumes outputs |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-incident-response-blameless-playbook.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodology: `pro/infra/devops-engineer`
-- peer methodology: `geek/sdlc-ai/postmortem-auto-draft`
-- peer methodology: `pro/infra/regulated-incident-response-protocol`
-- external: https://sre.google/sre-book/managing-incidents/ (Google SRE); https://response.pagerduty.com/; https://www.atlassian.com/incident-management
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

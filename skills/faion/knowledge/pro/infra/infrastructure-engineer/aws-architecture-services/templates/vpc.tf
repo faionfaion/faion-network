@@ -1,3 +1,8 @@
+# purpose: VPC module instance with public/private/data subnets multi-AZ
+# consumes: see ../AGENTS.md ## Prerequisites + content/02-output-contract.xml
+# produces: provisioned AWS resources conforming to the methodology spec
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~600-1500 tokens when loaded as context
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"

@@ -1,3 +1,8 @@
+# purpose: CloudWatch alarms terraform for ECS/ALB latency, error rate, SNS notification
+# consumes: see ../AGENTS.md ## Prerequisites + content/02-output-contract.xml
+# produces: provisioned AWS resources conforming to the methodology spec
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~600-1500 tokens when loaded as context
 resource "aws_sns_topic" "alerts" {
   name = "${local.name_prefix}-alerts"
   tags = local.common_tags

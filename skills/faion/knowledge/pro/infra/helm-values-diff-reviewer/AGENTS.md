@@ -3,78 +3,97 @@ slug: helm-values-diff-reviewer
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c6ce7a37f8374a3f"
-summary: "Helm Values Diff Reviewer — testable methodology for platform, k8s, networking, cost models. Helm bumps frequently break prod due to silent values changes; no methodology covers reading rendered-manifest diffs as a reviewer artifact."
-tags: [infra, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Renders the values delta for a Helm bump as a reviewable artefact: rendered-manifest diff + risk classification per change + named approver per risk tier, so silent values changes cannot ship to prod."
+content_id: "88610fab8fd1309f"
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [helm, k8s, diff-review, release, infra]
 ---
 # Helm Values Diff Reviewer
 
 ## Summary
 
-**One-sentence:** Helm Values Diff Reviewer — testable methodology for platform, k8s, networking, cost models. Helm bumps frequently break prod due to silent values changes; no methodology covers reading rendered-manifest diffs as a reviewer artifact.
+**One-sentence:** Renders the values delta for a Helm bump as a reviewable artefact: rendered-manifest diff + risk classification per change + named approver per risk tier, so silent values changes cannot ship to prod.
 
-**One-paragraph:** Helm Values Diff Reviewer closes a known gap in infra practice: Helm bumps frequently break prod due to silent values changes; no methodology covers reading rendered-manifest diffs as a reviewer artifact. The methodology is anchored to the recurring activity 'Helm chart bump for new release (role: role-devops-engineer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Renders the values delta for a Helm bump as a reviewable artefact: rendered-manifest diff + risk classification per change + named approver per risk tier, so silent values changes cannot ship to prod. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Helm chart bump for new release (role: role-devops-engineer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Helm chart upstream is bumped on a cadence (≥ once per release cycle).
+- Named release-owner can sign off on the diff and tag risk per change.
+- CI can render `helm template` for both `from` and `to` versions on the PR.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Chart is internally owned and values surface is < 5 keys — review can be inline in PR.
+- Team does not run Helm at all (raw manifests + Kustomize) — use a Kustomize-diff variant.
+- No named release-owner — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Команди де Helm bumps періодично ламають prod через silent values changes.
+- Реліз-менеджери що потребують один аркуш для аудиту bump-перед-merge.
+- GitOps-флоу де ArgoCD сам синхронізує — потрібен gate перед PR merge.
+- Аудит-ready середовища (SOC2 / ISO27001) з вимогою release-trail.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `helm_values_diff_reviewer_template_fill` | haiku | Template fill, no judgement |
-| `helm_values_diff_reviewer_evidence_check` | sonnet | Bounded comparison + judgement |
-| `helm_values_diff_reviewer_synthesis` | opus | Cross-input synthesis + final write-up |
+| `scaffold-report` | haiku | Template fill from header + section list. |
+| `populate-evidence` | sonnet | Per-row evidence link + summary judgment. |
+| `outcome-synthesis` | opus | Cross-cycle synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | Report skeleton with frontmatter + sections + evidence anchors per row. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-helm-values-diff-reviewer.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `Helm chart bump for new release (role: role-devops-engineer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

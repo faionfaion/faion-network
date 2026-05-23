@@ -1,3 +1,8 @@
+# purpose: standard variables: project, environment, region for the reference architecture
+# consumes: see ../AGENTS.md ## Prerequisites + content/02-output-contract.xml
+# produces: provisioned AWS resources conforming to the methodology spec
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~600-1500 tokens when loaded as context
 variable "project" {
   description = "Project name"
   type        = string

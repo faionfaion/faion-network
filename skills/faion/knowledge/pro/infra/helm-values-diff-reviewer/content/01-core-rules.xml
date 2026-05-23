@@ -1,46 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Helm Values Diff Reviewer Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Helm Values Diff Reviewer must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Helm Values Diff Reviewer Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Helm Values Diff Reviewer` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
+
+  <section title="Rule set">
+
+    <rule id="rendered-manifest-diff" testable="true" depth="essential">
+      <statement>The review MUST compare rendered manifests (`helm template`) across the bump, not just `Chart.yaml` version + `values.yaml` text diff.</statement>
+      <rationale source="Helm release postmortem corpus 2024-2026">Values-text diff hides chart-internal default changes; rendered-manifest diff is the only deterministic surface.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="risk-class-per-change" testable="true" depth="essential">
+      <statement>Each rendered-diff hunk MUST be tagged `low | medium | high | critical` with rationale, no untagged hunks allowed.</statement>
+      <rationale source="Internal release-risk audit">Bulk-approval of un-classified diffs is the #1 silent-regression cause; per-hunk class forces explicit acceptance.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="named-approver-per-tier" testable="true" depth="essential">
+      <statement>Each risk tier MUST have a single named human approver in the matrix (no group handles, no channel mentions). `high|critical` requires platform-lead sign-off in addition to the release-owner.</statement>
+      <rationale source="Internal RACI for release management">Group-handle approvers cause sign-off to evaporate; named approval is auditable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for platform, k8s, networking, cost models">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="rollback-step-mandatory" testable="true" depth="essential">
+      <statement>Each `high|critical` change MUST list a one-line rollback step (helm rollback target revision + watch command) in the artefact.</statement>
+      <rationale source="SRE incident-response playbook">If rollback is undocumented at review time, MTTR balloons during the inevitable regression.</rationale>
     </rule>
+
+    <rule id="evidence-link-each-hunk" testable="true" depth="essential">
+      <statement>Each diff hunk MUST carry an evidence link (upstream changelog entry, CVE, ticket, ADR). Hunks without evidence are demoted to `needs-investigation`.</statement>
+      <rationale source="Anti-hallucination practice">Hunks without source links lead reviewers to skim; evidence-anchor forces the reviewer to read the actual change.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Helm chart bump for new release (role: role-devops-engineer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: Helm bumps frequently break prod due to silent values changes; no methodology covers reading rendered-manifest diffs as a reviewer artifact.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

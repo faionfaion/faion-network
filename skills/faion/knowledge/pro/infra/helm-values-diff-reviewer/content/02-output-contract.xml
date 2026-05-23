@@ -1,57 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Helm Values Diff Reviewer Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Helm Values Diff Reviewer artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Helm Values Diff Reviewer Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/helm-values-diff-reviewer.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "findings",
+    "recommendations"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "helm-values-diff-reviewer",
+  "title": "Helm Values Diff Reviewer",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "escape-rate trending up"
+    }
+  ],
+  "recommendations": [
+    "add mutation-score gate to CI"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
   <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
     </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
     </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
     </antipattern>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <reference path="scripts/validate-helm-values-diff-reviewer.py">Validator script</reference>
 </text>

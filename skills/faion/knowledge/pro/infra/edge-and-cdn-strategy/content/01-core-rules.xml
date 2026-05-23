@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Edge and CDN Strategy Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Edge and CDN Strategy application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Edge and CDN Strategy Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the Edge and CDN Strategy methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-edge-platform-decision-axes" testable="true" depth="essential">
-      <statement>Choose edge platform on three axes: (a) compute runtime (V8 isolates / containers / Wasm), (b) cold-start behavior, (c) origin proximity. Pick ONE, do not multi-cloud edge.</statement>
-      <rationale source="Industry consensus + practitioner experience">Edge platforms compose poorly; multi-edge multiplies the failure modes without proportional benefit.</rationale>
+    <rule id="r1-cache-key-includes-vary" testable="true" depth="essential">
+      <statement>Cache keys MUST include the headers / query params that vary the response: Accept-Language, Accept-Encoding, auth boundary, A/B test cohort. Excluded headers documented.</statement>
+      <rationale source="Cloudflare cache-key best practices">Wrong cache key serves the wrong response to the wrong user (privacy leak + correctness bug).</rationale>
     </rule>
-
-    <rule id="r2-cache-key-includes-vary" testable="true" depth="essential">
-      <statement>Cache key = path + query (allowlist) + Accept-Encoding + Vary headers. Wildcards in keys cause silent cache poisoning.</statement>
-      <rationale source="Industry consensus + practitioner experience">Cache key design is the #1 CDN bug source; explicit allowlist prevents poisoning + leakage.</rationale>
+    <rule id="r2-origin-shielding-on" testable="true" depth="essential">
+      <statement>Origin shielding MUST be enabled: requests from edges hit a regional shield first, which consolidates origin pulls. Single-shield bottleneck risk mitigated via multi-shield setup for high-volume tenants.</statement>
+      <rationale source="Fastly / Cloudflare shielding docs">Without shielding, every edge fetches from origin = origin overload during cache-miss storms.</rationale>
     </rule>
-
-    <rule id="r3-origin-shield-mandatory" testable="true" depth="essential">
-      <statement>Origin shield (intermediate cache layer) is mandatory for any service with ≥1k req/min to origin. Shields reduce origin load 50-90%.</statement>
-      <rationale source="Industry consensus + practitioner experience">Without shield, traffic spikes hit origin; shield is the cheapest insurance against origin overload.</rationale>
+    <rule id="r3-edge-auth-single-place" testable="true" depth="essential">
+      <statement>Auth MUST be enforced at edge OR origin, not both. If at edge, edge passes verified identity to origin (signed JWT, mTLS). Origin trusts edge identity via shared secret / mTLS.</statement>
+      <rationale source="edge-auth patterns; zero-trust">Split auth doubles bug surface; one-place auth with handoff is cleaner.</rationale>
     </rule>
-
-    <rule id="r4-edge-auth-not-bypass" testable="true" depth="essential">
-      <statement>Edge auth (JWT verification, signed cookies) supplements origin auth; never replaces. Origin must independently validate.</statement>
-      <rationale source="Industry consensus + practitioner experience">Edge can be bypassed (direct origin requests); double validation is the only safe pattern.</rationale>
+    <rule id="r4-fallback-bypass-dns" testable="true" depth="essential">
+      <statement>DNS MUST have a configured edge-bypass record (e.g. origin.acme.com) reachable when edge is degraded. Runbook documents the bypass procedure.</statement>
+      <rationale source="DR continuity patterns">Edge platforms have outages; bypass DNS keeps service alive while edge recovers.</rationale>
     </rule>
-
-    <rule id="r5-purge-strategy-explicit" testable="true" depth="essential">
-      <statement>Purge strategy: targeted purge per object &gt; tag-based purge &gt; wildcard purge &gt; full purge. Wildcard purges should require approval.</statement>
-      <rationale source="Industry consensus + practitioner experience">Full purges cause global cache stampedes; explicit hierarchy prevents accidental DDoS-on-self.</rationale>
+    <rule id="r5-per-request-cost-budget" testable="true" depth="essential">
+      <statement>Per-request edge-compute cost MUST be budgeted (e.g. $0.0001 / request median, $0.001 / request 99p). Cost &gt; budget triggers a review (cold-start growth, regex catastrophic, log volume).</statement>
+      <rationale source="FinOps for edge">Edge bills surprise teams; per-request budget is the early-warning.</rationale>
+    </rule>
+    <rule id="r6-cache-hit-ratio-monitored" testable="true" depth="essential">
+      <statement>Cache hit ratio MUST be monitored per route. &lt; 70% on cacheable routes triggers a cache-key review.</statement>
+      <rationale source="CDN performance tuning">Low hit ratio = CDN spending without offload benefit; cache-key misconfiguration is the usual cause.</rationale>
     </rule>
 
   </section>
@@ -34,5 +34,8 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

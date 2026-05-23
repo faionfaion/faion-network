@@ -1,3 +1,8 @@
+# purpose: KMS key for EKS secrets encryption with rotation
+# consumes: see ../AGENTS.md ## Prerequisites + content/02-output-contract.xml
+# produces: provisioned AWS resources conforming to the methodology spec
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~600-1500 tokens when loaded as context
 resource "aws_kms_key" "eks" {
   description             = "KMS key for EKS secrets encryption"
   deletion_window_in_days = 7

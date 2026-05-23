@@ -3,78 +3,98 @@ slug: egress-cost-hidden-budget-guide
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3a491f77d4a43ed4"
-summary: Egress Cost Hidden Budget Guide delivers a concrete, testable methodology that turns the recurring task of 'Capacity + cost-modelling exercise (pre-launch or scale-event)' into an auditable artefact, addressing the gap: Egress + NAT + cross-AZ costs are the #1 surprise on cloud b
-tags: [infra, pro, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pre-launch + scale-event capacity exercise focused on the hidden cost trio: egress to internet, cross-AZ data, NAT-gateway processing, with per-feature attribution and per-region cap."
+content_id: "dd720cdc2c58a1b2"
+complexity: medium
+produces: report
+est_tokens: 3900
+tags: [infra, pro, method, cost, egress, finops]
 ---
+
 # Egress Cost Hidden Budget Guide
 
 ## Summary
 
-**One-sentence:** Egress Cost Hidden Budget Guide delivers a concrete, testable methodology that turns the recurring task of 'Capacity + cost-modelling exercise (pre-launch or scale-event)' into an auditable artefact, addressing the gap: Egress + NAT + cross-AZ costs are the #1 surprise on cloud bills. No methodology in the corpus addresses budgeting for it specifically.
+**One-sentence:** Pre-launch + scale-event capacity exercise focused on the hidden cost trio: egress to internet, cross-AZ data, NAT-gateway processing, with per-feature attribution and per-region cap.
 
-**One-paragraph:** Egress + NAT + cross-AZ costs are the #1 surprise on cloud bills. No methodology in the corpus addresses budgeting for it specifically. Egress Cost Hidden Budget Guide closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Capacity + cost-modelling exercise (pre-launch or scale-event)' (role-software-architect, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Egress + NAT-gateway + cross-AZ are the #1 surprise on cloud bills, often 30-50% of total infra spend. They're hidden because they don't show in the architecture diagram. This methodology forces a pre-launch + per-quarter capacity exercise: identify each egress source (S3 -> internet, RDS -> cross-AZ, NAT-GW -> internet), attribute to features, model worst-case under traffic spike, set per-region caps, and add alerts. Output: egress-budget.yaml with sources + budgets + alert thresholds. Pairs with edge-and-cdn-strategy (CDN cuts egress) and headroom-cost-model (capacity overall).
+
+**Ефективно для:**
+
+- Уникнути 30-50% bill surprise від egress / NAT / cross-AZ.
+- Per-feature attribution: яка фіча витрачає X TB/місяць.
+- Per-region budget cap: alert до того, як bill пройшов ceiling.
+- Pre-launch exercise: модель egress до того, як traffic ramp.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Capacity + cost-modelling exercise (pre-launch or scale-event)' (role: role-software-architect) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Cloud-hosted workload with global users (egress to internet > GB/day)
+- Multi-AZ deployment (cross-AZ traffic non-trivial)
+- NAT-gateway in use (NAT processing + per-GB pricing)
+- Pre-launch or scale-event (traffic ramp expected)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Single-region single-AZ workload with negligible internet egress — egress < 1% of bill
+- Self-hosted hardware (no egress pricing)
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Last 90 days of cloud cost data with usage type breakdown | billing export | finance |
+| Architecture diagram with data-flow arrows | platform diagram | architect |
+| Forecasted traffic ramp (next quarter) | product roadmap | product owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[headroom-cost-model]] | Overall capacity context |
+| [[edge-and-cdn-strategy]] | CDN reduces internet egress |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | medium | Worked example end-to-end | ~500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `egress_cost_hidden_budget_guide_template_fill` | haiku | Template fill, no judgment |
-| `egress_cost_hidden_budget_guide_evidence_check` | sonnet | Bounded comparison + judgment |
-| `egress_cost_hidden_budget_guide_synthesis` | opus | Cross-input synthesis + final write-up |
+| `cost_aggregation` | haiku | Arithmetic on cost-explorer rows |
+| `attribution_trace` | sonnet | Map source to feature via arch diagram |
+| `worst_case_modelling` | opus | Cross-feature projection synthesis |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-egress-cost-hidden-budget-guide.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[edge-and-cdn-strategy]]
+- [[headroom-cost-model]]
+- [[greenfield-infra-decision-matrix]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

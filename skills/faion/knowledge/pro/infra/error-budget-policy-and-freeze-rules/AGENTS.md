@@ -3,78 +3,98 @@ slug: error-budget-policy-and-freeze-rules
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4a96104b4377a778"
-summary: Error Budget Policy And Freeze Rules delivers a concrete, testable methodology that turns the recurring task of 'Design SLOs + error budgets before first deploy' into an auditable artefact, addressing the gap: Once SLOs exist someone has to write the policy that converts burn int
-tags: [infra, pro, policy, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Error-budget policy that converts SLO burn into deterministic actions (canary halt, ship freeze, focus shift, accept) with named owner, revert criteria, and stakeholder comms."
+content_id: "c3d4dcca565a76e9"
+complexity: medium
+produces: decision-record
+est_tokens: 3900
+tags: [infra, pro, policy, slo, error-budget, freeze]
 ---
-# Error Budget Policy And Freeze Rules
+
+# Error Budget Policy and Freeze Rules
 
 ## Summary
 
-**One-sentence:** Error Budget Policy And Freeze Rules delivers a concrete, testable methodology that turns the recurring task of 'Design SLOs + error budgets before first deploy' into an auditable artefact, addressing the gap: Once SLOs exist someone has to write the policy that converts burn into action (ship freeze, reliability sprint). Currently nothing across all 1300+ methodologies addresses the org/policy side of SRE.
+**One-sentence:** Error-budget policy that converts SLO burn into deterministic actions (canary halt, ship freeze, focus shift, accept) with named owner, revert criteria, and stakeholder comms.
 
-**One-paragraph:** Once SLOs exist someone has to write the policy that converts burn into action (ship freeze, reliability sprint). Currently nothing across all 1300+ methodologies addresses the org/policy side of SRE. Error Budget Policy And Freeze Rules closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Design SLOs + error budgets before first deploy' (role-devops-engineer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** An SLO without a policy is a dashboard. The policy turns burn into action: 'when budget burns at fast-rate AND service-class is user-facing critical, halt canary deploys'. Without a written policy, on-call debates 'what does this mean for us' every time. This methodology pins the policy text + freeze rules: who is authorized to declare a freeze, what actions a freeze allows (security patches, rollbacks) and forbids (new features), how revert criteria are met, who signs off on lift. Output: error-budget-policy.md per portfolio + freeze-rules.yaml machine-readable. Pairs with slo-burn-decision-matrix (the matrix is the lookup, the policy is the doctrine).
+
+**Ефективно для:**
+
+- Freeze не дебатний — policy визначає коли + хто + що дозволено.
+- Stakeholder comms: product team знає, що означає 'freeze' (security only).
+- Revert criteria: freeze автоматично знімається коли budget регенеровано.
+- Doctrine: lift signed by engineering leader + product (no unilateral lift).
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Design SLOs + error budgets before first deploy' (role: role-devops-engineer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- SLOs defined per service
+- Error-budget burn alerting in place
+- Engineering team commits to act on budget burn (not observe)
+- Product + engineering aligned on the doctrine (freeze stops feature shipping)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- SLOs aspirational and never trigger burn — fix SLO calibration first
+- Org culture treats freezes as unacceptable — policy will be ignored
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| SLO definitions per service | slo.yaml | service owners |
+| Burn-rate alerting | alert rules | SRE |
+| Decision matrix (slo-burn-decision-matrix) | matrix.yaml | platform team |
+| Stakeholder sign-off (product, engineering leader) | policy review meeting | VP eng |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[slo-burn-decision-matrix]] | Matrix is the lookup table this policy authorizes |
+| [[slo-definition-template-per-service-class]] | SLOs the policy references |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `error_budget_policy_and_freeze_rules_template_fill` | haiku | Template fill, no judgment |
-| `error_budget_policy_and_freeze_rules_evidence_check` | sonnet | Bounded comparison + judgment |
-| `error_budget_policy_and_freeze_rules_synthesis` | opus | Cross-input synthesis + final write-up |
+| `doctrine_draft` | opus | Cross-stakeholder policy synthesis |
+| `freeze_rules_yaml` | haiku | Mechanical YAML fill from doctrine |
+| `comms_message_draft` | sonnet | Compose freeze announcement |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-error-budget-policy-and-freeze-rules.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `role-devops-engineer/Design SLOs + error budgets before first deploy`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[slo-burn-decision-matrix]]
+- [[fast-vs-slow-burn-rule]]
+- [[slo-definition-template-per-service-class]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

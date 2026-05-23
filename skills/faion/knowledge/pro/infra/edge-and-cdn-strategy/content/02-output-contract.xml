@@ -1,42 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Edge and CDN Strategy Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Edge and CDN Strategy output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Edge and CDN Strategy Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="edge_platform" type="string" required="true">cloudflare-workers|lambda-edge|fastly-compute|deno-deploy</field>
-      <field name="cache_key_policy" type="object" required="true">{path, query_allowlist, vary_headers}</field>
-      <field name="origin_shield" type="object" required="true">{enabled, location, cache_size_gb}</field>
-      <field name="edge_auth_pattern" type="object" required="true">{method: jwt|signed-cookie, origin_revalidation: true}</field>
-      <field name="purge_strategy" type="list" required="true">tiers from targeted to full with approval matrix</field>
-      <field name="owner" type="string" required="true">named infra engineer</field>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/edge-and-cdn-strategy.json",
+  "type": "object",
+  "required": [
+    "platform",
+    "routes",
+    "fallback_dns_record",
+    "per_request_cost_budget_usd",
+    "cache_hit_ratio_target",
+    "auth_handoff_method"
+  ],
+  "properties": {
+    "platform": {
+      "type": "string",
+      "description": "enum (cloudflare | lambda_edge | fastly_compute | akamai)"
+    },
+    "routes": {
+      "type": "array",
+      "description": "array (each {pattern, cache_ttl, cache_key, auth_at_edge, origin_shield})"
+    },
+    "fallback_dns_record": {
+      "type": "string",
+      "description": "string"
+    },
+    "per_request_cost_budget_usd": {
+      "type": "number",
+      "description": "number"
+    },
+    "cache_hit_ratio_target": {
+      "type": "number",
+      "description": "number"
+    },
+    "auth_handoff_method": {
+      "type": "string",
+      "description": "enum (jwt_signed | mtls | shared_secret)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">edge_platform is multiple platforms concurrently</pattern>
-      <pattern id="f2">cache_key_policy uses wildcards in query without allowlist</pattern>
-      <pattern id="f3">origin_shield disabled AND origin RPS &gt; 1k/min</pattern>
-      <pattern id="f4">edge_auth_pattern.origin_revalidation == false</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "platform": "cloudflare",
+  "routes": [
+    {
+      "pattern": "/api/products/*",
+      "cache_ttl": 60,
+      "cache_key": [
+        "path",
+        "accept-language"
+      ],
+      "auth_at_edge": false,
+      "origin_shield": true
+    },
+    {
+      "pattern": "/api/user/*",
+      "cache_ttl": 0,
+      "cache_key": [
+        "path"
+      ],
+      "auth_at_edge": true,
+      "origin_shield": true
+    }
+  ],
+  "fallback_dns_record": "origin.acme.com",
+  "per_request_cost_budget_usd": 0.0001,
+  "cache_hit_ratio_target": 0.8,
+  "auth_handoff_method": "jwt_signed"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "platform": "cloudflare",
+  "routes": [
+    {
+      "pattern": "/api/user/*",
+      "cache_ttl": 300,
+      "cache_key": [
+        "path"
+      ],
+      "auth_at_edge": true
+    }
+  ],
+  "fallback_dns_record": "",
+  "per_request_cost_budget_usd": 0
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
 
-    <schema-reference path="templates/edge-and-cdn-strategy.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>edge_platform populated with a typed value</item>
-      <item>cache_key_policy populated with a typed value</item>
-      <item>origin_shield populated with a typed value</item>
-      <item>edge_auth_pattern populated with a typed value</item>
-      <item>purge_strategy populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>personalised route cached with cache_key missing auth boundary</item>
+      <item>fallback_dns_record empty</item>
+      <item>per_request_cost_budget_usd == 0 (no budget = no warning)</item>
+      <item>auth enforced both at edge AND origin without handoff scheme</item>
+      <item>origin_shield disabled on high-volume routes</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-edge-and-cdn-strategy.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

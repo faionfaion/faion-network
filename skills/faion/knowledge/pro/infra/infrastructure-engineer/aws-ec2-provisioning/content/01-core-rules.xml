@@ -1,23 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-ec2-provisioning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-ec2-provisioning. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS EC2 Provisioning Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules every application of `AWS EC2 Provisioning` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>All EC2 instances MUST require IMDSv2 (HttpTokens=required, HttpPutResponseHopLimit=2) and use encrypted gp3 EBS root volumes. No instance MUST be launched with a key pair if SSM Session Manager is available — attach an IAM instance profile with AmazonSSMManagedInstanceCore instead.</statement>
-      <rationale source="v1-source">IMDSv1 is vulnerable to SSRF credential theft. Encrypted EBS is free on gp3 and mandated by PCI-DSS, SOC 2, and HIPAA. SSM Session Manager provides audited access without managing SSH keys or opening port 22.</rationale>
+
+    <rule id="ami-pinned-by-id" testable="true" depth="essential">
+      <statement>Launch templates MUST pin the AMI by ID (or Image Builder recipe version), not by `most_recent = true`.</statement>
+      <rationale source="AWS EC2 Launch Templates docs; CIS AWS Benchmark">Auto-latest AMIs cause silent in-place upgrades during scaling; pinned IDs make rollouts reviewable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Create a launch template for every ASG. The template MUST encode: ImageId, InstanceType, IamInstanceProfile, MetadataOptions (IMDSv2), BlockDeviceMappings (gp3 encrypted), and SecurityGroupIds. Never hardcode UserData credentials — reference Secrets Manager or SSM Parameter Store from within the instance instead.</statement>
-      <rationale source="v1-source">Launch templates make ASG instance refresh zero-downtime and reproducible. Hardcoded credentials in UserData appear in the EC2 console and CloudTrail logs in plaintext.</rationale>
+
+    <rule id="imdsv2-required" testable="true" depth="essential">
+      <statement>IMDSv2 MUST be required (`http_tokens = required`, `http_put_response_hop_limit = 1`). IMDSv1 fallback is forbidden.</statement>
+      <rationale source="AWS Instance Metadata Service docs; SSRF postmortems">IMDSv1 is the most-exploited metadata vector for SSRF → credential theft.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Auto Scaling Groups MUST use health-check type ELB (not EC2) when a load balancer target group is attached, spread across at least 2 Availability Zones, and apply a target tracking scaling policy on ASGAverageCPUUtilization at 70%. Use instance refresh with min_healthy_percentage=75 for zero-downtime AMI rollouts.</statement>
-      <rationale source="v1-source">EC2 health checks only detect OS-level failures; ELB health checks detect application-level failures. CPU target tracking at 70% leaves headroom for traffic spikes while preventing over-provisioning. Instance refresh eliminates manual draining and re-registration during AMI updates.</rationale>
+
+    <rule id="ssm-not-ssh" testable="true" depth="essential">
+      <statement>Operator access MUST go through SSM Session Manager + AWS-managed audit log. Inbound SSH (port 22) is forbidden in security groups for production.</statement>
+      <rationale source="AWS Systems Manager Session Manager docs">SSH key sprawl + bastion-host management is the #1 IAM-bypass source; SSM logs every action.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Create one security group per application tier (ALB, app, database). App tier ingress MUST reference the ALB security group ID, database tier ingress MUST reference the app security group ID — never use CIDR blocks for inter-tier traffic. Add descriptions to every rule. Restrict SSH/RDP to specific IP ranges; never allow 0.0.0.0/0 on port 22 or 3389.</statement>
-      <rationale source="v1-source">Security-group-to-security-group references automatically track instance IP changes without rule updates. CIDR-based rules drift as subnets expand. Descriptions are required for audit trails and are enforced by some compliance frameworks.</rationale>
+
+    <rule id="private-subnet-default" testable="true" depth="essential">
+      <statement>Production EC2 MUST run in private subnets; egress via NAT Gateway. Public IPs require security-lead approval + WAF / SG justification.</statement>
+      <rationale source="CIS AWS Benchmark; PCI-DSS 4.0">Public-subnet EC2 is the most common ransomware entry vector in AWS.</rationale>
     </rule>
+
+    <rule id="graviton-arm-default" testable="true" depth="essential">
+      <statement>New EC2 launch templates MUST default to Graviton (ARM64) instance families; x86 requires ADR justification.</statement>
+      <rationale source="AWS Graviton benchmarks">Graviton is ~20% cheaper + comparable perf; defaulting to x86 is silent waste.</rationale>
+    </rule>
+
+    <rule id="ebs-encrypted" testable="true" depth="essential">
+      <statement>All EBS volumes MUST be encrypted with KMS; account-level `EnableEbsEncryptionByDefault` MUST be on.</statement>
+      <rationale source="AWS EBS Encryption docs; CIS AWS Benchmark">Unencrypted EBS volumes are a SOC2 / HIPAA blocker + a leaked-snapshot surface.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

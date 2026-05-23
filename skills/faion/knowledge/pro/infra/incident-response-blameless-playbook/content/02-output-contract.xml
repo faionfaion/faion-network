@@ -1,42 +1,199 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Incident Response Blameless Playbook Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Incident Response Blameless Playbook output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Incident Response Blameless Playbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="severity_matrix" type="list" required="true">5 entries: [{sev, trigger, response_time, paging_policy}]</field>
-      <field name="ic_roles" type="object" required="true">{ic, scribe, comms_lead, engineering_leads}</field>
-      <field name="comms_templates" type="object" required="true">{internal_update, external_status, customer_email}</field>
-      <field name="retro_template" type="string" required="true">blameless retro structure</field>
-      <field name="action_item_tracker" type="string" required="true">URL to backlog filter</field>
-      <field name="owner" type="string" required="true">named devops/SRE lead</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">severity_matrix has &lt;3 OR &gt;7 levels</pattern>
-      <pattern id="f2">ic_roles missing for Sev1-Sev2</pattern>
-      <pattern id="f3">retro_template contains personal blame language</pattern>
-      <pattern id="f4">action items tracked separately from product backlog</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/incident-response-blameless-playbook.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>severity_matrix populated with a typed value</item>
-      <item>ic_roles populated with a typed value</item>
-      <item>comms_templates populated with a typed value</item>
-      <item>retro_template populated with a typed value</item>
-      <item>action_item_tracker populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/incident-response-blameless-playbook.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "sections"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "heading",
+          "body"
+        ],
+        "properties": {
+          "heading": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "incident-response-blameless-playbook",
+  "title": "Incident Response Blameless Playbook",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "sections": [
+    {
+      "heading": "Overview",
+      "body": "\u2026"
+    },
+    {
+      "heading": "Decisions",
+      "body": "\u2026"
+    },
+    {
+      "heading": "Tradeoffs",
+      "body": "\u2026"
+    },
+    {
+      "heading": "Fitness functions",
+      "body": "\u2026"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-incident-response-blameless-playbook.py">Validator script</reference>
 </text>
