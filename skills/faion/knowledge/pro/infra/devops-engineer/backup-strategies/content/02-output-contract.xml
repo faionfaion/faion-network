@@ -1,22 +1,169 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="backup-strategies Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Backup Strategies (3-2-1-1-0) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact. Validator script in `scripts/validate-backup-strategies.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/backup-strategies.json",
+  "type": "object",
+  "required": [
+    "workload",
+    "rpo_hours",
+    "rto_hours",
+    "retention_days",
+    "copies",
+    "restore_verification"
+  ],
+  "properties": {
+    "workload": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rpo_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "rto_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "retention_days": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "copies": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "media",
+          "offsite",
+          "immutable"
+        ],
+        "properties": {
+          "media": {
+            "type": "string",
+            "minLength": 1
+          },
+          "offsite": {
+            "type": "boolean"
+          },
+          "immutable": {
+            "type": "boolean"
+          },
+          "lock_mode": {
+            "enum": [
+              "COMPLIANCE",
+              "GOVERNANCE",
+              "azure-immutable",
+              "worm-tape"
+            ]
+          }
+        }
+      }
+    },
+    "restore_verification": {
+      "type": "object",
+      "required": [
+        "cadence",
+        "method",
+        "last_pass"
+      ],
+      "properties": {
+        "cadence": {
+          "enum": [
+            "nightly",
+            "weekly",
+            "monthly"
+          ]
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_pass": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "workload": "checkout-db",
+  "rpo_hours": 1,
+  "rto_hours": 4,
+  "retention_days": 90,
+  "copies": [
+    {
+      "media": "local-nas",
+      "offsite": false,
+      "immutable": false
+    },
+    {
+      "media": "s3-standard-ia",
+      "offsite": true,
+      "immutable": false
+    },
+    {
+      "media": "s3-object-lock-compliance",
+      "offsite": true,
+      "immutable": true,
+      "lock_mode": "COMPLIANCE"
+    }
+  ],
+  "restore_verification": {
+    "cadence": "nightly",
+    "method": "pg_restore-to-isolated-db",
+    "last_pass": "2026-05-22"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "workload": "checkout-db",
+  "rpo_hours": 1,
+  "rto_hours": 4,
+  "retention_days": 90,
+  "copies": [
+    {
+      "media": "local-nas",
+      "offsite": false,
+      "immutable": false
+    },
+    {
+      "media": "s3-glacier",
+      "offsite": true,
+      "immutable": true,
+      "lock_mode": "GOVERNANCE"
+    }
+  ],
+  "restore_verification": {
+    "cadence": "monthly",
+    "method": "manual-spot-check",
+    "last_pass": "2025-12-01"
+  }
+}
+]]></code>
+    <note>Only 2 copies; GOVERNANCE mode (deletable); restore-verification stale + manual.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">copies length &lt; 3</pattern>
+    <pattern id="f2">no entry with immutable=true</pattern>
+    <pattern id="f3">lock_mode = GOVERNANCE on prod</pattern>
+    <pattern id="f4">restore_verification.last_pass older than 30 days</pattern>
+    <pattern id="f5">all copies have offsite=false</pattern>
   </section>
+
+  <reference path="scripts/validate-backup-strategies.py">Validator script</reference>
 </text>

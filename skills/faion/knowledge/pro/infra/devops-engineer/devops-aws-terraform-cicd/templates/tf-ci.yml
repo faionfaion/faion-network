@@ -1,0 +1,61 @@
+# purpose: GitHub Actions: plan on PR, sequential apply per env after merge with prod approval
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (config)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~350 tokens when loaded
+
+name: terraform
+on:
+  pull_request:
+    paths: ["infrastructure/**"]
+  push:
+    branches: [main]
+    paths: ["infrastructure/**"]
+
+permissions:
+  id-token: write   # OIDC
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, staging, prod]
+    environment:
+      name: ${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.5 }
+      - run: terraform init
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+      - run: terraform plan -no-color
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1   # sequential
+      matrix:
+        environment: [dev, staging, prod]
+    environment:
+      name: ${{ matrix.environment }}   # prod env requires GitHub approval
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.5 }
+      - run: terraform init && terraform apply -auto-approve
+        working-directory: infrastructure/environments/${{ matrix.environment }}

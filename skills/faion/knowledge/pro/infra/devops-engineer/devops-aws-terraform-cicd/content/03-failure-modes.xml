@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-aws-terraform-cicd Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-aws-terraform-cicd as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Terraform Project Structure and GitHub Actions CI/CD for AWS Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="shared-state-across-envs" severity="high">
+      <symptom>Dev terraform apply nukes a prod resource because state is shared.</symptom>
+      <root-cause source="Terraform docs">Author used a single state file for all envs to 'save complexity'.</root-cause>
+      <fix>Split into per-env dirs with separate state keys. Move resources carefully via `terraform state mv` then re-apply per env.</fix>
+    </antipattern>
+
+    <antipattern id="long-lived-keys" severity="high">
+      <symptom>AWS keys committed to GitHub secrets; leaked; account compromised.</symptom>
+      <root-cause source="AWS + GH OIDC">Author copied keys to a secret because OIDC felt 'complex'.</root-cause>
+      <fix>Set up OIDC trust policy + role per env. Delete the static keys. Add a pre-commit hook blocking `aws_access_key_id` in repo.</fix>
+    </antipattern>
+
+    <antipattern id="no-default-tags" severity="medium">
+      <symptom>Cost-allocation reports show 60% 'Untagged'; FinOps team blocked from chargeback.</symptom>
+      <root-cause source="FinOps Foundation">Author tagged some resources manually; many forgotten.</root-cause>
+      <fix>Add default_tags to provider. Re-apply (no-op for resources, just adds tags).</fix>
+    </antipattern>
+
+    <antipattern id="parallel-prod-apply" severity="medium">
+      <symptom>Dev apply fails mid-run; prod apply already started; cross-env race introduces drift.</symptom>
+      <root-cause source="GitHub Actions docs">max-parallel not set; matrix runs all envs simultaneously.</root-cause>
+      <fix>Set strategy.max-parallel: 1. Add environment approval gate on prod.</fix>
+    </antipattern>
+
   </section>
 </text>

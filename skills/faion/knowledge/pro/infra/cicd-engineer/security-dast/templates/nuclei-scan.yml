@@ -1,0 +1,32 @@
+# purpose: GitHub Actions workflow: Nuclei targeted scan with pinned templates
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (config)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~350 tokens when loaded
+
+name: nuclei-scan
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"   # weekly Sun 03:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  nuclei:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nuclei
+        uses: projectdiscovery/nuclei-action@v3.2.0
+        with:
+          target: https://staging.example.com
+          templates: cves,vulnerabilities,misconfigurations
+          template-version: v9.7.0
+          output: nuclei.txt
+          sarif-export: nuclei.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: nuclei.sarif }

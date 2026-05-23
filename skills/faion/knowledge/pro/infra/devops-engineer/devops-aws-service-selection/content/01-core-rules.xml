@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="devops-aws-service-selection Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for devops-aws-service-selection. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Service Selection (Compute, Database, Architecture Decisions) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 rules grounded in AWS WA + Graviton economics + real-world migration debt.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every production architecture MUST be evaluated against all 6 Well-Architected pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, and Sustainability. The evaluation MUST produce a gap list with priority (High/Medium/Low) per pillar before the first production deployment.</statement>
-      <rationale source="v1-source">Skipping Well-Architected review at design time results in costly retrofits post-launch. Security and Reliability gaps are much cheaper to fix in Terraform before the first deployment than after data is in production.</rationale>
+
+    <rule id="graviton-default" testable="true" depth="essential">
+      <statement>Compute MUST default to Graviton (arm64) unless a binary dep blocks it. x86 selection MUST carry an explicit rationale.</statement>
+      <rationale source="AWS Graviton2/3 perf-cost data">Graviton is ~20% cheaper at same perf and faster for many workloads. The default should be on; x86 is the exception with reason.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Compute selection MUST follow this priority: tasks under 15 minutes → Lambda (arm64); container workloads without specific EKS requirements → Fargate; container workloads needing node-level control or service mesh → EKS with Graviton managed node groups; batch processing with fault tolerance → AWS Batch with Spot instances; ML inference → Inferentia2 or Graviton. EC2 is a last resort for legacy or specific OS requirements.</statement>
-      <rationale source="v1-source">Lambda and Fargate eliminate node management, patching, and capacity planning. Graviton (arm64) costs 20% less than x86 at equivalent performance. Spot instances save up to 90% for interruption-tolerant batch workloads.</rationale>
+    <rule id="lambda-under-15min" testable="true" depth="essential">
+      <statement>Lambda MUST be chosen only when the handler completes in &lt; 15 min. Longer-running tasks MUST use Fargate / EKS / Batch.</statement>
+      <rationale source="AWS Lambda quotas">Lambda hard limit is 15 min; choosing it for longer tasks requires workarounds (chaining, Step Functions) that lose simplicity.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Database engine selection MUST be driven by access patterns: relational joins and complex queries → Aurora Serverless v2 PostgreSQL; key-value or document with known access patterns → DynamoDB on-demand; sub-millisecond cache → ElastiCache Serverless; graph relationships → Neptune; document store with mongo-compatible API → DocumentDB. Never default to RDS without evaluating DynamoDB first for new greenfield services.</statement>
-      <rationale source="v1-source">DynamoDB scales to millions of requests per second with single-digit millisecond latency at any scale, but only when access patterns fit the key-value model. Aurora Serverless v2 handles relational complexity but requires connection management via RDS Proxy at scale.</rationale>
+    <rule id="ddb-key-value-only" testable="true" depth="essential">
+      <statement>DynamoDB MUST be chosen only when access pattern is key-value + known queries. Relational queries / complex joins MUST use Aurora Serverless v2 / RDS.</statement>
+      <rationale source="AWS DDB best-practice">DDB is a key-value store; trying to do relational queries with scans is slow + expensive. Aurora Serverless v2 scales similarly without losing SQL.</rationale>
+    </rule>
+    <rule id="evaluate-all-6-pillars" testable="true" depth="essential">
+      <statement>Decision record MUST evaluate the workload against all 6 WA pillars before sign-off.</statement>
+      <rationale source="AWS Well-Architected Framework">Skipping a pillar means the workload has not been reviewed against it. Sustainability is the most-skipped — and most defensible to add Graviton for.</rationale>
+    </rule>
+    <rule id="gap-list-before-prod" testable="true" depth="essential">
+      <statement>Gap list MUST be produced + remediated (or accepted with sign-off) before first prod deployment.</statement>
+      <rationale source="AWS Well-Architected Tool">Post-launch gaps are 10-100x more expensive to fix. The gap list is the bridge between design and ops.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

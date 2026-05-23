@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AWS Service Selection (Compute, Database, Architecture Decisions) Decision Tree" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable signals on the input to a rule from 01-core-rules.xml. Use when the right path is ambiguous.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Handler completes in &lt; 15 min?</root-question>
+    <branch when="duration_lt_15min == true">
+      <question id="q-spiky">Variable / spiky traffic?</question>
+      <branch when="spiky == true">
+        <conclusion ref="lambda-under-15min" verdict="Lambda arm64 + DDB / Aurora SLv2"/>
+      </branch>
+      <branch when="spiky == false">
+        <conclusion ref="graviton-default" verdict="Fargate Graviton + Aurora SLv2"/>
+      </branch>
+    </branch>
+    <branch when="duration_lt_15min == false">
+      <question id="q-container">Container workload?</question>
+      <branch when="container == true">
+        <conclusion ref="graviton-default" verdict="Fargate Graviton; EKS only if k8s primitives required"/>
+      </branch>
+      <branch when="container == false">
+        <conclusion ref="graviton-default" verdict="EC2 Graviton Reserved Instances"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-api">duration_lt_15min=true → spiky=true → Lambda arm64 + DDB. References rule lambda-under-15min.</example>
+</text>

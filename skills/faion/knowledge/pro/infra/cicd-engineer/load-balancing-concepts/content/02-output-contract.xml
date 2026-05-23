@@ -1,22 +1,162 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="load-balancing-concepts Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Load Balancing Concepts Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact. Validator script in `scripts/validate-load-balancing-concepts.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/load-balancing-concepts.json",
+  "type": "object",
+  "required": [
+    "service",
+    "layer",
+    "algorithm",
+    "health_check",
+    "persistence",
+    "ha_topology",
+    "rationale"
+  ],
+  "properties": {
+    "service": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layer": {
+      "enum": [
+        "L4",
+        "L7",
+        "DNS",
+        "Global"
+      ]
+    },
+    "algorithm": {
+      "enum": [
+        "round-robin",
+        "weighted-round-robin",
+        "ip-hash",
+        "least-connections",
+        "weighted-least-connections",
+        "least-response-time",
+        "random"
+      ]
+    },
+    "health_check": {
+      "type": "object",
+      "required": [
+        "type",
+        "interval_s",
+        "timeout_s",
+        "healthy_threshold",
+        "unhealthy_threshold"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "tcp",
+            "http",
+            "https",
+            "grpc",
+            "custom"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "interval_s": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 60
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "healthy_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "unhealthy_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "persistence": {
+      "enum": [
+        "none",
+        "externalised-redis",
+        "externalised-db",
+        "sticky-cookie",
+        "sticky-ip-hash"
+      ]
+    },
+    "ha_topology": {
+      "enum": [
+        "active-active",
+        "active-passive",
+        "multi-region-gslb",
+        "single"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "layer": "L7",
+  "algorithm": "least-connections",
+  "health_check": {
+    "type": "http",
+    "path": "/health",
+    "interval_s": 15,
+    "timeout_s": 5,
+    "healthy_threshold": 2,
+    "unhealthy_threshold": 3
+  },
+  "persistence": "externalised-redis",
+  "ha_topology": "active-active",
+  "rationale": "WebSocket + REST mix needs L7 routing; session state in Redis to keep backends interchangeable; bursty checkout traffic so least-connections to balance long-lived calls."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "layer": "L4",
+  "algorithm": "round-robin",
+  "health_check": {
+    "type": "tcp",
+    "interval_s": 60,
+    "timeout_s": 30,
+    "healthy_threshold": 1,
+    "unhealthy_threshold": 1
+  },
+  "persistence": "sticky-ip-hash",
+  "ha_topology": "single"
+}
+]]></code>
+    <note>L4 + TCP-only check on an HTTP service; sticky-ip-hash without fallback; single LB = SPOF; interval/timeout outside best-practice band; rationale missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">health_check.type = 'tcp' for an HTTP/HTTPS service</pattern>
+    <pattern id="f2">ha_topology = 'single' on a service with SLO ≥ 99.9%</pattern>
+    <pattern id="f3">persistence = 'sticky-*' with no documented fallback for backend failure</pattern>
+    <pattern id="f4">rationale empty or shorter than 30 chars</pattern>
+    <pattern id="f5">health_check.interval_s &gt; 30 (slow detection) or &lt; 5 (LB load thrash)</pattern>
   </section>
+
+  <reference path="scripts/validate-load-balancing-concepts.py">Validator script</reference>
 </text>

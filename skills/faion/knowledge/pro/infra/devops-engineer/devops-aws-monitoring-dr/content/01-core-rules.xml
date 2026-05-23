@@ -1,23 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="devops-aws-monitoring-dr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for devops-aws-monitoring-dr. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Monitoring, Alerting, and Disaster Recovery Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>5 rules grounded in AWS Well-Architected (Reliability + OpEx) + real-world DR drills.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every production service MUST have a CloudWatch dashboard covering: (1) request rate and error rate for each public endpoint, (2) compute metrics (Lambda duration/errors/throttles or ECS/EKS CPU/memory via Container Insights), (3) database consumed capacity or connection count, (4) queue depth for SQS queues. Dashboard widgets MUST use a 5-minute aggregation period and display the last 3 hours by default.</statement>
-      <rationale source="v1-source">Dashboards with consistent time windows across widgets let engineers correlate spikes across tiers in a single view. The 5-minute period smooths noise while being granular enough to identify the onset of an incident within one alarm evaluation cycle.</rationale>
+
+    <rule id="dashboard-per-tier" testable="true" depth="essential">
+      <statement>Every prod service MUST have a CloudWatch dashboard covering: API request+error rate, compute metrics (Lambda dur/err/throttle OR ECS/EKS CPU/mem), DB consumed capacity, queue depth. 5-min aggregation; 3-h default window.</statement>
+      <rationale source="AWS Well-Architected OpEx pillar">Consistent time windows across widgets let engineers correlate spikes across tiers in one view. 5-min smooths noise while staying granular.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every production Lambda function and API Gateway MUST have CloudWatch alarms: Lambda Errors threshold 5 over 2 evaluation periods of 5 minutes each; API 5XXError threshold 10 over 2 evaluation periods. Alarms MUST have alarm_actions AND ok_actions both pointing to an SNS topic. SNS topics MUST be KMS-encrypted. Alarm descriptions MUST include a runbook link placeholder.</statement>
-      <rationale source="v1-source">ok_actions on the SNS topic ensures the on-call engineer is notified when an alarm resolves, not just when it fires, preventing unnecessary investigation. KMS on SNS prevents plaintext secrets from leaking in alarm payloads. Runbook links in descriptions reduce MTTD by giving the responder an immediate starting point.</rationale>
+    <rule id="alarms-tiered" testable="true" depth="essential">
+      <statement>Alarms MUST be tiered into critical (page), warning (business-hours notify), informational (daily digest). Single 'alert' channel is forbidden.</statement>
+      <rationale source="Google SRE alerting principles">Untiered alerts cause alarm fatigue. Tiered routing makes critical pages survive while non-critical noise stays in a digest.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>X-Ray active tracing MUST be enabled on all production Lambda functions (tracing_mode="Active") and all API Gateway stages (xray_tracing_enabled=true). Lambda functions MUST install the aws-xray-sdk and wrap handler entry points with @xray.capture or equivalent for the runtime.</statement>
-      <rationale source="v1-source">Without X-Ray, a slow DynamoDB GetItem appears as a generic high-latency Lambda invocation. With X-Ray, the DynamoDB segment is visible with its own duration, request count, and error breakdown, pointing directly to the root cause.</rationale>
+    <rule id="xray-active" testable="true" depth="essential">
+      <statement>Lambda + API Gateway prod functions MUST have X-Ray tracing = Active. Service-map MUST cover the critical request path.</statement>
+      <rationale source="AWS X-Ray docs">Without X-Ray, multi-service request traces require log correlation by hand; MTTR balloons. Active tracing samples 5% baseline + 100% of errors.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>DR strategy MUST be selected based on documented RTO/RPO targets: RTO &gt; 24h / RPO &gt; 1h → backup/restore; RTO 1-24h / RPO 1h → pilot light; RTO 15min-1h / RPO &lt; 15min → warm standby; RTO &lt; 15min / RPO near-zero → active-active. The selected DR strategy MUST be tested on a documented schedule (at minimum quarterly for warm standby and active-active).</statement>
-      <rationale source="v1-source">Untested DR is no DR. Recovery procedures that have never been executed will fail at the worst possible moment due to undocumented dependencies, stale credentials, or manual steps that were forgotten. Quarterly DR drills catch drift before it matters.</rationale>
+    <rule id="dr-strategy-matches-rto" testable="true" depth="essential">
+      <statement>DR strategy MUST match RTO: backup-restore (RTO &gt;24h), pilot-light (RTO 1-24h), warm-standby (RTO &lt;1h), active-active (RTO seconds). Cheaper strategy for tighter RTO is forbidden.</statement>
+      <rationale source="AWS DR whitepaper">Backup-restore with RTO of 1h is impossible — restore alone takes longer. Mismatched strategy is a paper plan that fails on the day.</rationale>
+    </rule>
+    <rule id="dr-drill-cadence" testable="true" depth="essential">
+      <statement>DR drills MUST run at least quarterly. The drill MUST be from cold (kill the primary, restore from DR plan); paper walkthroughs do not count.</statement>
+      <rationale source="Google SRE chaos engineering">Untested DR is no DR. Drills find the assumption nobody wrote down — every time.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

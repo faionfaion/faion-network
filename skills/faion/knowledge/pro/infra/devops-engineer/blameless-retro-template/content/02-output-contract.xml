@@ -1,51 +1,245 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Blameless Retro — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the retro record shape. Facilitator or supporting agent producing the record must satisfy this contract before publishing.</summary>
+<text id="02-output-contract" title="Blameless Retro Template (Human Facilitation) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact. Validator script in `scripts/validate-blameless-retro-template.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="incident_id" format="incident_tracker_id_or_url"/>
-      <field name="retro_date" format="ISO-8601_date"/>
-      <field name="facilitator" format="single_named_individual_not_an_incident_responder"/>
-      <field name="participants" min="3" source="named_list_with_roles"/>
-      <field name="timeline_pre_read_link" format="link_to_auto_draft_postmortem"/>
-      <field name="contributing_factors" min="3"
-             required_keys="factor_text,category,evidence_ref"/>
-      <field name="category" format="enum: detection-gap | comms-gap | mitigation-gap | tooling-gap | knowledge-gap | dependency-failure | other"/>
-      <field name="action_items" min="1" required_keys="text,owner,target_date,tracking_ticket"/>
-      <field name="meta_round_notes" format="captured_unspoken_observations_or_almost_learned_items"/>
-      <field name="publication_url" format="link_to_published_record"/>
-      <field name="published_within_48h" type="boolean"/>
-    </required>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/blameless-retro-template.json",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "retro_date",
+    "facilitator",
+    "participants",
+    "timeline_pre_read_link",
+    "contributing_factors",
+    "action_items",
+    "meta_round_notes",
+    "publication_url",
+    "published_within_48h"
+  ],
+  "properties": {
+    "incident_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retro_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "facilitator": {
+      "type": "string",
+      "minLength": 1
+    },
+    "participants": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "role"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "timeline_pre_read_link": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contributing_factors": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "factor_text",
+          "category",
+          "evidence_ref"
+        ],
+        "properties": {
+          "factor_text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "enum": [
+              "detection-gap",
+              "comms-gap",
+              "mitigation-gap",
+              "tooling-gap",
+              "knowledge-gap",
+              "dependency-failure",
+              "other"
+            ]
+          },
+          "evidence_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "action_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "owner",
+          "target_date",
+          "tracking_ticket"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1,
+            "not": {
+              "enum": [
+                "team",
+                "TBD",
+                ""
+              ]
+            }
+          },
+          "target_date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "tracking_ticket": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "meta_round_notes": {
+      "type": "string",
+      "minLength": 1
+    },
+    "publication_url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "published_within_48h": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></schema>
 
-    <forbidden>
-      <pattern id="f1">contributing_factors entries that name individuals as the cause ("Alex made a mistake", "Bob forgot")</pattern>
-      <pattern id="f2">action_items with owner="team" / "TBD" / empty</pattern>
-      <pattern id="f3">action_items with target_date in the past at publish time OR &gt; 90 days out</pattern>
-      <pattern id="f4">retro record with fewer than 3 contributing_factors</pattern>
-      <pattern id="f5">meta_round_notes empty (the meta round is non-skippable per r4)</pattern>
-      <pattern id="f6">facilitator listed as also-a-direct-responder of the incident</pattern>
-      <pattern id="f7">action items that prescribe individual training as the sole fix for a systemic gap ("Bob will be more careful")</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "incident_id": "INC-2026-042",
+  "retro_date": "2026-05-23",
+  "facilitator": "jane.s",
+  "participants": [
+    {
+      "name": "alex.k",
+      "role": "responder"
+    },
+    {
+      "name": "bob.r",
+      "role": "subsystem-owner"
+    },
+    {
+      "name": "lin.p",
+      "role": "downstream-consumer"
+    }
+  ],
+  "timeline_pre_read_link": "https://wiki/inc-042-draft",
+  "contributing_factors": [
+    {
+      "factor_text": "deploy pipeline allowed --skip-tests outside hotfix context",
+      "category": "tooling-gap",
+      "evidence_ref": "log#L42"
+    },
+    {
+      "factor_text": "alert latency 12 min from first error to page",
+      "category": "detection-gap",
+      "evidence_ref": "alert-history"
+    },
+    {
+      "factor_text": "no Friday-late-deploy soft-block in CI",
+      "category": "tooling-gap",
+      "evidence_ref": "ci-config"
+    }
+  ],
+  "action_items": [
+    {
+      "text": "Replace --skip-tests with hotfix-mode requiring incident-id",
+      "owner": "alex.k",
+      "target_date": "2026-06-15",
+      "tracking_ticket": "JIRA-1234"
+    }
+  ],
+  "meta_round_notes": "Almost learned: ownerless flags persist across reorgs.",
+  "publication_url": "https://wiki/inc-042-final",
+  "published_within_48h": true
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Cluster near-identical action items into one composite item with an explanation of the grouping.</transformation>
-      <transformation>Split a too-large action item ("redesign the deploy pipeline") into a discovery action with date + a follow-up action item to be defined post-discovery.</transformation>
-      <transformation>Reference prior retro action items if they are still in-flight and relevant; do not create duplicate items.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "incident_id": "INC-2026-042",
+  "retro_date": "2026-05-23",
+  "facilitator": "alex.k",
+  "participants": [
+    {
+      "name": "alex.k",
+      "role": "responder"
+    }
+  ],
+  "timeline_pre_read_link": "",
+  "contributing_factors": [
+    {
+      "factor_text": "Bob skipped tests",
+      "category": "knowledge-gap",
+      "evidence_ref": ""
+    }
+  ],
+  "action_items": [
+    {
+      "text": "Bob will be more careful",
+      "owner": "team",
+      "target_date": "2025-01-01",
+      "tracking_ticket": ""
+    }
+  ],
+  "meta_round_notes": "",
+  "publication_url": "",
+  "published_within_48h": false
+}
+]]></code>
+    <note>Facilitator is a responder; &lt;3 participants + factors; person-as-subject factor; action item owner=team; meta-round empty; not published.</note>
+  </example>
 
-    <schema-reference path="templates/retro-record.json"/>
-  </output-contract>
-
-  <section title="Self-check (run before publishing)">
-    <list>
-      <item>Facilitator name listed and is not a responder (r1, r4 implicit)</item>
-      <item>>= 3 contributing factors, categorized (r2)</item>
-      <item>Every action item has a single named owner + a date &lt;= 90 days (r3)</item>
-      <item>Meta-round notes populated (r4)</item>
-      <item>Language scan (scripts/scan-transcript-for-blame.py) reports zero person-as-subject phrases in factors AND action items (r1)</item>
-      <item>Publication URL set; published_within_48h=true (r5)</item>
-      <item>Output validates against templates/retro-record.json</item>
-    </list>
+  <section title="Forbidden patterns">
+    <pattern id="f1">contributing_factors entries that name individuals as the cause</pattern>
+    <pattern id="f2">action_items with owner='team' / 'TBD' / empty</pattern>
+    <pattern id="f3">action_items with target_date in the past at publish time OR &gt;90 days out</pattern>
+    <pattern id="f4">fewer than 3 contributing_factors</pattern>
+    <pattern id="f5">meta_round_notes empty (the meta round is non-skippable per r4)</pattern>
+    <pattern id="f6">facilitator listed as also-a-direct-responder of the incident</pattern>
+    <pattern id="f7">action items prescribing individual training as the sole fix ('Bob will be more careful')</pattern>
   </section>
+
+  <reference path="scripts/validate-blameless-retro-template.py">Validator script</reference>
 </text>

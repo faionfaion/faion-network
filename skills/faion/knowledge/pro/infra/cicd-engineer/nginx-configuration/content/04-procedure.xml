@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Nginx Configuration Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to apply the methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="stage-tls-material">
+      <input>Domain list + cert source</input>
+      <action>Run certbot or fetch from cert-manager. Drop fullchain + key to /etc/letsencrypt/live/&lt;domain&gt;/.</action>
+      <output>TLS files on disk</output>
+      <decision-gate>If cert provisioning fails, BLOCK — do not fall back to self-signed in prod.</decision-gate>
+    </step>
+    <step n="2" name="compose-main">
+      <input>Server count + CPU count</input>
+      <action>Drop the nginx.conf template with `worker_processes auto;` + rate-limit zones + global TLS settings.</action>
+      <output>/etc/nginx/nginx.conf written</output>
+    </step>
+    <step n="3" name="compose-snippets">
+      <input>Security baseline (header list)</input>
+      <action>Write security-headers.conf and proxy-params.conf in /etc/nginx/snippets/.</action>
+      <output>Snippets on disk</output>
+    </step>
+    <step n="4" name="compose-server-block">
+      <input>Domain + upstream + workload shape</input>
+      <action>Write per-site config (HTTP→HTTPS redirect + HTTPS server block with includes).</action>
+      <output>/etc/nginx/sites-available/&lt;domain&gt;.conf</output>
+    </step>
+    <step n="5" name="validate">
+      <input>Full config</input>
+      <action>Run `nginx -t`.</action>
+      <output>test passes / fails</output>
+      <decision-gate>If `nginx -t` fails, STOP — fix syntax before any reload.</decision-gate>
+    </step>
+    <step n="6" name="reload">
+      <input>Tested config</input>
+      <action>Run `nginx -s reload` (or systemd reload). Run testssl.sh against the domain.</action>
+      <output>Live config + TLS audit report</output>
+      <decision-gate>If testssl.sh reports any FAIL on TLS, roll back and fix.</decision-gate>
+    </step>
+  </section>
+</text>

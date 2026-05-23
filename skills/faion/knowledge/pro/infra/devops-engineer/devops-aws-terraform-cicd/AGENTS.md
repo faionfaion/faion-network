@@ -3,71 +3,98 @@ slug: devops-aws-terraform-cicd
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Terraform projects for AWS follow a per-environment directory layout under infrastructure/environments/.
-content_id: "ad8dc39ef2e9b869"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Terraform project layout (per-env dirs + shared modules + S3+DDB backend) + GitHub Actions OIDC CI/CD (plan on PR, sequential apply per env with prod approval).
+content_id: "8afe710ac3887d4e"
+complexity: medium
+produces: config
+est_tokens: 4500
 tags: [aws, terraform, cicd, github-actions, iac]
 ---
+
 # Terraform Project Structure and GitHub Actions CI/CD for AWS
 
 ## Summary
 
-**One-sentence:** Terraform projects for AWS follow a per-environment directory layout under infrastructure/environments/.
+**One-sentence:** Produces a Terraform project layout (per-env dirs + shared modules + S3+DDB backend) + GitHub Actions OIDC CI/CD (plan on PR, sequential apply per env with prod approval).
 
-**One-paragraph:** Terraform projects for AWS follow a per-environment directory layout under infrastructure/environments/. State lives in S3 with DynamoDB locking. GitHub Actions deploys via OIDC (no long-lived credentials). The pipeline plans against all environments on pull request and applies sequentially after merge to main, requiring an explicit GitHub Environment approval gate for production.
+**One-paragraph:** Terraform projects for AWS need: per-environment directories (dev/staging/prod) to prevent blast-radius incidents from cross-env state sharing; S3 remote state with DynamoDB locking to prevent concurrent corruption; GitHub Actions OIDC authentication (no long-lived AWS keys in secrets); sequential apply with explicit prod approval gate; provider default_tags enforcing cost-allocation tagging on every resource. Output: project skeleton + CI workflow + OIDC role + provider config — ready to plug into a new repo.
+
+**Ефективно для:**
+
+- Новий AWS-проект з Terraform — production-ready structure.
+- Додавання CI/CD до існуючого Terraform-репо без long-lived keys.
+- Multi-env infra (dev/stage/prod) з isolated state.
+- Enforced cost-allocation tagging + provider version pinning.
 
 ## Applies If (ALL must hold)
 
-- Starting a new AWS project with Terraform and needing a production-ready project structure.
-- Adding CI/CD automation to an existing Terraform codebase without long-lived credentials.
-- Setting up multi-environment infrastructure (dev/staging/prod) with isolated state per environment.
-- Enforcing cost allocation tagging and provider version pinning across a team.
+- IaC engine is Terraform (not Pulumi / CDK).
+- Multi-environment delivery needed (≥2 envs).
+- GitHub Actions is the CI provider (or GitLab / CircleCI with adapter).
 
 ## Skip If (ANY kills it)
 
-- Single-environment throwaway projects — use local state and manual apply.
-- Projects using Terragrunt for DRY configuration — directory layout differs from this pattern.
-- AWS CDK or Pulumi projects — different deployment model entirely.
+- Single-env throwaway project — local state + manual apply OK.
+- Project uses Terragrunt — directory layout differs.
+- Project uses AWS CDK or Pulumi — different deployment model entirely.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Environment list | dev / staging / prod (or similar) | ops |
+| AWS account map | one account per env OR sub-accounts | AWS Organizations |
+| Tagging policy | Project / Environment / ManagedBy + extras | FinOps |
+| OIDC trust policy | IAM role per env trusting GitHub repo | security team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[devops-aws-service-selection]] | Service choices feed the modules |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: per-env-dirs, s3-ddb-backend, oidc-no-secrets, default-tags, sequential-apply-with-prod-approval, skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for project config + valid/invalid + forbidden | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: shared-state-across-envs, long-lived-keys, no-default-tags, parallel-prod-apply | 800 |
+| `content/04-procedure.xml` | essential | 6 steps: layout → backend → provider → modules → workflow → branch protect | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree on env count + auth model → layout | 800 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-layout` | sonnet | Generate per-env dirs + shared modules. |
+| `compose-workflow` | sonnet | Assemble GitHub Actions with OIDC + matrix. |
+| `validate-tags` | haiku | Mechanical check that default_tags include required keys. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/providers.tf` | Provider config: AWS + default_tags + version pin |
+| `templates/backend.tf` | S3 + DynamoDB remote state backend |
+| `templates/tf-ci.yml` | GitHub Actions: plan on PR, sequential apply per env after merge with prod approval |
+| `templates/_smoke-test.json` | Minimum config used by validate-devops-aws-terraform-cicd.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-aws-terraform-cicd.py` | Validate the config artefact against the schema in `content/02-output-contract.xml` | CI on every artefact change + pre-commit hook |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[devops-aws-service-selection]]
+- [[security-policy-as-code]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when standing up Terraform for a new repo or hardening an existing one.

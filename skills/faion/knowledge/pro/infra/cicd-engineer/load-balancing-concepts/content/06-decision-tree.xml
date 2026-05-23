@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Load Balancing Concepts Decision Tree" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable signals on the input to a rule from 01-core-rules.xml. Use when the right path is ambiguous.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the routing decision depend on HTTP semantics (path / header / cookie / SSL termination at the LB)?</root-question>
+    <branch when="http_semantics_required == true">
+      <question id="q-state-l7">Does the application require session affinity AND cannot externalise state?</question>
+      <branch when="session_externalisable == true">
+        <conclusion ref="layer-choice" verdict="L7 + dynamic algorithm (least-connections) + externalised session in Redis"/>
+      </branch>
+      <branch when="session_externalisable == false">
+        <conclusion ref="session-externalisation" verdict="L7 + sticky-cookie with documented fallback path; flag tech-debt to externalise"/>
+      </branch>
+    </branch>
+    <branch when="http_semantics_required == false">
+      <question id="q-protocol-l4">Is the protocol stateful or long-lived (gaming, MQTT, persistent TCP)?</question>
+      <branch when="long_lived == true">
+        <conclusion ref="algorithm-choice" verdict="L4 + least-connections"/>
+      </branch>
+      <branch when="long_lived == false">
+        <conclusion ref="algorithm-choice" verdict="L4 + round-robin or weighted-round-robin"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-api">http_semantics_required=true (path-based /api vs /static routing) → session_externalisable=true (Redis already in stack) → L7 + least-connections + externalised session in Redis. References rule layer-choice.</example>
+</text>

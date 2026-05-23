@@ -1,22 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-sast Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Static Application Security Testing (SAST) in CI/CD Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-security-sast.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-sast.json",
+  "type": "object",
+  "required": [
+    "tool",
+    "tool_version",
+    "severity_block",
+    "baseline_strategy",
+    "sarif_uploaded",
+    "pr_gate"
+  ],
+  "properties": {
+    "tool": {
+      "enum": [
+        "semgrep",
+        "codeql",
+        "snyk-code",
+        "sonarqube",
+        "bandit",
+        "gosec",
+        "brakeman"
+      ]
+    },
+    "tool_version": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "master",
+          "latest",
+          "main"
+        ]
+      }
+    },
+    "severity_block": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "severity_inform": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "baseline_strategy": {
+      "enum": [
+        "ignore-existing",
+        "fail-on-existing",
+        "none"
+      ]
+    },
+    "sarif_uploaded": {
+      "type": "boolean",
+      "const": true
+    },
+    "pr_gate": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tool": "semgrep",
+  "tool_version": "1.65.0",
+  "severity_block": [
+    "ERROR"
+  ],
+  "severity_inform": [
+    "WARNING",
+    "INFO"
+  ],
+  "baseline_strategy": "ignore-existing",
+  "sarif_uploaded": true,
+  "pr_gate": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tool": "semgrep",
+  "tool_version": "latest",
+  "severity_block": [
+    "ERROR",
+    "WARNING",
+    "INFO"
+  ],
+  "baseline_strategy": "none",
+  "sarif_uploaded": false,
+  "pr_gate": false
+}
+]]></code>
+    <note>Floating tag; blocks on every severity; no baseline; SARIF skipped; gate non-blocking.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">tool_version in {master, latest, main}</pattern>
+    <pattern id="f2">severity_block contains INFO or LOW (block on low signal violates block-critical-high-only)</pattern>
+    <pattern id="f3">sarif_uploaded = false</pattern>
+    <pattern id="f4">pr_gate = false</pattern>
+    <pattern id="f5">baseline_strategy = 'none' on a non-greenfield repo (&gt;1y old)</pattern>
   </section>
+
+  <reference path="scripts/validate-security-sast.py">Validator script</reference>
 </text>

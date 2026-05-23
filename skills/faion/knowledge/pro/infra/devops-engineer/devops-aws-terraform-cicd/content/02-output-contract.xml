@@ -1,22 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-aws-terraform-cicd Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Terraform Project Structure and GitHub Actions CI/CD for AWS Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-devops-aws-terraform-cicd.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-aws-terraform-cicd.json",
+  "type": "object",
+  "required": [
+    "layout",
+    "envs",
+    "backend",
+    "auth",
+    "default_tags",
+    "sequential_apply",
+    "prod_approval"
+  ],
+  "properties": {
+    "layout": {
+      "const": "per-env-dirs"
+    },
+    "envs": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "backend": {
+      "type": "object",
+      "required": [
+        "type",
+        "lock_table",
+        "encrypt"
+      ],
+      "properties": {
+        "type": {
+          "const": "s3"
+        },
+        "lock_table": {
+          "type": "string",
+          "minLength": 1
+        },
+        "encrypt": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "auth": {
+      "const": "oidc"
+    },
+    "default_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "contains": {
+        "const": "Project"
+      },
+      "minItems": 3
+    },
+    "sequential_apply": {
+      "type": "boolean",
+      "const": true
+    },
+    "prod_approval": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "layout": "per-env-dirs",
+  "envs": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "backend": {
+    "type": "s3",
+    "lock_table": "acme-tfstate-lock",
+    "encrypt": true
+  },
+  "auth": "oidc",
+  "default_tags": [
+    "Project",
+    "Environment",
+    "ManagedBy"
+  ],
+  "sequential_apply": true,
+  "prod_approval": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "layout": "single-dir",
+  "envs": [
+    "prod"
+  ],
+  "backend": {
+    "type": "local",
+    "lock_table": "",
+    "encrypt": false
+  },
+  "auth": "static-keys",
+  "default_tags": [],
+  "sequential_apply": false,
+  "prod_approval": false
+}
+]]></code>
+    <note>Single dir; local state; static keys; no default_tags; parallel apply; no prod approval.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">layout != 'per-env-dirs'</pattern>
+    <pattern id="f2">backend.type != 's3' OR backend.encrypt = false</pattern>
+    <pattern id="f3">auth != 'oidc' (static keys forbidden)</pattern>
+    <pattern id="f4">default_tags missing 'Project' / 'Environment' / 'ManagedBy'</pattern>
+    <pattern id="f5">prod_approval = false on multi-env projects</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-aws-terraform-cicd.py">Validator script</reference>
 </text>

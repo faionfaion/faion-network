@@ -3,70 +3,100 @@ slug: devops-aws-monitoring-dr
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production AWS workloads require CloudWatch dashboards per tier, metric alarms with SNS notifications, X-Ray distributed tracing across Lambda and API Gateway, and a tested DR strategy matched to business RTO/RPO.
-content_id: "cf6ed11ac9e0221a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a monitoring + DR spec: CloudWatch dashboards per tier, tiered alarms (page/business-hours/digest), X-Ray tracing, and a tested DR strategy (backup/pilot-light/warm-standby/active-active) matched to RTO/RPO.
+content_id: "bfb5c38f0e0bcd6a"
+complexity: deep
+produces: spec
+est_tokens: 4800
 tags: [aws, cloudwatch, monitoring, disaster-recovery, observability]
 ---
+
 # AWS Monitoring, Alerting, and Disaster Recovery
 
 ## Summary
 
-**One-sentence:** Production AWS workloads require CloudWatch dashboards per tier, metric alarms with SNS notifications, X-Ray distributed tracing across Lambda and API Gateway, and a tested DR strategy matched to business RTO/RPO.
+**One-sentence:** Produces a monitoring + DR spec: CloudWatch dashboards per tier, tiered alarms (page/business-hours/digest), X-Ray tracing, and a tested DR strategy (backup/pilot-light/warm-standby/active-active) matched to RTO/RPO.
 
-**One-paragraph:** Production AWS workloads require CloudWatch dashboards per tier, metric alarms with SNS notifications, X-Ray distributed tracing across Lambda and API Gateway, and a tested DR strategy matched to business RTO/RPO. Alerting must be tiered: critical (immediate page), warning (business hours), informational (digest). DR must be tested on a schedule — untested DR is no DR.
+**One-paragraph:** Production AWS workloads need CloudWatch dashboards per tier, metric alarms tiered by severity (critical=page, warning=business-hours, info=digest), X-Ray distributed tracing across Lambda + API Gateway, and a DR strategy actually tested on a schedule. Output is a spec that maps each tier (API / compute / DB / queue) to its dashboard widgets + alarm thresholds + SNS topic, names the DR strategy (backup / pilot-light / warm-standby / active-active) selected against RTO/RPO, and declares the DR-drill cadence. Untested DR is no DR.
+
+**Ефективно для:**
+
+- New prod AWS workload — monitoring + DR baseline.
+- Existing arch без dashboards / alarms — add observability.
+- DR runbook design / test для business-critical service.
+- WA review для Reliability + OpEx pillars.
 
 ## Applies If (ALL must hold)
 
-- Setting up monitoring for a new production AWS workload.
-- Adding observability to an existing architecture that lacks dashboards or alarms.
-- Designing or testing a disaster recovery runbook for a business-critical service.
-- Preparing for an architecture review that includes the Reliability and Operational Excellence pillars.
+- Workload runs on AWS prod (any tier).
+- RTO/RPO targets defined (or can be negotiated).
+- CloudWatch + SNS budget acceptable (~$10-50/mo per workload).
 
 ## Skip If (ANY kills it)
 
-- Dev and staging environments with no production traffic — basic alarms only, no DR needed.
-- Third-party monitoring stacks (Datadog, New Relic) already deployed — integrate CloudWatch metrics as a source there instead of duplicating dashboards.
+- Dev / staging — basic alarms only.
+- Third-party stack (Datadog / New Relic) already deployed — integrate CloudWatch as source instead.
+- Throwaway sandbox account.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload tier map | list of API / compute / DB / queue components | architecture diagram |
+| RTO / RPO targets | hours | business / SLO |
+| On-call rotation | named team + PagerDuty / OpsGenie | ops team |
+| DR budget | $/mo | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[backup-strategies]] | DR strategy depends on backup posture |
+| [[aws-well-architected-checklists]] | Reliability + OpEx pillar items |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: dashboard-per-tier, alarms-tiered, xray-active, dr-strategy-matches-rto, dr-drill-cadence, skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for monitoring+DR spec + valid/invalid + forbidden | 1000 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: no-tiered-alarms, untested-dr, x-ray-disabled, dashboard-noise | 900 |
+| `content/04-procedure.xml` | essential | 6 steps: tier-map → dashboards → alarms → X-Ray → DR strategy → DR drill | 900 |
+| `content/05-examples.xml` | reference | Worked example: e-commerce SaaS warm-standby DR | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on RTO + budget → DR strategy | 800 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `compose-dashboards` | sonnet | Per-tier dashboard widget composition. |
+| `set-alarm-thresholds` | sonnet | Latency / error-rate threshold math. |
+| `pick-dr-strategy` | opus | Strategic — depends on RTO + budget. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/monitoring-dr-spec.md` | Markdown skeleton for the monitoring+DR spec |
+| `templates/dashboard.tf` | Terraform CloudWatch dashboard with API Gateway + Lambda + DynamoDB widgets |
+| `templates/alarms.tf` | Terraform tiered alarms with SNS topics (critical / warning / info) |
+| `templates/_smoke-test.json` | Minimum spec used by validate-devops-aws-monitoring-dr.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-aws-monitoring-dr.py` | Validate the spec artefact against the schema in `content/02-output-contract.xml` | CI on every artefact change + pre-commit hook |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[backup-strategies]]
+- [[aws-well-architected-checklists]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping monitoring + DR for any prod AWS workload.

@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="security-dast Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for security-dast as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Dynamic Application Security Testing (DAST) in CI/CD Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="prod-target" severity="high">
+      <symptom>Full active scan launched at production URL; rate limits tripped; security monitoring alerts fire; customer-impacting throttles.</symptom>
+      <root-cause source="OWASP testing guide">Author swapped the target URL during a 'quick test' and forgot to revert; or copy-pasted from production deploy config.</root-cause>
+      <fix>Add a CI-side guard: regex-block target_url containing prod-domain. Roll back any prod-pointing DAST workflow.</fix>
+    </antipattern>
+
+    <antipattern id="no-scope-file" severity="high">
+      <symptom>ZAP spider follows links to a payment gateway and a SaaS email service; bogus support tickets generated; compliance breach.</symptom>
+      <root-cause source="OWASP testing guide">Author launched with default config 'just to see what it finds'; never wrote the scope file.</root-cause>
+      <fix>Block PR until .zap/rules.tsv exists. Pre-load with the standard org-wide denylist (third-party hosts, payment paths, email endpoints).</fix>
+    </antipattern>
+
+    <antipattern id="head-of-templates" severity="medium">
+      <symptom>Nuclei nightly run flags 200 new issues; investigation shows a community template change inflated severity.</symptom>
+      <root-cause source="Nuclei docs">Workflow used `templates: latest` or omitted template-version.</root-cause>
+      <fix>Set `template-version: vX.Y.Z`. Bump on a defined schedule (monthly) after spot-check.</fix>
+    </antipattern>
+
+    <antipattern id="no-cadence" severity="medium">
+      <symptom>DAST only runs on PR; staging drifts between deploys; CVE introduced by a base-image update goes uncaught for weeks.</symptom>
+      <root-cause source="OWASP DevSecOps Maturity">Author wired DAST as a manual / on-demand workflow.</root-cause>
+      <fix>Add at least one schedule entry (nightly or weekly). Run post-deploy AND scheduled.</fix>
+    </antipattern>
+
   </section>
 </text>

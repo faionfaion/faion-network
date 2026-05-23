@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-aws-monitoring-dr Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS Monitoring, Alerting, and Disaster Recovery Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact. Validator script in `scripts/validate-devops-aws-monitoring-dr.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-aws-monitoring-dr.json",
+  "type": "object",
+  "required": [
+    "workload",
+    "rto_hours",
+    "rpo_hours",
+    "dashboards_per_tier",
+    "alarm_severities",
+    "xray_active",
+    "dr_strategy",
+    "drill_cadence_months"
+  ],
+  "properties": {
+    "workload": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rto_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "rpo_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "dashboards_per_tier": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "alarm_severities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "critical",
+          "warning",
+          "info"
+        ]
+      },
+      "minItems": 2
+    },
+    "xray_active": {
+      "type": "boolean",
+      "const": true
+    },
+    "dr_strategy": {
+      "enum": [
+        "backup-restore",
+        "pilot-light",
+        "warm-standby",
+        "active-active"
+      ]
+    },
+    "dr_region_pair": {
+      "type": "string"
+    },
+    "drill_cadence_months": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "workload": "checkout-api",
+  "rto_hours": 1,
+  "rpo_hours": 0.25,
+  "dashboards_per_tier": [
+    "api",
+    "lambda",
+    "dynamodb"
+  ],
+  "alarm_severities": [
+    "critical",
+    "warning",
+    "info"
+  ],
+  "xray_active": true,
+  "dr_strategy": "warm-standby",
+  "dr_region_pair": "us-east-1->us-west-2",
+  "drill_cadence_months": 3
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "workload": "checkout-api",
+  "rto_hours": 0.5,
+  "rpo_hours": 1,
+  "dashboards_per_tier": [],
+  "alarm_severities": [
+    "critical"
+  ],
+  "xray_active": false,
+  "dr_strategy": "backup-restore",
+  "drill_cadence_months": 12
+}
+]]></code>
+    <note>Dashboards empty; alarms single-tier; X-Ray off; backup-restore with 30-min RTO (impossible); drill yearly.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">dashboards_per_tier empty</pattern>
+    <pattern id="f2">alarm_severities length &lt; 2</pattern>
+    <pattern id="f3">xray_active=false on prod Lambda + API Gateway</pattern>
+    <pattern id="f4">dr_strategy='backup-restore' AND rto_hours &lt; 24 (mismatch)</pattern>
+    <pattern id="f5">drill_cadence_months &gt; 6</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-aws-monitoring-dr.py">Validator script</reference>
 </text>

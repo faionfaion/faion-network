@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nginx-configuration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nginx-configuration. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Nginx Configuration Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the nginx config produced. Each pairs a binary directive check + Mozilla / RFC source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="tls-12-13-only" testable="true" depth="essential">
+      <statement>`ssl_protocols` MUST list TLSv1.2 and TLSv1.3 only. TLSv1.0 and TLSv1.1 MUST NOT appear.</statement>
+      <rationale source="Mozilla SSL Configuration Generator, PCI DSS 3.2+">TLS 1.0 / 1.1 are deprecated (PCI DSS 3.2+ disallows them) and contain known cryptographic weaknesses (BEAST, POODLE).</rationale>
+    </rule>
+    <rule id="security-headers-required" testable="true" depth="essential">
+      <statement>Every HTTPS server block MUST emit HSTS (`max-age` ≥ 6 months, `includeSubDomains`), X-Content-Type-Options nosniff, X-Frame-Options DENY (or CSP frame-ancestors), and a Content-Security-Policy.</statement>
+      <rationale source="OWASP Secure Headers Project">These headers close clickjacking, MIME-sniffing, and downgrade attack surfaces. Modern browsers ignore the protections unless the headers are present.</rationale>
+    </rule>
+    <rule id="http-2-or-3" testable="true" depth="essential">
+      <statement>Production server blocks MUST declare `http2` (or `http3` when available) on the listen directive. HTTP/1.1-only is acceptable only for legacy backends.</statement>
+      <rationale source="Cloudflare Radar / HTTP Archive 2025 stats">HTTP/2 multiplexing reduces head-of-line blocking, cuts page load time 20-40 % on modern apps. HTTP/3 + QUIC adds resilience over lossy networks.</rationale>
+    </rule>
+    <rule id="rate-limit-on-auth" testable="true" depth="essential">
+      <statement>Auth endpoints (`/login`, `/oauth`, `/password-reset`) MUST sit inside a `limit_req` zone with rate ≤ 10 r/s per IP and burst ≤ 20.</statement>
+      <rationale source="OWASP ASVS V2.2">Without rate limiting, credential stuffing attacks slip past WAFs by staying under per-account thresholds. Per-IP throttling is the cheapest defence layer.</rationale>
+    </rule>
+    <rule id="gzip-not-on-precompressed" testable="true" depth="essential">
+      <statement>`gzip on;` MUST exclude already-compressed types (jpg, png, mp4, woff2). Use `gzip_types` whitelist; do NOT enable gzip globally on `*/*`.</statement>
+      <rationale source="nginx docs / ngx_http_gzip_module">Re-compressing already-compressed media wastes CPU without saving bytes; double-compression can occasionally inflate size.</rationale>
+    </rule>
+    <rule id="test-before-reload" testable="true" depth="essential">
+      <statement>Every config change MUST be validated with `nginx -t` before `nginx -s reload`. CI hooks MUST run `nginx -t -c &lt;new-config&gt;` against a sandbox.</statement>
+      <rationale source="nginx docs">A bad config that passes `reload` will fail on next restart, locking out the service when nobody is watching. `-t` catches it deterministically.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

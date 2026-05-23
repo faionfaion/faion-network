@@ -1,0 +1,44 @@
+# purpose: Backstage scaffolder template for a Go microservice golden path
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (spec)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~500 tokens when loaded
+
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: go-microservice
+  title: Go Microservice Golden Path
+  description: Production-ready Go service with CI/CD, observability, RBAC
+spec:
+  owner: platform-team
+  type: service
+  lifecycle: production
+  parameters:
+    - title: Service Details
+      properties:
+        serviceName:
+          type: string
+          pattern: "^[a-z][a-z0-9-]+$"
+        owner:
+          type: string
+  steps:
+    - id: fetch
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+    - id: publish
+      name: Publish to Git
+      action: publish:github
+      input:
+        allowedHosts: [github.com]
+        repoUrl: github.com?owner=acme&repo=${{ parameters.serviceName }}
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml

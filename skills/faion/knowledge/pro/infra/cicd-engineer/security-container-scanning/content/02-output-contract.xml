@@ -1,22 +1,146 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-container-scanning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Container Security Scanning and Image Signing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-security-container-scanning.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-container-scanning.json",
+  "type": "object",
+  "required": [
+    "scanner",
+    "scanner_version",
+    "severity_block",
+    "sbom_format",
+    "signing",
+    "scan_before_push"
+  ],
+  "properties": {
+    "scanner": {
+      "enum": [
+        "trivy",
+        "grype",
+        "clair"
+      ]
+    },
+    "scanner_version": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "master",
+          "latest",
+          "main"
+        ]
+      }
+    },
+    "severity_block": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "CRITICAL",
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ]
+      },
+      "contains": {
+        "const": "CRITICAL"
+      }
+    },
+    "ignore_unfixed": {
+      "type": "boolean"
+    },
+    "sbom_format": {
+      "enum": [
+        "cyclonedx",
+        "spdx"
+      ]
+    },
+    "signing": {
+      "type": "object",
+      "required": [
+        "tool",
+        "mode",
+        "key_in_repo"
+      ],
+      "properties": {
+        "tool": {
+          "enum": [
+            "cosign",
+            "notary",
+            "none"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "keyless-oidc",
+            "keyed",
+            "none"
+          ]
+        },
+        "key_in_repo": {
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "scan_before_push": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "scanner": "trivy",
+  "scanner_version": "0.50.0",
+  "severity_block": [
+    "CRITICAL",
+    "HIGH"
+  ],
+  "ignore_unfixed": true,
+  "sbom_format": "cyclonedx",
+  "signing": {
+    "tool": "cosign",
+    "mode": "keyless-oidc",
+    "key_in_repo": false
+  },
+  "scan_before_push": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "scanner": "trivy",
+  "scanner_version": "master",
+  "severity_block": [
+    "LOW"
+  ],
+  "sbom_format": "cyclonedx",
+  "signing": {
+    "tool": "cosign",
+    "mode": "keyed",
+    "key_in_repo": true
+  },
+  "scan_before_push": false
+}
+]]></code>
+    <note>Floating master tag, no CRITICAL in block list, keyed signing with key committed in repo, scan AFTER push.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">scanner_version in {master, latest, main} or empty</pattern>
+    <pattern id="f2">severity_block missing CRITICAL</pattern>
+    <pattern id="f3">signing.key_in_repo = true</pattern>
+    <pattern id="f4">scan_before_push = false</pattern>
+    <pattern id="f5">sbom_format mixed across pipelines (cyclonedx in one workflow + spdx in another)</pattern>
   </section>
+
+  <reference path="scripts/validate-security-container-scanning.py">Validator script</reference>
 </text>

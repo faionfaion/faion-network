@@ -1,35 +1,18 @@
-#!/bin/bash
-# restic-backup.sh — Restic backup to S3 with retention pruning and integrity check
-# Usage: RESTIC_REPOSITORY=s3:... RESTIC_PASSWORD_FILE=/etc/restic/password ./restic-backup.sh
+# purpose: Restic backup script — production-ready bash with retention prune
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (spec)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~350 tokens when loaded
 
+#!/usr/bin/env bash
 set -euo pipefail
 
-export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-s3:s3.amazonaws.com/backup-bucket/restic}"
-export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-/etc/restic/password}"
+export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:?missing}"
+export RESTIC_PASSWORD="${RESTIC_PASSWORD:?missing}"
 
-echo "[$(date -Iseconds)] Starting Restic backup"
+TARGETS=("/var/lib/postgresql" "/etc")
 
-restic backup \
-  /var/www \
-  /etc \
-  /home \
-  --exclude="*.log" \
-  --exclude="node_modules" \
-  --exclude=".git" \
-  --exclude="__pycache__" \
-  --exclude=".cache" \
-  --tag production \
-  --tag "$(hostname)"
-
-# Retention: keep last 24h hourly, 7 daily, 4 weekly, 12 monthly
-restic forget \
-  --keep-hourly 24 \
-  --keep-daily 7 \
-  --keep-weekly 4 \
-  --keep-monthly 12 \
-  --prune
-
-# Mandatory integrity check — verifies all data blobs
+restic snapshots >/dev/null 2>&1 || restic init
+restic backup --tag prod "${TARGETS[@]}"
+restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 12 --prune
 restic check
-
-echo "[$(date -Iseconds)] Restic backup completed"

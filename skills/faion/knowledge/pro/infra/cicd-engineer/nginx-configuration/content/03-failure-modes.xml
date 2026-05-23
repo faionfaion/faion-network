@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nginx-configuration Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nginx-configuration as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Nginx Configuration Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="tls-10-still-enabled" severity="high">
+      <symptom>PCI scan flags the host; modern browsers warn on connection; downgrade attacks possible.</symptom>
+      <root-cause source="Mozilla SSL Configuration">Config copied from an older site that still listed `ssl_protocols TLSv1 TLSv1.1 TLSv1.2;` and never updated.</root-cause>
+      <fix>Replace ssl_protocols line with `ssl_protocols TLSv1.2 TLSv1.3;` and reload. Verify with `testssl.sh` or SSL Labs.</fix>
+    </antipattern>
+
+    <antipattern id="no-hsts" severity="high">
+      <symptom>Browsers accept downgrade on first visit; MITM can intercept on public Wi-Fi before HSTS upgrade.</symptom>
+      <root-cause source="OWASP Secure Headers">Author forgot the header or thought TLS alone was enough.</root-cause>
+      <fix>Add `add_header Strict-Transport-Security &quot;max-age=63072000; includeSubDomains; preload&quot; always;` to security-headers snippet and include in every HTTPS server block.</fix>
+    </antipattern>
+
+    <antipattern id="single-worker" severity="medium">
+      <symptom>Latency spikes under load; only one CPU core utilised; load tests fall over at &lt;1k RPS.</symptom>
+      <root-cause source="nginx docs">Default `worker_processes 1;` left in place; admin assumed nginx scales automatically.</root-cause>
+      <fix>Set `worker_processes auto;` (or pin to physical core count) and `worker_connections 4096+`.</fix>
+    </antipattern>
+
+    <antipattern id="proxy-pass-without-headers" severity="medium">
+      <symptom>Backend logs all requests as coming from nginx IP; Django ALLOWED_HOSTS rejects requests; CSRF / OAuth callbacks break.</symptom>
+      <root-cause source="nginx docs / Django deployment">Author wrote `proxy_pass http://backend;` without `include /etc/nginx/snippets/proxy-params.conf;` setting Host / X-Forwarded-*.</root-cause>
+      <fix>Add the proxy-params include with `proxy_set_header Host $host; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme;`.</fix>
+    </antipattern>
+
   </section>
 </text>

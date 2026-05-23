@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-aws-serverless-api Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-aws-serverless-api as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="AWS Serverless API (Lambda + API Gateway + DynamoDB + EventBridge) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="x86-lambda" severity="medium">
+      <symptom>Lambda costs 20% more than necessary; CPU-bound tasks 10-15% slower.</symptom>
+      <root-cause source="AWS Graviton docs">Default x86_64 left in place from template.</root-cause>
+      <fix>Switch architectures to ['arm64']. Rebuild deps with native arm64.</fix>
+    </antipattern>
+
+    <antipattern id="cors-wildcard" severity="high">
+      <symptom>App vulnerable to credentialed-CORS attacks; security audit blocks launch.</symptom>
+      <root-cause source="OWASP CORS">Author copy-pasted dev config to prod.</root-cause>
+      <fix>Explicit allow_origins list. Add CI check rejecting cors_origins containing '*'.</fix>
+    </antipattern>
+
+    <antipattern id="no-throttling" severity="high">
+      <symptom>Bot scan triggers 10k Lambda concurrent executions; account-level limit hit; legit traffic fails.</symptom>
+      <root-cause source="AWS API GW docs">default_route_settings empty.</root-cause>
+      <fix>Set throttling_burst_limit + throttling_rate_limit to capacity. Add 429 alarm.</fix>
+    </antipattern>
+
+    <antipattern id="default-execute-api-url" severity="medium">
+      <symptom>Stage URL hardcoded in client; redeploy changes it; client breaks.</symptom>
+      <root-cause source="AWS API GW custom-domain">Custom domain deferred.</root-cause>
+      <fix>Provision domain + ACM cert. Map stage to custom domain. CNAME from DNS.</fix>
+    </antipattern>
+
   </section>
 </text>

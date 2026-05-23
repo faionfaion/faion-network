@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="security-container-scanning Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for security-container-scanning as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Container Security Scanning and Image Signing Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="floating-master-tag" severity="high">
+      <symptom>CI green for months; one morning every PR fails on the same CVE — a Trivy DB update changed the severity classification.</symptom>
+      <root-cause source="OpenSSF SLSA">Action pinned with `@master`; rule-pack updated upstream; previously-passing build now fails without any code change.</root-cause>
+      <fix>Pin to a release tag (e.g. `@0.50.0`) or SHA. Bump on a schedule with a known changelog.</fix>
+    </antipattern>
+
+    <antipattern id="sbom-format-mix" severity="medium">
+      <symptom>Dependency-Track ingests CycloneDX but SIEM expects SPDX; half the data missing on either side.</symptom>
+      <root-cause source="NIST SSDF">Two parallel jobs author SBOMs in different formats because nobody wrote a standard.</root-cause>
+      <fix>Pick one format org-wide. Add a CI check that rejects PRs introducing the other format.</fix>
+    </antipattern>
+
+    <antipattern id="key-in-secrets" severity="high">
+      <symptom>Cosign private key committed to repo (even encrypted); leaked when repo went public for one day.</symptom>
+      <root-cause source="Sigstore docs">Author followed an old tutorial that pre-dated keyless OIDC.</root-cause>
+      <fix>Rotate the key (revoke via Fulcio if used). Switch to keyless OIDC. Add a pre-commit hook that blocks `cosign.key` filenames.</fix>
+    </antipattern>
+
+    <antipattern id="no-fail-on-critical" severity="high">
+      <symptom>Scan reports 12 CRITICAL CVEs; CI passes; image pushed; production exposed.</symptom>
+      <root-cause source="Trivy docs">Scanner step missing `exit-code: '1'` — author copied a 'just report' example.</root-cause>
+      <fix>Set `exit-code: '1'` AND `severity: CRITICAL,HIGH`. Verify the push step has `needs: scan` so it only runs on scan success.</fix>
+    </antipattern>
+
   </section>
 </text>

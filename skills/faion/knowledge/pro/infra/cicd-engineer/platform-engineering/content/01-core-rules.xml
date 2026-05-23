@@ -1,59 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="platform-engineering Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for platform-engineering. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Platform Engineering Core Rules" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>6 testable rules for the IDP spec. Each rule has empirical roots in Spotify / Humanitec / CNCF platform engineering data.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Platform engineering must start with backend orchestration logic before building user-facing portal interfaces. Security and observability are added after core functionality is proven.</statement>
-      <rationale source="v1-source">Building the UI first creates the illusion of progress while the hard problem — resource orchestration, quota enforcement, RBAC modeling — remains unsolved. Backend-first ensures decisions about service composition, golden-path abstractions, and multi-environment mapping are made before you commit to a portal design.</rationale>
+
+    <rule id="backend-first-then-portal" testable="true" depth="essential">
+      <statement>Platform-orchestration logic (provisioning, quotas, RBAC, multi-env mapping) MUST be working before any developer-portal UI is built.</statement>
+      <rationale source="Humanitec Platform Engineering State Report 2024">Portal-first creates the illusion of progress while the hard problem — service composition, quota enforcement, identity model — remains unsolved. The portal then leaks orchestration gaps to every user simultaneously.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every platform team MUST track DORA metrics (Deployment Frequency, Lead Time for Changes, Mean Time to Recovery, Change Failure Rate) and platform-specific metrics (self-service adoption rate, time-to-first-deployment for new devs, developer satisfaction surveys, ticket volume trends, platform ROI) on the same dashboard.</statement>
-      <rationale source="v1-source">Without metrics, the platform becomes invisible. The moment lead time degrades the platform team is accountable. Combining business metrics (developer activity, deployment frequency) with operational metrics (ticket volume, adoption rate) forces the platform team to optimize for outcome, not activity.</rationale>
+    <rule id="one-golden-path-at-start" testable="true" depth="essential">
+      <statement>Ship exactly ONE golden path in v1. Generalise to multiple paths only after the first one has ≥10 services using it and ≥3 months of feedback.</statement>
+      <rationale source="Spotify Backstage adoption case study">Multiple early paths spread the platform team thin; each path gets shallow investment and teams diverge anyway. The rule of three is empirical: deep investment in one path beats shallow investment in five.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Start with one golden path (the most-used stack in your organization) before generalizing. Three opinionated paths beat one universal abstraction every time.</statement>
-      <rationale source="v1-source">One path gets deep investment: documentation, tutorials, feedback loops. Five paths spread the platform team too thin and every team diverges anyway. The rule of three is empirical: canonical Go microservice + Node.js + Python data pipeline covers ~80% of real-world requests. Generalize only after you've proven the model works.</rationale>
+    <rule id="version-templates" testable="true" depth="essential">
+      <statement>Golden-path templates MUST be semver-versioned (path-v1.2.3). Updates MUST be opt-in via PR; the platform NEVER silently mutates downstream repos.</statement>
+      <rationale source="Backstage scaffolder docs">Silent template updates break consumers without warning, eroding trust and causing 'we have to escape the platform' anti-bodies.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Golden paths MUST version themselves and let teams subscribe to updates. Never silently mutate downstream repos.</statement>
-      <rationale source="v1-source">If your path template changes, teams using the old version break silently. Use semantic versioning (path-v1.2.3) and require teams to upgrade deliberately via PR.</rationale>
+    <rule id="dora-plus-platform-metrics" testable="true" depth="essential">
+      <statement>The platform team's dashboard MUST display DORA (Deployment Frequency, Lead Time, MTTR, Change Failure Rate) AND platform-specific metrics (self-service adoption rate, TTFD for new devs, ticket trend, NPS).</statement>
+      <rationale source="Google DORA report, Humanitec Platform Maturity Model">Without metrics the platform becomes invisible — accountable for nothing. DORA alone misses the platform-specific signal (adoption); platform metrics alone miss the business outcome (delivery velocity).</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Every self-service action MUST emit an event that FinOps and audit dashboards consume. Without telemetry the platform is invisible.</statement>
-      <rationale source="v1-source">If you can't measure adoption or cost, the platform team can't justify budget. Event-driven logging (Webhook, EventBridge, Kafka) creates the data trail for observability.</rationale>
+    <rule id="ai-agents-are-citizens" testable="true" depth="essential">
+      <statement>RBAC, quota, audit-log, and identity model MUST treat AI agents as first-class principals (own identity, own scope, own quota) — not as a superuser running on behalf of a human.</statement>
+      <rationale source="CNCF AI Agent Identity WG 2026">Conflating agent + human identity makes incidents un-debuggable ('who pushed this?') and creates a privilege-escalation surface where any human's session token is also an AI's token.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Every infrastructure provisioning request MUST show a cost estimate before approval. For production changes, cost must be reviewed by someone with budget authority.</statement>
-      <rationale source="v1-source">Without pre-flight estimates, developers and agents don't see the financial impact of "create another staging environment." Estimates force trade-off decisions ("do we really need medium or does small suffice?"). Tools: infracost, Humanitec cost models, Pulumi AI.</rationale>
+    <rule id="name-the-non-goals" testable="true" depth="essential">
+      <statement>Spec MUST contain an `non_goals_year1` block naming what the platform explicitly will NOT do this year.</statement>
+      <rationale source="Internal platform-team retros across multiple orgs">Without explicit non-goals, every team asks for everything, the platform team over-commits, and confidence collapses when the inevitable cuts happen.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>AI agents provisioning infrastructure MUST have per-agent budget caps, per-day spending limits, and automatic shutdown on quota breach. Audit logs MUST show every provisioning action by agent.</statement>
-      <rationale source="v1-source">Without quotas, a retry loop in an agent's deployment logic can spin up 50 load balancers and cost $40k before anyone notices. Per-agent quotas require agents to think about cost, just like humans do.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Define distinct AI agent personas with distinct permission scopes. An "infra-assistant" agent needs resource creation verbs. A "compliance-auditor" agent needs read-only access plus reporting scope. Never grant "system:admin" to an agent even for testing.</statement>
-      <rationale source="v1-source">Agents with broad RBAC scopes can silently delete production workloads or provision assets the human team doesn't know about. Least-privilege from the first commit.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>DORA metrics and platform-friction metrics MUST be on the same dashboard. The moment lead time degrades the platform team is on the hook.</statement>
-      <rationale source="v1-source">Separating operational metrics from business outcomes hides the platform team's impact. Unified dashboards hold the platform team accountable and give executives visibility into the value of platform investment.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Platform engineering MUST be run like an external SaaS product: have a PM, a public roadmap, named users (developer teams), NPS surveys, and SLOs (e.g., "self-service action P95 &lt; 5 min"). Publish metrics monthly to the engineering org.</statement>
-      <rationale source="v1-source">Products with owners survive. Infrastructure without owners dies. When developers see "adoption up 20% this quarter, lead time down 2 days" they believe in the platform. When they see a stale Backstage catalog they stop using it.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Every new golden path and every new self-service action gets a manual run-through by a non-platform engineer ("can a junior do this without Slack?"). If they need help or ask questions → not yet ready for golden status.</statement>
-      <rationale source="v1-source">LLMs (and platform engineers) can't predict usability friction. A junior developer hitting the template is the ultimate test.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Backstage catalog updates from agents MUST go through Pull Request (catalog-info.yaml changes). Never use the catalog API for mutations. API edits don't survive sync and produce silent drift.</statement>
-      <rationale source="v1-source">The catalog is your source of truth. If agents edit via API and then sync runs, the changes disappear. Pull requests create an audit trail.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Score (or equivalent workload spec) is the developer-facing abstraction. Infrastructure tools (Terraform, Crossplane, Pulumi) are hidden behind the Score resolution layer.</statement>
-      <rationale source="v1-source">Developers don't care about cloud provider specifics. They care about "I need a Postgres database with 15 days backup retention." Score captures the intent; the platform handles the mapping. This separation of concerns keeps platforms maintainable as requirements change.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Container Security Scanning and Image Signing Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to apply the methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pick-scanner">
+      <input>Stack + registry</input>
+      <action>Apply pick-scanner rule of thumb: Trivy = default; Grype if SBOM-centric; Clair if registry-integrated.</action>
+      <output>Scanner decision</output>
+    </step>
+    <step n="2" name="pin-scanner-version">
+      <input>Scanner choice</input>
+      <action>Pin to a release tag (e.g. `aquasecurity/trivy-action@0.50.0`) or SHA.</action>
+      <output>Pinned workflow step</output>
+      <decision-gate>Apply rule pin-scanner-version.</decision-gate>
+    </step>
+    <step n="3" name="build">
+      <input>Dockerfile</input>
+      <action>`docker build -t image:sha .` — load locally first, do NOT push yet.</action>
+      <output>Local image</output>
+    </step>
+    <step n="4" name="scan">
+      <input>Image + severity policy</input>
+      <action>Run Trivy with severity=CRITICAL,HIGH + exit-code 1 + ignore-unfixed.</action>
+      <output>Pass / fail</output>
+      <decision-gate>If fail, BLOCK push and surface SARIF.</decision-gate>
+    </step>
+    <step n="5" name="sbom-and-sign">
+      <input>Image digest + OIDC</input>
+      <action>Generate CycloneDX SBOM (Syft); cosign keyless sign the digest.</action>
+      <output>SBOM + signature in Rekor</output>
+      <decision-gate>Apply rules sbom-immutable + keyless-cosign.</decision-gate>
+    </step>
+    <step n="6" name="push">
+      <input>Signed image + scan exit 0</input>
+      <action>Push to registry. Attach SBOM as OCI artefact.</action>
+      <output>Image + signature in registry</output>
+      <decision-gate>If admission verifier is in place, downstream deploy only accepts signed images.</decision-gate>
+    </step>
+  </section>
+</text>

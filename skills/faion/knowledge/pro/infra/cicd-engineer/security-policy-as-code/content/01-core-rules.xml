@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="security-policy-as-code Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for security-policy-as-code. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Policy as Code: OPA, Kyverno, and Admission Control Core Rules" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>5 testable rules for the policy bundle. Each rule maps to a CI-checkable invariant + a known incident pattern.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Deploy policy engine in audit mode first. Review all audit violations and remediate existing resources before switching validationFailureAction to Enforce.</statement>
-      <rationale source="v1-source">Enabling enforcement before fixing existing violations blocks all pending deployments in all teams simultaneously, causing incidents and eroding trust in the security programme.</rationale>
+
+    <rule id="audit-first-then-enforce" testable="true" depth="essential">
+      <statement>Every new policy MUST ship with `validationFailureAction: Audit` (Kyverno) or `enforcementAction: dryrun` (Gatekeeper). Promotion to Enforce / deny MUST follow an audit review + remediation of existing violations.</statement>
+      <rationale source="Kyverno docs, Gatekeeper docs">Enforcement without audit blocks all teams' pending workloads simultaneously — the worst possible failure mode for a security tool. Audit gives the data to triage; only then enforce.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every policy MUST have unit tests: `kyverno test` for Kyverno policies, `conftest verify` for OPA/Rego. Tests MUST run in CI alongside application tests.</statement>
-      <rationale source="v1-source">Policy author hallucinations are common — LLMs emit Kyverno YAML that uses non-existent fields or wrong API versions. Without automated tests, broken policies reach the cluster silently.</rationale>
+    <rule id="unit-tests-required" testable="true" depth="essential">
+      <statement>Every policy MUST have a kyverno test (or conftest verify for Rego) fixture set covering at least one PASS and one FAIL resource per rule. Tests MUST run in CI.</statement>
+      <rationale source="Kyverno CLI docs">LLM-authored policies routinely use non-existent fields or wrong API versions. Without tests, broken policies reach the cluster silently and either fail open (do nothing) or fail closed (block everything).</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Version-control all policies in Git. Apply policies to the cluster via GitOps (ArgoCD, Flux) — never with kubectl apply from a local machine.</statement>
-      <rationale source="v1-source">Manual kubectl apply bypasses PR review, audit trail, and rollback capability. A GitOps sync loop ensures cluster state always matches the repository.</rationale>
+    <rule id="gitops-only-delivery" testable="true" depth="essential">
+      <statement>Policies MUST reach the cluster via GitOps (ArgoCD app / Flux Kustomization). `kubectl apply` from operator laptops is forbidden in any environment.</statement>
+      <rationale source="GitOps Principles 1.0">kubectl-apply bypasses PR review, audit trail, and rollback. A GitOps sync loop ensures cluster state always matches the repo and any divergence triggers drift alerts.</rationale>
+    </rule>
+    <rule id="version-control-policies" testable="true" depth="essential">
+      <statement>All policies MUST live in a versioned Git repo with semver tags on releases. Policy diffs MUST go through PR review.</statement>
+      <rationale source="OWASP DevSecOps Maturity">Policies are platform-critical code; treating them as one-off YAML drops re-introduces every problem version control was invented to solve.</rationale>
+    </rule>
+    <rule id="trusted-registries-and-signatures" testable="true" depth="essential">
+      <statement>A `trusted-registries` policy MUST exist AND (for prod) be paired with a `verifyImages` cosign-signature check.</statement>
+      <rationale source="Sigstore + Kyverno docs">Trusted-registry alone allows a compromised CI to push a malicious image to the right registry; verifyImages closes that gap by validating the Sigstore signature.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

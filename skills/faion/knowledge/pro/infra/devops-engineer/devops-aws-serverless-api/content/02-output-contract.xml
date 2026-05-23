@@ -1,22 +1,171 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="devops-aws-serverless-api Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS Serverless API (Lambda + API Gateway + DynamoDB + EventBridge) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-devops-aws-serverless-api.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/devops-aws-serverless-api.json",
+  "type": "object",
+  "required": [
+    "project",
+    "lambda",
+    "api_gateway",
+    "dynamodb"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lambda": {
+      "type": "object",
+      "required": [
+        "architecture",
+        "runtime",
+        "tracing_mode"
+      ],
+      "properties": {
+        "architecture": {
+          "const": "arm64"
+        },
+        "runtime": {
+          "type": "string"
+        },
+        "tracing_mode": {
+          "const": "Active"
+        },
+        "timeout_s": {
+          "type": "integer",
+          "maximum": 900
+        }
+      }
+    },
+    "api_gateway": {
+      "type": "object",
+      "required": [
+        "protocol_type",
+        "cors_origins",
+        "throttling_burst",
+        "throttling_rate",
+        "custom_domain"
+      ],
+      "properties": {
+        "protocol_type": {
+          "const": "HTTP"
+        },
+        "cors_origins": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "not": {
+              "const": "*"
+            }
+          },
+          "minItems": 1
+        },
+        "throttling_burst": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "throttling_rate": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "custom_domain": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "dynamodb": {
+      "type": "object",
+      "required": [
+        "billing_mode"
+      ],
+      "properties": {
+        "billing_mode": {
+          "enum": [
+            "PAY_PER_REQUEST",
+            "PROVISIONED"
+          ]
+        },
+        "pitr": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dlq": {
+      "type": "boolean"
+    },
+    "step_functions": {
+      "type": "boolean"
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project": "checkout-api",
+  "lambda": {
+    "architecture": "arm64",
+    "runtime": "python3.12",
+    "tracing_mode": "Active",
+    "timeout_s": 30
+  },
+  "api_gateway": {
+    "protocol_type": "HTTP",
+    "cors_origins": [
+      "https://app.example.com"
+    ],
+    "throttling_burst": 5000,
+    "throttling_rate": 1000,
+    "custom_domain": "api.example.com"
+  },
+  "dynamodb": {
+    "billing_mode": "PAY_PER_REQUEST",
+    "pitr": true
+  },
+  "dlq": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project": "checkout-api",
+  "lambda": {
+    "architecture": "x86_64",
+    "runtime": "python3.10",
+    "tracing_mode": "PassThrough"
+  },
+  "api_gateway": {
+    "protocol_type": "REST",
+    "cors_origins": [
+      "*"
+    ],
+    "throttling_burst": 100,
+    "throttling_rate": 50,
+    "custom_domain": ""
+  },
+  "dynamodb": {
+    "billing_mode": "PROVISIONED"
+  }
+}
+]]></code>
+    <note>x86 + PassThrough; REST API; CORS *; no custom domain.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">lambda.architecture != 'arm64'</pattern>
+    <pattern id="f2">api_gateway.protocol_type = 'REST'</pattern>
+    <pattern id="f3">api_gateway.cors_origins contains '*'</pattern>
+    <pattern id="f4">api_gateway.custom_domain empty</pattern>
+    <pattern id="f5">lambda.tracing_mode != 'Active'</pattern>
   </section>
+
+  <reference path="scripts/validate-devops-aws-serverless-api.py">Validator script</reference>
 </text>

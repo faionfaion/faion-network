@@ -1,22 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-dast Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Dynamic Application Security Testing (DAST) in CI/CD Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-security-dast.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-dast.json",
+  "type": "object",
+  "required": [
+    "tool",
+    "tool_version",
+    "target_env",
+    "target_url",
+    "scope_file",
+    "cadence",
+    "sarif_uploaded"
+  ],
+  "properties": {
+    "tool": {
+      "enum": [
+        "zap",
+        "nuclei",
+        "burp"
+      ]
+    },
+    "tool_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_env": {
+      "enum": [
+        "staging",
+        "preprod",
+        "dev"
+      ]
+    },
+    "target_url": {
+      "type": "string",
+      "pattern": "^https://"
+    },
+    "scope_file": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cadence": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "post-deploy",
+          "nightly",
+          "weekly",
+          "on-demand"
+        ]
+      },
+      "minItems": 1
+    },
+    "templates_pinned": {
+      "type": "boolean"
+    },
+    "sarif_uploaded": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tool": "zap",
+  "tool_version": "v0.13.0",
+  "target_env": "staging",
+  "target_url": "https://staging.example.com",
+  "scope_file": ".zap/rules.tsv",
+  "cadence": [
+    "post-deploy",
+    "nightly"
+  ],
+  "templates_pinned": true,
+  "sarif_uploaded": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tool": "zap",
+  "tool_version": "v0.13.0",
+  "target_env": "staging",
+  "target_url": "https://app.example.com",
+  "scope_file": "",
+  "cadence": [],
+  "templates_pinned": false,
+  "sarif_uploaded": false
+}
+]]></code>
+    <note>target_url points at production app; scope_file empty; cadence empty; SARIF not uploaded.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">target_url matches production hostnames (app.* / www.* / *.prod.*)</pattern>
+    <pattern id="f2">scope_file empty or missing</pattern>
+    <pattern id="f3">tool = nuclei AND templates_pinned = false (floating HEAD)</pattern>
+    <pattern id="f4">cadence empty (no scheduled run)</pattern>
+    <pattern id="f5">sarif_uploaded = false</pattern>
   </section>
+
+  <reference path="scripts/validate-security-dast.py">Validator script</reference>
 </text>

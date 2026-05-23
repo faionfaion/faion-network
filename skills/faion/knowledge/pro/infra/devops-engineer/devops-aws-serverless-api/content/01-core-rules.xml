@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="devops-aws-serverless-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for devops-aws-serverless-api. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Serverless API (Lambda + API Gateway + DynamoDB + EventBridge) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 rules pinning the serverless API non-negotiables.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Lambda functions MUST use architectures=["arm64"], tracing_mode="Active", and runtime python3.12 or nodejs22.x. API Gateway MUST be HTTP API (protocol_type="HTTP"), configure CORS with explicit allow_origins (not "*"), and use a custom domain with an ACM certificate. Default throttling MUST be set (throttling_burst_limit, throttling_rate_limit).</statement>
-      <rationale source="v1-source">arm64 is ~20% cheaper and faster. Active X-Ray tracing is required for distributed tracing across Lambda + API Gateway + DynamoDB. CORS "*" is a security risk. Throttling prevents runaway Lambda invocations from a burst of requests driving up cost or triggering DDoS.</rationale>
+
+    <rule id="lambda-arm64-active-xray" testable="true" depth="essential">
+      <statement>Lambda functions MUST use architectures=['arm64'], tracing_mode='Active', runtime ≥python3.12 or ≥nodejs22.x.</statement>
+      <rationale source="AWS Lambda + X-Ray docs">arm64 is ~20% cheaper and faster than x86 for Python/Node. Active X-Ray is required for distributed tracing across Lambda + API GW + DDB.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>DynamoDB tables MUST use billing_mode="PAY_PER_REQUEST" unless sustained throughput above 1000 RCU/WCU is proven by load testing. Tables MUST enable point_in_time_recovery_enabled=true and server_side_encryption_enabled=true. TTL attribute MUST be declared even if not used initially.</statement>
-      <rationale source="v1-source">On-demand billing avoids throttling spikes during traffic bursts and removes capacity planning toil. Point-in-time recovery is the last line of defense against accidental bulk deletes. TTL is required for GDPR data-retention compliance and to avoid unbounded table growth.</rationale>
+    <rule id="http-api-not-rest" testable="true" depth="essential">
+      <statement>API Gateway MUST be HTTP API (protocol_type='HTTP'). REST API (v1) is forbidden for new serverless projects.</statement>
+      <rationale source="AWS API Gateway pricing">HTTP API is ~70% cheaper + 60% faster than REST API for the common case. REST API only required for VPC Link / API key / WAF integration.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>SQS queues MUST configure a dead_letter_queue with maxReceiveCount=3. visibility_timeout_seconds MUST be at least 6x the Lambda timeout. Long polling MUST be enabled (receive_wait_time_seconds=20). EventBridge rules MUST use structured event patterns with source and detail-type filters; wildcard patterns are forbidden.</statement>
-      <rationale source="v1-source">DLQ with maxReceiveCount=3 prevents poison-pill messages from blocking the queue forever. Visibility timeout 6x Lambda timeout prevents duplicate processing while Lambda is still running. Wildcard event patterns route every event to every consumer, breaking event isolation.</rationale>
+    <rule id="cors-explicit" testable="true" depth="essential">
+      <statement>CORS allow_origins MUST be an explicit list. '*' is forbidden in production.</statement>
+      <rationale source="OWASP CORS guide">Wildcard CORS exposes the API to any origin; combined with credentialed requests it's a CSRF / data-exfiltration vector.</rationale>
+    </rule>
+    <rule id="throttling-set" testable="true" depth="essential">
+      <statement>default_route_settings MUST set throttling_burst_limit + throttling_rate_limit.</statement>
+      <rationale source="AWS API GW throttling docs">Unthrottled API GW lets a burst of requests drive up Lambda concurrent executions, costing money + tripping account-level limits.</rationale>
+    </rule>
+    <rule id="custom-domain" testable="true" depth="essential">
+      <statement>Production APIs MUST use a custom domain with ACM cert. The default `*.execute-api.region.amazonaws.com` URL is forbidden.</statement>
+      <rationale source="AWS API GW custom-domain docs">Default URL exposes account ID + region in the hostname; not stable across redeploys; cannot be CDN-fronted.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

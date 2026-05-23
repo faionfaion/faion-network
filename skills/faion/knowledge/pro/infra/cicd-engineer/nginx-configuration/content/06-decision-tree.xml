@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Nginx Configuration Decision Tree" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable signals on the input to a rule from 01-core-rules.xml. Use when the right path is ambiguous.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is the backend an HTTP service that needs reverse-proxy + TLS termination at nginx?</root-question>
+    <branch when="reverse_proxy_required == true">
+      <question id="q-websocket">Does the backend serve WebSocket / SSE long-lived connections?</question>
+      <branch when="websocket == true">
+        <conclusion ref="http-2-or-3" verdict="HTTPS server block with http2 + proxy_http_version 1.1 + Upgrade headers; rate-limit on auth path"/>
+      </branch>
+      <branch when="websocket == false">
+        <conclusion ref="http-2-or-3" verdict="HTTPS server block with http2 + standard proxy_pass; rate-limit on auth path"/>
+      </branch>
+    </branch>
+    <branch when="reverse_proxy_required == false">
+      <question id="q-static">Pure static asset serving (SPA, marketing site)?</question>
+      <branch when="static_only == true">
+        <conclusion ref="gzip-not-on-precompressed" verdict="HTTPS server block with root + try_files; expires 1y for assets; gzip on text/* only"/>
+      </branch>
+      <branch when="static_only == false">
+        <conclusion ref="tls-12-13-only" verdict="Hybrid: try_files for static, proxy_pass for /api"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="Django backend + WebSocket">reverse_proxy_required=true → websocket=true → HTTPS http2 server block with proxy_http_version 1.1 + Upgrade headers + rate-limit zone on /api/auth/. References rule http-2-or-3.</example>
+</text>

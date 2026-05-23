@@ -1,22 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-policy-as-code Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Policy as Code: OPA, Kyverno, and Admission Control Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact. Validator script in `scripts/validate-security-policy-as-code.py` enforces it.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-policy-as-code.json",
+  "type": "object",
+  "required": [
+    "engine",
+    "engine_version",
+    "policies",
+    "rollout_phase",
+    "unit_tests_present",
+    "delivery_via_gitops"
+  ],
+  "properties": {
+    "engine": {
+      "enum": [
+        "kyverno",
+        "opa-gatekeeper",
+        "polaris"
+      ]
+    },
+    "engine_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "rollout_phase": {
+      "enum": [
+        "audit",
+        "enforce"
+      ]
+    },
+    "unit_tests_present": {
+      "type": "boolean",
+      "const": true
+    },
+    "delivery_via_gitops": {
+      "type": "boolean",
+      "const": true
+    },
+    "trusted_registries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "verify_images": {
+      "type": "boolean"
+    }
+  }
+}
+]]></schema>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "engine": "kyverno",
+  "engine_version": "1.12.0",
+  "policies": [
+    "baseline-security",
+    "verify-image-signatures"
+  ],
+  "rollout_phase": "audit",
+  "unit_tests_present": true,
+  "delivery_via_gitops": true,
+  "trusted_registries": [
+    "ghcr.io/acme/*",
+    "quay.io/acme/*"
+  ],
+  "verify_images": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "engine": "kyverno",
+  "engine_version": "1.12.0",
+  "policies": [
+    "baseline-security"
+  ],
+  "rollout_phase": "enforce",
+  "unit_tests_present": false,
+  "delivery_via_gitops": false,
+  "trusted_registries": [],
+  "verify_images": false
+}
+]]></code>
+    <note>Enforce mode without audit review; no unit tests; kubectl-apply delivery; no trusted-registries list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">rollout_phase = 'enforce' without prior audit review documented</pattern>
+    <pattern id="f2">unit_tests_present = false (violates unit-tests-required)</pattern>
+    <pattern id="f3">delivery_via_gitops = false</pattern>
+    <pattern id="f4">trusted_registries empty (violates trusted-registries-and-signatures)</pattern>
+    <pattern id="f5">engine = kyverno AND rollout_phase = enforce AND verify_images = false in production</pattern>
   </section>
+
+  <reference path="scripts/validate-security-policy-as-code.py">Validator script</reference>
 </text>

@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="load-balancing-concepts Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for load-balancing-concepts. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Load Balancing Concepts Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the LB decision. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="layer-choice" testable="true" depth="essential">
+      <statement>Choose L7 when the routing decision depends on HTTP semantics (path, header, cookie, SSL termination at LB, API gateway features). Choose L4 when routing is protocol-agnostic and latency/throughput is the dominant constraint.</statement>
+      <rationale source="AWS ELB docs, HAProxy architecture guide">L7 inspects the application payload — costs CPU but unlocks routing, header manipulation, WAF. L4 only sees IP + port — far cheaper but blind to content. Picking L7 for a pure TCP forwarder wastes 2-4x CPU; picking L4 for an HTTP API blocks every header-based feature.</rationale>
+    </rule>
+    <rule id="algorithm-choice" testable="true" depth="essential">
+      <statement>Use a static algorithm (round-robin, IP-hash) only when backends have identical capacity AND request cost is uniform. Use a dynamic algorithm (least-connections, least-response-time) when backends are heterogeneous OR connection longevity varies OR request cost is bimodal.</statement>
+      <rationale source="NGINX upstream module docs, F5 BIG-IP best-practices">Static algorithms have no runtime overhead but cannot react to actual load. Dynamic ones track per-backend state and route to the least-loaded instance. Mixing a static algorithm with long-lived connections creates queue imbalance that the LB cannot self-correct.</rationale>
+    </rule>
+    <rule id="health-check-shape" testable="true" depth="essential">
+      <statement>Configure health checks as HTTP GET against a dedicated `/health` endpoint (NOT a TCP-port-open check) with interval 10-30 s, timeout 5 s, healthy-threshold 2-3, unhealthy-threshold 2-3.</statement>
+      <rationale source="Google SRE Workbook ch. 10, AWS ELB best practices">TCP-open only proves the kernel is alive — the app process may be deadlocked. An HTTP `/health` endpoint that touches the same dependencies the real request would touch (DB ping, cache ping) is the only signal that maps to user impact.</rationale>
+    </rule>
+    <rule id="session-externalisation" testable="true" depth="essential">
+      <statement>Externalise session state to a shared store (Redis, DynamoDB) by default. Use sticky sessions ONLY when (a) the app cannot be refactored AND (b) loss of user session on backend failure is acceptable AND (c) a documented fallback exists.</statement>
+      <rationale source="Google SRE / Etsy postmortems">Sticky sessions make backends non-interchangeable, breaking even distribution and turning every backend death into a session-loss event. Externalised state makes auto-scaling, blue/green deploys, and canary releases possible without user-visible disruption.</rationale>
+    </rule>
+    <rule id="ha-no-spof" testable="true" depth="essential">
+      <statement>The LB tier itself MUST be redundant (active-active or active-passive pair, multi-AZ minimum). A single LB instance is a single point of failure that defeats the purpose of fronting the service.</statement>
+      <rationale source="AWS Well-Architected Reliability pillar, Cloudflare LB docs">If the LB dies, every backend behind it becomes unreachable regardless of health. Active-passive with sub-30 s failover is the minimum acceptable; active-active across AZs is the production default.</rationale>
+    </rule>
+    <rule id="verify-with-failover-test" testable="true" depth="essential">
+      <statement>Before signing off the LB design, execute a deliberate failover drill: kill one backend (verify drain + reroute), kill the active LB (verify peer takeover), and load-test at 2x expected peak to confirm headroom.</statement>
+      <rationale source="Google SRE chaos-engineering practice">Untested HA is design-time HA. Production failover always finds the assumption no-one wrote down. The drill catches mis-set drain timeouts, incorrect health-check intervals, and DNS-TTL surprises in GSLB topology.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the Applies If preconditions in AGENTS.md do not all hold, OR any Skip If trigger fires, the agent MUST skip this methodology and pick a different one — applying the rules here on a mismatched input produces wrong output.</statement>
+      <rationale source="faion-network methodology guard">Methodology selection errors cascade. The cheapest place to abort is before any rule fires.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

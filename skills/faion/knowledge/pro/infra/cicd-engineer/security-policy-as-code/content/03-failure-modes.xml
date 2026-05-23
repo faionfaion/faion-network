@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="security-policy-as-code Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for security-policy-as-code as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Policy as Code: OPA, Kyverno, and Admission Control Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="enforce-without-audit" severity="high">
+      <symptom>Flip to Enforce on Monday morning; all teams' workloads blocked; incident bridge opens; trust in security tooling collapses for a quarter.</symptom>
+      <root-cause source="Kyverno docs">Engineer assumed 'baseline policy is simple, nothing will break'; no audit phase, no remediation.</root-cause>
+      <fix>Roll back to Audit. Review the violation log. Remediate existing resources (PR each). Then flip to Enforce per-namespace gradually.</fix>
+    </antipattern>
+
+    <antipattern id="untested-policy" severity="medium">
+      <symptom>Policy YAML applied to cluster; uses a wrong fieldRef; silently fails open — does nothing — for weeks before anyone notices.</symptom>
+      <root-cause source="Kyverno CLI docs">Engineer skipped kyverno test; relied on visual inspection.</root-cause>
+      <fix>Add kyverno test fixtures (PASS + FAIL per rule). Block PR merge on test-failure. Add a smoke ApplyPolicy fixture in CI that asserts the policy actually rejects the FAIL resource.</fix>
+    </antipattern>
+
+    <antipattern id="kubectl-apply-drift" severity="medium">
+      <symptom>Operator kubectl-applies a one-off exemption to fix prod fire; commit forgotten; cluster + repo diverge; next ArgoCD sync re-enforces and breaks the workaround.</symptom>
+      <root-cause source="GitOps Principles">Out-of-band fix during an incident bypasses GitOps.</root-cause>
+      <fix>Hot-fix exemptions go through a fast-track PR + ArgoCD sync, never via kubectl. If GitOps controller is slow, fix the controller — do not bypass it.</fix>
+    </antipattern>
+
+    <antipattern id="deny-all-fallback-missing" severity="medium">
+      <symptom>Trusted-registry policy enforces ghcr.io/acme/* allowlist; verifyImages absent; CI compromised → pushes malicious image to the right registry → admission accepts it.</symptom>
+      <root-cause source="Sigstore docs">Allowlist gives false sense of security; signature check skipped.</root-cause>
+      <fix>Pair trusted-registries with verifyImages cosign keyless OIDC. Tie issuer + subject regexes to the CI's own workflow path.</fix>
+    </antipattern>
+
   </section>
 </text>

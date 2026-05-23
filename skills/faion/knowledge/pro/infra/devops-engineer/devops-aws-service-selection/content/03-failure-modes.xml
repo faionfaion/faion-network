@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="devops-aws-service-selection Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for devops-aws-service-selection as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="AWS Service Selection (Compute, Database, Architecture Decisions) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="lambda-for-long-task" severity="high">
+      <symptom>Lambda chosen for 30-min batch; team builds Step Functions chain; complexity + cost explode.</symptom>
+      <root-cause source="AWS Lambda quotas">Author picked Lambda because 'serverless = good' without checking duration.</root-cause>
+      <fix>Switch to Fargate or AWS Batch. Lambda only for &lt;15min handlers.</fix>
+    </antipattern>
+
+    <antipattern id="ddb-for-relational" severity="high">
+      <symptom>DDB chosen for invoice system; 50% of queries are scans because access patterns weren't enumerated.</symptom>
+      <root-cause source="DDB best-practice">DDB picked for 'cool factor'; SQL needs ignored.</root-cause>
+      <fix>Switch to Aurora Serverless v2. Or stay with DDB and redesign access patterns + add GSIs.</fix>
+    </antipattern>
+
+    <antipattern id="eks-when-fargate-suffices" severity="medium">
+      <symptom>EKS chosen for 3-service workload; team spends 30% capacity managing node groups.</symptom>
+      <root-cause source="AWS Fargate vs EKS">EKS picked for 'flexibility' without measuring real need.</root-cause>
+      <fix>Switch to ECS Fargate. EKS only justified when you need custom DaemonSets / kernel access / specific CNI.</fix>
+    </antipattern>
+
+    <antipattern id="x86-when-arm-fits" severity="medium">
+      <symptom>x86 Lambda costs 20% more; team complains about cost without recognising the easy fix.</symptom>
+      <root-cause source="AWS Graviton">Default architecture never changed; nobody asked.</root-cause>
+      <fix>Switch to arm64. Rebuild Python wheels for arm64 (most are pre-built).</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -3,73 +3,99 @@ slug: devops-aws-serverless-api
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The serverless API pattern uses API Gateway HTTP API as the entry point, Lambda on arm64 (Graviton) for compute, DynamoDB (single-table, on-demand) for state, EventBridge for event routing, SQS with DLQ for async buffering, and Step Functions for multi-step orchestration.
-content_id: "eea5548fcf0edc14"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Terraform config for a serverless API: API Gateway HTTP API + Lambda arm64 + X-Ray Active + DynamoDB single-table + EventBridge + SQS DLQ + Step Functions, with throttling + custom domain.
+content_id: "d9a49068b543942f"
+complexity: medium
+produces: config
+est_tokens: 4400
 tags: [aws, serverless, lambda, api-gateway, dynamodb]
 ---
-# AWS Serverless API: Lambda + API Gateway + DynamoDB + EventBridge
+
+# AWS Serverless API (Lambda + API Gateway + DynamoDB + EventBridge)
 
 ## Summary
 
-**One-sentence:** The serverless API pattern uses API Gateway HTTP API as the entry point, Lambda on arm64 (Graviton) for compute, DynamoDB (single-table, on-demand) for state, EventBridge for event routing, SQS with DLQ for async buffering, and Step Functions for multi-step orchestration.
+**One-sentence:** Produces a Terraform config for a serverless API: API Gateway HTTP API + Lambda arm64 + X-Ray Active + DynamoDB single-table + EventBridge + SQS DLQ + Step Functions, with throttling + custom domain.
 
-**One-paragraph:** The serverless API pattern uses API Gateway HTTP API as the entry point, Lambda on arm64 (Graviton) for compute, DynamoDB (single-table, on-demand) for state, EventBridge for event routing, SQS with DLQ for async buffering, and Step Functions for multi-step orchestration. All resources are managed with terraform-aws-modules. 60–80% cost reduction vs always-on containers for variable traffic.
+**One-paragraph:** Serverless API pattern eliminates server management, scales to zero, and pays only for invocations. The non-negotiables: API Gateway HTTP API (v2, cheaper + faster than REST v1), Lambda on arm64 (Graviton, ~20% cheaper + faster for Python/Node), X-Ray tracing Active, DynamoDB single-table on-demand, EventBridge for routing, SQS with DLQ for async, Step Functions for multi-step orchestration. CORS explicit allow_origins (not *). Custom domain via ACM. Throttling burst+rate set. Cost saving 60-80% vs always-on containers for variable traffic.
+
+**Ефективно для:**
+
+- REST/GraphQL APIs з variable / spiky traffic.
+- Event-driven async processing, tasks <15 min.
+- Workloads, що масштабуються до нуля вночі.
+- GenAI RAG pipelines на Bedrock — Lambda + API GW + DDB glue.
 
 ## Applies If (ALL must hold)
 
-- REST/GraphQL APIs with variable or spiky traffic (dev tools, internal dashboards, webhook handlers).
-- Event-driven async processing where tasks complete in under 15 minutes.
-- Workloads that need to scale to zero overnight to minimize cost.
-- New greenfield services where container orchestration overhead is not justified.
-- GenAI RAG pipelines on Bedrock — Lambda + API Gateway + DynamoDB is the standard glue layer.
+- API request handler completes in < 15 min.
+- Variable or spiky traffic (not steady-state high-throughput).
+- Stateless per invocation acceptable (state in DDB / external store).
 
 ## Skip If (ANY kills it)
 
-- Long-running tasks exceeding 15 minutes — use Fargate or EKS instead.
-- High-throughput workloads with steady baseline traffic — always-on containers are cheaper above ~80% CPU.
-- Applications requiring in-process state or shared memory — Lambda is stateless per invocation.
-- Complex relational queries — DynamoDB is key-value; use Aurora Serverless v2 via devops-aws-three-tier.
+- Long-running tasks > 15 min — use Fargate / EKS.
+- High-throughput steady-state — containers cheaper above ~80% CPU baseline.
+- Complex relational queries — DynamoDB is key-value; use Aurora Serverless v2 instead.
+- In-process state / shared memory required.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| API spec | OpenAPI v3 / GraphQL schema | product team |
+| Domain + ACM cert | FQDN + cert ARN | DNS / cert-manager |
+| DDB access pattern | single-table design (PK + SK + GSI) | data modelling exercise |
+| Auth model | Cognito / API key / IAM | security team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[devops-aws-service-selection]] | Serverless decision lives upstream |
+| [[devops-aws-terraform-cicd]] | IaC pipeline owns delivery |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: lambda-arm64-active-xray, http-api-not-rest, cors-explicit, throttling-set, custom-domain, skip-this-methodology | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for serverless config artefact + valid/invalid + forbidden | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: x86-lambda, cors-wildcard, no-throttling, default-execute-api-url | 800 |
+| `content/04-procedure.xml` | essential | 5 steps: ddb-design → lambda → api-gw → eventbridge/sqs → step functions | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree on workload shape → pattern | 800 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `ddb-single-table-design` | opus | Strategic — single-table design is the hardest decision. |
+| `compose-terraform` | sonnet | Assemble terraform-aws-modules calls. |
+| `set-throttling` | haiku | Mechanical rps math. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/main.tf` | Terraform skeleton: Lambda + API Gateway HTTP API + DynamoDB + EventBridge + SQS DLQ |
+| `templates/step-function.tf` | Step Functions state machine for multi-step orchestration |
+| `templates/_smoke-test.json` | Minimum config artefact used by validate-devops-aws-serverless-api.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-aws-serverless-api.py` | Validate the config artefact against the schema in `content/02-output-contract.xml` | CI on every artefact change + pre-commit hook |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[devops-aws-service-selection]]
+- [[devops-aws-terraform-cicd]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping a new serverless API or auditing an existing one.

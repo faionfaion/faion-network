@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="load-balancing-concepts Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for load-balancing-concepts as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Load Balancing Concepts Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="tcp-only-check" severity="high">
+      <symptom>Backend deadlocks but TCP port stays open; LB keeps routing traffic to a dead app; users see 504 / hangs.</symptom>
+      <root-cause source="Google SRE Workbook ch. 10">Health check configured at TCP layer only because 'simpler'; never tested against an in-app deadlock.</root-cause>
+      <fix>Switch to HTTP GET /health that hits a real dependency (DB ping, cache ping). Re-run failover drill.</fix>
+    </antipattern>
+
+    <antipattern id="sticky-without-fallback" severity="high">
+      <symptom>Single backend dies; every user previously pinned to it loses their session; cart abandonment spikes; no graceful recovery.</symptom>
+      <root-cause source="Etsy + Shopify postmortems">Sticky sessions chosen as a band-aid for in-process session state; no fallback path to a shared store.</root-cause>
+      <fix>Externalise session state to Redis. If sticky is truly required, add a fallback path that recreates session from a long-lived cookie + DB lookup.</fix>
+    </antipattern>
+
+    <antipattern id="single-lb-spof" severity="high">
+      <symptom>Active LB instance crashes; all backends become unreachable; outage scope = full service even though backends are healthy.</symptom>
+      <root-cause source="AWS Well-Architected Reliability pillar">LB deployed as a single node 'temporarily'; redundancy deferred to a later sprint that never lands.</root-cause>
+      <fix>Deploy as active-passive pair minimum (multi-AZ). For SLO ≥ 99.95, use active-active across AZs and load-test the failover.</fix>
+    </antipattern>
+
+    <antipattern id="l7-when-l4-fits" severity="medium">
+      <symptom>Pure TCP-forwarding service (game server, MQTT broker) fronted with L7 LB; LB CPU saturates at half the expected RPS.</symptom>
+      <root-cause source="AWS NLB vs ALB whitepaper">Default 'use ALB / nginx for everything' habit; nobody asked whether HTTP semantics are needed.</root-cause>
+      <fix>Re-evaluate: if no header/path/cookie routing and no SSL termination at LB, drop to L4 (NLB / HAProxy in TCP mode). Re-run perf test.</fix>
+    </antipattern>
+
   </section>
 </text>

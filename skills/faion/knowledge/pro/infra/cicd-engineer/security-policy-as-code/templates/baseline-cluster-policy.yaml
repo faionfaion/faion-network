@@ -1,0 +1,62 @@
+# purpose: Kyverno ClusterPolicy: no-privileged + no-root + require-resource-limits + trusted-registries
+# consumes: inputs declared in AGENTS.md `## Prerequisites`
+# produces: artefact conforming to content/02-output-contract.xml (config)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~400 tokens when loaded
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: baseline-security
+  annotations:
+    policies.kyverno.io/title: Baseline Security Policy
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Audit   # START IN AUDIT; flip to Enforce only after triage
+  background: true
+  rules:
+    - name: deny-privileged
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            =(initContainers):
+              - securityContext: { privileged: "false" }
+            containers:
+              - securityContext: { privileged: "false" }
+    - name: require-run-as-non-root
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Containers must run as non-root user."
+        pattern:
+          spec:
+            securityContext: { runAsNonRoot: true }
+    - name: require-resource-limits
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Containers must declare CPU + memory limits."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+    - name: trusted-registries
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Images must come from a trusted registry (ghcr.io/acme/* | quay.io/acme/*)."
+        pattern:
+          spec:
+            containers:
+              - image: "ghcr.io/acme/* | quay.io/acme/*"
