@@ -3,80 +3,99 @@ slug: definition-of-done-library
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Definition Of Done Library: codified ba practice that turns the recurring 'p5-micro-agency-founder/Subcontractor task brief generation' decision into a repeatable, auditable artefact.
-content_id: "353e8ead7800837f"
-tags: [definition-of-done-library, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: A library of canonical Definitions of Done by deliverable type (story / feature / release / contractor task) so BAs and POs can reuse battle-tested AC patterns instead of reinventing.
+content_id: "9825f0e52a1d6400"
+complexity: medium
+produces: checklist
+est_tokens: 2400
+tags: [definition-of-done, library, ac-patterns, ba, reuse]
 ---
-# Definition Of Done Library
+# Definition of Done Library
 
 ## Summary
 
-**One-sentence:** Definition Of Done Library: codified ba practice that turns the recurring 'p5-micro-agency-founder/Subcontractor task brief generation' decision into a repeatable, auditable artefact.
+**One-sentence:** A library of canonical Definitions of Done indexed by deliverable type (story / feature / release / contractor task) for reuse instead of per-engagement reinvention.
 
-**One-paragraph:** Definition Of Done Library addresses the gap surfaced by 'p5-micro-agency-founder/Subcontractor task brief generation'. Definition-of-done varies by deliverable type (design, code, copy, deck); a library of templated DoDs would cut brief-writing time massively. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Every engagement re-invents DoD; quality varies wildly; some teams have a 12-item DoD, others have none. The library pins canonical DoDs by deliverable type with rationale per item, so the next engagement picks the relevant DoD, customises ≤3 items, and ships consistent quality. Output: a versioned library + per-engagement chosen-DoD record.
+
+**Ефективно для:**
+
+- Multi-engagement portfolios where DoD variance harms predictability.
+- Contractor engagements needing tight AC baselines.
+- Pre-engagement BA setup phase.
+- Audit programs requiring documented DoD per deliverable type.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p5-micro-agency-founder/Subcontractor task brief generation' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- the BA / PO owns ≥2 engagements where DoD reuse pays off
+- named owner accepts the library
+- deliverable types are categorisable (story / feature / release / contractor task)
+- library can be reviewed quarterly
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- single-engagement BA — overhead > value
+- team prefers per-engagement bespoke DoD — defer to team preference
+- no named owner — defer until owner exists
 
 ## Prerequisites
 
-- recent context for the 'p5-micro-agency-founder/Subcontractor task brief generation' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| deliverable-type taxonomy | MD | BA / PO |
+| prior-engagement DoD samples | MD | BA |
+| named owner | org chart | BA / PO |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[contractor-brief-template-self-contained]] | Consumer of the contractor-task DoD. |
+| [[use-case-modeling]] | Story / feature DoD anchors to use cases. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: by-type indexing, each item has rationale, ≥3 items per type, named owner per record, quarterly review cadence | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for DoD library: types[], items[], rationale, owner, last_reviewed | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: per-engagement reinvention, missing rationale, anonymous owner, stale library, scope creep into product-level AC | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: collect samples → categorise → write rationale → publish + assign owner | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on engagement count + owner + deliverable-type clarity | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-type DoD authoring. |
+| `review_for_compliance` | opus | Regulated engagements needing audit-grade DoD. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/definition-of-done-library.json` | JSON schema for the Definition Of Done Library output contract |
-| `templates/definition-of-done-library.md` | Markdown skeleton with the required fields |
+| `templates/definition-of-done-library.json` | JSON skeleton for the DoD library. |
+| `templates/definition-of-done-library.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable DoD library. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-definition-of-done-library.py` | Enforce Definition Of Done Library output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-definition-of-done-library.py` | Validates the DoD library against the JSON Schema. | After library update; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- upstream playbook: `p5-micro-agency-founder/Subcontractor task brief generation`
-- methodology family: `pro/ba/` (gap-p2 batch, F-059-063)
+- [[contractor-brief-template-self-contained]]
+- [[use-case-modeling]]
+- [[user-story-mapping]]
+- [[cr-impact-memo-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

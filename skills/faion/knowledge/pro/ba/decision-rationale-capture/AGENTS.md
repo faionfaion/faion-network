@@ -3,80 +3,99 @@ slug: decision-rationale-capture
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Decision Rationale Capture: codified ba practice that turns the recurring 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture' decision into a repeatable, auditable artefact.
-content_id: "fe140079552ed1bb"
-tags: [decision-rationale-capture, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Captures decision rationale in a versioned record: decision, alternatives considered, evidence, dissent, named owner — so the program can answer 'why did we do X?' a year later.
+content_id: "07f4e513cac95927"
+complexity: medium
+produces: decision-record
+est_tokens: 2400
+tags: [decision-record, rationale, ba, audit-trail, stakeholder-conflict]
 ---
 # Decision Rationale Capture
 
 ## Summary
 
-**One-sentence:** Decision Rationale Capture: codified ba practice that turns the recurring 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture' decision into a repeatable, auditable artefact.
+**One-sentence:** A versioned decision record capturing the decision, alternatives considered, evidence, dissent, and named owner so the program can audit 'why did we do X?' a year later.
 
-**One-paragraph:** Decision Rationale Capture addresses the gap surfaced by 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture'. Closest existing artefact is pro/ba-modeling/decision-analysis (decision tables, business rules) — that is logic modeling, not decision-record capture. Missing: a lightweight ADR-equivalent for BA-level decisions (scope-cuts, prioritisation choices, conflict resolutions) with options-considered + chosen + rationale + reversibility. Outsource BAs need this for audit and for the inevitable post-mortem. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Programs forget why they made decisions; the next change request asks 'wait, why did we exclude option B?' and no one remembers. This methodology pins decisions in a versioned record: decision text, alternatives considered, evidence cited, dissent acknowledged, named owner, last_reviewed. Output: a YAML / Markdown record per decision committed to the decision log.
+
+**Ефективно для:**
+
+- Architectural decisions on long-lived systems.
+- Vendor / build / buy decisions.
+- Compliance-relevant decisions audited later.
+- Stakeholder-conflict resolutions where dissent matters.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- the decision has long-term consequences (>3 months impact)
+- named owner accepts the record
+- evidence sources exist and are citable
+- the decision is non-trivial (alternatives existed)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- trivial day-to-day decisions — overhead > value
+- decision not yet made — use decision-options-memo-template instead
+- no named owner — fix ownership first
 
 ## Prerequisites
 
-- recent context for the 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| decision text | MD | BA / PM |
+| alternatives considered | MD | BA |
+| evidence sources | URLs / MD | BA |
+| named owner | org chart | BA / PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[decision-options-memo-template]] | Source of options + recommendation. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: bound scope, typed input, named owner, versioned record, detector-first | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for decision record: decision, alternatives, evidence, dissent, owner, version, last_reviewed | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: inputs invented, owner collapsed, post-hoc rationale, version frozen, scope creep | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: capture decision → list alternatives → cite evidence → record dissent + owner | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on long-term impact + alternatives presence + owner availability | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-decision authoring. |
+| `review_for_compliance` | opus | High-stakes regulated decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-rationale-capture.json` | JSON schema for the Decision Rationale Capture output contract |
-| `templates/decision-rationale-capture.md` | Markdown skeleton with the required fields |
+| `templates/decision-rationale-capture.json` | JSON skeleton for the decision record. |
+| `templates/decision-rationale-capture.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable decision record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-decision-rationale-capture.py` | Enforce Decision Rationale Capture output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-decision-rationale-capture.py` | Validates the decision record against the JSON Schema. | After decision is made; pre-commit on the decision log. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- upstream playbook: `role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture`
-- methodology family: `pro/ba/` (gap-p2 batch, F-059-063)
+- [[decision-options-memo-template]]
+- [[cr-impact-memo-template]]
+- [[cr-options-matrix-template]]
+- [[definition-of-done-library]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.
