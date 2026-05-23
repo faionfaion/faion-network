@@ -1,43 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Agent Prompt Handover Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Four testable rules every application of AI Agent Prompt Handover enforces. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The four rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every AI Agent Prompt Handover prompt is versioned in source control (file path + git SHA) — not edited in a chat tab and lost.</statement>
-      <rationale source="prompt engineering / Anthropic Prompt Library best practices">Untracked prompts produce unreproducible behavior. Bisecting a regression is impossible without history.</rationale>
+<text id="01-core-rules" title="AI Agent Prompt Handover Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every AI Agent Prompt Handover application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-four-artefacts" testable="true" depth="essential">
+      <statement>Handover MUST include 4 artefacts: prompt inventory, parameter map, runbook, validation suite. Missing any of the four is rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Each artefact answers a different inheritor question (what / how to fill / how to run / how to know it works); skipping any creates an immediate blocker for the new team.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Prompts ship with an eval harness: ≥10 golden test cases run on every change. No eval-less prompts in production.</statement>
-      <rationale source="Prompt eval research / Schuster et al., 2023">Eval-less prompts regress silently. The first user-reported issue is the first sign of breakage.</rationale>
+
+    <rule id="r2-prompt-inventory-shape" testable="true" depth="essential">
+      <statement>Inventory MUST list each prompt with name, purpose, owning agent (Claude / Cursor / Copilot), source path, current version, last-tested-on date. Bare lists are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Without the full inventory the inheritor cannot tell which prompts are alive vs deprecated; the dates surface staleness.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Cost and latency budget per call are declared in the prompt's metadata. Calls exceeding the budget are rejected.</statement>
-      <rationale source="FinOps for LLMs / OpenAI cost optimization guide">Unbounded prompt cost gets discovered at end-of-month billing. Pre-declared budget catches at integration time.</rationale>
+
+    <rule id="r3-parameter-map" testable="true" depth="essential">
+      <statement>Every parameter slot in every prompt MUST be documented (name, type, source, example value). Undocumented slots are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Prompts fail silently when slots are mis-filled; the parameter map is the only way to reproduce the working configuration.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Output schema is explicit (JSON schema, Pydantic, or grammar). Free-text outputs are forbidden where downstream parses.</statement>
-      <rationale source="structured output / Anthropic tool use, OpenAI function calling docs">Free-text outputs require fragile regex parsers. Schema-validated outputs fail fast on drift.</rationale>
+
+    <rule id="r4-validation-suite" testable="true" depth="essential">
+      <statement>Handover MUST include a runnable validation suite (&gt;=3 sample inputs per prompt with expected output checks). Suite-less handovers are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">The receiving team must be able to verify nothing broke in transit and detect regressions; without the suite, drift is invisible.</rationale>
     </rule>
+
+    <rule id="r5-named-prompt-owner" testable="true" depth="essential">
+      <statement>Each prompt MUST nominate a named in-house owner post-handover. 'Team' is rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Unowned prompts decay; the named owner is the renewal anchor.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Versioned prompt with eval reference">
-      <code lang="text"><![CDATA[
-Prompt: prompts/jtbd-synth.txt@a3f1c
-Model: claude-opus-4.6
-Budget: 4k tokens in, 1k out, $0.024 per call
-Eval: tests/jtbd-synth.spec.ts (10 golden cases)
-]]></code>
-      <note>Reproducible, costed, tested.</note>
-    </example>
-    <example type="bad" title="Chat-tab prompt">
-      <code lang="text"><![CDATA[
-(Pasted into Claude chat, no version history)
-]]></code>
-      <note>Unreproducible. Regression is silent.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

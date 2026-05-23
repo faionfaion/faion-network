@@ -3,80 +3,97 @@ slug: dark-knowledge-extraction-protocol
 tier: pro
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Dark Knowledge Extraction Protocol: codified sdd practice that turns the recurring 'p4-outsource-specialist/Pre-handover documentation pack' decision into a repeatable, auditable artefact.
-content_id: "befd8ef1a9861264"
-tags: [dark-knowledge-extraction-protocol, sdd, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Structured interview + repo-walk protocol that surfaces tacit, only-in-my-head context from a leaving senior into a written hand-over pack that survives the rotation."
+content_id: "7e53097baa6a3483"
+complexity: deep
+produces: report
+est_tokens: 4900
+tags: ["handover", "tacit-knowledge", "rotation", "sdd", "pro"]
 ---
 # Dark Knowledge Extraction Protocol
 
 ## Summary
 
-**One-sentence:** Dark Knowledge Extraction Protocol: codified sdd practice that turns the recurring 'p4-outsource-specialist/Pre-handover documentation pack' decision into a repeatable, auditable artefact.
+**One-sentence:** Structured interview + repo-walk protocol that surfaces tacit, only-in-my-head context from a leaving senior into a written hand-over pack that survives the rotation.
 
-**One-paragraph:** Dark Knowledge Extraction Protocol addresses the gap surfaced by 'p4-outsource-specialist/Pre-handover documentation pack'. Living-documentation methodology assumes you know what to write. Extracting tacit/only-in-my-head context is a separate, harder problem. Specific to senior rotations. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Living-documentation methodology assumes you already know what to write down. Extracting tacit / only-in-my-head context from a senior who is about to leave is a separate, harder problem and ships zero pages otherwise. This methodology defines the structured-interview protocol (5 themed sessions, 90 minutes each), the repo-walk pairing (interviewer + outgoing engineer review hot files together), the scribe contract (capture decisions, gotchas, war stories, and 'do not let the AI agent do X here'), and the receiving-team validation gate (incoming engineer applies the pack against 3 representative tasks before signoff). Output is a versioned hand-over pack indexed to repo paths and named contacts.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «dark knowledge extraction protocol» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p4-outsource-specialist/Pre-handover documentation pack' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- a senior with >=6 months on the codebase is leaving or rotating off.
+- no prior hand-over pack exists OR the existing one is >12 months stale.
+- a receiving engineer is identified and available for the validation sessions.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- the leaver has <2 months on the codebase -- their tacit knowledge is shallow; standard docs suffice.
+- the codebase is being deprecated -- write a postmortem-style sunset note instead.
+- the leaver refuses to participate -- this methodology cannot be coerced; escalate.
 
 ## Prerequisites
 
-- recent context for the 'p4-outsource-specialist/Pre-handover documentation pack' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Dark Knowledge Extraction Protocol task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdd/sdd` | parent role skill — provides the operating context for this methodology |
+| `pro/sdd/sdd/agents-md-for-receiving-team` | downstream consumer: pack is one of the inputs to the receiving-team's AGENTS.md. |
+| `pro/sdd/decision-log-reconstruction-from-git` | complementary methodology that reconstructs the 'why' from git history alongside this 'how' capture. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/dark-knowledge-extraction-protocol.json` | JSON schema for the Dark Knowledge Extraction Protocol output contract |
-| `templates/dark-knowledge-extraction-protocol.md` | Markdown skeleton with the required fields |
+| `templates/dark-knowledge-pack.md` | 5-session pack skeleton: architecture / hot files / on-call / contacts / AI rules. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-dark-knowledge-extraction-protocol.py` | Enforce Dark Knowledge Extraction Protocol output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-dark-knowledge-extraction-protocol.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdd/sdd/`
-- upstream playbook: `p4-outsource-specialist/Pre-handover documentation pack`
-- methodology family: `pro/sdd/` (gap-p2 batch, F-059-063)
+- [[agents-md-for-receiving-team]]
+- [[decision-log-reconstruction-from-git]]
+- [[client-conventions-as-code]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

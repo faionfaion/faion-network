@@ -3,77 +3,97 @@ slug: ai-agent-prompt-handover
 tier: pro
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Prompt-engineering pattern for ai agent prompt handover — reusable prompt skeleton, parameter slots, and validation pass keyed to a concrete deliverable.
-content_id: "56b2dc5c2f61822d"
-tags: [ai, prompt, sdlc-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Hand-over format for the AI-agent prompts, system rules, and guardrails the vendor team built, structured so a different in-house team can read, run, and modify them without rebuild."
+content_id: "333fa2adf938648c"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["handover", "prompt-engineering", "ai-agent", "sdlc-ai", "pro"]
 ---
 # AI Agent Prompt Handover
 
 ## Summary
 
-**One-sentence:** Prompt-engineering pattern for ai agent prompt handover — reusable prompt skeleton, parameter slots, and validation pass keyed to a concrete deliverable.
+**One-sentence:** Hand-over format for the AI-agent prompts, system rules, and guardrails the vendor team built, structured so a different in-house team can read, run, and modify them without rebuild.
 
-**One-paragraph:** Prompt-engineering pattern for ai agent prompt handover — reusable prompt skeleton, parameter slots, and validation pass keyed to a concrete deliverable. When the vendor leaves, the client inherits Copilot/Claude prompts and rules that the vendor team built. Nothing tells you how to format, transfer and document those for a different in-house team.
+**One-paragraph:** When a vendor leaves, the client inherits Copilot / Claude / Cursor prompts and rules the vendor's team built. Nothing tells you how to format, transfer, and document those for a different in-house team. This methodology defines the four required handover artefacts (prompt inventory, parameter map, run-book, validation suite), the round-trip check (incoming team runs the prompts blind against the validation suite), and the version + ownership cap. Output is a single `prompt-handover/` directory committed at engagement close.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «ai agent prompt handover» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- You build, refine, or hand off an LLM workflow that uses the prompt pattern described by ai agent prompt handover.
-- The pattern's output is structurally validated (schema, regex, or downstream system).
-- Cost and latency budget per call are known before authoring.
-- Versioning rule for the prompt is in place (Git, registry, or prompt-eval harness).
+- an engagement is closing AND code ownership transfers to a client in-house team.
+- the vendor built prompts / system rules / agent skills for the engagement.
+- the receiving team has at least one engineer who will own the prompts going forward.
 
 ## Skip If (ANY kills it)
 
-- One-off prompts used once and discarded — versioning overhead exceeds value.
-- Prompts whose output is consumed by humans only, with no downstream parser.
-- Provider-specific quirks change weekly — fold pattern into a registry, not in this methodology.
+- no agent prompts were built (engagement used vanilla off-the-shelf agents) -- there is nothing to hand over.
+- the receiving team has formally declined AI-agent inheritance -- ship a 'do not use these' notice.
+- the engagement contract owns the prompts as deliverables under a different format -- defer.
 
 ## Prerequisites
 
-- Target model and provider chosen; pricing visible.
-- Eval harness or smoke test script that can run the prompt in CI.
-- Versioning convention (Git, registry, or sidecar metadata).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the AI Agent Prompt Handover task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/sdlc-ai/ai-agent-guardrails-pack` | guardrails pack is one of the handover artefacts that this methodology references. |
+| `pro/sdd/sdd/agents-md-for-receiving-team` | AGENTS.md handover is the sibling for general project context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `prompt_compile` | haiku | Slot-fill from inputs |
-| `eval_run` | sonnet | Run the prompt against ground-truth set |
-| `pattern_refactor` | opus | Identify drift and rewrite skeleton |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/prompt-inventory.md` | Inventory + parameter map skeleton + validation-suite stub. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-agent-prompt-handover.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdlc-ai/`
-- peer methodologies: see siblings under `pro/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-agent-guardrails-pack]]
+- [[agents-md-for-receiving-team]]
+- [[faion-cli-agent-adapter-pattern]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

@@ -3,68 +3,97 @@ slug: ip-sensitive-workflow-design
 tier: pro
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Clean separation (repos, credentials, time-fenced work, IP-attribution log) for outsource specialists building side-SaaS without IP-conflict with day-job clients.
-content_id: "ec10154c11309970"
-tags: [ip-sensitive-workflow-design, sdd, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Clean separation (repos, credentials, time-fenced work, IP-attribution log) for outsource specialists building side-SaaS without IP conflict with day-job clients."
+content_id: "0341150328d93da3"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: ["ip", "side-saas", "outsource", "compliance", "sdd", "pro"]
 ---
-
 # IP-Sensitive Workflow Design
 
 ## Summary
 
-**One-sentence:** Clean separation (repos, credentials, time-fenced work, IP-attribution log) for outsource specialists building side-SaaS without IP-conflict with day-job clients.
+**One-sentence:** Clean separation (repos, credentials, time-fenced work, IP-attribution log) for outsource specialists building side-SaaS without IP conflict with day-job clients.
 
-**One-paragraph:** IP assignment clauses vs side-SaaS create a hazard: code 'on hours' may belong to client. Methodology that enforces clean separation is missing. Output: workflow plan + repo policy + credential vault + IP-attribution log.
+**One-paragraph:** IP assignment clauses on day-job contracts vs personal side-SaaS create a hazard: code written 'on hours' or on company gear may belong to the client. A methodology that enforces clean separation is missing. This methodology defines the four-layer separation (physical device, credential store, repo namespace, time fence) plus an IP-attribution log that records when, where, and on whose gear each commit happened. Output is a workflow plan + per-commit attribution evidence that an arbitration board could use.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «ip-sensitive workflow design» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- developer with day-job IP-assignment contract AND active side-SaaS
-- side project uses any tools, accounts, or time that could be claimed by employer
-- developer wants legal defensibility
+- you have a day-job employment or contractor agreement with an IP-assignment clause.
+- you are actively building or maintaining a personal side-SaaS / open-source project.
+- the side project is in a domain plausibly adjacent to the day-job client (raising hazard).
 
 ## Skip If (ANY kills it)
 
-- day-job has no IP-assignment clause (rare in 2026)
-- developer is a contractor with separate IP per project (different design)
-- side project is open-source under company-approved policy
+- your day-job contract carves out personal projects explicitly -- the hazard is already absent.
+- the side project is on a publicly published codebase pre-dating the day-job contract.
+- the side project is in a regime (jurisdiction / industry) where the IP clause is unenforceable -- consult counsel.
 
 ## Prerequisites
 
-- read of day-job employment + IP clauses
-- list of all tools/accounts used by both day-job + side
-- calendar visible to verify time-fencing
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the IP-Sensitive Workflow Design task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/sdd/sdd` | parent skill — provides operating context for this methodology |
-| `pro/marketing/freelance-saas-billing-decision` | peer methodology — produces inputs or consumes outputs |
-| `pro/marketing/worker-misclassification-self-audit` | peer methodology — produces inputs or consumes outputs |
+| `pro/sdd/client-conventions-as-code` | day-job engagement conventions live in this file; personal project conventions do not. |
+| `pro/sdd/soc2-evidence-generator-cli` | supplies the pattern for per-event evidence logs that the IP attribution log reuses. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/ip-workflow-plan.md` | Plan skeleton: 4 separation layers + per-commit attribution log columns. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-ip-sensitive-workflow-design.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/sdd/sdd/`
-- peer methodology: `pro/marketing/freelance-saas-billing-decision`
-- peer methodology: `pro/marketing/worker-misclassification-self-audit`
-- external: https://github.com/jamiehannaford/what-happens-when-employee-leaves; https://www.eff.org/issues/employee-tech-rights
+- [[client-conventions-as-code]]
+- [[soc2-evidence-generator-cli]]
+- [[dark-knowledge-extraction-protocol]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

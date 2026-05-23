@@ -3,78 +3,97 @@ slug: wtp-survey-questionnaire
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "37f5a10a7c38c4ec"
-summary: "Wtp Survey Questionnaire: produces a versioned, owner-signed artefact that closes the gap 'role-product-manager/Pricing experiment, hypothesis to result'."
-tags: [wtp-survey-questionnaire, research, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Van Westendorp + Gabor-Granger questionnaire ready to run, with sample-frame rules, anchoring-bias controls, and a scoring sheet that emits an acceptable-price-range plus optimal-price-point report."
+content_id: "d50f1de6350ca3b8"
+complexity: deep
+produces: report
+est_tokens: 4900
+tags: ["wtp", "pricing", "van-westendorp", "gabor-granger", "research", "pro"]
 ---
-# Wtp Survey Questionnaire
+# WTP Survey Questionnaire
 
 ## Summary
 
-**One-sentence:** Wtp Survey Questionnaire: produces a versioned, owner-signed artefact that closes the gap 'role-product-manager/Pricing experiment, hypothesis to result'.
+**One-sentence:** Van Westendorp + Gabor-Granger questionnaire ready to run, with sample-frame rules, anchoring-bias controls, and a scoring sheet that emits an acceptable-price-range plus optimal-price-point report.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-product-manager/Pricing experiment, hypothesis to result': survey-design exists generically; PMs need a ready-to-run Van Westendorp / Gabor-Granger questionnaire + scoring sheet. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a wtp survey questionnaire artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Survey design is generic; pricing surveys are not. PMs running their first willingness-to-pay study without this methodology produce numbers that justify whatever they already wanted to charge. This methodology ships a Van Westendorp (four-question price-sensitivity meter) + Gabor-Granger (purchase-intent at price ladder) questionnaire, defines the minimum sample (n >= 200 per segment), forbids anchoring (no 'our current price is X' in stimulus), and scores the responses into an acceptable price range, an indifference point, and an optimal price point with confidence interval.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «wtp survey questionnaire» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-product-manager/Pricing experiment, hypothesis to result' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- you are pricing a new product or repricing an existing one with material revenue exposure.
+- you can recruit n >= 200 in-target respondents per segment via panel, customer base, or list.
+- you have a working product description or prototype to show as stimulus (not just a name).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working wtp survey questionnaire artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- panel access is unavailable AND customer base is < 200 -- sample too small to score.
+- the product is enterprise B2B sold in <50 accounts/year -- WTP surveys mis-fit; interview pricing instead.
+- regulatory pricing (utility, insurance) where WTP is bounded by law, not preference.
 
 ## Prerequisites
 
-- recent context for the 'role-product-manager/Pricing experiment, hypothesis to result' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the WTP Survey Questionnaire task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/research/research` | parent domain group — provides operating context for Wtp Survey Questionnaire |
+| `pro/research/researcher` | parent role/operating context. |
+| `pro/research/researcher/survey-design` | general survey-design rules this pricing variant extends. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/wtp-survey-questionnaire.json` | JSON schema for the Wtp Survey Questionnaire output contract |
-| `templates/wtp-survey-questionnaire.md` | Markdown skeleton with the required fields |
+| `templates/wtp-questionnaire.md` | Four Van Westendorp questions + five-point Gabor-Granger ladder + segment screener. |
+| `templates/wtp-scoring.md` | Scoring sheet: acceptable range / indifference point / OPP / CI columns. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-wtp-survey-questionnaire.py` | Enforce Wtp Survey Questionnaire output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-wtp-survey-questionnaire.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/research/`
-- upstream playbook: `role-product-manager/Pricing experiment, hypothesis to result`
-- pro/research/role-product-manager
+- [[win-loss-interview-program]]
+- [[thematic-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

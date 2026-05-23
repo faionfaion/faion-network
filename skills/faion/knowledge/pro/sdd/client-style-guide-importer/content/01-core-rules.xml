@@ -1,32 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Client Style Guide Importer Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Client Style Guide Importer application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Client Style Guide Importer Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every Client Style Guide Importer application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Client Style Guide Importer only to a single instance of 'p4-outsource-specialist/Foreign-Client Engagement Bootstrap'. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="Anti-conflation pattern">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="r1-toc-aware-chunking" testable="true" depth="essential">
+      <statement>Extractor MUST respect heading structure (H1/H2/H3) when chunking; each chunk inherits the section path as a tag. Flat 1000-char chunks are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Style guides are hierarchical; section path is the only reliable provenance signal when a rule fires at validation.</rationale>
     </rule>
 
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="Contract-first artefacts">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="r2-clause-shape-detector" testable="true" depth="essential">
+      <statement>Only sentences matching the imperative-clause pattern (MUST / SHOULD / MUST NOT / SHOULD NOT) or the bullet/list normative form are emitted as candidate rules. Free prose is held in a 'context' bucket, not the rule output.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Style guides include rationale and history that are not rules; mixing them with rules pollutes the agent context window.</rationale>
     </rule>
 
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No 'team' or 'we' as owner.</statement>
-      <rationale source="RACI / single-throat-to-choke">Plural ownership = no ownership. Future readers need a named human to chase when the artefact is stale.</rationale>
+    <rule id="r3-manual-review-gate" testable="true" depth="essential">
+      <statement>Every machine-extracted candidate rule MUST be reviewed by a human (engagement lead or client owner) before it lands in `conventions.yaml`. Auto-merge is rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">LLM extraction has false-positive imperative detection (advice phrased as 'must'); human review is the only viable filter at current model quality.</rationale>
     </rule>
 
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) must be flagged on read.</statement>
-      <rationale source="Anti-decay practice">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="r4-round-trip-check" testable="true" depth="essential">
+      <statement>After emitting `conventions.yaml`, the pipeline MUST regenerate Markdown from the YAML and diff it against the original. Drift &gt; 5 lines per page = re-extract.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Round-trip detects extractor regressions and lets the client trust the file as a faithful summary.</rationale>
     </rule>
 
-    <rule id="r5-traceable-decision" testable="true" depth="essential">
-      <statement>Every decision in the output cites the input artefact(s) that justified it. Untraceable decisions are rejected.</statement>
-      <rationale source="Audit-trail discipline">Without traceability, the artefact becomes opinion. Citations make the output reviewable by a future operator with no context.</rationale>
+    <rule id="r5-source-section-tag" testable="true" depth="essential">
+      <statement>Every emitted rule MUST carry a `source.section` and `source.line` field pointing back to the original guide. Un-tagged rules are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Without source tags, the client cannot answer 'where did this come from' and the file becomes folklore on the next engagement.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
     </rule>
 
   </section>
@@ -34,5 +39,6 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -3,80 +3,96 @@ slug: client-conventions-as-code
 tier: pro
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Client Conventions As Code: codified sdd practice that turns the recurring 'p4-outsource-specialist/Foreign-Client Engagement Bootstrap' decision into a repeatable, auditable artefact.
-content_id: "39fa3530559230c7"
-tags: [client-conventions-as-code, sdd, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Codifies a foreign client's lint, branch-naming, commit-format, PR-template, and review-SLA rules into a versioned `conventions.yaml` that AI agents and humans read BEFORE faion defaults."
+content_id: "f0b466c3c3c1afad"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: ["conventions", "client-engagement", "config-as-code", "sdd", "pro"]
 ---
 # Client Conventions As Code
 
 ## Summary
 
-**One-sentence:** Client Conventions As Code: codified sdd practice that turns the recurring 'p4-outsource-specialist/Foreign-Client Engagement Bootstrap' decision into a repeatable, auditable artefact.
+**One-sentence:** Codifies a foreign client's lint, branch-naming, commit-format, PR-template, and review-SLA rules into a versioned `conventions.yaml` that AI agents and humans read BEFORE faion defaults.
 
-**One-paragraph:** Client Conventions As Code addresses the gap surfaced by 'p4-outsource-specialist/Foreign-Client Engagement Bootstrap'. Every foreign client has its own lint rules, branch naming, commit format, PR template, review-SLA. Faion currently delivers faion-default opinions; on a client engagement those collide. We need a project-scoped overrides file (conventions.yaml) that the AI agent reads BEFORE faion defaults, plus tooling to bootstrap it from a client style guide. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Every foreign client has its own lint rules, branch naming, commit format, PR template, review-SLA. Faion ships faion-default opinions; on a client engagement those collide. This methodology defines the per-client `conventions.yaml` shape that overrides faion defaults, the precedence rule (client > faion > engine), the change-control gate (any new rule requires client signoff), and the bootstrapping path from a client style guide. The output is a versioned, signed `conventions.yaml` plus the lint/AI-agent rule files it generates.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «client conventions as code» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p4-outsource-specialist/Foreign-Client Engagement Bootstrap' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- engagement onboards into an existing client codebase with documented or de-facto conventions.
+- an AI coding agent (Copilot, Claude Code, Cursor, Continue) will write code in the repo.
+- the engagement runs >2 weeks -- one-shot patches do not need a conventions.yaml.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- the client has zero documented conventions AND refuses to define them -- escalate the gap before encoding.
+- the engagement is read-only audit work with no code-writes.
+- the client mandates a different governance tool (e.g. their own pre-commit setup) -- defer to it.
 
 ## Prerequisites
 
-- recent context for the 'p4-outsource-specialist/Foreign-Client Engagement Bootstrap' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Client Conventions As Code task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdd/sdd` | parent role skill — provides the operating context for this methodology |
+| `pro/sdd/client-style-guide-importer` | the upstream importer that converts a client style guide into the initial `conventions.yaml`. |
+| `pro/sdlc-ai/ai-agent-guardrails-pack` | the guardrails pack that consumes the AI-agent rules generated from this file. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/client-conventions-as-code.json` | JSON schema for the Client Conventions As Code output contract |
-| `templates/client-conventions-as-code.md` | Markdown skeleton with the required fields |
+| `templates/conventions.yaml` | Conventions skeleton: precedence + signoff + sourced rules. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-client-conventions-as-code.py` | Enforce Client Conventions As Code output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-client-conventions-as-code.py` | Validate the config artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdd/sdd/`
-- upstream playbook: `p4-outsource-specialist/Foreign-Client Engagement Bootstrap`
-- methodology family: `pro/sdd/` (gap-p2 batch, F-059-063)
+- [[client-style-guide-importer]]
+- [[ai-agent-guardrails-pack]]
+- [[dark-knowledge-extraction-protocol]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

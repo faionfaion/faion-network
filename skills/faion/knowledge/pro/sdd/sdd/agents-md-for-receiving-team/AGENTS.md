@@ -3,77 +3,97 @@ slug: agents-md-for-receiving-team
 tier: pro
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agents md for receiving team that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "bdd6fb5c4e6c3776"
-tags: [agents, playbook, sdd]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Hand-over AGENTS.md / CLAUDE.md template that captures the receiving team's AI-agent rituals, gotchas, and 'do not let the agent do X here' clauses for engagements transitioning out."
+content_id: "4a7e41e3d0901c3d"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["agents-md", "handover", "ai-agent", "sdd", "pro"]
 ---
-# Agents Md For Receiving Team
+# AGENTS.md for Receiving Team
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agents md for receiving team that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Hand-over AGENTS.md / CLAUDE.md template that captures the receiving team's AI-agent rituals, gotchas, and 'do not let the agent do X here' clauses for engagements transitioning out.
 
-**One-paragraph:** End-to-end playbook for agents md for receiving team that walks an operator from trigger to closed outcome with named artefacts at each step. On exit, the leaving dev should hand the receiving team an AGENTS.md / CLAUDE.md tuned to THEIR AI agent setup. faion has project-docs-convention (geek tier, AI-internal) but no methodology for authoring a transition-grade AGENTS.md that captures rituals, gotchas, and 'do not let the AI agent do X here'.
+**One-paragraph:** Faion has `project-docs-convention` (geek tier, AI-internal). It does not cover the transition-grade AGENTS.md a leaving dev should hand the receiving team: a document tuned to the new team's AI-agent setup, capturing rituals, gotchas, and explicit no-go zones for the agent. This methodology defines the four mandatory sections (project context, agent rituals, gotchas + landmines, no-go zones), the receiving-team validation gate (incoming team uses the file on a real task within 7 days), and the version lifecycle. Output is a versioned AGENTS.md committed to the receiving team's repo.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «agents.md for receiving team» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agents md for receiving team end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- an engagement / employment is transitioning code ownership to a different team.
+- the receiving team uses AI coding agents (Copilot, Claude Code, Cursor, Continue).
+- the repo's existing AGENTS.md/CLAUDE.md is missing OR tuned to the leaving team's setup, not the new one.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- the receiving team explicitly refuses AI-agent use -- write a human-only runbook instead.
+- the engagement was <2 weeks -- there is not enough accumulated context to warrant the format.
+- the receiving team has its own preferred handover convention -- defer to it.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the AGENTS.md for Receiving Team task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdd/sdd/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/sdd/dark-knowledge-extraction-protocol` | this AGENTS.md consumes the dark-knowledge pack as one of its inputs. |
+| `pro/sdd/decision-log-reconstruction-from-git` | supplies the 'why' the agent rituals exist. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/AGENTS-handover.md` | Four-section skeleton: context / rituals / gotchas / no-go zones. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agents-md-for-receiving-team.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdd/sdd/`
-- peer methodologies: see siblings under `pro/sdd/sdd/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[dark-knowledge-extraction-protocol]]
+- [[decision-log-reconstruction-from-git]]
+- [[client-conventions-as-code]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

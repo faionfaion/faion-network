@@ -1,53 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="SOC2 Evidence Generator CLI — Core Rules" version="1.0.0" est_tokens="950" depth="essential">
-  <summary>Testable rules every `faion soc2 evidence` invocation must enforce. These are HARD rules — developer or CI configuration cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every merged PR touching files declared in-scope by the control map MUST emit a stub; the merge action fails closed if stub generation errors.</statement>
-      <rationale source="SOC 2 CC8.1 change management">Missing evidence on a merged change is the single most common audit finding; failing-closed prevents the gap from forming.</rationale>
+<text id="01-core-rules" title="SOC 2 Evidence Generator CLI Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every SOC 2 Evidence Generator CLI application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-pr-as-unit" testable="true" depth="essential">
+      <statement>Each merged PR MUST emit exactly one evidence stub. Multiple stubs per PR (e.g. one per commit) are rejected as noise; zero stubs are rejected as gap.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">PR-as-unit aligns with the change-management boundary auditors already sample; commit-level noise overwhelms the store; missing stubs are audit findings.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The stub MUST contain: control_ids[], actor (verified Git identity), merge_commit_sha, diff_hash (SHA-256 of the unified diff), reviewer_approvals[], ci_run_ids[], merged_at (UTC ISO 8601), and a cryptographic signature over the canonical JSON.</statement>
-      <rationale source="NIST SP 800-92 / SOC 2 evidence completeness">Auditors challenge any field they cannot independently verify; the seven fields cover the standard chain-of-custody questions.</rationale>
+
+    <rule id="r2-signed-stub" testable="true" depth="essential">
+      <statement>Every stub MUST be cryptographically signed at write time with a key in the evidence-signing keyring. Unsigned stubs are rejected at the store ingress.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Unsigned evidence can be forged after the fact; signing is the auditor-acceptable tamper-evidence layer.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Control labels MUST come from the closed vocabulary defined in the upstream `soc2-control-to-repo-artifact-map`; unknown labels reject the stub and surface the diff for relabeling.</statement>
-      <rationale source="Controlled-vocabulary discipline (ISO 25964)">Free-form labels produce orphan stubs that the binder cannot aggregate; closed vocab forces the conversation before merge.</rationale>
+
+    <rule id="r3-control-labels-required" testable="true" depth="essential">
+      <statement>Every stub MUST carry &gt;=1 control label from the engagement's control vocabulary. Stubs without labels are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Without labels, the stub cannot be queried by control during an audit; the unlabeled stub is functionally invisible.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Stubs MUST be written to an append-only store with immutability guarantees (S3 Object Lock, immutable bucket, git ref under signed-tag protection); deletion of any past stub fires a P0 alert.</statement>
-      <rationale source="SOC 2 CC7.2 detection of unauthorized changes">Evidence whose history can be rewritten silently is functionally absent; immutability is the only credible defense.</rationale>
+
+    <rule id="r4-approval-link-included" testable="true" depth="essential">
+      <statement>Stubs MUST embed the PR approval link (GitHub/GitLab review URL) + reviewer identity. Stubs without approval evidence are rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">The approver is the human attestation; SOC 2 CC8.1 / CC3.2 cares about that signature specifically.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>The CLI MUST output a stable, sortable evidence_id (e.g., `evid_{merged_at}_{short_sha}`) and MUST be idempotent: re-running on the same merge_commit_sha returns the original evidence_id without writing a duplicate.</statement>
-      <rationale source="Idempotent-side-effect API design">Webhook retries and re-runs are a fact of life; non-idempotent emit produces duplicate evidence that confuses the auditor and inflates storage cost.</rationale>
+
+    <rule id="r5-immutable-store" testable="true" depth="essential">
+      <statement>Stubs land in an append-only, retention-protected store (S3 Object Lock, immutable bucket, write-once table). Mutable storage is rejected.</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Auditors require evidence-store immutability to accept stubs as evidence rather than 'developer notes'.</rationale>
     </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-20 chunk-01 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="json"><![CDATA[
-{
-  "evidence_id": "evid_2026-05-20T14:22:01Z_a3f9c12",
-  "control_ids": ["CC6.1", "CC8.1"],
-  "actor": "alice@acme.com",
-  "merge_commit_sha": "a3f9c12d4b...",
-  "diff_hash": "sha256:7c2a4f...",
-  "reviewer_approvals": ["bob@acme.com"],
-  "ci_run_ids": ["gh-actions/run/12345"],
-  "merged_at": "2026-05-20T14:22:01Z",
-  "signature": "sigstore:..."
-}
-]]></code>
-      <note>Closed-vocab labels, signed, idempotent id, append-only target. The auditor runs one query and gets the change story in seconds.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-PR #482 merged. See Slack #compliance for context.
-]]></code>
-      <note>No control mapping, no signed integrity, no reviewer record. The auditor cannot verify any claim; the finding writes itself.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="../../geek/infra/soc2-control-to-repo-artifact-map/" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

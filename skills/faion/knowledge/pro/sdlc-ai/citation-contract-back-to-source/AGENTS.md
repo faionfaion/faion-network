@@ -3,80 +3,97 @@ slug: citation-contract-back-to-source
 tier: pro
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Citation Contract Back To Source: codified sdlc-ai practice that turns the recurring 'p7-llm-agent-developer/Make faion a programmatic context source for an agent' decision into a repeatable, auditable artefact.
-content_id: "4f522c00ad7f0fb3"
-tags: [citation-contract-back-to-source, sdlc-ai, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Forced citation format `[faion:<slug>@<version>]` that AI agents emit when they use faion methodology content, with verifier that resolves the slug and rejects fabricated citations."
+content_id: "9d8916aed7a9c95c"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["citation", "attribution", "agent-output", "sdlc-ai", "pro"]
 ---
-# Citation Contract Back To Source
+# Citation Contract Back to Source
 
 ## Summary
 
-**One-sentence:** Citation Contract Back To Source: codified sdlc-ai practice that turns the recurring 'p7-llm-agent-developer/Make faion a programmatic context source for an agent' decision into a repeatable, auditable artefact.
+**One-sentence:** Forced citation format `[faion:<slug>@<version>]` that AI agents emit when they use faion methodology content, with verifier that resolves the slug and rejects fabricated citations.
 
-**One-paragraph:** Citation Contract Back To Source addresses the gap surfaced by 'p7-llm-agent-developer/Make faion a programmatic context source for an agent'. Strategic value of P7 to faion: 'what they cite, others cite.' But no methodology defines how an agent should emit `[faion:slug@v]` citations, what fields are required, or how to verify a citation. Without this contract, P7's agents will paraphrase faion without attribution and the network effect dies. Should ship as a forced output-schema fragment plus a CLI verifier. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Strategic value of P7 (LLM-agent developers) to faion: 'what they cite, others cite.' But no methodology defines how an agent should emit `[faion:slug@v]` citations, what fields are required, or how to verify a citation. Without this contract, agents paraphrase faion without attribution and the network effect dies. This methodology ships as a forced output-schema fragment for agent prompts plus a CLI verifier that walks the citation, resolves it against the local content store, and rejects fabrications. Output is a stable citation format + verifier script + integration recipe for Claude Agent SDK, LangChain, and OpenAI Assistants.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «citation contract back to source» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p7-llm-agent-developer/Make faion a programmatic context source for an agent' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- you build an AI agent that consumes faion methodology content as context.
+- the agent's outputs are read by humans OR other agents downstream.
+- you have write access to the agent's output schema / system prompt.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- your agent reads faion content but never produces text outputs for further consumption.
+- the agent is a one-off internal tool with no downstream consumers.
+- your output schema is owned by an external system that forbids citation fields.
 
 ## Prerequisites
 
-- recent context for the 'p7-llm-agent-developer/Make faion a programmatic context source for an agent' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Citation Contract Back to Source task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdlc-ai/sdd` | parent role skill — provides the operating context for this methodology |
+| `pro/sdlc-ai/methodology-as-json-feed` | supplies the JSON feed the verifier resolves citations against. |
+| `pro/sdlc-ai/faion-cli-agent-adapter-pattern` | adapter examples show how to wire the citation contract into Claude / LangChain / OpenAI. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/citation-contract-back-to-source.json` | JSON schema for the Citation Contract Back To Source output contract |
-| `templates/citation-contract-back-to-source.md` | Markdown skeleton with the required fields |
+| `templates/citation-format.md` | Citation format specification + verifier recipe + 3 adapter snippets. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-citation-contract-back-to-source.py` | Enforce Citation Contract Back To Source output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-citation-contract-back-to-source.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdlc-ai/sdd/`
-- upstream playbook: `p7-llm-agent-developer/Make faion a programmatic context source for an agent`
-- methodology family: `pro/sdlc-ai/` (gap-p2 batch, F-059-063)
+- [[methodology-as-json-feed]]
+- [[faion-cli-agent-adapter-pattern]]
+- [[ai-debt-detection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
