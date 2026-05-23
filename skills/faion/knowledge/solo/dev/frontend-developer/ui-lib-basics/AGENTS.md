@@ -3,72 +3,102 @@ slug: ui-lib-basics
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A UI component library provides reusable, accessible interface primitives (buttons, inputs, modals) built once and shared across features.
-content_id: "c79d2795c907d0d5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: UI library foundation spec: directory layout, primitive set (button/input/modal), token bridge, Storybook stories, and CI gates (a11y + visual regression).
+content_id: "a42eb13f791fcf0d"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [ui-library, component-library, storybook, accessibility, design-system]
 ---
 # UI Component Library Basics
 
 ## Summary
 
-**One-sentence:** A UI component library provides reusable, accessible interface primitives (buttons, inputs, modals) built once and shared across features.
+**One-sentence:** UI library foundation spec: directory layout, primitive set (button/input/modal), token bridge, Storybook stories, and CI gates (a11y + visual regression).
 
-**One-paragraph:** A UI component library provides reusable, accessible interface primitives (buttons, inputs, modals) built once and shared across features. The library enforces a three-layer hierarchy: primitives/ (single responsibility), composite/ (composed from primitives), and patterns/ (complex UI patterns). Components must use forwardRef, named exports only, and ship with Storybook stories and tests.
+**One-paragraph:** UI library foundation spec: directory layout, primitive set (button/input/modal), token bridge, Storybook stories, and CI gates (a11y + visual regression). Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script `scripts/validate-ui-lib-basics.py` enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- UI Component Library Basics — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- Multiple features or apps share UI primitives and you keep re-implementing buttons, modals, inputs.
-- Team or agent fleet is producing inconsistent patterns; a centralized library enforces a standard.
-- You need accessibility built in once (focus rings, ARIA wiring) instead of audited per PR.
-- Setting up a monorepo where primitives live in a shared packages/ui/.
+- The triggering activity for `ui-lib-basics` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Multiple features need shared primitives that diverge if built ad-hoc per route.
+- Design tokens already exist (or are about to) and need a host layer.
+- Accessibility quality must be enforced at component (not page) level.
 
 ## Skip If (ANY kills it)
 
-- Single small app where YAGNI applies; a flat components/ folder is enough.
-- Fast-evolving product still finding its visual language; premature abstraction freezes decisions.
-- You can adopt shadcn/ui or an existing library — building from scratch rarely pays off solo.
-- Marketing site with brochure pages; library overhead exceeds reuse.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Single feature with no reuse horizon — ship vanilla components.
+- External design system (Material, Mantine) covers the surface — build composition, not primitives.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ui-lib-patterns]] | Workflow context: related methodology in the same family |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-ui-lib-basics-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-ui-lib-basics.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ui-lib-basics.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[ui-lib-patterns]]
+- [[storybook-setup]]
+- [[shadcn-ui]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (reuse surface, tokens, a11y scope) to internal-library / external-wrap / skip. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

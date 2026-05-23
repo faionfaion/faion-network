@@ -3,74 +3,98 @@ slug: design-tokens-implementation
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design tokens form a three-layer hierarchy — primitives (raw hex/rem), semantic (bg.
-content_id: "40a8e728842b2b33"
-tags: [design-tokens, style-dictionary, token-pipeline, theming, multi-platform]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Implementation playbook for design tokens: tokens.json schema, style-dictionary (or equivalent) build pipeline, CI sync to platform outputs, and a Figma-to-code round-trip; produces a working tokens repo with build + lint + sync scripts."
+content_id: "4c44cc487d5b3a55"
+complexity: deep
+produces: code
+est_tokens: 4900
+tags: ["frontend", "solo", "design-tokens", "implementation", "style-dictionary"]
 ---
 # Design Tokens Implementation
 
 ## Summary
 
-**One-sentence:** Design tokens form a three-layer hierarchy — primitives (raw hex/rem), semantic (bg.
+**One-sentence:** Implementation playbook for design tokens: tokens.json schema, style-dictionary (or equivalent) build pipeline, CI sync to platform outputs, and a Figma-to-code round-trip; produces a working tokens repo with build + lint + sync scripts.
 
-**One-paragraph:** Design tokens form a three-layer hierarchy — primitives (raw hex/rem), semantic (bg.surface.default), and component (button.primary.bg) — built from JSON/DTCG sources and compiled to CSS custom properties, TypeScript, iOS Swift, and Android XML via Style Dictionary or Terrazzo. App code consumes only the semantic and component layers. Mode switching (light/dark/high-contrast) lives in separate mode files per mode; the semantic alias layer resolves at build time. Without a token pipeline, color and spacing scatter across component files and become impossible to theme, migrate, or verify for WCAG contrast.
+**One-paragraph:** Implementation playbook for design tokens: tokens.json schema, style-dictionary (or equivalent) build pipeline, CI sync to platform outputs, and a Figma-to-code round-trip; produces a working tokens repo with build + lint + sync scripts. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Component-library authors publishing tokens to npm consumers.
+- Cross-platform shells needing identical tokens in web + iOS + Android.
+- Figma + code design-engineering loops where tokens must round-trip.
+- Solo founders avoiding manual sync between design and code.
 
 ## Applies If (ALL must hold)
 
-- Multi-platform product (web + iOS + Android) needing a single source of truth for color, typography, and spacing.
-- Migrating ad-hoc CSS variables or Sass $color-* maps to a centralized pipeline.
-- Wiring Tailwind theme, CSS custom properties, and native platform outputs from one JSON source without duplication.
-- Light/dark/high-contrast/brand modes via a semantic alias layer that switches at build time.
-- Connecting Figma Variables → Tokens Studio → Style Dictionary → app codegen for design-to-dev automation.
-- Teams that need auditable token changes (git diff on JSON before and after rebuilds).
+- A design-tokens-basics spec already exists or is being authored in parallel.
+- Build tooling (npm scripts, Make, Just) is in use.
+- At least one consumer output is required (CSS variables, JS constants, native platform constants).
+- CI is configured.
 
 ## Skip If (ANY kills it)
 
-- Single-app, single-platform project with stable styling — over-engineering for solos. Use Tailwind config or CSS custom properties directly.
-- Prototype/MVP where design churn outpaces token churn — the abstraction adds overhead without payoff.
-- Static marketing sites with no design system to maintain — direct CSS suffices.
-- When the organization will never use more than one platform or theme variant.
+- Spec is not yet drafted — finish design-tokens-basics first.
+- Only one consumer (CSS variables in one app) — direct CSS variables file is fine.
+- Org uses a hosted token platform (Tokens Studio Cloud, Specify) — different methodology.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[design-tokens-basics]] | upstream context this methodology builds on |
+| [[css-in-js-basics]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-design-tokens-implementation-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-design-tokens-implementation.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-design-tokens-implementation.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[design-tokens-basics]]
+- [[css-in-js-basics]]
+- [[css-in-js-advanced]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

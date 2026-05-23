@@ -3,72 +3,101 @@ slug: tailwind
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Tailwind CSS is a utility-first framework configured via tailwind.
-content_id: "eccdfbff4ca03e50"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tailwind CSS setup spec: tailwind.config.{ts,js} content paths, design-token theme extension, plugin set, and PurgeCSS-equivalent JIT discipline.
+content_id: "1c1eb7f05cc8852a"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [tailwind, css, utility-first, design-tokens, styling]
 ---
 # Tailwind CSS
 
 ## Summary
 
-**One-sentence:** Tailwind CSS is a utility-first framework configured via tailwind.
+**One-sentence:** Tailwind CSS setup spec: tailwind.config.{ts,js} content paths, design-token theme extension, plugin set, and PurgeCSS-equivalent JIT discipline.
 
-**One-paragraph:** Tailwind CSS is a utility-first framework configured via tailwind.config.ts (v3) or a CSS-first @theme block (v4). Configure content globs explicitly to include all templates; theme tokens (colors, spacing, radii) live in the config or @theme, never as hardcoded hex in components. Use prettier-plugin-tailwindcss to canonicalize class order. @apply is allowed only in globals.css for thin reset helpers (≤3 utilities) — abstractions belong in components.
+**One-paragraph:** Tailwind CSS setup spec: tailwind.config.{ts,js} content paths, design-token theme extension, plugin set, and PurgeCSS-equivalent JIT discipline. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script `scripts/validate-tailwind.py` enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- Tailwind CSS — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- Greenfield app or rewrite where you control HTML and want utility-first styling.
-- Multi-developer or multi-agent project needing a stable, greppable styling surface.
-- Fast iteration on visual design with token control via config.
-- Pairing with React, Vue, Svelte, or HTMX where templating lives near markup.
+- The triggering activity for `tailwind` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Project uses a framework Tailwind supports (Next.js, Vite, Astro, Remix, Nuxt, Gatsby).
+- Design tokens (colors, spacing, type) need a single config source rather than scattered CSS.
+- Bundle-size discipline matters — only-used classes must reach production.
 
 ## Skip If (ANY kills it)
 
-- Brownfield app with mature CSS-in-JS or BEM conventions — mixing causes specificity wars.
-- Email templates, PDFs, or print-first surfaces (Tailwind's reset and JIT do not target these).
-- Library/SDK shipping CSS — utility classes leak global resets onto consumer apps.
-- Strict design system that bans "magic numbers" — utilities make ad-hoc spacing too easy.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Existing CSS-in-JS system at scale — dual styling systems multiply maintenance cost.
+- Output target is plain HTML email — utility classes do not survive email-client transforms.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[tailwind-architecture]] | Workflow context: related methodology in the same family |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-tailwind-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-tailwind.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tailwind.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[tailwind-architecture]]
+- [[tailwind-patterns]]
+- [[shadcn-ui]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (framework, token surface, theming need) to vanilla-tailwind / theme-extended / multi-theme. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

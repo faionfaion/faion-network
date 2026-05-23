@@ -1,51 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="design-tokens-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for design-tokens-implementation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Design Tokens Implementation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the Design Tokens Implementation methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Organise tokens in three layers: primitives (raw hex/rem values), semantic (intent-named aliases like bg.surface.default), and component (component-scoped like button.primary.bg). App code must consume only semantic and component layers.</statement>
-      <rationale source="v1-source">Consuming primitives directly couples components to raw values. When a brand color changes, only the primitive file and semantic aliases need updating — not every component. The semantic layer is the public contract between design and code.</rationale>
+    <rule id="tokens-json-schema-validated" testable="true" depth="essential">
+      <statement>tokens.json MUST validate against a JSON Schema (W3C Design Tokens spec or local schema). Hand-edited tokens without validation are rejected.</statement>
+      <rationale source="Internal practice">Schema validation catches naming typos that snake through reviews.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Never expose primitive tokens to app code. Components must reference semantic and component tokens only.</statement>
-      <rationale source="v1-source">Primitive tokens are implementation details. Semantic tokens are the public contract. Separating them enables rebrand work and mode switching without rewriting components.</rationale>
+    <rule id="build-deterministic" testable="true" depth="essential">
+      <statement>Build pipeline MUST produce byte-identical outputs given identical inputs. Non-determinism (timestamps in headers, random ordering) is rejected.</statement>
+      <rationale source="Internal practice">Determinism enables CI sync detection.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Store each mode (light, dark, high-contrast, brand) in a separate file (tokens/modes/light.json, dark.json). Never inline multi-mode values as {light: ..., dark: ...} inside a single token entry.</statement>
-      <rationale source="v1-source">Inlined modes drift: updating one side silently breaks the other's contrast pair. Separate files make mode changes auditable in PR diffs. Style Dictionary builds each mode into a separate CSS selector or JS export.</rationale>
+    <rule id="ci-detects-drift" testable="true" depth="essential">
+      <statement>CI MUST run the build and diff against committed outputs; mismatches block merge.</statement>
+      <rationale source="Drift detection">without it, generated outputs rot.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Generated files (CSS, JS, XML, Swift) must be in dist/ and listed in .gitignore unless this package IS the published artifact. Rebuild in CI; never hand-edit generated outputs.</statement>
-      <rationale source="v1-source">Agents that commit generated CSS alongside source JSON create dirty repo state on the next build. The source of truth is the JSON; outputs are artifacts. CI should be the only place that builds.</rationale>
+    <rule id="figma-sync-bidirectional-documented" testable="true" depth="essential">
+      <statement>If Figma is in the loop, the sync direction (Figma → code, code → Figma, both) MUST be documented + tooled (Tokens Studio plugin or similar).</statement>
+      <rationale source="Internal practice">Ambiguous direction = both sides edit and clobber each other.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>For packages published to npm (e.g., @company/design-tokens), commit the dist/ folder so consumers get built artifacts. For internal monorepo usage, add dist/ to .gitignore.</statement>
-      <rationale source="v1-source">npm packages ship artifacts; internal monorepos rebuild per project. Make this distinction explicit in your repo's README.</rationale>
+    <rule id="alias-resolution-tested" testable="true" depth="essential">
+      <statement>Build pipeline tests assert alias tokens resolve to base values; broken aliases are rejected.</statement>
+      <rationale source="Internal practice">Silent alias breakage is the #2 token-system regression.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Validate token JSON against a schema in CI before running the build. Catch broken alias references ({color.brand.500} cycles) before they produce cryptic build errors.</statement>
-      <rationale source="v1-source">Style Dictionary silently drops or errors on unresolvable references. A JSON schema check fails fast with a readable message. Catch the error early.</rationale>
+    <rule id="changelog-on-token-change" testable="true" depth="essential">
+      <statement>PRs that change tokens MUST update CHANGELOG with semver bump (token rename = major, value tweak = minor, new token = minor).</statement>
+      <rationale source="Internal practice">Consumers depend on token stability; un-documented changes break them.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>For new projects, use the W3C DTCG format ($value, $type). For Tokens Studio exports, add @tokens-studio/sd-transforms to the Style Dictionary pipeline; without it, the build silently drops styles.</statement>
-      <rationale source="v1-source">Tokens Studio uses value and type (no $ prefix). Missing the transform adapter produces empty CSS with no error. The $ prefix is the W3C standard and ensures future tool compatibility.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running Design Tokens Implementation under degraded conditions.</statement>
+      <rationale source="Internal">decision-tree contract. The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Pin the Style Dictionary major version explicitly. v3 uses formatter: function({dictionary, file}); v4 uses format: ({dictionary, options}) =&gt; string. Do not mix APIs.</statement>
-      <rationale source="v1-source">The API breaking change between v3 and v4 is silent. Agents trained on v3 examples emit broken v4 configs that fail at build time. Pinning the version prevents accidental upgrade breakage.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>CSS custom properties output must include all semantic tokens at :root and all mode-specific overrides at [data-theme="..."] selectors.</statement>
-      <rationale source="v1-source">Web apps toggle [data-theme] attribute to switch modes. CSS custom properties cascade, so dark mode only needs to override changed variables; light values from :root carry over.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Generate Style Dictionary JS output in nested form, then flatten before loading into tailwind.config.js. Do not generate flat output directly; the nested form is reusable across platforms.</statement>
-      <rationale source="v1-source">Nested output is platform-agnostic. Flattening at the point of consumption (Tailwind config) keeps the token source versatile.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Configure at least two outputs: CSS for web and JS for tooling/Tailwind. iOS/Android outputs are optional but valuable for multi-platform products.</statement>
-      <rationale source="v1-source">CSS custom properties are the standard for web. JavaScript modules are needed for Tailwind and runtime consumption in JS. Native platform outputs keep mobile teams in sync with web design.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -3,71 +3,101 @@ slug: storybook-setup
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Storybook 8 with CSF 3 (Meta<typeof Component>, StoryObj, tags: ['autodocs']) wired to @storybook/addon-a11y, @storybook/addon-interactions, and Chromatic for visual regression.
-content_id: "a2a8771be488ea98"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Storybook 8 + CSF 3 config spec: Meta<typeof Component>, autodocs tags, a11y + interactions addons, and Chromatic visual-regression baseline.
+content_id: "f2e6a1fb6acd8f85"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [storybook, csf3, component-testing, visual-regression, accessibility]
 ---
 # Storybook Setup
 
 ## Summary
 
-**One-sentence:** Storybook 8 with CSF 3 (Meta<typeof Component>, StoryObj, tags: ['autodocs']) wired to @storybook/addon-a11y, @storybook/addon-interactions, and Chromatic for visual regression.
+**One-sentence:** Storybook 8 + CSF 3 config spec: Meta<typeof Component>, autodocs tags, a11y + interactions addons, and Chromatic visual-regression baseline.
 
-**One-paragraph:** Storybook 8 with CSF 3 (Meta<typeof Component>, StoryObj, tags: ['autodocs']) wired to @storybook/addon-a11y, @storybook/addon-interactions, and Chromatic for visual regression. Stories co-located with components. @storybook/test-runner runs headless Playwright over all stories in CI. Every story must render without console errors before merge.
+**One-paragraph:** Storybook 8 + CSF 3 config spec: Meta<typeof Component>, autodocs tags, a11y + interactions addons, and Chromatic visual-regression baseline. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script `scripts/validate-storybook-setup.py` enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- Storybook Setup — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- Initial Storybook 8.x install on Vite/Webpack/Next.js project.
-- Wiring .storybook/main.ts and .storybook/preview.ts for theming, viewports, backgrounds, a11y addon.
-- Adding visual, a11y, and interaction testing (Chromatic / test-runner / addon-a11y).
-- Setting up CSF 3 stories and tags: ['autodocs'] for a typed component library.
+- The triggering activity for `storybook-setup` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Project ships a reusable UI surface or design-system layer.
+- Visual regressions need a CI gate (Chromatic, Loki, or Percy).
+- Accessibility checks (axe) must run per-component, not only end-to-end.
 
 ## Skip If (ANY kills it)
 
-- Project ships only one or two pages — Ladle boots faster with less config.
-- No design system or shared component library yet — Storybook's value lives in component reuse.
-- Team uses playground/-style Next.js dev pages and would duplicate that effort.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Single-page MVP with no shared components — Storybook overhead unjustified.
+- Team has already standardised on Ladle/Histoire — do not double-stack.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ui-lib-basics]] | Workflow context: related methodology in the same family |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-storybook-setup-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-storybook-setup.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-storybook-setup.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[ui-lib-basics]]
+- [[ui-lib-patterns]]
+- [[shadcn-ui]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (component surface, VR need, a11y scope) to storybook-csf3 / ladle / skip. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

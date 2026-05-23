@@ -3,72 +3,102 @@ slug: shadcn-ui
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: shadcn/ui is a copy-in component system: primitives are copied to components/ui/ via the CLI (npx shadcn@latest add), not installed as an npm dependency.
-content_id: "0d4fb80a35d6d1f5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: shadcn/ui spec: vendored copy-in components (npx shadcn add), Tailwind + Radix primitives, CVA variants, and per-component file ownership in components/ui/.
+content_id: "a54b389ae6cc891a"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [shadcn-ui, components, tailwind, radix, accessibility]
 ---
 # shadcn/ui
 
 ## Summary
 
-**One-sentence:** shadcn/ui is a copy-in component system: primitives are copied to components/ui/ via the CLI (npx shadcn@latest add), not installed as an npm dependency.
+**One-sentence:** shadcn/ui spec: vendored copy-in components (npx shadcn add), Tailwind + Radix primitives, CVA variants, and per-component file ownership in components/ui/.
 
-**One-paragraph:** shadcn/ui is a copy-in component system: primitives are copied to components/ui/ via the CLI (npx shadcn@latest add), not installed as an npm dependency. Components are built on Radix headless primitives for accessibility, styled with Tailwind using CSS variable tokens (HSL triplets, not hex) in globals.css, and composed into feature components under components/<feature>/. Never edit components/ui/ after the initial add — treat it as vendored.
+**One-paragraph:** shadcn/ui spec: vendored copy-in components (npx shadcn add), Tailwind + Radix primitives, CVA variants, and per-component file ownership in components/ui/. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script `scripts/validate-shadcn-ui.py` enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- shadcn/ui — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- React app on Tailwind needing a stylable, accessible component baseline you can fork freely.
-- Greenfield SaaS or dashboards where you control design tokens via CSS variables.
-- Design system in flux: copy-in lets each project diverge without npm dep drift.
-- You want Radix primitives' a11y wiring without committing to a closed component library.
+- The triggering activity for `shadcn-ui` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Project uses Tailwind CSS and React (or a CSS-in-JS variant that supports Tailwind).
+- Team wants direct ownership of component source (vendoring) over npm dependency risk.
+- Accessibility primitives (focus-trap, keyboard nav) are required and Radix coverage matches.
 
 ## Skip If (ANY kills it)
 
-- Non-React stacks (Vue, Svelte, vanilla) — community ports lack agent-friendly tooling.
-- Need vendor-supported components with SLAs — use MUI, Mantine, or Ant Design.
-- Strict design system with zero tolerance for upstream drift; each copy creates a fork.
-- Extreme bundle-size constraints; CVA + tailwind-merge add measurable overhead.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Stack lacks Tailwind — shadcn assumes utility-first styling.
+- Team requires a versioned/locked npm package for compliance — vendored copy-in is the wrong shape.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[shadcn-ui-architecture]] | Workflow context: related methodology in the same family |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-shadcn-ui-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-shadcn-ui.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-shadcn-ui.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[shadcn-ui-architecture]]
+- [[tailwind]]
+- [[ui-lib-basics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (styling system, owned-vs-imported preference, a11y scope) to shadcn-vendor / radix-only / external-lib. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

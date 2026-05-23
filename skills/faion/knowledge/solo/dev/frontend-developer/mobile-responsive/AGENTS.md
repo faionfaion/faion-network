@@ -3,70 +3,99 @@ slug: mobile-responsive
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Mobile-first responsive design: base styles are unconditional (mobile), min-width queries layer up for larger screens.
-content_id: "70d07f8d3bcdef0c"
-tags: [responsive-design, mobile-first, css, container-queries, accessibility]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Mobile-first responsive design spec: breakpoint catalogue, container-query strategy, touch-target minimums, viewport-meta + safe-area handling, and per-component breakpoint policy; produces a spec the codebase asserts against in lint + tests."
+content_id: "e0ca6a4cb5fc96f0"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["frontend", "solo", "responsive", "mobile", "breakpoints"]
 ---
-# Mobile-First Responsive Design
+# Mobile Responsive
 
 ## Summary
 
-**One-sentence:** Mobile-first responsive design: base styles are unconditional (mobile), min-width queries layer up for larger screens.
+**One-sentence:** Mobile-first responsive design spec: breakpoint catalogue, container-query strategy, touch-target minimums, viewport-meta + safe-area handling, and per-component breakpoint policy; produces a spec the codebase asserts against in lint + tests.
 
-**One-paragraph:** Mobile-first responsive design: base styles are unconditional (mobile), min-width queries layer up for larger screens. Breakpoints are derived from content, not device names. clamp() replaces stepwise media queries for typography and spacing. Container queries (@container) replace viewport queries inside components. Touch targets meet WCAG 2.5.8 minimum of 44x44 CSS px.
+**One-paragraph:** Mobile-first responsive design spec: breakpoint catalogue, container-query strategy, touch-target minimums, viewport-meta + safe-area handling, and per-component breakpoint policy; produces a spec the codebase asserts against in lint + tests. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- SaaS dashboards bolted onto a mobile reality after desktop-first build.
+- Marketing pages converting on mobile traffic.
+- Component libraries publishing breakpoint conventions to consumers.
+- Solo founders pre-empting mobile-first audits.
 
 ## Applies If (ALL must hold)
 
-- Greenfield site/app — set viewport meta, mobile-first base CSS, container queries from the first commit.
-- Auditing an existing layout for breakpoint regressions, touch-target sizes, and CLS on small screens.
-- Migrating from viewport-based to container-query-based responsive design.
-- Configuring Tailwind breakpoints to match real content breakpoints, not device widths.
+- Project targets mobile + desktop users.
+- Operator can enforce breakpoint conventions in CSS / token system.
+- Tooling supports container queries OR a polyfill strategy is acceptable.
+- Touch + keyboard inputs both matter for the product.
 
 ## Skip If (ANY kills it)
 
-- App is locked to a single device class (kiosk, tablet-only internal tool) — fixed layout is simpler.
-- Framework already enforces mobile-first and the site passes Lighthouse mobile — adding breakpoints is busywork.
+- Desktop-only product (CAD-style tool, IDE) — overhead exceeds value.
+- Pure web-view inside a native app — host app constrains responsiveness.
+- Project uses a UI framework that ships its own breakpoint system (Bootstrap, MUI) — adopt theirs.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[design-tokens-basics]] | upstream context this methodology builds on |
+| [[css-in-js-basics]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-mobile-responsive-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-mobile-responsive.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mobile-responsive.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[design-tokens-basics]]
+- [[css-in-js-basics]]
+- [[accessibility]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
