@@ -3,71 +3,94 @@ slug: finops-devops-cost-commitments
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Three commitment discount mechanisms cover different workload shapes: Reserved Instances (RI) for stable instance-family workloads (up to 75% savings), Savings Plans for flexible compute baseline (up to 72%), and Spot Instances for fault-tolerant batch/ML (70-90%).
-content_id: "c36fd17b10f1c60a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Decision record for cloud commitment portfolio (Reserved Instances, Savings Plans, Spot) sized to workload shape after rightsizing."
+content_id: "273ad8e7f7f88332"
+complexity: medium
+produces: decision-record
+est_tokens: 4000
 tags: [finops, reserved-instances, savings-plans, spot-instances, cloud-cost]
 ---
 # Cloud Commitment Discounts: RIs, Savings Plans, and Spot
 
 ## Summary
 
-**One-sentence:** Three commitment discount mechanisms cover different workload shapes: Reserved Instances (RI) for stable instance-family workloads (up to 75% savings), Savings Plans for flexible compute baseline (up to 72%), and Spot Instances for fault-tolerant batch/ML (70-90%).
+**One-sentence:** Decision record for cloud commitment portfolio (Reserved Instances, Savings Plans, Spot) sized to workload shape after rightsizing.
 
-**One-paragraph:** Three commitment discount mechanisms cover different workload shapes: Reserved Instances (RI) for stable instance-family workloads (up to 75% savings), Savings Plans for flexible compute baseline (up to 72%), and Spot Instances for fault-tolerant batch/ML (70-90%). Apply in that order after rightsizing; committing to oversized instances wastes both compute and discount opportunity.
+**One-paragraph:** Decision record for cloud commitment portfolio (Reserved Instances, Savings Plans, Spot) sized to workload shape after rightsizing. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `decision-record` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-finops-devops-cost-commitments.py` before publication.
+
+**Ефективно для:**
+
+- Planування RI/SP/Spot портфеля після rightsizing.
+- Квартальний перегляд commitment-покриття та утилізації.
+- Вибір між Convertible та Standard RI під час архітектурного refactor.
 
 ## Applies If (ALL must hold)
 
-- 30+ days of stable workload data available — required to identify baseline vs variable usage before committing.
-- Baseline compute represents more than $5k/month On-Demand — below that, Savings Plan overhead outweighs savings.
-- Batch jobs, CI/CD runners, or ML training that tolerate interruption — these are Spot candidates (70-90% savings).
-- After rightsizing — commit to the rightsized baseline, never the over-provisioned original.
+- Input matches the methodology scope (finops-devops-cost-commitments) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `decision-record` before publication.
 
 ## Skip If (ANY kills it)
 
-- Less than 30 days of usage data — commit to wrong baseline and you overpay or underbuy.
-- Workloads under active architectural rethink — a refactor may eliminate the service entirely; committed RIs become stranded.
-- Highly variable workloads with no stable floor — Savings Plans need a minimum hourly floor; if hourly spend varies 10x, even a conservative floor may underutilize.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| 90-day cost-and-usage report | CSV/Parquet from cloud billing export | AWS Cost Explorer / GCP BQ billing |
+| Workload stability classification | table of services tagged stable/variable/batch | team architecture review |
+| Rightsizing output | list of instance families and target sizes | finops-devops-cost-rightsizing |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[finops-devops-cost-rightsizing]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-decision-record-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | ADR-style skeleton with context / options / decision / consequences |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-finops-devops-cost-commitments.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[finops-devops-cost-rightsizing]]
+- [[finops-devops-cost-tagging]]
+- [[finops-devops-cost-kubernetes]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `savings-plan-floor` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="docker Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for docker as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Docker Core Operations Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns from real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the latest tag for base images or pushed images.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>latest is mutable — a base image update can change behavior without any change to the Dockerfile. Pin specific versions (python:3.12.7-slim) for reproducible builds.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running containers as root user.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Root inside container maps to root on host if namespace isolation is bypassed. Create a non-root user in the Dockerfile and set USER before the final CMD.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Storing secrets in ENV instructions or build ARGs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ENV values are visible in docker inspect, image history, and any process that reads /proc/self/environ. Use Docker secrets, runtime environment injection, or an external vault at container startup.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Missing HEALTHCHECK in production images.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without HEALTHCHECK, orchestrators (Kubernetes, ECS, Swarm) cannot distinguish a running-but-broken container from a healthy one. Containers stuck in crash-loops with no readiness signals cause silent traffic loss.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="root-user-runtime" severity="high">
+      <symptom>Container escape gains root on host namespace.</symptom>
+      <root-cause>No `USER` directive.</root-cause>
+      <fix>Add `RUN adduser app &amp;&amp; USER app`.</fix>
+    </antipattern>
+    <antipattern id="single-stage-build" severity="medium">
+      <symptom>Production image carries 800 MB of build tools.</symptom>
+      <root-cause>No multi-stage split.</root-cause>
+      <fix>Builder stage → runtime copy `--from=builder`.</fix>
+    </antipattern>
+    <antipattern id="secret-in-arg" severity="high">
+      <symptom>AWS key leaked in image layer.</symptom>
+      <root-cause>`ARG AWS_KEY=...`.</root-cause>
+      <fix>Use `RUN --mount=type=secret`.</fix>
+    </antipattern>
+    <antipattern id="no-dockerignore" severity="medium">
+      <symptom>Build context &gt; 500 MB; CI slow.</symptom>
+      <root-cause>`.dockerignore` missing.</root-cause>
+      <fix>Add `.dockerignore` excluding `.git`, `node_modules`, etc.</fix>
+    </antipattern>
+
   </section>
 </text>

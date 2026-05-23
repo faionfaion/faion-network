@@ -3,72 +3,95 @@ slug: finops-devops-cost-rightsizing
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Rightsizing reduces compute and database instance costs 15-25% by matching resource allocation to actual utilization.
-content_id: "92e8d7cea203e0b2"
-tags: [finops, rightsizing, cloud-cost, waste-elimination, cloud-optimization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Rightsizing report matching compute and database allocations to observed P95 utilisation, with downsize and family-change recommendations."
+content_id: "686c5e70fe8d8582"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [finops, rightsizing, cpu, memory, rds]
 ---
-# Cloud Cost Rightsizing and Waste Elimination
+# Compute and Database Rightsizing
 
 ## Summary
 
-**One-sentence:** Rightsizing reduces compute and database instance costs 15-25% by matching resource allocation to actual utilization.
+**One-sentence:** Rightsizing report matching compute and database allocations to observed P95 utilisation, with downsize and family-change recommendations.
 
-**One-paragraph:** Rightsizing reduces compute and database instance costs 15-25% by matching resource allocation to actual utilization. Waste elimination (unattached volumes, idle IPs, orphaned snapshots) delivers quick 10-20% savings with low risk. Together these are the highest-ROI first actions in any FinOps engagement.
+**One-paragraph:** Rightsizing report matching compute and database allocations to observed P95 utilisation, with downsize and family-change recommendations. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `report` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-finops-devops-cost-rightsizing.py` before publication.
+
+**Ефективно для:**
+
+- Перехід з над-провіженованих інстансів до P95-розміру.
+- Joint rightsizing compute + storage для RDS / Cloud SQL.
+- Перенесення JVM/stateless workloads на Graviton.
 
 ## Applies If (ALL must hold)
 
-- Average CPU utilization below 20% or memory below 30% across production instances — provider tools surface these automatically.
-- Dev/test environments running 24/7 with no scheduling — scheduling to office hours yields 64% savings on dev compute.
-- Unattached EBS volumes, unused Elastic IPs, orphaned snapshots older than 90 days present in the account.
-- Post-migration environments where instance types were lifted-and-shifted from on-prem without rightsizing.
-- Before purchasing Reserved Instances or Savings Plans — commit to rightsized baseline, not the current wasteful one.
+- Input matches the methodology scope (finops-devops-cost-rightsizing) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `report` before publication.
 
 ## Skip If (ANY kills it)
 
-- Instances with spiky, unpredictable CPU (e.g. event-driven services) — utilization averages are misleading; rightsize only after enabling autoscaling.
-- Stateful services mid-migration — measure steady state first, then rightsize.
-- Production databases before a load test validates the new size in staging.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| 14-day P95/P99 CPU + memory + IOPS metrics | CloudWatch / Stackdriver / Prometheus export | monitoring stack |
+| Instance inventory | instance_id → family → size table | cloud inventory API |
+| Workload SLOs | latency / throughput targets per service | product owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[finops-devops-cost-commitments]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-report-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/report.md` | Report skeleton with period / findings / recommendations / savings |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-finops-devops-cost-rightsizing.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[finops-devops-cost-commitments]]
+- [[finops-devops-cost-kubernetes]]
+- [[finops-devops-cost-tagging]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `p95-not-average` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="finops-devops-cost-kubernetes Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for finops-devops-cost-kubernetes. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Cost Optimisation Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the finops-devops-cost-kubernetes methodology, each paired with rationale and source reference.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Replace single-pool Kubernetes clusters with at minimum three node pools: cpu-intensive (compute-optimized: c2/c3 on GCP, c5/c6 on AWS), memory-intensive (high-memory: n2-highmem on GCP, r5/r6 on AWS), and general (cost-optimized: e2 on GCP, m5/t3 on AWS). Enable Cluster Autoscaler on all pools. Configure PodAffinity or NodeSelector to route workloads to matching pools.</statement>
-      <rationale source="v1-source">GKE benchmark: 500 uniform n2-standard-8 nodes at 25% CPU → 280 nodes across workload-specific pools at 55% CPU. Monthly savings: $57,600 (48%). The split allows each pool to autoscale independently based on its actual workload type.</rationale>
+
+    <rule id="workload-pool-segmentation" testable="true" depth="essential">
+      <statement>Split node pools by workload class — system, on-demand stateful, Spot batch, GPU — and taint Spot + GPU pools so only tolerating workloads land on them.</statement>
+      <rationale source="faion-network methodology base v1.1">Mixing classes blocks autoscaler from down-scaling and forces over-provisioning for the worst-case pod.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Create a dedicated Spot node pool for batch, ML training, and CI/CD workloads. Taint the pool with `cloud.google.com/gke-spot=true:NoSchedule` (GCP) or `kubernetes.io/arch=spot:NoSchedule` (EKS Spot). Add corresponding Toleration to batch job specs. Ensure batch jobs have pod disruption budgets and restart policies set to OnFailure to handle preemption gracefully.</statement>
-      <rationale source="v1-source">The taint ensures services never land on the Spot pool accidentally. The toleration ensures batch jobs explicitly opt in. OnFailure restart policy handles the 2-minute preemption notice by allowing the scheduler to replace the pod on an On-Demand node if no Spot capacity is available.</rationale>
+    <rule id="request-limit-ratio" testable="true" depth="essential">
+      <statement>Set CPU requests to observed P95 and memory requests + limits equal; do not set CPU limits unless throttling is required.</statement>
+      <rationale source="faion-network methodology base v1.1">Memory limit ≠ request triggers OOMKill on bursts; CPU limits at request level cause throttling under load.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Deploy VPA in Recommendation mode on all deployments for 7 days before any other optimization. Review VPA recommendations for pods where current requests exceed actual usage by 50%+ — these are the highest-impact rightsizing candidates. Enable VPA Auto mode only on stateless deployments (not databases, not single-replica stateful sets) after validating Recommendation mode for 7 days.</statement>
-      <rationale source="v1-source">Recommendation mode shows the gap without risk. Auto mode restarts pods to apply new requests — acceptable for stateless services, potentially disruptive for stateful ones. 7-day observation captures weekly traffic patterns before committing to new limits.</rationale>
+    <rule id="hpa-on-business-metric" testable="true" depth="essential">
+      <statement>Use HPA on a business-level metric (RPS, queue depth) or P95 CPU, with min replicas ≥ 2 for production workloads and stabilizationWindowSeconds set on scale-down.</statement>
+      <rationale source="faion-network methodology base v1.1">CPU-only HPA lags traffic spikes; aggressive scale-down without a stabilisation window thrashes the cluster.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>After 30 days of running workload-specific node pools with autoscaling, identify the stable baseline: the minimum node count observed over the 30-day window for each pool. Purchase 1-year Committed Use Discounts covering 80% of this baseline. Leave 20% on On-Demand to absorb measurement error. Review and adjust commitments quarterly.</statement>
-      <rationale source="v1-source">CUDs commit to vCPU and memory amounts, not specific instance types — more flexible than VM-level RIs. Purchasing after 30 days of autoscaling ensures the baseline reflects actual workload requirements post-optimization, not the original over-provisioned size.</rationale>
+    <rule id="namespace-quotas" testable="true" depth="essential">
+      <statement>Apply ResourceQuota + LimitRange in every tenant namespace and enforce required cost-allocation labels at admission.</statement>
+      <rationale source="faion-network methodology base v1.1">Without quotas one team's runaway job can starve the whole cluster; labels keep chargeback honest.</rationale>
     </rule>
+    <rule id="kubecost-coverage-target" testable="true" depth="essential">
+      <statement>Track utilisation per workload via kubecost or OpenCost and alert when cluster CPU utilisation falls below 35% or memory below 50% sustained over 7 days.</statement>
+      <rationale source="faion-network methodology base v1.1">Sub-threshold utilisation is the kubernetes-specific signal that node-pool sizing has drifted from reality.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

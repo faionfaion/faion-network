@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="finops-devops-cost-kubernetes Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for finops-devops-cost-kubernetes as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Kubernetes Cost Optimisation Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real finops-devops-cost-kubernetes deployments, each paired with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Applying VPA Auto mode to PostgreSQL, Redis, or Kafka pods.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>VPA Auto mode restarts pods to apply new resource requests. Stateful services cannot tolerate unplanned restarts — use VPA Recommendation mode only for stateful workloads; apply changes manually during maintenance windows.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="uniform-node-pools" severity="high">
+      <symptom>Cluster sits at 25% CPU / 40% memory utilisation despite frequent autoscaling.</symptom>
+      <root-cause source="faion-network field reports">Single uniform node pool forces autoscaler to size for the worst-case pod.</root-cause>
+      <fix>Split pools by workload class; taint Spot + GPU pools; size pool defaults to median pod shape.</fix>
+    </antipattern>
+
+    <antipattern id="missing-resource-requests" severity="high">
+      <symptom>Noisy-neighbour CPU contention; intermittent OOMKills.</symptom>
+      <root-cause source="faion-network field reports">Containers missing requests / limits; scheduler can't pack honestly.</root-cause>
+      <fix>Set requests = P95 observed; memory request = memory limit; admission controller enforces both.</fix>
+    </antipattern>
+
+    <antipattern id="hpa-on-cpu-only" severity="medium">
+      <symptom>Pod count lags traffic spikes; users see 503 before scale-out completes.</symptom>
+      <root-cause source="faion-network field reports">HPA tied to CPU only; CPU saturates after the user impact.</root-cause>
+      <fix>Add a business metric (RPS or queue depth) via Custom or External metric and lower scale-out latency.</fix>
+    </antipattern>
+
+    <antipattern id="no-pdb" severity="medium">
+      <symptom>Cluster upgrade or node drain takes the whole service down for the maintenance window.</symptom>
+      <root-cause source="faion-network field reports">Deployment has &gt; 1 replicas but no PodDisruptionBudget.</root-cause>
+      <fix>Define a PDB with minAvailable ≥ 1; raise replica count if PDB starves voluntary disruption.</fix>
+    </antipattern>
+
   </section>
 </text>

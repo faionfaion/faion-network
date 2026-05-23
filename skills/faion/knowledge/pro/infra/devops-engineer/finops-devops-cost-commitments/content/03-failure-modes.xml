@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="finops-devops-cost-commitments Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for finops-devops-cost-commitments as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Cloud Commitment Discounts: RIs, Savings Plans, and Spot Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real finops-devops-cost-commitments deployments, each paired with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running stateful services (PostgreSQL, Redis, Kafka) on Spot instances without a promotion-to-On-Demand fallback.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>2-minute termination notice is insufficient for graceful database shutdown and data flush to storage. Use On-Demand or Reserved for stateful services; Spot only for stateless or checkpointed workloads.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using a single Spot pool (one instance type, one AZ) for a Spot fleet.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When the provider reclaims that pool, 100% of the fleet is interrupted simultaneously. Diversify across 3+ instance types and 2+ AZs to reduce fleet-wide interruption probability below 1%.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="stateful-on-spot" severity="high">
+      <symptom>PostgreSQL or Redis runs on Spot instances; nightly outage during reclaim.</symptom>
+      <root-cause source="faion-network field reports">2-minute termination notice is insufficient for graceful database shutdown.</root-cause>
+      <fix>Move stateful services to On-Demand or Reserved; Spot only for stateless / checkpointed workloads.</fix>
+    </antipattern>
+
+    <antipattern id="single-spot-pool" severity="medium">
+      <symptom>Spot fleet collapses simultaneously when the provider reclaims the single pool.</symptom>
+      <root-cause source="faion-network field reports">Single instance type + single AZ in the Spot configuration.</root-cause>
+      <fix>Diversify across 3+ instance types and 2+ AZs to keep fleet interruption &lt; 1%.</fix>
+    </antipattern>
+
+    <antipattern id="ri-bought-pre-rightsize" severity="medium">
+      <symptom>RIs cover oversized instances; rightsizing later strands the discount.</symptom>
+      <root-cause source="faion-network field reports">Commitment purchased before the rightsizing pass.</root-cause>
+      <fix>Run rightsizing first; commit to the post-rightsize baseline only.</fix>
+    </antipattern>
+
+    <antipattern id="savings-plan-over-commit" severity="medium">
+      <symptom>Savings Plan utilisation drifts below 80% after a business slowdown.</symptom>
+      <root-cause source="faion-network field reports">Coverage set to the 90-day average instead of the 5th percentile floor.</root-cause>
+      <fix>Recalculate to 5th percentile; reduce coverage to 50-60% of the floor at renewal.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -3,73 +3,94 @@ slug: gcp
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GCP production deployments: use Autopilot mode for GKE (pay-per-pod, no node management) unless GPU workloads or privileged containers are required; use Workload Identity Federation to eliminate service account keys for all external workloads (GitHub Actions, GitLab CI, AWS); use Private Service Connect instead of VPC Peering for Google-managed service access.
-content_id: "978bacb0d60c7800"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Decision record selecting GKE Autopilot vs Standard, Cloud Run sizing, Workload Identity Federation and Private Service Connect for production GCP workloads."
+content_id: "3832a3057e05703a"
+complexity: medium
+produces: decision-record
+est_tokens: 4000
 tags: [gcp, kubernetes, cloud-run, workload-identity, iam]
 ---
-# GCP
+# GCP Production Deployments
 
 ## Summary
 
-**One-sentence:** GCP production deployments: use Autopilot mode for GKE (pay-per-pod, no node management) unless GPU workloads or privileged containers are required; use Workload Identity Federation to eliminate service account keys for all external workloads (GitHub Actions, GitLab CI, AWS); use Private Service Connect instead of VPC Peering for Google-managed service access.
+**One-sentence:** Decision record selecting GKE Autopilot vs Standard, Cloud Run sizing, Workload Identity Federation and Private Service Connect for production GCP workloads.
 
-**One-paragraph:** GCP production deployments: use Autopilot mode for GKE (pay-per-pod, no node management) unless GPU workloads or privileged containers are required; use Workload Identity Federation to eliminate service account keys for all external workloads (GitHub Actions, GitLab CI, AWS); use Private Service Connect instead of VPC Peering for Google-managed service access. Never assign primitive IAM roles (Owner, Editor, Viewer) to service accounts.
+**One-paragraph:** Decision record selecting GKE Autopilot vs Standard, Cloud Run sizing, Workload Identity Federation and Private Service Connect for production GCP workloads. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `decision-record` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-gcp.py` before publication.
+
+**Ефективно для:**
+
+- Greenfield GKE / Cloud Run deployment на GCP.
+- Зняття service-account ключів через Workload Identity Federation.
+- Вибір між VPC Peering та Private Service Connect.
 
 ## Applies If (ALL must hold)
 
-- Deploying containerized workloads on GKE (prefer Autopilot)
-- Running serverless containers with Cloud Run
-- Authenticating GitHub Actions or other OIDC providers to GCP without long-lived keys
-- Multi-project GCP organization requiring Shared VPC and centralized networking
-- BigQuery/analytics workloads requiring data warehouse integration
+- Input matches the methodology scope (gcp) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `decision-record` before publication.
 
 ## Skip If (ANY kills it)
 
-- Multi-cloud architecture requiring vendor-neutral IaC — use Terraform + cloud-agnostic abstractions instead of GCP-specific tools (Deployment Manager, Cloud Build)
-- Workloads requiring Windows Server containers — GKE has limited Windows node support
-- Very small workload (< $50/month projected) where the Autopilot per-pod pricing exceeds a minimal VM — Cloud Run or a single e2-micro may be more cost-effective
-- Team has no GCP IAM expertise — incorrect organization-level IAM bindings are hard to audit and undo
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload classification | table of services with state / GPU / privilege flags | architecture review |
+| Org hierarchy snapshot | folder + project list | gcloud organizations list |
+| Identity inventory | list of external CI / SaaS callers | security team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp-gke-architecture]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-decision-record-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | ADR-style skeleton with context / options / decision / consequences |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[gcp-gke-architecture]]
+- [[gcp-landing-zone]]
+- [[gcp-network-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `autopilot-default` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

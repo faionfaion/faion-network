@@ -3,69 +3,96 @@ slug: docker-language-templates
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Copy-paste Dockerfile and Docker Compose templates for the most common language and framework combinations.
-content_id: "76aa0421b86a5830"
-tags: [docker, dockerfile, docker-compose, templates, containerization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a curated Dockerfile + Compose template per language (Python, Node, Go, Rust, Java, static) — multi-stage, non-root, health-checked, with optimization defaults applied.
+content_id: "64134d2ec33c15c6"
+complexity: light
+produces: code
+est_tokens: 4200
+tags: [docker, dockerfile, templates, python, node, go, rust, java]
 ---
 # Docker Language Templates
 
 ## Summary
 
-**One-sentence:** Copy-paste Dockerfile and Docker Compose templates for the most common language and framework combinations.
+**One-sentence:** Generates a curated Dockerfile + Compose template per language (Python, Node, Go, Rust, Java, static) — multi-stage, non-root, health-checked, with optimization defaults applied.
 
-**One-paragraph:** Copy-paste Dockerfile and Docker Compose templates for the most common language and framework combinations. Every template uses multi-stage builds, non-root users, HEALTHCHECK instructions, and pinned base images. Pick the template matching your stack and apply the optimization and security methodologies on top.
+**One-paragraph:** Generates a curated Dockerfile + Compose template per language (Python, Node, Go, Rust, Java, static) — multi-stage, non-root, health-checked, with optimization defaults applied. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Drop-in Dockerfile для Python (slim), Node (alpine LTS), Go (distroless), Rust (distroless), Java (jre-slim).
+- Compose dev stack з bind-mounts + db service.
+- HEALTHCHECK + non-root за замовчуванням.
+- Base-image policy enforced per template.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new service — copy the matching template and customize entry point and port.
-- Auditing an existing Dockerfile against best practices — compare line-by-line with the reference template.
-- Onboarding junior engineers — templates serve as canonical examples that encode team standards.
+- Service is written in one of the supported languages.
+- Team accepts the opinionated template defaults (or will document deviations).
+- Production image must follow the org base-image allowlist.
 
 ## Skip If (ANY kills it)
 
-- When the language or framework is not listed — derive from the generic multi-stage template and document the specialization.
-- When the app has unusual runtime requirements (GPU, FUSE mounts, privileged sockets) — start from the template but expect significant adaptation.
+- Language not supported by the catalogue — author a tailored Dockerfile from `docker` instead.
+- Existing Dockerfile already conforms to optimization + security baselines.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Language + framework | free-form (Python+FastAPI, Node+Next, Go+net/http, Java+Spring) | Application team |
+| Base image allowlist | list | Platform / Security |
+| Runtime port + healthcheck path | table | Application team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/devops-engineer/docker/AGENTS.md` | Docker baseline |
+| `pro/infra/devops-engineer/docker-image-optimization/AGENTS.md` | Optimization baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-docker-language-templates` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-language-templates.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- Parent: `pro/infra/devops-engineer/AGENTS.md`
+- [[docker]]
+- [[docker-image-optimization]]
+- [[docker-security-hardening]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

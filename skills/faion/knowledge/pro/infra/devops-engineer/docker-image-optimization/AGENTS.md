@@ -3,72 +3,95 @@ slug: docker-image-optimization
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Reduce production Docker image size 70-90% and accelerate CI builds by applying multi-stage builds, strategic layer ordering, cache mounts,.
-content_id: "5e733016f5dadd66"
-tags: [docker, image-optimization, multi-stage-build, layer-caching, containerization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Docker image optimization plan: target size, base-image choice, multi-stage layering, cache mounts, .dockerignore, and per-language minification recipes.
+content_id: "7c60b57b65e41739"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [docker, optimization, image-size, multi-stage, cache]
 ---
 # Docker Image Optimization
 
 ## Summary
 
-**One-sentence:** Reduce production Docker image size 70-90% and accelerate CI builds by applying multi-stage builds, strategic layer ordering, cache mounts,.
+**One-sentence:** Generates a Docker image optimization plan: target size, base-image choice, multi-stage layering, cache mounts, .dockerignore, and per-language minification recipes.
 
-**One-paragraph:** Reduce production Docker image size 70-90% and accelerate CI builds by applying multi-stage builds, strategic layer ordering, cache mounts, .dockerignore, and the smallest viable base image. These techniques compound: a 900 MB Python image becomes 50-120 MB with correct choices.
+**One-paragraph:** Generates a Docker image optimization plan: target size, base-image choice, multi-stage layering, cache mounts, .dockerignore, and per-language minification recipes. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Reduce image size 70-90% (1 GB → 80-150 MB).
+- CI build speed-up через cache-mounts (apt, pip, go-mod).
+- Distroless / Alpine / slim base choice по language.
+- Strip dev deps + lockfile-only install у production stage.
 
 ## Applies If (ALL must hold)
 
-- Any production image — apply multi-stage builds by default.
-- CI pipelines where build time exceeds 2 minutes — cache mounts and layer ordering cut most of that.
-- Images exceeding 300 MB — switch base image variant first, then apply multi-stage.
-- Repos with large node_modules, __pycache__, .venv, or target/ that end up in build context.
-- Security-sensitive workloads where a smaller attack surface is required.
+- Existing image >300 MB and is deployed to production.
+- CI build time per image exceeds 5 minutes.
+- Owner has authority to change Dockerfile + CI build steps.
 
 ## Skip If (ANY kills it)
 
-- Development-only images where fast iteration matters more than size — keep the full image and use bind mounts.
-- Throwaway one-shot scripts where build overhead is not paid repeatedly.
-- When the runtime requires build tools at runtime (e.g., native C extensions rebuilt on startup) — stay single-stage but document why.
+- Image size and build time are already within SLO and team agrees.
+- Image is fully managed by a vendor (e.g. cloud function build pipeline).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current image size + layer breakdown | `docker image history` / Dive output | SRE |
+| CI build timings | table (step, seconds) | Platform |
+| Runtime dependency list | language manifests | Application team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/devops-engineer/docker/AGENTS.md` | Docker baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-docker-image-optimization` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-image-optimization.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- Parent: `pro/infra/devops-engineer/AGENTS.md`
+- [[docker]]
+- [[docker-language-templates]]
+- [[docker-security-hardening]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

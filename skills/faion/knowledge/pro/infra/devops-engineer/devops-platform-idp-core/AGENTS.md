@@ -3,73 +3,95 @@ slug: devops-platform-idp-core
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An IDP is a self-service layer between developers and infrastructure.
-content_id: "20d7d9aa49dda9f6"
-tags: [platform-engineering, idp, developer-experience, self-service, cognitive-load]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an IDP charter: platform mission, target personas, capability inventory (provisioning / observability / cost / security), success metrics, and product-team ownership model.
+content_id: "51207dac27fe7311"
+complexity: deep
+produces: decision-record
+est_tokens: 4400
+tags: [idp, platform-engineering, product-mindset, dora, developer-experience]
 ---
-# Internal Developer Platform (IDP) Core Concepts
+# Internal Developer Platform (IDP) Core Model
 
 ## Summary
 
-**One-sentence:** An IDP is a self-service layer between developers and infrastructure.
+**One-sentence:** Generates an IDP charter: platform mission, target personas, capability inventory (provisioning / observability / cost / security), success metrics, and product-team ownership model.
 
-**One-paragraph:** An IDP is a self-service layer between developers and infrastructure. It absorbs infrastructure complexity so developers provision resources, deploy applications, and manage services without becoming infrastructure experts. By 2026, 80% of large software engineering orgs have platform teams (Gartner).
+**One-paragraph:** Generates an IDP charter: platform mission, target personas, capability inventory (provisioning / observability / cost / security), success metrics, and product-team ownership model. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Перший рік platform team — від "shared SRE" до product team.
+- Capability map: provisioning, observability, secrets, cost, dev experience.
+- Persona-driven roadmap (dev / SRE / Sec / Finance).
+- DORA + platform-adoption metrics як north star.
 
 ## Applies If (ALL must hold)
 
-- Engineering org with 20+ developers where infrastructure requests are a bottleneck.
-- Multiple teams repeatedly solving the same infrastructure problems independently.
-- Onboarding time for new developers exceeds 1 week due to environment setup complexity.
-- DevOps/Ops ticket queue dominates team capacity (over 30% of requests are repetitive).
-- Need to enforce security, compliance, or cost standards across many services consistently.
+- Org has ≥50 engineers OR ≥20 services and infra cognitive load is rising.
+- Leadership is willing to fund a dedicated platform team (≥3 engineers).
+- Product mindset (PM / metrics / roadmap) can be applied to the platform.
 
 ## Skip If (ANY kills it)
 
-- Teams under 10 developers — overhead of building a platform exceeds value; shared runbooks suffice.
-- Single-service or single-language projects — a Makefile and a CI template provide equivalent self-service at near-zero cost.
-- Early-stage startups pre-product-market-fit — platform investment delays product iteration; standardize later.
-- Orgs without dedicated platform team capacity — an unmaintained IDP becomes a blocker, not an enabler.
+- Org <20 engineers — informal SRE rotation is cheaper.
+- No leadership commitment to fund a platform team — IDP rots without funding.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Persona research | table (persona, top pains) | Platform PM |
+| Capability gap matrix | list (capability, today, target) | Platform PM |
+| Success metrics | DORA + adoption + NPS | Platform PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | upstream context not required |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-devops-platform-idp-core` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-devops-platform-idp-core.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- Parent: `pro/infra/devops-engineer/AGENTS.md`
+- [[devops-platform-backstage]]
+- [[devops-platform-golden-paths]]
+- [[devops-platform-policy-finops]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,31 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="docker-image-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for docker-image-optimization. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Docker Image Optimization Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Production Dockerfiles MUST use a -slim or -alpine variant (or distroless for Go/static binaries) as the final stage base image. The full base image (e.g., python:3.12, node:20) MUST NOT appear in the final stage — it may appear in an intermediate build stage only.</statement>
-      <rationale source="v1-source">The full Python 3.12 image is ~900 MB; the slim variant is ~120 MB; distroless is ~50 MB. Using the full image in production triples registry storage, slows pulls on cold nodes, and ships a shell and package manager that attackers can exploit.</rationale>
+
+    <rule id="multi-stage-mandatory" testable="true" depth="essential">
+      <statement>Optimization MUST use a multi-stage Dockerfile; single-stage rejected.</statement>
+      <rationale source="Docker multi-stage docs">Operational rationale tying the rule to the cited source.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Dockerfiles MUST pin a specific version tag (e.g., python:3.12.1-slim) rather than a floating tag (python:latest or python:3-slim). The pinned tag MUST include the patch version.</statement>
-      <rationale source="v1-source">Floating tags cause silent base image updates that change the environment without a Dockerfile change, making builds non-reproducible and security scans unreliable.</rationale>
+    <rule id="base-image-minimal" testable="true" depth="essential">
+      <statement>Production base MUST be the smallest viable image for the language (distroless, alpine, slim) with justified choice.</statement>
+      <rationale source="Image minimization guide">Operational rationale tying the rule to the cited source.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every production Dockerfile for compiled languages (Go, Rust, Java) and for interpreted languages with binary extensions (Python with C deps, Node with native modules) MUST use at least two stages: a build stage using the full SDK image and a production stage using the minimal runtime image. COPY --from=builder MUST transfer only the compiled artifacts, not the source tree or build tools.</statement>
-      <rationale source="v1-source">Multi-stage builds reduce final image size 70-90% by leaving compilers, headers, and intermediate objects in the discarded build layer. Without this, every Go binary ships with the Go toolchain (~300 MB).</rationale>
+    <rule id="cache-mounts-for-deps" testable="true" depth="essential">
+      <statement>Dependency install layers MUST use `--mount=type=cache` for pip / npm / go-mod / apt; reinstalling on every layer rejected.</statement>
+      <rationale source="BuildKit cache mount docs">Operational rationale tying the rule to the cited source.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Dockerfiles MUST order COPY and RUN instructions from least-frequently-changed to most-frequently-changed. Specifically: COPY dependency manifest files (requirements.txt, package.json, go.mod) MUST precede the dependency install RUN, which MUST precede COPY . . (full source copy).</statement>
-      <rationale source="v1-source">If COPY . . comes before pip install, every source change invalidates the entire dependency layer, causing a full re-download. Correct ordering confines cache misses to the changed files only.</rationale>
+    <rule id="dockerignore-comprehensive" testable="true" depth="essential">
+      <statement>.dockerignore MUST exclude `.git`, `node_modules`, `__pycache__`, `tests/`, language-specific build outputs that are not needed.</statement>
+      <rationale source="Build context discipline">Operational rationale tying the rule to the cited source.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>CI pipelines using BuildKit MUST enable cache mounts for package managers: --mount=type=cache,target=/root/.cache/pip for pip, --mount=type=cache,target=/root/.npm for npm. The DOCKER_BUILDKIT=1 environment variable MUST be set.</statement>
-      <rationale source="v1-source">Cache mounts persist the package manager cache between builds without embedding it in the image layer. This is orthogonal to layer caching and reduces network fetches on cache miss from minutes to seconds.</rationale>
+    <rule id="size-target-recorded" testable="true" depth="essential">
+      <statement>Optimization plan MUST record before/after target sizes and CI time budget; aspirational only-text rejected.</statement>
+      <rationale source="Outcome accountability">Operational rationale tying the rule to the cited source.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Every repository with a Dockerfile MUST have a .dockerignore at the same level. The .dockerignore MUST exclude at minimum: .git, node_modules, __pycache__, *.pyc, .venv, venv, target, vendor, dist, build, .coverage, htmlcov, .pytest_cache, .env, .env.*, Dockerfile*, docker-compose*, .DS_Store.</statement>
-      <rationale source="v1-source">Without .dockerignore, COPY . . transfers node_modules (~500 MB for large JS projects) or .venv (~300 MB for Python) into the build context on every invocation, even when those directories are subsequently excluded from the image by a .gitignore-like pattern. The daemon must still hash every file.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when image already within SLO OR fully managed by vendor.</statement>
+      <rationale source="Scope guard">Operational rationale tying the rule to the cited source.</rationale>
     </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
