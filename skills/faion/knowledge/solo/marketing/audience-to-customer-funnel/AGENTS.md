@@ -3,77 +3,96 @@ slug: audience-to-customer-funnel
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Audience to Customer Funnel: codified growth-marketing practice that turns the recurring 'p2-indie-hacker/Distribution-First Idea Validation (audience before product)' decision into a repeatable, auditable artefact.
-content_id: "71fc9142a919b2bb"
-tags: [audience-to-customer-funnel, marketing, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a 4-stage solo-marketer funnel artefact — awareness, interest, consideration, conversion — with per-stage KPI + drop-off thresholds — gated by named stage owners.
+content_id: "c889bfd3493fad9a"
+complexity: medium
+produces: spec
+est_tokens: 4500
+tags: ["funnel", "marketing", "kpi", "conversion", "solo"]
 ---
 # Audience to Customer Funnel
 
 ## Summary
 
-**One-sentence:** Audience to Customer Funnel: codified growth-marketing practice that turns the recurring 'p2-indie-hacker/Distribution-First Idea Validation (audience before product)' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a 4-stage solo-marketer funnel artefact — awareness, interest, consideration, conversion — with per-stage KPI + drop-off thresholds — gated by named stage owners.
 
-**One-paragraph:** Audience to Customer Funnel addresses the gap identified by the p2-indie-hacker/Distribution-First Idea Validation (audience before product) playbook: Conversion-optimizer dir only covers landing pages; nothing connects an X follower / IH subscriber / Substack reader into a paying customer. P2's whole thesis is audience-first monetization — this is the missing spine. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Solo marketers track 'subscribers' or 'visits' without knowing which stage leaks. This methodology pins a 4-stage funnel (Awareness → Interest → Consideration → Conversion) with one named KPI per stage, a drop-off threshold that triggers intervention, and a single owner accountable. Output: a FunnelArtefact + per-stage diagnostic.
+
+**Ефективно для:**
+
+- Solo founder with traffic but no understanding of where it dies.
+- Newsletter operator who watches subscribers but ignores click-to-paid.
+- Pre-monetisation product needing the first funnel definition.
+- Audit of an existing funnel against minimum standards.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p2-indie-hacker/Distribution-First Idea Validation (audience before product) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Operator runs ≥1 content / acquisition channel.
+- Tracking surface exists (Plausible / GA / Mixpanel / spreadsheet).
+- There IS a paid conversion goal (not pure awareness play).
+- Operator has ≥30 days of data OR is launching new and needs the definition.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pre-product hobby project with no monetisation goal.
+- B2B enterprise sale handled via outbound only — funnel is different.
+- Existing well-instrumented funnel already meeting these standards.
 
 ## Prerequisites
 
-- recent context for the p2-indie-hacker/Distribution-First Idea Validation (audience before product) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Channel inventory + cost per channel | list | operator marketing log |
+| Conversion event definition | tracked event name | analytics config |
+| 30 days of channel data | CSV per channel | Plausible / GA / Mixpanel |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/marketing-manager` | parent role skill — provides the operating context for this methodology |
+| audience-to-paid-conversion-loop | Conversion stage shares definitions with the paid-loop methodology. |
+| brand-voice-consistency-system | Content quality at awareness/interest depends on voice consistency. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-conversion-window | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-four-stages-fixed, r2-one-kpi-per-stage, r3-named-stage-owner, r4-drop-off-threshold, r5-30day-baseline | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Audience to Customer Funnel artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: vanity-metrics-only, funnel-of-fifteen-stages, no-drop-off-threshold, single-source-baseline | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-funnel` | sonnet | Per-business stage definition. |
+| `diagnose-drop-off` | sonnet | Reads stage data + names the leak. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/audience-to-customer-funnel.json` | JSON schema for the Audience to Customer Funnel output contract |
-| `templates/audience-to-customer-funnel.md` | Markdown skeleton with the required fields |
+| `templates/audience-to-customer-funnel.json` | FunnelArtefact JSON skeleton. |
+| `templates/audience-to-customer-funnel.md` | Per-stage definitions + diagnostic. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-audience-to-customer-funnel.py` | Enforce Audience to Customer Funnel output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-audience-to-customer-funnel.py` | Validate FunnelArtefact JSON against the schema. | Monthly review + after KPI redefinition. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- upstream playbook: `p2-indie-hacker/Distribution-First Idea Validation (audience before product)`
+- [[audience-to-paid-conversion-loop]]
+- [[brand-voice-consistency-system]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

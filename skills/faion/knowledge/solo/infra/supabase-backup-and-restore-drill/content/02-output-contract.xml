@@ -1,39 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Supabase Backup And Restore Drill Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Supabase Backup And Restore Drill output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Supabase Backup and Restore Drill Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/supabase-backup-and-restore-drill.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "drill_date",
+    "source_snapshot_id",
+    "target_project",
+    "restore_seconds",
+    "row_count_delta",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "drill_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "source_snapshot_id": {
+      "type": "string"
+    },
+    "target_project": {
+      "type": "string"
+    },
+    "restore_seconds": {
+      "type": "integer"
+    },
+    "row_count_delta": {
+      "type": "integer"
+    },
+    "checksum_match": {
+      "type": "boolean"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/supabase-backup-and-restore-drill.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/supabase-backup-and-restore-drill.json</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">target_project == production project ID (r2).</pattern>
+      <pattern id="f3">row_count_delta != 0 (r3).</pattern>
+      <pattern id="f4">checksum_match == false (r3).</pattern>
+      <pattern id="f5">drill_date older than today - 90 days (r1).</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "drill-2026-05-23",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "drill_date": "2026-05-23",
+  "source_snapshot_id": "snap_xyz",
+  "target_project": "faion-restore-clone",
+  "restore_seconds": 412,
+  "row_count_delta": 0,
+  "checksum_match": true,
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "drill_date": "2026-05-23",
+  "source_snapshot_id": "snap_xyz",
+  "target_project": "faion-prod",
+  "row_count_delta": 7,
+  "owner": "team"
+}
+]]></code>
+    <note>target_project=faion-prod (r2 violation); row_count_delta=7 (r3 violation); owner=team; missing artefact_id, version, last_reviewed, restore_seconds, checksum_match.</note>
+  </example>
+
+  <reference path="scripts/validate-supabase-backup-and-restore-drill.py">Schema validator (stdlib only).</reference>
 </text>

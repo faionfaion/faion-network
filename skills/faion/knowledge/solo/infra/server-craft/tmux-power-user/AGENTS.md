@@ -3,73 +3,98 @@ slug: tmux-power-user
 tier: solo
 group: infra
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Master tmux for remote development: configure prefix (Ctrl+A), enable mouse and vi-mode, set up intuitive pane/window navigation, install plugins (resurrect/continuum) for session persistence, customize the status bar with system metrics, and build session templates for parallel project workflows.
-content_id: "7ca36d875cb179f1"
-tags: [tmux, terminal, multiplexing, session-management, remote-work]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a tmux config + named-session script + plugin set (resurrect, continuum, yank) for a multi-host operator — gated by versioned dotfiles.
+content_id: "e8a82aff40937e39"
+complexity: light
+produces: config
+est_tokens: 4000
+tags: ["tmux", "multiplexer", "tpm", "sessions", "copy-mode"]
 ---
 # tmux Power User
 
 ## Summary
 
-**One-sentence:** Master tmux for remote development: configure prefix (Ctrl+A), enable mouse and vi-mode, set up intuitive pane/window navigation, install plugins (resurrect/continuum) for session persistence, customize the status bar with system metrics, and build session templates for parallel project workflows.
+**One-sentence:** Generates a tmux config + named-session script + plugin set (resurrect, continuum, yank) for a multi-host operator — gated by versioned dotfiles.
 
-**One-paragraph:** Master tmux for remote development: configure prefix (Ctrl+A), enable mouse and vi-mode, set up intuitive pane/window navigation, install plugins (resurrect/continuum) for session persistence, customize the status bar with system metrics, and build session templates for parallel project workflows.
+**One-paragraph:** Solo operators live in tmux: persistent sessions across SSH disconnects, named projects, copy-mode that works on macOS and Linux. This methodology pins a tmux.conf (TPM plugin loader, prefix C-a, mouse on, 100k history), a session-launcher script, and the plugin set. Output: a TmuxPlan + tmux.conf.
+
+**Ефективно для:**
+
+- SSH operator who reconnects to the same VPS dozens of times daily.
+- Multi-project workflows where each project deserves a named session.
+- Long-running interactive work (claude code, repl, log tailing) that must survive disconnect.
+- macOS + Linux operators sharing the same tmux.conf.
 
 ## Applies If (ALL must hold)
 
-- Developer works primarily over SSH and needs persistent sessions
-- Running multiple concurrent AI agent sessions that must stay live without supervision
-- Building a named-session workflow where each project has a dedicated tmux session
-- Setting up a monitoring dashboard with persistent panes (htop, logs, docker stats)
-- Scripting session layouts that an agent or cron job can create/restore
+- Operator runs ≥3 tmux sessions/day.
+- SSH connections drop occasionally and work must survive.
+- Multiple projects on one host needing per-project sessions.
+- Standardising tmux across personal + remote machines.
 
 ## Skip If (ANY kills it)
 
-- Local-only workstation development where an IDE terminal suffices
-- Ephemeral CI/CD environments (tmux adds no value in non-interactive pipelines)
-- Containerized deployments where the process is PID 1
-- Terminals that do not support 256-color or proper escape sequences
+- Operator uses a different terminal multiplexer (zellij, screen) by preference.
+- Single-session usage with no copy-mode needs.
+- Locked-down env where plugins can't be installed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Operator prefix preference | C-a or C-b | operator |
+| Plugin allow-list | list of TPM plugins | TmuxPlan |
+| OS list | macos / linux | operator hosts |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| dotfiles-management | tmux.conf is part of the dotfiles repo. |
+| shell-productivity | Shell prompt + history coordinate with tmux defaults. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-prefix-not-c-b, r2-tpm-managed-plugins, r3-large-history, r4-named-owner, r5-os-conditional-copy | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the tmux Power User artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: default-prefix-c-b, history-1024-loses, copy-mode-platform-mismatch, plugin-versions-floating | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-tmux-conf` | sonnet | Per-operator key-binding tweaks. |
+| `render-session-script` | haiku | Mechanical template fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tmux-power-user.json` | TmuxPlan JSON skeleton. |
+| `templates/tmux-power-user.md` | Human-readable audit trail + keybinding cheatsheet. |
+| `templates/tmux.conf` | Reference tmux.conf with prefix C-a, mouse on, 100k history, TPM. |
+| `templates/tmux-session.sh` | Launcher for a named project session with split layout. |
+| `templates/tmux-system.sh` | System tmux session (monitoring, logs). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tmux-power-user.py` | Validate TmuxPlan JSON against the schema. | Pre-apply on each host. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[dotfiles-management]]
+- [[shell-productivity]]
+- [[bash-aliases]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

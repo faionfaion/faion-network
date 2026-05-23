@@ -1,73 +1,127 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Vercel Deployment — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `DeploymentPlan` produced before a release and the env-audit it relies on.</summary>
+<text id="02-output-contract" title="Vercel Deployment Discipline Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <section title="DeploymentPlan required fields">
-    <list>
-      <item>`project_id` — Vercel project ID</item>
-      <item>`commit_sha` — git SHA to deploy</item>
-      <item>`target_env` — enum {production, preview-staging, preview-pr}</item>
-      <item>`runtime_compatibility` — object `{edge_routes: array, edge_violations: array}` (must be empty for go-live)</item>
-      <item>`env_audit_id` — UUID of env audit run for this deployment</item>
-      <item>`isr_cache_review` — object `{paths_with_isr: array, tenant_discriminator_present: bool}`</item>
-      <item>`rollback_plan` — object `{prior_deployment_id, rollback_command, verify_url}`</item>
-      <item>`go_no_go` — enum {go, hold-fix, abort}</item>
-      <item>`go_no_go_reasons` — array of strings</item>
-    </list>
-  </section>
-
-  <section title="Env-audit required fields">
-    <list>
-      <item>`audit_id` — UUID</item>
-      <item>`ran_at` — ISO-8601</item>
-      <item>`env_vars` — array of `{name, scopes: array of enum {dev, preview, prod}, leakage_risk: enum {none, cross-env, client-exposed}}`</item>
-      <item>`violations` — array of `{var_name, rule_id, message}`</item>
-      <item>`pass: bool`</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/vercel-deployment-discipline.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "project_id",
+    "commit_sha",
+    "target_env",
+    "env_audit_pass",
+    "edge_violations",
+    "go_no_go",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "commit_sha": {
+      "type": "string"
+    },
+    "target_env": {
+      "type": "string",
+      "enum": [
+        "production",
+        "preview-staging",
+        "preview-pr"
+      ]
+    },
+    "env_audit_pass": {
+      "type": "boolean"
+    },
+    "edge_violations": {
+      "type": "array"
+    },
+    "isr_paths": {
+      "type": "array"
+    },
+    "rollback_plan": {
+      "type": "object"
+    },
+    "go_no_go": {
+      "type": "string",
+      "enum": [
+        "go",
+        "hold-fix",
+        "abort"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>`go_no_go: go` AND `runtime_compatibility.edge_violations.length &gt; 0`.</description>
-      <reason>Violates r2.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`go_no_go: go` AND `env_audit.pass: false`.</description>
-      <reason>Violates r1 / r5.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`isr_cache_review.tenant_discriminator_present: false` AND any ISR path serves tenant-scoped data.</description>
-      <reason>Violates r3.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`rollback_plan.prior_deployment_id` empty OR `verify_url` empty.</description>
-      <reason>Violates r4 atomicity.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Env var with `scopes: [dev, preview, prod]` (i.e. "All Environments") AND `name` contains tokens {SECRET, KEY, PASSWORD, TOKEN, DSN}.</description>
-      <reason>Violates r1 secrets-scoping.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Allowed transformations">
     <list>
-      <item>Render plan as Markdown for PR description with the same fields.</item>
-      <item>Mask env var values in audit output (`***-redacted`).</item>
-      <item>Aggregate identical violations into a single entry with `count`.</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">go_no_go == &apos;go&apos; AND edge_violations non-empty (r2).</pattern>
+      <pattern id="f3">go_no_go == &apos;go&apos; AND env_audit_pass == false (r1/r5).</pattern>
+      <pattern id="f4">rollback_plan.prior_deployment_id empty OR verify_url empty (r4).</pattern>
+      <pattern id="f5">Env var with scopes [dev, preview, prod] AND name contains [SECRET, KEY, PASSWORD, TOKEN, DSN] (r1).</pattern>
     </list>
   </section>
 
-  <reference path="templates/deployment-plan.json">DeploymentPlan schema.</reference>
-  <reference path="templates/env-audit.json">Env-audit schema.</reference>
-  <reference path="templates/runtime-allow-list.yaml">Edge-compatible API list.</reference>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "deploy-faion-net-2026-05-23",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "project_id": "prj_abc123",
+  "commit_sha": "9f1c2a4",
+  "target_env": "production",
+  "env_audit_pass": true,
+  "edge_violations": [],
+  "isr_paths": [],
+  "rollback_plan": {
+    "prior_deployment_id": "dpl_xyz",
+    "verify_url": "/_vercel/info"
+  },
+  "go_no_go": "go",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Env audit pass.</item>
-      <item>No edge violations.</item>
-      <item>ISR tenant discriminator present for multi-tenant routes.</item>
-      <item>Rollback plan complete (prior_deployment_id + verify_url).</item>
-      <item>go_no_go reasons match the inputs.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "prj_abc123",
+  "target_env": "production",
+  "env_audit_pass": false,
+  "edge_violations": [
+    "app/api/upload/route.ts uses fs"
+  ],
+  "go_no_go": "go",
+  "owner": "team"
+}
+]]></code>
+    <note>go_no_go=go with env_audit_pass=false AND edge_violations present (r1+r2 violations); owner=team; missing artefact_id, version, last_reviewed, commit_sha, rollback_plan.</note>
+  </example>
+
+  <reference path="scripts/validate-vercel-deployment-discipline.py">Schema validator (stdlib only).</reference>
 </text>

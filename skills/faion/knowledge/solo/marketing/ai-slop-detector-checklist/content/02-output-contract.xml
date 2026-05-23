@@ -1,39 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai Slop Detector Checklist Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai Slop Detector Checklist output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI Slop Detector Checklist Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-slop-detector-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "draft_path",
+    "scores",
+    "total_score",
+    "verdict",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "draft_path": {
+      "type": "string"
+    },
+    "scores": {
+      "type": "object"
+    },
+    "total_score": {
+      "type": "integer"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "ship",
+        "rework"
+      ]
+    },
+    "hedging_count": {
+      "type": "integer"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ai-slop-detector-checklist.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-slop-detector-checklist.json</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">verdict == &apos;ship&apos; AND total_score &lt; 80 (r5).</pattern>
+      <pattern id="f3">hedging_count &gt; 2 AND verdict == &apos;ship&apos; (r2).</pattern>
+      <pattern id="f4">scores.grounding &lt; 12 AND verdict == &apos;ship&apos; (r3).</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "slop-2026-05-23-post-1",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "draft_path": "content/blog/2026-05-23-shipping-fast.md",
+  "scores": {
+    "originality": 18,
+    "specificity": 17,
+    "grounding": 16,
+    "voice": 16,
+    "tics": 18
+  },
+  "total_score": 85,
+  "verdict": "ship",
+  "hedging_count": 1,
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "draft_path": "content/blog/post.md",
+  "scores": {
+    "originality": 5,
+    "specificity": 6,
+    "grounding": 4,
+    "voice": 5,
+    "tics": 8
+  },
+  "total_score": 28,
+  "verdict": "ship",
+  "owner": "team"
+}
+]]></code>
+    <note>total_score=28 but verdict=ship (r5 violation); owner=team; missing artefact_id, version, last_reviewed, hedging_count.</note>
+  </example>
+
+  <reference path="scripts/validate-ai-slop-detector-checklist.py">Schema validator (stdlib only).</reference>
 </text>

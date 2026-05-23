@@ -3,56 +3,96 @@ slug: solo-deploy-checklist
 tier: solo
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-content_id: "e1d41c15db112fbe"
-summary: One-page pre/during/post deploy checklist with explicit go/no-go criteria — sized for the solo operator pushing to a single production environment.
+summary: Generates a one-page pre/during/post deploy checklist for a solo operator — explicit go/no-go criteria per line — gated by a documented rollback path.
+content_id: "c94f86e3702c2c18"
+complexity: medium
+produces: checklist
+est_tokens: 4400
+tags: ["deploy", "checklist", "solo", "rollback", "go-no-go"]
 ---
 # Solo Deploy Checklist
 
 ## Summary
 
-**One-sentence:** A one-page deploy checklist with three sections (pre, during, post) and explicit go/no-go criteria — the solo operator either passes every line or aborts.
+**One-sentence:** Generates a one-page pre/during/post deploy checklist for a solo operator — explicit go/no-go criteria per line — gated by a documented rollback path.
 
-**One-paragraph:** `deploy-scripts` and `vps-first-deploy` cover the mechanics of pushing code. Neither defines the go/no-go gate that catches the recurring solo-founder mistake: deploying on Friday at 6pm with no rollback path, or pushing a migration without backing up the DB. This methodology defines the fixed checklist: nine pre-deploy items (backup, branch, tests green, migration plan, rollback plan, feature flag default, observability ready, customer comms, time of day), four during-deploy items (deploy in transaction-friendly order, watch logs, smoke-test, declare "stable" only after N minutes), four post-deploy items (mark release, update changelog, verify metrics, sleep). Anchored to "Deploy-day staging-to-prod gate" for the solo SaaS builder.
+**One-paragraph:** Solo founders deploy on Friday at 6pm without a rollback path. This methodology pins a fixed 9-pre / 4-during / 4-post checklist with explicit go/no-go per line. Pre: backup, branch, tests green, migration plan, rollback plan, feature-flag default, observability ready, customer comms, time of day. During: deploy in transaction order, watch logs, smoke-test, declare 'stable' after N minutes. Post: mark release, update changelog, verify metrics, sleep. Output: a DeployChecklist artefact.
+
+**Ефективно для:**
+
+- Solo founder pushing to a single live production with no staging duplicate.
+- Operator who has shipped a Friday-evening regression at least once.
+- Deploys involving DB migrations OR third-party integration changes.
+- Audit of recent deploys against the checklist.
 
 ## Applies If (ALL must hold)
 
-- Solo founder pushing to a single live production environment (no staging duplicate, or staging is best-effort).
+- Solo founder pushing to a single live production environment.
 - Real users will see the change.
-- The deploy involves either code, DB migration, infra change, or third-party integration update.
+- Deploy involves code, DB migration, infra change, or third-party update.
 - A rollback path is technically possible.
 
 ## Skip If (ANY kills it)
 
-- Internal-only tooling with no user impact and easy revert — overkill, use the simple `daily-ship-rubric` form.
+- Internal tooling with no user impact and trivial revert — overkill.
 - Static-content micro-update (typo fix, image swap) — overkill.
-- Live incident — use the incident-response runbook, not this routine checklist.
+- Live incident — use incident-triage runbook instead.
 
 ## Prerequisites
 
-- Working deploy script or one-command deploy.
-- A monitoring surface (Sentry, OpenStatus, or even simple curl-uptime).
-- Access to the customer comms channel (status page, email list, Twitter).
-- A documented rollback procedure for the current version of the app.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Working deploy script (one-command) | shell script path | operator repo |
+| Monitoring surface (Sentry / OpenStatus) | URL | monitoring plan |
+| Documented rollback procedure for current version | doc path | operator repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/infra/AGENTS.md` | Parent group context |
-| `solo/infra/one-person-rollback-runbook` if present | Sibling — the rollback the checklist points at |
+| solo-incident-triage-checklist | Incident triage is the fallback if deploy goes wrong. |
+| monitoring-logging | Observability prerequisite consumed from monitoring plan. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules every deploy enforces | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-rollback-documented, r2-backup-before-migration, r3-tests-green-not-amber, r4-named-owner, r5-no-friday-evening | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Solo Deploy Checklist artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: no-rollback-path, friday-evening-deploy, untested-migration, observability-missing | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-checklist` | sonnet | Per-deploy contextualisation. |
+| `audit-recent-deploys` | sonnet | Diff history against rule-set. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/solo-deploy-checklist.json` | DeployChecklist JSON skeleton (pre/during/post). |
+| `templates/solo-deploy-checklist.md` | Markdown checklist to tick through during the deploy. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-deploy-checklist.py` | Validate DeployChecklist JSON against the schema. | Before pushing to prod + post-deploy audit. |
 
 ## Related
 
-- parent skill: `solo/infra/`
-- triggering activity: `p1-solo-saas-builder/Deploy-day staging-to-prod gate`
-- adjacent: `solo/infra/one-person-rollback-runbook`, `solo/sdd/solo-blameless-postmortem-template`
+- [[solo-incident-triage-checklist]]
+- [[monitoring-logging]]
+- [[deploy-scripts]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

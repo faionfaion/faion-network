@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="wireguard-vpn Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="WireGuard VPN Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/wireguard-vpn.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "server_endpoint",
+    "server_subnet",
+    "peers",
+    "ip_forward",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "server_endpoint": {
+      "type": "string"
+    },
+    "server_subnet": {
+      "type": "string"
+    },
+    "peers": {
+      "type": "array"
+    },
+    "ip_forward": {
+      "type": "boolean"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">ip_forward == false AND any peer with AllowedIPs outside server subnet (r2).</pattern>
+      <pattern id="f3">Two peers with overlapping AllowedIPs (r1).</pattern>
+      <pattern id="f4">peer with role=&apos;mobile&apos; AND keepalive == false (r5).</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "vpn-faion-net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "server_endpoint": "46.225.58.119:443",
+  "server_subnet": "10.66.66.0/24",
+  "peers": [
+    {
+      "name": "laptop",
+      "role": "split",
+      "allowed_ips": "10.66.66.2/32",
+      "keepalive": false
+    }
+  ],
+  "ip_forward": true,
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "server_endpoint": "46.225.58.119:443",
+  "server_subnet": "10.66.66.0/24",
+  "peers": [
+    {
+      "name": "laptop",
+      "allowed_ips": "0.0.0.0/0"
+    }
+  ],
+  "ip_forward": false,
+  "owner": "team"
+}
+]]></code>
+    <note>peer AllowedIPs=0.0.0.0/0 on a single-client subnet (r1 violation); ip_forward=false (r2 violation); owner=team; missing artefact_id, version, last_reviewed.</note>
+  </example>
+
+  <reference path="scripts/validate-wireguard-vpn.py">Schema validator (stdlib only).</reference>
 </text>

@@ -3,71 +3,106 @@ slug: wireguard-vpn
 tier: solo
 group: infra
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Configure WireGuard as a VPN server on a Linux VPS with multiple peer types: split-tunnel dev machine (VPN subnet only), full-tunnel mobile (all traffic), and site-to-site gateway (VPS to home LAN).
-content_id: "1c513aa80a1db2a1"
-tags: [wireguard, vpn, networking, security, linux]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a WireGuard server + per-peer config (split-tunnel dev, full-tunnel mobile, site-to-site gateway) — cryptokey routing AllowedIPs per peer — gated by sysctl forwarding.
+content_id: "d5187ff8cbaf14bd"
+complexity: medium
+produces: config
+est_tokens: 4800
+tags: ["wireguard", "vpn", "networking", "security", "linux"]
 ---
 # WireGuard VPN
 
 ## Summary
 
-**One-sentence:** Configure WireGuard as a VPN server on a Linux VPS with multiple peer types: split-tunnel dev machine (VPN subnet only), full-tunnel mobile (all traffic), and site-to-site gateway (VPS to home LAN).
+**One-sentence:** Generates a WireGuard server + per-peer config (split-tunnel dev, full-tunnel mobile, site-to-site gateway) — cryptokey routing AllowedIPs per peer — gated by sysctl forwarding.
 
-**One-paragraph:** Configure WireGuard as a VPN server on a Linux VPS with multiple peer types: split-tunnel dev machine (VPN subnet only), full-tunnel mobile (all traffic), and site-to-site gateway (VPS to home LAN). Uses cryptokey routing — each peer's AllowedIPs list determines which packets are routed to it.
+**One-paragraph:** WireGuard on a Linux VPS gives a private mesh to your dev machine, phone, and home LAN with a kernel-fast tunnel. This methodology pins the server config, three peer templates (split-tunnel, full-tunnel, site-to-site), the cryptokey-routing rule (each peer's AllowedIPs decides which packets route to it), sysctl ipv4 forward + ipv6 forward, and an add-peer script. Output: a VpnPlan + per-peer .conf.
+
+**Ефективно для:**
+
+- Accessing internal VPS services (Postgres, Redis, n8n) without exposing ports publicly.
+- Bridging VPS ↔ home LAN for monitoring or media.
+- Routing all mobile traffic through the VPS for public-wifi privacy.
+- Restricting SSH to VPN subnet only AFTER VPN is confirmed.
 
 ## Applies If (ALL must hold)
 
-- Accessing internal VPS services (PostgreSQL, Redis, RabbitMQ) securely without exposing ports to the internet
-- Creating a site-to-site tunnel between a VPS and home network/Raspberry Pi
-- Routing all mobile traffic through the VPS for privacy on public Wi-Fi
-- Restricting SSH access to VPN subnet only (after VPN is confirmed working)
+- Need private access to VPS-internal services (Postgres, Redis, n8n).
+- Need site-to-site VPS ↔ home LAN.
+- Mobile traffic via VPS for privacy on public Wi-Fi.
+- Restrict SSH to VPN subnet (after VPN works).
 
 ## Skip If (ANY kills it)
 
-- When you only need SSH access — an SSH tunnel (`ssh -L`) is simpler and requires no server-side setup
-- When your provider already offers a managed VPN or private networking between servers — use that instead
-- As a replacement for UFW — WireGuard controls which hosts can connect; UFW controls which ports are exposed. Both are needed
+- Need only SSH — `ssh -L` tunnel is simpler.
+- Provider already offers managed VPN / private networking.
+- Replacement for UFW — WireGuard governs hosts, UFW governs ports; both needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Server public IP + UDP port choice | IP + port | provider + operator |
+| Peer device list | [{name, role, allowed_ips}] | operator inventory |
+| Subnet allocation | 10.66.66.0/24 (or chosen) | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| firewall-management | UFW must allow the WireGuard UDP port + NAT post-route. |
+| kernel-tuning | net.ipv4.ip_forward=1 lives in 99-sysctl drop-in. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-allowedips-defines-routing, r2-ip-forward-on, r3-keys-never-in-git, r4-named-owner, r5-keepalive-for-mobile | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the WireGuard VPN artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: allowedips-overlapping, ip-forward-off, private-key-in-repo, no-keepalive-nat-drop | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-vpn-plan` | sonnet | Per-peer routing decisions. |
+| `generate-keys` | haiku | Mechanical wg genkey calls. |
+| `render-peer-config` | haiku | Template fill from plan. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wireguard-vpn.json` | VpnPlan JSON skeleton. |
+| `templates/wireguard-vpn.md` | Human-readable audit trail. |
+| `templates/wg0-server.conf` | Reference server config with PostUp/PostDown NAT rules. |
+| `templates/wg0-client-split.conf` | Split-tunnel client — VPN subnet only. |
+| `templates/wg0-client-full.conf` | Full-tunnel client — all traffic via VPS. |
+| `templates/wg0-client-mobile.conf` | Mobile client with PersistentKeepalive. |
+| `templates/wg0-home-gateway.conf` | Site-to-site home LAN gateway. |
+| `templates/sysctl-wireguard.conf` | Drop-in: net.ipv4.ip_forward=1, ipv6 forwarding. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-wireguard-vpn.py` | Validate VpnPlan JSON against the schema. | Pre-deploy + post-peer-add. |
+| `scripts/generate-wg-keys.sh` | Generate keypair, save with chmod 600. | Per new peer. |
+| `scripts/add-wg-peer.sh` | Append peer to server config + render client config. | Adding a new device. |
+| `scripts/wg-status.sh` | Show last-handshake per peer. | Daily health check. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[firewall-management]]
+- [[kernel-tuning]]
+- [[ssh-hardening]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

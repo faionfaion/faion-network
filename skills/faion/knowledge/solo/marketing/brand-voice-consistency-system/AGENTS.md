@@ -3,77 +3,97 @@ slug: brand-voice-consistency-system
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Brand Voice Consistency System: codified growth-marketing practice that turns the recurring 'role-growth-marketing/Synthesis: Ship one piece of content into 10 channels with AI-assisted atomization' decision into a repeatable, auditable artefact.
-content_id: "3bcc097bcce881d4"
-tags: [brand-voice-consistency-system, marketing, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a brand voice doc + per-channel checklist + voice-check rubric — voice attributes, do/don't pairs, drift audit — gated by a named voice owner.
+content_id: "0d065caa1c16842f"
+complexity: medium
+produces: spec
+est_tokens: 4600
+tags: ["brand-voice", "marketing", "content", "consistency", "ai-content"]
 ---
 # Brand Voice Consistency System
 
 ## Summary
 
-**One-sentence:** Brand Voice Consistency System: codified growth-marketing practice that turns the recurring 'role-growth-marketing/Synthesis: Ship one piece of content into 10 channels with AI-assisted atomization' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a brand voice doc + per-channel checklist + voice-check rubric — voice attributes, do/don't pairs, drift audit — gated by a named voice owner.
 
-**One-paragraph:** Brand Voice Consistency System addresses the gap identified by the role-growth-marketing/Synthesis: Ship one piece of content into 10 channels with AI-assisted atomization playbook: AI generation collapses brand voice. No faion methodology covers: documenting voice attributes, encoding them as evaluation criteria, building a voice-check prompt or rubric, and auditing channel drift. With AI in every step, this is now a hard-currency methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** AI generation collapses brand voice across 10 channels. This methodology pins a one-page voice doc (5 attributes, 10 do/don't pairs, audience tone vector), a per-channel adaptation table (Twitter / LinkedIn / blog / email / docs), and a drift audit rubric. Output: a VoiceDoc + ChannelChecklist + DriftAudit triple.
+
+**Ефективно для:**
+
+- Solo founder running role-growth-marketing/Ship one piece into 10 channels with AI atomization.
+- Multi-author content where voice drifted unnoticed.
+- Pre-launch brand consolidation across web + email + social.
+- Drift audit after a quarter of AI-heavy output.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-growth-marketing/Synthesis: Ship one piece of content into 10 channels with AI-assisted atomization OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Operator publishes across ≥3 channels regularly.
+- AI tools generate ≥30% of the prose.
+- Brand voice matters (not internal docs).
+- No documented voice doc OR existing doc > 6 months old.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-channel operator with no AI assistance.
+- Internal-only documentation with no audience.
+- Brand-agency-managed voice already in place.
 
 ## Prerequisites
 
-- recent context for the role-growth-marketing/Synthesis: Ship one piece of content into 10 channels with AI-assisted atomization task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Sample prose from last 90 days | ≥20 posts | operator archive |
+| Audience description | ≤300 words | ICP doc |
+| Competitor voice references | ≥3 examples | research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/marketing-manager` | parent role skill — provides the operating context for this methodology |
+| ai-slop-detector-checklist | Voice scoring uses the slop rubric voice dimension. |
+| audience-to-customer-funnel | Channel adaptation depends on stage in funnel. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-conversion-window | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-five-attributes-named, r2-do-dont-pairs, r3-per-channel-adaptation, r4-named-owner, r5-quarterly-drift-audit | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Brand Voice Consistency System artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: voice-by-vibes, ai-default-flattens, no-channel-adaptation, drift-unnoticed | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-voice-doc` | opus | High-stakes synthesis — sets a year of content tone. |
+| `draft-channel-checklist` | sonnet | Per-channel adaptation rules. |
+| `drift-audit` | sonnet | Diff recent prose against voice doc. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/brand-voice-consistency-system.json` | JSON schema for the Brand Voice Consistency System output contract |
-| `templates/brand-voice-consistency-system.md` | Markdown skeleton with the required fields |
+| `templates/brand-voice-consistency-system.json` | VoiceDoc + ChannelChecklist JSON skeleton. |
+| `templates/brand-voice-consistency-system.md` | One-page voice doc + adaptation table. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-brand-voice-consistency-system.py` | Enforce Brand Voice Consistency System output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-brand-voice-consistency-system.py` | Validate VoiceDoc JSON against the schema. | On creation + quarterly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- upstream playbook: `role-growth-marketing/Synthesis: Ship one piece of content into 10 channels with AI-assisted atomization`
+- [[ai-slop-detector-checklist]]
+- [[audience-to-customer-funnel]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

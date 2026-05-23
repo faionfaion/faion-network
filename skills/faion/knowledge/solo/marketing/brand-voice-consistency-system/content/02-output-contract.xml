@@ -1,39 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Brand Voice Consistency System Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Brand Voice Consistency System output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Brand Voice Consistency System Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/brand-voice-consistency-system.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "attributes",
+    "do_dont_pairs",
+    "channels",
+    "last_drift_audit",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "attributes": {
+      "type": "array"
+    },
+    "do_dont_pairs": {
+      "type": "array"
+    },
+    "channels": {
+      "type": "array"
+    },
+    "last_drift_audit": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/brand-voice-consistency-system.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/brand-voice-consistency-system.json</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">attributes.length != 5 (r1).</pattern>
+      <pattern id="f3">do_dont_pairs.length &lt; 10 (r2).</pattern>
+      <pattern id="f4">channels.length &lt; 3 (r3).</pattern>
+      <pattern id="f5">last_drift_audit &gt; today - 90 days (r5).</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "voice-faion-2026-q2",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "attributes": [
+    "direct",
+    "dry-humored",
+    "evidence-led",
+    "opinionated",
+    "brief"
+  ],
+  "do_dont_pairs": [
+    {
+      "do": "Faion is a CLI tool",
+      "dont": "Faion can be thought of as a CLI tool"
+    }
+  ],
+  "channels": [
+    {
+      "name": "twitter",
+      "length": "\u2264280",
+      "emoji": "rare"
+    },
+    {
+      "name": "blog",
+      "length": "800-1200",
+      "emoji": "none"
+    },
+    {
+      "name": "email",
+      "length": "\u2264500",
+      "emoji": "rare"
+    }
+  ],
+  "last_drift_audit": "2026-05-23",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "attributes": [
+    "friendly",
+    "professional"
+  ],
+  "do_dont_pairs": [],
+  "channels": [],
+  "owner": "team"
+}
+]]></code>
+    <note>attributes count=2 (r1 violation); do_dont_pairs empty (r2); channels empty (r3); owner=team; missing artefact_id, version, last_reviewed, last_drift_audit.</note>
+  </example>
+
+  <reference path="scripts/validate-brand-voice-consistency-system.py">Schema validator (stdlib only).</reference>
 </text>

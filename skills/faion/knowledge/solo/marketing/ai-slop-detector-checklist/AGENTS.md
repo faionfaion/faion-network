@@ -3,78 +3,94 @@ slug: ai-slop-detector-checklist
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Slop Detector Checklist: codified growth-marketing practice that turns the recurring 'role-growth-marketing/Blog post brief → AI draft → human polish (per-post)' decision into a repeatable, auditable artefact.
-content_id: "247afaad15f2fcc1"
-tags: [ai-slop-detector-checklist, marketing, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a binary slop-or-ship score for an AI-drafted blog post — generic intro, hedging, factual grounding, original signal, formatting tics — gated by ≥80 / 100 to ship.
+content_id: "147627a61a5f67f6"
+complexity: medium
+produces: rubric
+est_tokens: 4400
+tags: ["ai-slop", "content-quality", "blog", "seo", "rubric"]
 ---
-# Ai Slop Detector Checklist
+# AI Slop Detector Checklist
 
 ## Summary
 
-**One-sentence:** Ai Slop Detector Checklist: codified growth-marketing practice that turns the recurring 'role-growth-marketing/Blog post brief → AI draft → human polish (per-post)' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a binary slop-or-ship score for an AI-drafted blog post — generic intro, hedging, factual grounding, original signal, formatting tics — gated by ≥80 / 100 to ship.
 
-**One-paragraph:** Ai Slop Detector Checklist addresses the gap identified by the role-growth-marketing/Blog post brief → AI draft → human polish (per-post) playbook: Direct pain point in the unit context. AI drafts ship to prod with hedging, generic intros, zero original signal — Google and humans both notice. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** AI drafts ship to production with generic intros, hedging ('it's important to note'), zero original signal, and Wikipedia-flavour formatting. Google E-E-A-T and humans both notice. This methodology scores a draft against 5 dimensions (originality, specificity, grounding, voice, formatting tics) with a binary scoring rubric. Output: a SlopScore with category scores + ship/rework verdict.
+
+**Ефективно для:**
+
+- Solo marketer running role-growth-marketing/Blog post brief → AI draft → human polish.
+- Content team where 'looks fine' was the only review.
+- SEO posture where E-E-A-T signal must be defensible.
+- Pre-publish QA gate before blog or newsletter publish.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-growth-marketing/Blog post brief → AI draft → human polish (per-post) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Draft was AI-generated (LLM) — at least 30% of the prose.
+- Draft will publish to a domain serving paying customers OR optimising for organic search.
+- Operator has 5+ minutes to score before publishing.
+- Brand voice matters (not internal-only docs).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Internal-only docs / changelogs with no customer audience.
+- Personal blog with no SEO or brand voice goals.
+- Already passed an editor-driven review at this depth.
 
 ## Prerequisites
 
-- recent context for the role-growth-marketing/Blog post brief → AI draft → human polish (per-post) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| AI-drafted markdown | .md file | operator workflow |
+| Brand voice doc | ≤500 word style guide | brand-voice methodology |
+| Topic-specific facts / sources | linked list | operator research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/marketing-manager` | parent role skill — provides the operating context for this methodology |
+| brand-voice-consistency-system | Voice dimension scoring consumes the brand voice doc. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-original-signal-required, r2-no-hedging-tics, r3-factual-grounding, r4-named-owner, r5-binary-ship-gate | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the AI Slop Detector Checklist artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: wikipedia-intro, hedging-everywhere, no-grounding, listicle-padding | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `score-draft` | sonnet | Per-dimension scoring against rubric. |
+| `suggest-rewrites` | opus | High-stakes — original signal injection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-slop-detector-checklist.json` | JSON schema for the Ai Slop Detector Checklist output contract |
-| `templates/ai-slop-detector-checklist.md` | Markdown skeleton with the required fields |
+| `templates/ai-slop-detector-checklist.json` | SlopScore JSON skeleton. |
+| `templates/ai-slop-detector-checklist.md` | Scoring rubric + rewrite suggestions. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-slop-detector-checklist.py` | Enforce Ai Slop Detector Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-slop-detector-checklist.py` | Validate SlopScore JSON against the schema. | After scoring before publish. |
 
 ## Related
 
-- parent skill: `solo/marketing/`
-- upstream playbook: `role-growth-marketing/Blog post brief → AI draft → human polish (per-post)`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[brand-voice-consistency-system]]
+- [[audience-to-customer-funnel]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

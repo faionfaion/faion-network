@@ -1,76 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Vercel Deployment — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules for Vercel deployments at solo SaaS scale.</summary>
+<text id="01-core-rules" title="Vercel Deployment Discipline Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Vercel Deployment Discipline methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-env-scoping" testable="true">
-      <statement>Environment variables MUST be scoped to one of {Development, Preview, Production} via Vercel's env-scope selector — NEVER "All Environments". Secrets in Preview must NOT match Production secrets (separate DB credentials, separate API keys).</statement>
-      <rationale source="Vercel docs / 12-factor config + multiple real incidents 2022-2024">"All Environments" is the leading cause of staging-data overwriting production. Different secrets per environment limit blast radius when a PR build runs against the wrong DB.</rationale>
+    <rule id="r1-env-scoping" testable="true" depth="essential">
+      <statement>Environment variables MUST be scoped to one of {Development, Preview, Production} — NEVER &apos;All Environments&apos;. Secrets in Preview MUST NOT match Production.</statement>
+      <rationale source="Vercel docs + 12-factor config + multiple real incidents 2022-2024">&apos;All Environments&apos; is the leading cause of staging data overwriting production. Separate secrets bound blast radius.</rationale>
     </rule>
 
-    <rule id="r2-runtime-allow-list" testable="true">
-      <statement>Before declaring `export const runtime = 'edge'` in a route, the file MUST be validated against the Edge-runtime allow-list (`templates/runtime-allow-list.yaml`): no Node-only APIs (`fs`, `child_process`, native crypto.timingSafeEqual prior to Edge crypto polyfill, `dns`). Failing files MUST stay on Node runtime.</statement>
-      <rationale source="Vercel Edge Functions runtime docs + community-reported regressions">Edge-runtime adoption without checks produces 500s in production that local dev never sees. The allow-list pre-empts the class entirely.</rationale>
+    <rule id="r2-runtime-allow-list" testable="true" depth="essential">
+      <statement>Before declaring `export const runtime = &apos;edge&apos;`, the file MUST be validated against runtime-allow-list.yaml — no fs, child_process, dns. Failing files stay on Node runtime.</statement>
+      <rationale source="Vercel Edge Functions docs">Edge adoption without checks → 500s in prod that local dev never sees.</rationale>
     </rule>
 
-    <rule id="r3-isr-cache-key" testable="true">
-      <statement>ISR (`revalidate: N`) pages MUST include all tenant / user discriminators in their cache key (path params + searchParams used in fetch). Pages caching tenant-A's data and serving it to tenant-B is a data-leakage incident, not "cache misconfiguration".</statement>
-      <rationale source="Next.js ISR data-leakage cohort incidents 2022-2024">ISR caches by path. Pages reading user-context from cookies but caching by path serve the wrong user's data. The cache-key audit prevents the leak.</rationale>
+    <rule id="r3-isr-cache-key" testable="true" depth="essential">
+      <statement>ISR `revalidate: N` pages MUST include all tenant / user discriminators in their cache key (path params + searchParams used in fetch).</statement>
+      <rationale source="Next.js ISR data-leakage cohort incidents">Pages caching tenant-A data and serving it to tenant-B is data-leakage, not &apos;cache misconfiguration&apos;.</rationale>
     </rule>
 
-    <rule id="r4-rollback-atomicity" testable="true">
-      <statement>Rollback procedure MUST be: (a) identify last-known-good deployment ID, (b) run `vercel rollback &lt;deployment_id&gt;` (Pro plan) OR Vercel UI promote-previous (Hobby), (c) verify production traffic hits the rolled-back deployment via `/_vercel/info` check, (d) post incident log. Total elapsed time ≤ 5 minutes for a solo on-call.</statement>
-      <rationale source="Vercel rollback docs + SRE error-budget conventions">A rollback that takes 30 minutes is a rebuild, not a rollback. The 5-minute target keeps the option viable; the verification step prevents "rolled back the wrong project".</rationale>
+    <rule id="r4-rollback-atomicity" testable="true" depth="essential">
+      <statement>Rollback procedure: (a) identify last-known-good deployment ID, (b) `vercel rollback &lt;id&gt;` OR UI promote-previous, (c) verify via /_vercel/info, (d) post incident log. ≤5 minutes total.</statement>
+      <rationale source="Vercel rollback docs + SRE conventions">A 30-minute &apos;rollback&apos; is a rebuild; verification step prevents &apos;rolled back the wrong project&apos;.</rationale>
     </rule>
 
-    <rule id="r5-secrets-boundary" testable="true">
-      <statement>Secrets used only at build-time (analytics keys, sentry DSN) are OK as env vars. Secrets used at runtime (DB passwords, third-party API keys) MUST be loaded from Vercel's encrypted env store AND NEVER reach client-side bundles. Build that exposes a `process.env.SECRET_*` to client code MUST fail CI.</statement>
-      <rationale source="Next.js / Vercel build-time env semantics + reported secret leaks">`NEXT_PUBLIC_` prefix inadvertently exposed many production secrets when devs prefixed for convenience. CI guard is the only reliable boundary.</rationale>
+    <rule id="r5-secrets-boundary" testable="true" depth="essential">
+      <statement>Runtime secrets (DB password, third-party API key) MUST NEVER be exposed to client bundles. Build that exposes `NEXT_PUBLIC_SECRET_*` to client code MUST fail CI.</statement>
+      <rationale source="Next.js build-time env semantics">Convenience-prefixed secrets are how production keys hit client bundles. CI guard is the only reliable boundary.</rationale>
     </rule>
 
-  </section>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
 
-  <section title="Edge-runtime allow-list (excerpt)">
-
-    <example type="good" title="Safe Edge-runtime route">
-      <code lang="ts"><![CDATA[
-// app/api/health/route.ts
-export const runtime = 'edge'  // OK
-
-export async function GET() {
-  // Web APIs only:
-  const res = await fetch('https://api.example.com/ping')
-  return Response.json({ ok: res.ok })
-}
-
-Allow-list APIs used: fetch, Response, Request, URL, crypto.subtle.
-      ]]></code>
-      <note>r2-compatible. Routes that only use Web APIs are safe for Edge.</note>
-    </example>
-
-    <example type="bad" title="Node-only API in Edge route (r2 violation)">
-      <code lang="ts"><![CDATA[
-// app/api/upload/route.ts
-import fs from 'fs/promises'              // NODE-only
-export const runtime = 'edge'              // declares Edge
-
-export async function POST(req: Request) {
-  const buf = await req.arrayBuffer()
-  await fs.writeFile('/tmp/upload', Buffer.from(buf))  // boom
-  return Response.json({ ok: true })
-}
-
-Local: works (Node fs available).
-Production: 500. Edge runtime has no fs.
-      ]]></code>
-      <note>r2 forces the developer to pick: drop Edge OR drop fs. The methodology refuses to ship this.</note>
-    </example>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-vercel-deployment-discipline.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

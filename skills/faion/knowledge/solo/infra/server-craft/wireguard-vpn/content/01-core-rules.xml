@@ -1,11 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="wireguard-vpn Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for wireguard-vpn. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="WireGuard VPN Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the WireGuard VPN methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-allowedips-defines-routing" testable="true" depth="essential">
+      <statement>Each peer&apos;s AllowedIPs list decides which packets route to that peer. NEVER set AllowedIPs=0.0.0.0/0 on the server for a single client (that breaks every other client&apos;s routing).</statement>
+      <rationale source="wireguard.com cryptokey routing docs">WireGuard does cryptokey routing — overlapping AllowedIPs cause silent black-holing.</rationale>
     </rule>
+
+    <rule id="r2-ip-forward-on" testable="true" depth="essential">
+      <statement>net.ipv4.ip_forward=1 (and net.ipv6.conf.all.forwarding=1 for IPv6) MUST be set in /etc/sysctl.d/99-wireguard.conf and active. Server-only NAT mode requires it.</statement>
+      <rationale source="WireGuard quickstart + Linux networking">Without forwarding, packets from the tunnel don&apos;t egress; clients connect but reach nothing.</rationale>
+    </rule>
+
+    <rule id="r3-keys-never-in-git" testable="true" depth="essential">
+      <statement>Private keys MUST be chmod 600 and NEVER committed. wg0.conf containing PrivateKey is gitignored.</statement>
+      <rationale source="secrets-management methodology">Private key compromise = MITM of the tunnel; pre-commit hook must catch the pattern.</rationale>
+    </rule>
+
+    <rule id="r4-named-owner" testable="true" depth="essential">
+      <statement>VpnPlan names a single owner. &apos;team&apos; / &apos;we&apos; / &apos;&apos; are forbidden.</statement>
+      <rationale source="RACI">Plural ownership = no ownership.</rationale>
+    </rule>
+
+    <rule id="r5-keepalive-for-mobile" testable="true" depth="essential">
+      <statement>Mobile / NAT-traversal peers MUST set PersistentKeepalive=25 (seconds). Other peers omit it.</statement>
+      <rationale source="WireGuard FAQ">NAT mapping expires; keepalive holds the punch-hole open for inbound packets to mobile.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-wireguard-vpn.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

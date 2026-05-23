@@ -3,78 +3,98 @@ slug: supabase-rls-audit-checklist
 tier: solo
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "89a6670f5cb381fd"
-summary: "Supabase Rls Audit Checklist: produces a versioned, owner-signed artefact that closes the gap 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production'."
-tags: [supabase-rls-audit-checklist, infra, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a per-table Supabase RLS audit — enable flag, SELECT/INSERT/UPDATE/DELETE policy presence, anon/auth role coverage — gated by row-level test fixtures.
+content_id: "cb48213a4b8292fb"
+complexity: medium
+produces: report
+est_tokens: 4600
+tags: ["supabase", "rls", "postgres", "security", "tenant-isolation"]
 ---
-# Supabase Rls Audit Checklist
+# Supabase RLS Audit Checklist
 
 ## Summary
 
-**One-sentence:** Supabase Rls Audit Checklist: produces a versioned, owner-signed artefact that closes the gap 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production'.
+**One-sentence:** Generates a per-table Supabase RLS audit — enable flag, SELECT/INSERT/UPDATE/DELETE policy presence, anon/auth role coverage — gated by row-level test fixtures.
 
-**One-paragraph:** Addresses the gap surfaced by 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production': Supabase is the default stack for this ICP. There is no Supabase methodology anywhere in solo. RLS misconfiguration is the #1 leak vector for vibe-coded SaaS. Must exist at solo tier. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a supabase rls audit checklist artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** RLS misconfiguration on Supabase is the leading data-leak pattern for vibe-coded MVPs. This methodology audits every public-schema table: enable flag, presence of SELECT/INSERT/UPDATE/DELETE policies, anon-vs-authenticated coverage, and a fixture-driven test that proves anon CANNOT read another tenant's row. Output: an RlsAuditReport with per-table verdicts.
+
+**Ефективно для:**
+
+- Pre-launch MVP on Supabase that has 'shipped fast' without an RLS review.
+- Audit of a freshly-AI-generated schema where policies were skipped.
+- Compliance prep (SOC 2, GDPR) requiring documented tenant isolation.
+- Routine quarterly check of an existing production schema.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Production data on Supabase (or any Postgres with RLS).
+- Multi-tenant or multi-user app where rows belong to specific principals.
+- Anon role has any access to public schema tables.
+- No documented RLS audit within the last 90 days.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working supabase rls audit checklist artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Single-tenant app where every authenticated user can see everything.
+- Tables explicitly designed for public read (CMS content, blog posts).
+- Audit performed within the last 90 days with documented evidence.
 
 ## Prerequisites
 
-- recent context for the 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Supabase service-role key | secret | operator vault |
+| Schema dump | pg_dump --schema-only | supabase CLI |
+| Test fixtures (≥2 tenants) | SQL inserts | test repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/infra/infra` | parent domain group — provides operating context for Supabase Rls Audit Checklist |
+| secrets-management | Service-role key handling from secrets plan. |
+| supabase-backup-and-restore-drill | Audit runs against a restored clone, never prod. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-rls-enabled-every-public-table, r2-policy-per-verb, r3-anon-cannot-read-other-tenant, r4-named-owner, r5-fixture-driven-tests | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Supabase RLS Audit Checklist artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: rls-disabled-public-table, missing-update-policy, anon-can-read-all, no-test-fixtures | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-audit-plan` | sonnet | Per-table risk assessment. |
+| `render-test-fixtures` | sonnet | Per-table fixture generation with tenant boundaries. |
+| `diff-against-prev` | haiku | Schema diff between audits. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/supabase-rls-audit-checklist.json` | JSON schema for the Supabase Rls Audit Checklist output contract |
-| `templates/supabase-rls-audit-checklist.md` | Markdown skeleton with the required fields |
+| `templates/supabase-rls-audit-checklist.json` | RlsAuditReport JSON skeleton. |
+| `templates/supabase-rls-audit-checklist.md` | Audit trail + per-table verdict table. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-supabase-rls-audit-checklist.py` | Enforce Supabase Rls Audit Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-supabase-rls-audit-checklist.py` | Validate RlsAuditReport JSON against the schema. | After each audit before closing. |
 
 ## Related
 
-- parent skill: `solo/infra/`
-- upstream playbook: `p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production`
-- solo/infra/p1-solo-saas-builder
+- [[secrets-management]]
+- [[supabase-backup-and-restore-drill]]
+- [[monitoring-logging]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
