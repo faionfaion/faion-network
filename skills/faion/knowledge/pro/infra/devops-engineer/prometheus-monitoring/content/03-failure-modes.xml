@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="prometheus-monitoring Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for prometheus-monitoring as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Prometheus Monitoring Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="label-cardinality-blowup" severity="medium">
+      <description>Prometheus pod OOM-restarts hourly; memory usage climbs after every deploy.</description>
+      <reason>user_id or request_id used as a label; each unique value spawns a new time series.</reason>
+      <note>Fix: Strip unbounded labels at scrape time via metric_relabel_configs drop rules. Move per-request data to traces, not metrics.</note>
+    </antipattern>
+    <antipattern id="cause-based-alert-fatigue" severity="medium">
+      <description>On-call paged 8 times per night for pod restarts, none impacted users.</description>
+      <reason>Alerts fire on causes (KubePodCrashLooping) not symptoms (5xx rate up).</reason>
+      <note>Fix: Rewrite alerts to fire on symptoms: error rate, latency p99, saturation. Add runbook_url to every alert.</note>
+    </antipattern>
+    <antipattern id="counter-without-rate" severity="medium">
+      <description>Dashboard shows a sawtooth pattern that resets every deploy; Grafana panel is unreadable.</description>
+      <reason>Counter value plotted directly; counter resets on process restart.</reason>
+      <note>Fix: Wrap in rate(): rate(http_requests_total[5m]). For percentages, sum() by () then divide.</note>
+    </antipattern>
+    <antipattern id="summary-across-replicas" severity="medium">
+      <description>p99 latency averaged across 10 replicas is meaningless; numbers don't match SLO targets.</description>
+      <reason>Summary used instead of histogram; per-instance quantiles cannot be aggregated.</reason>
+      <note>Fix: Replace summary with histogram. Use histogram_quantile(0.99, sum(rate(latency_seconds_bucket[5m])) by (le)).</note>
+    </antipattern>
+    <antipattern id="expensive-dashboard-query" severity="medium">
+      <description>Grafana dashboard takes 30s to load; Prometheus CPU pegged.</description>
+      <reason>Dashboard runs expensive aggregations on every panel refresh.</reason>
+      <note>Fix: Move aggregation to recording rules with naming pattern level:metric:operation (job:http_requests:rate5m).</note>
+    </antipattern>
+
   </section>
 </text>

@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="terraform Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for terraform as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Terraform Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using workspaces to separate production from development.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Workspaces share backend config and are not suitable for prod isolation. Use separate directories with separate state files instead.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="laptop-apply" severity="medium">
+      <description>Engineer applies from laptop; main branch diverges; next CI apply errors.</description>
+      <reason>No CI-only gate; engineers have direct cloud credentials.</reason>
+      <note>Fix: Remove laptop creds. Configure OIDC trust GitHub → cloud IAM. terraform apply only in CI.</note>
+    </antipattern>
+    <antipattern id="secrets-in-tfvars" severity="medium">
+      <description>git diff shows database password in plain text inside prod.tfvars.</description>
+      <reason>No Vault / Secrets Manager integration; vars added inline.</reason>
+      <note>Fix: Move secret to Vault. Reference via data.vault_generic_secret. Mark variable sensitive = true. Rotate the leaked credential.</note>
+    </antipattern>
+    <antipattern id="unpinned-provider" severity="medium">
+      <description>Two engineers run plan and see different diffs; CI produces a third result.</description>
+      <reason>Provider version uses ~&gt; 5 instead of = 5.40.0.</reason>
+      <note>Fix: Pin to exact version in versions.tf. Bump deliberately via PR.</note>
+    </antipattern>
+    <antipattern id="copy-paste-modules" severity="medium">
+      <description>5 micro-services have a 200-line ECS service block; a security fix needs to be applied 5 times.</description>
+      <reason>No module abstraction; copy-paste seemed easier.</reason>
+      <note>Fix: Extract to module. Tag v1.0.0. Replace inline copies with module references. Bump callers to fix once.</note>
+    </antipattern>
+    <antipattern id="no-drift-detection" severity="medium">
+      <description>Console-edited security group survives in prod; PR diff doesn't show it; next apply silently reverts.</description>
+      <reason>No scheduled drift plan.</reason>
+      <note>Fix: Add weekly plan job; surface non-zero diff to #infra channel; triage in next office hours.</note>
+    </antipattern>
+
   </section>
 </text>

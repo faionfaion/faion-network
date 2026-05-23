@@ -1,22 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="secrets-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Secrets Management Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/secrets-management.json",
+  "type": "object",
+  "required": [
+    "secret_name",
+    "backend",
+    "identity_method",
+    "rotation_period_days",
+    "policy_arn_or_path",
+    "audit_log_destination",
+    "injection_method"
+  ],
+  "properties": {
+    "secret_name": {
+      "type": "string",
+      "description": "string (path-like, e.g. prod/api/db-password)"
+    },
+    "backend": {
+      "type": "string",
+      "description": "enum (vault | aws_secrets_manager | gcp_secret_manager | azure_keyvault)"
+    },
+    "identity_method": {
+      "type": "string",
+      "description": "enum (irsa | workload_identity | oidc | approle)"
+    },
+    "rotation_period_days": {
+      "type": "integer",
+      "description": "integer (\u226430)"
+    },
+    "policy_arn_or_path": {
+      "type": "string",
+      "description": "string (least-privilege policy reference)"
+    },
+    "audit_log_destination": {
+      "type": "string",
+      "description": "string (separate-account log destination)"
+    },
+    "injection_method": {
+      "type": "string",
+      "description": "enum (eso | csi | sdk_runtime_fetch)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "secret_name": "prod/api/db-password",
+  "backend": "vault",
+  "identity_method": "irsa",
+  "rotation_period_days": 30,
+  "policy_arn_or_path": "vault/policies/prod-api-readonly",
+  "audit_log_destination": "s3://audit-account-bucket/vault/",
+  "injection_method": "eso"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "secret_name": "/tmp/aws-keys",
+  "backend": "vault",
+  "identity_method": "static_token",
+  "rotation_period_days": 365,
+  "policy_arn_or_path": "secrets/*"
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>identity_method == static_token (static credentials forbidden)</item>
+      <item>rotation_period_days &gt; 30</item>
+      <item>policy_arn_or_path contains '*' (wildcard policy)</item>
+      <item>audit_log_destination in same account as backend</item>
+      <item>secret_name path contains 'tmp' or '/dev/' (test secrets in prod)</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-secrets-management.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

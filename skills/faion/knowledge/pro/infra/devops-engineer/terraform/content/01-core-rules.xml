@@ -1,67 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="terraform Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for terraform. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Terraform Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the Terraform methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Split configuration into main.tf, variables.tf, outputs.tf, versions.tf, providers.tf, locals.tf, and data.tf.</statement>
-      <rationale source="v1-source">Each file has a single responsibility; reviewers and tools know where to look for each element type.</rationale>
+
+    <rule id="r1-provider-pinning" testable="true" depth="essential">
+      <statement>providers + terraform versions MUST be pinned (= operator) in versions.tf. Major-version bumps go via PR with diff + plan attached.</statement>
+      <rationale source="HashiCorp Terraform docs — version pinning">Unpinned providers cause silent behaviour drift between runs; pinning makes plans reproducible.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Pin required_version with a minimum bound (e.g., &gt;= 1.6.0) and pin provider versions with ~&gt; constraints. Commit .terraform.lock.hcl.</statement>
-      <rationale source="v1-source">Unpinned versions cause silent upgrades that break apply; lock file ensures deterministic runs across machines and CI.</rationale>
+    <rule id="r2-remote-state-with-locking" testable="true" depth="essential">
+      <statement>State MUST live in a remote backend with locking (S3 + DynamoDB, TF Cloud, GCS + Cloud Storage lock). Local state forbidden for shared environments.</statement>
+      <rationale source="Terraform docs — Backends">Local state corrupts on concurrent edits; locking prevents two engineers applying simultaneously.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every variable must have a description. Mark sensitive values with sensitive = true. Add validation blocks for constrained inputs.</statement>
-      <rationale source="v1-source">Sensitive flag redacts values from plan output and state display. Validation provides clear error messages earlier than resource creation.</rationale>
+    <rule id="r3-plan-review-apply-gate" testable="true" depth="essential">
+      <statement>Apply MUST run only via CI after a reviewed PR with plan attached. No terraform apply from engineer laptops in shared envs.</statement>
+      <rationale source="Terraform Cloud workflows">Laptop applies skip review, leave no audit trail, and routinely diverge from main.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use locals to compute derived values and naming prefixes. Never repeat the same expression in multiple resources.</statement>
-      <rationale source="v1-source">DRY locals prevent inconsistent naming and make bulk renames a one-line change.</rationale>
+    <rule id="r4-modules-over-copy" testable="true" depth="essential">
+      <statement>Repeated patterns (VPC, ECS service, RDS) MUST be modules with semver versioning, sourced from a private registry or git tag. Inline copy-paste of 200+ HCL lines is forbidden.</statement>
+      <rationale source="terraform-aws-modules pattern">Copy-paste forks drift; modules let one fix propagate to N consumers.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Mark outputs that contain secrets as sensitive = true. Provide descriptions for all outputs.</statement>
-      <rationale source="v1-source">Sensitive outputs are redacted in CI logs and terraform output commands.</rationale>
+    <rule id="r5-no-secrets-in-state" testable="true" depth="essential">
+      <statement>Sensitive values MUST come from external sources (Vault / Secrets Manager / SOPS) and be marked sensitive = true. Plaintext secrets in .tfvars or state are forbidden.</statement>
+      <rationale source="Terraform state security">State files leak via S3 misconfig, backups, console access; secrets in state are public secrets.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Prefer for_each over count for resources that may be updated mid-lifecycle to avoid index-based drift.</statement>
-      <rationale source="v1-source">count uses numeric indexes; removing item[1] of 3 forces destroy/recreate of item[2]. for_each uses stable keys.</rationale>
+    <rule id="r6-drift-detection-scheduled" testable="true" depth="essential">
+      <statement>A weekly CI job MUST run terraform plan against every environment and surface drift (non-zero diff with no PR open). Drift triggers a triage ticket.</statement>
+      <rationale source="drift-classification-taxonomy">Drift accumulates silently — manual console fixes, vendor automation, expired resources. Weekly plan surfaces drift before disaster.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use merge(local.common_tags, { Name = "..." }) to combine tag maps consistently across all resources.</statement>
-      <rationale source="v1-source">Avoids duplicating the common_tags map in every resource block.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use remote backend with encryption enabled. For AWS: S3 bucket with SSE-KMS, versioning, public access blocked, and DynamoDB table for locking.</statement>
-      <rationale source="v1-source">Local state cannot be shared across team members or CI/CD. S3 versioning enables state recovery. DynamoDB locking prevents concurrent apply corruption.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Isolate state per environment (envs/dev/, envs/prod/) and per component (network/, compute/). Never share a single state file across environments.</statement>
-      <rationale source="v1-source">Shared state means a broken dev apply can corrupt prod state. Isolation contains blast radius.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use moved blocks in HCL for resource renames, not terraform state mv. Verify with plan showing no changes after the move.</statement>
-      <rationale source="v1-source">moved blocks are version-controlled and self-documenting. terraform state mv is a one-off command that leaves no trace in code.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Each module has single responsibility. Required files: main.tf, variables.tf, outputs.tf, versions.tf. Never configure providers inside modules.</statement>
-      <rationale source="v1-source">Provider configuration in modules prevents caller from controlling the provider version/region, making modules inflexible.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>All module inputs must have descriptions. Add validation rules for constrained inputs. Provide sensible defaults for optional variables.</statement>
-      <rationale source="v1-source">Without descriptions, callers cannot understand what a variable does. Validation surfaces errors at plan time, not at the resource API level.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Never store secrets in Terraform code, tfvars files, or state. Reference secrets via data sources (AWS Secrets Manager, Vault).</statement>
-      <rationale source="v1-source">State files are stored in S3 and may be logged in CI. Secrets in code are committed to version control. External secret managers provide rotation and audit trails.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Use IAM roles, not users. Apply least-privilege: no wildcard actions except read-only describe calls. Add resource-level conditions where available.</statement>
-      <rationale source="v1-source">Roles use temporary credentials. Wildcard actions grant more permissions than required; resource conditions restrict to tagged/named resources.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>In CI: run terraform fmt -check, terraform validate, and security scanning (tfsec/checkov) before plan. Save plan as artifact; apply only from protected branch using the saved plan.</statement>
-      <rationale source="v1-source">fmt -check catches formatting drift early. Saved plan ensures apply uses exactly the reviewed plan, preventing race conditions if code changes between plan and apply.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

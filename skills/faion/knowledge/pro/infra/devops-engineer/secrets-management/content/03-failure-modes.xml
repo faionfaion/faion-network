@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="secrets-management Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for secrets-management as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Secrets Management Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Storing cloud provider access keys (AWS_ACCESS_KEY_ID, GCP_SA_KEY) as CI/CD secrets.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long-lived keys exposed in logs or to pipeline contributors grant persistent access. OIDC eliminates this risk entirely with no key to steal.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Storing secrets in ConfigMaps because they are easier to manage.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ConfigMaps have no access control differentiation from regular config. Any pod that can read ConfigMaps in a namespace can read all secrets stored there.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="static-keys-in-ci" severity="medium">
+      <description>GitHub repo contains AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY in repo secrets; rotation manual.</description>
+      <reason>Team set up CI/CD before OIDC trust was available; static keys grandfathered in.</reason>
+      <note>Fix: Configure OIDC trust between GitHub and AWS IAM. Replace static keys with role assumption via id-token. Delete the IAM access keys.</note>
+    </antipattern>
+    <antipattern id="kubectl-create-secret-in-prod" severity="medium">
+      <description>Production cluster has 50+ Secrets created via kubectl create secret; no rotation; manifests in private git.</description>
+      <reason>ESO not installed; team uses imperative kubectl.</reason>
+      <note>Fix: Install ESO + the backend ClusterSecretStore. Replace plaintext Secrets with ExternalSecret manifests. Delete the plaintext Secrets after migration.</note>
+    </antipattern>
+    <antipattern id="wildcard-iam-policy" severity="medium">
+      <description>Application can read every secret in the backend; security review flags it.</description>
+      <reason>Initial policy used 'secrets/*' to unblock the team.</reason>
+      <note>Fix: Replace with explicit paths: prod/api/* for the api role, prod/worker/* for the worker role. Audit logs surface the actual paths used.</note>
+    </antipattern>
+    <antipattern id="manual-rotation-overdue" severity="medium">
+      <description>Audit shows a database password not rotated in 18 months; engineer who knew the rotation procedure left.</description>
+      <reason>Rotation never automated; documented as a quarterly manual task that nobody owned.</reason>
+      <note>Fix: Configure backend's dynamic-credentials engine for the database. Rotation becomes automatic on lease expiry.</note>
+    </antipattern>
+    <antipattern id="secret-baked-into-image" severity="medium">
+      <description>Old image layer contains hardcoded API key; image still pullable from registry.</description>
+      <reason>Dockerfile had ENV API_KEY=... during a hotfix.</reason>
+      <note>Fix: Remove ENV. Mount via secret volume or fetch at runtime via SDK. Rotate the leaked key. Audit registry for other contaminated images.</note>
+    </antipattern>
+
   </section>
 </text>

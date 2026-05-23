@@ -1,42 +1,141 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Dr Drill Script Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Dr Drill Script Template deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="DR Drill Script Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/dr-drill-script-template.json",
+  "type": "object",
+  "required": [
+    "drill_id",
+    "scenario_id",
+    "declaration_time",
+    "restore_time",
+    "validation_pass",
+    "rto_achieved_minutes",
+    "rpo_achieved_minutes",
+    "rto_target_minutes",
+    "rpo_target_minutes",
+    "runbook_deviations",
+    "gaps_found",
+    "gap_tickets",
+    "post_mortem_url",
+    "post_mortem_published_date"
+  ],
+  "properties": {
+    "drill_id": {
+      "type": "string",
+      "description": "string (date + scenario_id)"
+    },
+    "scenario_id": {
+      "type": "string",
+      "description": "string (matches library)"
+    },
+    "declaration_time": {
+      "type": "string",
+      "description": "string (ISO-8601)"
+    },
+    "restore_time": {
+      "type": "string",
+      "description": "string (ISO-8601)"
+    },
+    "validation_pass": {
+      "type": "boolean",
+      "description": "boolean"
+    },
+    "rto_achieved_minutes": {
+      "type": "integer",
+      "description": "integer"
+    },
+    "rpo_achieved_minutes": {
+      "type": "integer",
+      "description": "integer"
+    },
+    "rto_target_minutes": {
+      "type": "integer",
+      "description": "integer"
+    },
+    "rpo_target_minutes": {
+      "type": "integer",
+      "description": "integer"
+    },
+    "runbook_deviations": {
+      "type": "array",
+      "description": "array"
+    },
+    "gaps_found": {
+      "type": "array",
+      "description": "array"
+    },
+    "gap_tickets": {
+      "type": "array",
+      "description": "array"
+    },
+    "post_mortem_url": {
+      "type": "string",
+      "description": "string"
+    },
+    "post_mortem_published_date": {
+      "type": "string",
+      "description": "string"
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "drill_id": "2026-Q3-sc-04",
+  "scenario_id": "sc-04-identity-provider-out",
+  "declaration_time": "2026-08-15T14:22:00Z",
+  "restore_time": "2026-08-15T15:09:00Z",
+  "validation_pass": true,
+  "rto_achieved_minutes": 47,
+  "rpo_achieved_minutes": 0,
+  "rto_target_minutes": 60,
+  "rpo_target_minutes": 5,
+  "runbook_deviations": [
+    "Step 4: secondary IdP creds rotated, used backup credentials from Vault"
+  ],
+  "gaps_found": [
+    "fallback auth path lacked MFA enrollment script"
+  ],
+  "gap_tickets": [
+    "INC-2026-08-15-001"
+  ],
+  "post_mortem_url": "wiki/postmortems/sc-04-2026-q3.md",
+  "post_mortem_published_date": "2026-08-19"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "drill_id": "2026-Q3",
+  "scenario_id": "unknown",
+  "declaration_time": "",
+  "validation_pass": false,
+  "rto_achieved_minutes": 999,
+  "post_mortem_published_date": ""
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>scenario_id not present in scenario library</item>
+      <item>declaration_time empty</item>
+      <item>validation_pass == true while gaps_found contains data-integrity issues</item>
+      <item>post_mortem_published_date &gt; declaration_time + 7 days</item>
+      <item>gap_tickets empty when gaps_found non-empty</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-dr-drill-script-template.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

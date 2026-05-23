@@ -3,12 +3,15 @@ slug: us-uk-eu-compliance-matrix
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3fdc39c931a0edca"
-summary: Side-by-side obligation matrix across US (CCPA/CPRA, state privacy), UK (UK-GDPR, DPA 2018), and EU (GDPR, DSA, AI Act) so a micro-agency founder can check entity registration, data handling, contracts, and tax obligations per market without re-reading three statutes.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Side-by-side obligation matrix across US (CCPA/CPRA, state privacy), UK (UK-GDPR, DPA 2018), EU (GDPR, DSA, AI Act) covering entity registration, data handling, contracts, tax, so micro-agencies check obligations per market without re-reading three statutes."
+content_id: "2ba7bd2fd6ac087d"
+complexity: deep
+produces: report
+est_tokens: 4400
 tags: [compliance, gdpr, ccpa, uk-gdpr, jurisdictions]
 ---
 
@@ -16,72 +19,84 @@ tags: [compliance, gdpr, ccpa, uk-gdpr, jurisdictions]
 
 ## Summary
 
-**One-sentence:** Side-by-side obligation matrix across US (CCPA/CPRA, state privacy), UK (UK-GDPR, DPA 2018), and EU (GDPR, DSA, AI Act) so a micro-agency founder can check entity registration, data handling, contracts, and tax obligations per market without re-reading three statutes.
+**One-sentence:** Side-by-side obligation matrix across US (CCPA/CPRA, state privacy), UK (UK-GDPR, DPA 2018), EU (GDPR, DSA, AI Act) covering entity registration, data handling, contracts, tax, so micro-agencies check obligations per market without re-reading three statutes.
 
-**One-paragraph:** A solo founder or micro-agency selling across US, UK, and EU faces ~40 distinct obligations spread across 7 statutes. Existing methodologies are jurisdiction-specific. This methodology codifies a 7-row matrix (entity-registration, data-processing-basis, DPA / processor terms, cookie / consent, marketing email, AI-act provisions, sales-tax / VAT) with the obligation in each of the 3 jurisdictions and a per-row "first action when launching here". NOT legal advice — output marks every row with `requires_legal_review: true`. Output: `ComplianceMatrix` JSON + a markdown table for the founder's compliance binder.
+**One-paragraph:** A solopreneur or micro-agency selling into US + UK + EU faces three overlapping but distinct compliance regimes. Each has its own data-protection law (CCPA/CPRA, UK-GDPR, GDPR), contract requirements (SCCs, IDTA, DPAs), tax regime (sales tax, VAT, VAT-OSS), and product-level obligations (DSA, AI Act). Without a matrix, the founder re-derives obligations every contract and misses non-obvious ones (CCPA opt-out for B2C, AI Act risk categories). This methodology produces a compliance-matrix.md per business covering: entity registration per market, data handling per category, contract templates per buyer type, tax obligations per threshold, product-level obligations per service. Output is auditable + reviewable by counsel.
+
+**Ефективно для:**
+
+- Solopreneur заключає US/UK/EU контракт без re-reading трьох статутів.
+- Швидка перевірка — AI Act risk category для нового SaaS feature.
+- Tax thresholds (CA $500k, VAT-OSS €10k) — не пропустити VAT registration.
+- DPA / SCC / IDTA — який контракт template для якого buyer.
 
 ## Applies If (ALL must hold)
 
-- founder serves customers OR processes personal data from ≥ 2 of {US, UK, EU}
-- annual revenue OR data-subject count above any one jurisdiction's de-minimis threshold (e.g. CCPA's 100k consumers, GDPR's "regular processing")
-- founder has NOT engaged dedicated counsel per jurisdiction yet
-- product processes personal data (almost any SaaS qualifies)
+- Business sells digital services into US + UK + EU markets
+- Business processes personal data of EU/UK/US residents
+- Annual revenue or data-subject volume crosses any threshold (CCPA, VAT-OSS, AI Act)
+- Counsel review needed before signing master agreements with enterprise buyers
 
 ## Skip If (ANY kills it)
 
-- single jurisdiction operator — use the local jurisdiction's specific methodology
-- already retained counsel in all 3 jurisdictions — they own this
-- highly regulated vertical (medical devices, banking) — sector regs dominate; matrix incomplete
-- B2B-only with corporate accounts and no consumer PII — most rows reduce to vendor-DPA workflow
+- Single-market business (e.g. EU-only) — use the EU-specific methodology, not the matrix
+- Business does not process personal data and does not sell to consumers — most obligations don't apply
+- Enterprise legal team already maintains a matrix — use theirs
 
 ## Prerequisites
 
-- list of jurisdictions where the founder has customers
-- data-processing inventory (categories of data, sources, destinations)
-- current contract templates (DPA, ToS, Privacy Policy)
-- expected ARR per region (drives tax thresholds)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Business entity / VAT registrations | registration certificates | founder + accountant |
+| Revenue + customer location breakdown | billing data | ops |
+| Counsel contact (privacy + tax) | engagement letter | founder |
+| Product feature list with data flows | product wiki | product owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer/data-residency-controls` | Technical implementation of matrix's data-residency rows |
-| `pro/pm/project-manager/vendor-margin-defense-checklist` | Sister methodology covering vendor DPAs that flow into row 3 |
-| `geek/sdlc-ai/gov-ai-governance` | EU AI Act provisions in row 6 |
+| [[contractor-agreement-template-us-uk-eu]] | Contract template references this matrix |
+| [[agency-year-end-close-checklist]] | Annual close uses the matrix for tax obligations |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 7-row coverage, legal-review marker, threshold check, currency, NOT-LEGAL-ADVICE banner | ~1100 |
-| `content/02-output-contract.xml` | essential | `ComplianceMatrix` schema with per-row obligation and first-action | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: outdated statute, wrong threshold, missing AI act, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | medium | Worked example end-to-end | ~500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `jurisdiction_threshold_check` | sonnet | Numeric checks against current thresholds |
-| `obligation_lookup_per_row` | sonnet | Pulls from versioned matrix data file |
-| `first_action_recommendation` | sonnet | Bounded based on operator's revenue / data volume |
-| `legal_review_flag_assembly` | haiku | Always-true addition per row |
+| `threshold_check` | haiku | Numeric comparison |
+| `contract_choice` | sonnet | Bounded judgment on buyer-type → template |
+| `counsel_brief` | opus | Cross-jurisdiction synthesis for counsel review |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/compliance-matrix.json` | Output schema |
-| `templates/matrix-source.yaml` | Versioned statute / threshold source data |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/build-matrix.py` | Compose matrix from versioned source data | Quarterly review |
-| `scripts/statute-freshness-check.py` | Compare matrix-source to ICO / EDPB / state-AG announcements | Monthly cron |
+| `scripts/validate-us-uk-eu-compliance-matrix.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodologies: `data-residency-controls`, `vendor-margin-defense-checklist`
-- external: [GDPR (EU 2016/679)](https://gdpr-info.eu/) · [UK ICO — Guide to UK GDPR](https://ico.org.uk/) · [California Attorney General — CCPA / CPRA](https://oag.ca.gov/privacy/ccpa) · [EU AI Act 2024](https://artificialintelligenceact.eu/) · [EDPB Guidelines](https://www.edpb.europa.eu/) · [IRS Pub 519 — US Tax for Foreign Persons](https://www.irs.gov/pub/irs-pdf/p519.pdf)
+- [[contractor-agreement-template-us-uk-eu]]
+- [[agency-year-end-close-checklist]]
+- [[secrets-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

@@ -1,51 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="prometheus-monitoring Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for prometheus-monitoring. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Prometheus Monitoring Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules grounding the Prometheus Monitoring methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Prefer Histogram over Summary for latency metrics in distributed systems.</statement>
-      <rationale source="v1-source">Histograms are aggregatable across replicas with sum(rate(...)) by (le). Summary quantiles are calculated per-instance and cannot be meaningfully combined across multiple pods.</rationale>
+
+    <rule id="r1-histogram-over-summary" testable="true" depth="essential">
+      <statement>Prefer Histogram over Summary for latency metrics in distributed systems. Use _seconds suffix and explicit bucket boundaries.</statement>
+      <rationale source="Prometheus docs — Histograms and summaries">Histograms are aggregatable across replicas with sum(rate(...)) by (le). Summary quantiles are per-instance and cannot be meaningfully combined.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Follow the pattern: namespace_name_unit_suffix. Use snake_case. Suffix counters with _total; histograms with _seconds or _bytes.</statement>
-      <rationale source="v1-source">Consistent naming allows tooling (Grafana, alerting) to auto-discover metrics and enables teams to understand a metric's purpose without documentation.</rationale>
+    <rule id="r2-naming-convention" testable="true" depth="essential">
+      <statement>Follow namespace_name_unit_suffix in snake_case. Suffix counters with _total; histograms with _seconds or _bytes.</statement>
+      <rationale source="Prometheus naming best practices">Consistent naming allows Grafana + alerting to auto-discover metrics and lets teams understand purpose without docs.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Never use unbounded values as labels: no user IDs, request IDs, email addresses, or UUIDs. Each unique label combination creates a new time series.</statement>
-      <rationale source="v1-source">High cardinality causes Prometheus OOM crashes. 1M users × 10 endpoints = 10M time series from a single metric. Labels must have bounded value sets: HTTP methods, status code classes, service names.</rationale>
+    <rule id="r3-no-unbounded-labels" testable="true" depth="essential">
+      <statement>Never use unbounded values as labels: no user IDs, request IDs, email addresses, or UUIDs. Each unique combination creates a new time series.</statement>
+      <rationale source="Prometheus operations guide — cardinality">1M users × 10 endpoints = 10M time series from a single metric. Cardinality blowup causes Prometheus OOM.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Keep label count per metric at or below 10. Add only labels needed for meaningful aggregation or filtering in dashboards and alerts.</statement>
-      <rationale source="v1-source">Each additional label multiplies the number of time series exponentially. Labels that are never used in queries waste memory and slow down scrapes.</rationale>
+    <rule id="r4-label-count-le-10" testable="true" depth="essential">
+      <statement>Keep label count per metric ≤10. Add only labels needed for meaningful aggregation or filtering in dashboards and alerts.</statement>
+      <rationale source="Prometheus best practices">Each additional label multiplies time series exponentially. Unused labels waste memory and slow scrapes.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Set global scrape interval to 15s. Override to 10s only for critical systems. Use 30–60s for low-priority metrics. Never scrape faster than the metric changes.</statement>
-      <rationale source="v1-source">10s scrape doubles storage and CPU load compared to 15s with minimal benefit for most metrics. Scrape interval below 10s is unsupported in practice — Prometheus needs time to complete each scrape cycle.</rationale>
+    <rule id="r5-scrape-interval-default" testable="true" depth="essential">
+      <statement>Set global scrape interval to 15s. Override to 10s only for critical systems. Use 30–60s for low-priority metrics.</statement>
+      <rationale source="Prometheus performance tuning">10s scrape doubles storage and CPU vs 15s with minimal benefit. &lt;10s is unsupported in practice.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use ServiceMonitor for scraping services by label selector. Use PodMonitor only when pods do not have a backing Service. Define PrometheusRule for all recording rules and alerts.</statement>
-      <rationale source="v1-source">ServiceMonitor is the standard Prometheus Operator CRD for service-level scraping. It is self-service — teams can add a ServiceMonitor to their namespace without touching prometheus.yaml. PrometheusRule keeps alerts version-controlled alongside the application.</rationale>
+    <rule id="r6-symptom-not-cause-alerts" testable="true" depth="essential">
+      <statement>Alert on symptoms (error rate, latency, saturation), not causes (pod crashed, OOM). Every alert MUST carry a runbook_url annotation.</statement>
+      <rationale source="Google SRE Workbook — Alerting on SLOs">Cause-based alerts page on pod restarts even when no user impact. Symptom-based alerts describe customer pain.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Pre-compute expensive queries used in dashboards as recording rules. Follow the naming format: level:metric:operation (e.g., job:http_requests:rate5m).</statement>
-      <rationale source="v1-source">Dashboard queries running on every panel refresh under load multiply Prometheus CPU usage. Recording rules run once per evaluation interval and store the result as a new time series, making dashboards fast regardless of cardinality.</rationale>
+    <rule id="r7-rate-on-counters" testable="true" depth="essential">
+      <statement>Use range vectors with rate() for counters. Never use a counter's instant vector value directly — it resets to zero on process restart.</statement>
+      <rationale source="PromQL fundamentals">rate(counter[5m]) handles resets automatically; raw counter values show meaningless sawtooth graphs.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Alert on symptoms, not causes. Alert on error rate exceeding threshold, not on individual pod failures. Every alert must have a runbook_url annotation.</statement>
-      <rationale source="v1-source">Symptom-based alerts (high error rate, high latency) are actionable and describe user impact. Cause-based alerts (pod crashed) create alert fatigue — a pod may crash and restart with no user impact. Runbook URLs eliminate information lookup time during incidents.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use the for: duration to require alerts to persist before firing. Set at least 2m for critical alerts and 5–15m for warning alerts.</statement>
-      <rationale source="v1-source">Transient spikes lasting seconds should not page on-call engineers. A minimum for: duration filters out flapping alerts caused by temporary metric anomalies during deployments or garbage collection.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use range vectors with rate() for counters. Never use a counter's instant vector value directly in a dashboard — it resets to zero on process restart.</statement>
-      <rationale source="v1-source">Counters increase monotonically and reset on restart. rate(counter[5m]) computes per-second rate handling resets automatically. Using the raw counter value shows a sawtooth graph that is meaningless for trend analysis.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Use histogram_quantile() with sum(rate(bucket[5m])) by (le) — always include by (le) and always apply rate() to the bucket series.</statement>
-      <rationale source="v1-source">histogram_quantile requires the _bucket series with the le label intact. Without by (le), aggregation collapses buckets incorrectly. Without rate(), a counter-based histogram produces wrong quantiles after resets.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

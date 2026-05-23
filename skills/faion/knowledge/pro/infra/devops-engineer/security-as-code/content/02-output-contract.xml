@@ -1,22 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-as-code Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Security as Code (Policy as Code) Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-as-code.json",
+  "type": "object",
+  "required": [
+    "pipeline_stage",
+    "scanner_or_policy",
+    "block_severity_threshold",
+    "policy_repo_path",
+    "enforce_mode",
+    "waiver_required_for_exception",
+    "audit_destination",
+    "signing_attestation"
+  ],
+  "properties": {
+    "pipeline_stage": {
+      "type": "string",
+      "description": "enum (build | test | sca | sast | sign | deploy | admission | runtime)"
+    },
+    "scanner_or_policy": {
+      "type": "string",
+      "description": "string (tool name + version)"
+    },
+    "block_severity_threshold": {
+      "type": "string",
+      "description": "enum (critical | high | medium | low)"
+    },
+    "policy_repo_path": {
+      "type": "string",
+      "description": "string (relative to monorepo)"
+    },
+    "enforce_mode": {
+      "type": "string",
+      "description": "enum (enforce | audit)"
+    },
+    "waiver_required_for_exception": {
+      "type": "boolean",
+      "description": "boolean (true)"
+    },
+    "audit_destination": {
+      "type": "string",
+      "description": "string (SIEM / log store URL)"
+    },
+    "signing_attestation": {
+      "type": "object",
+      "description": "object (cosign + key reference)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "pipeline_stage": "sca",
+  "scanner_or_policy": "trivy@0.48",
+  "block_severity_threshold": "critical",
+  "policy_repo_path": "policies/kyverno/require-non-root.yaml",
+  "enforce_mode": "enforce",
+  "waiver_required_for_exception": true,
+  "audit_destination": "https://siem.acme/ingest/k8s",
+  "signing_attestation": {
+    "tool": "cosign",
+    "key_ref": "k8s://sigstore/cosign-key"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pipeline_stage": "deploy",
+  "scanner_or_policy": "trivy",
+  "block_severity_threshold": "low",
+  "enforce_mode": "audit"
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>enforce_mode == audit for production namespaces (audit-only is false comfort)</item>
+      <item>block_severity_threshold &gt; high (low/medium block creates fatigue without value)</item>
+      <item>signing_attestation missing for production images</item>
+      <item>audit_destination empty or pointing to dev cluster (no real evidence)</item>
+      <item>policy_repo_path missing (console-only policy = drift hazard)</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-security-as-code.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

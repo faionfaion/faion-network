@@ -3,78 +3,99 @@ slug: dr-drill-script-template
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "cf9bca88b39cb9f8"
-summary: Dr Drill Script Template delivers a concrete, testable methodology that turns the recurring task of 'Disaster-recovery plan + live drill' into an auditable artefact, addressing the gap: backup-verification-dr methodology exists but does not script a full live drill (declaration -
-tags: [infra, pro, template, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-drill script template covering declaration → runbook execution → restore validation → success criteria check → post-mortem within 7 days, scored against RTO/RPO targets."
+content_id: "409459e53e31f401"
+complexity: medium
+produces: report
+est_tokens: 3900
+tags: [infra, pro, template, dr, drill, runbook]
 ---
-# Dr Drill Script Template
+
+# DR Drill Script Template
 
 ## Summary
 
-**One-sentence:** Dr Drill Script Template delivers a concrete, testable methodology that turns the recurring task of 'Disaster-recovery plan + live drill' into an auditable artefact, addressing the gap: backup-verification-dr methodology exists but does not script a full live drill (declaration -> restore -> failback -> postmortem).
+**One-sentence:** Per-drill script template covering declaration → runbook execution → restore validation → success criteria check → post-mortem within 7 days, scored against RTO/RPO targets.
 
-**One-paragraph:** backup-verification-dr methodology exists but does not script a full live drill (declaration -> restore -> failback -> postmortem). Dr Drill Script Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Disaster-recovery plan + live drill' (role-software-architect, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** A DR drill is not 'failover and see what happens'. It's a scripted exercise with declaration, run, restore, validate, score, post-mortem. This methodology provides the per-drill script template: declaration step (read-only check that the scenario's criteria are met or simulated), run step (the runbook, executed verbatim), restore step (re-establish service), validation step (data integrity + smoke test), score (RTO/RPO achieved vs targets), post-mortem (gaps + tickets within 7 days). Output: drill-run.yaml capturing what happened + drill-report.md publishable to the team. Pairs with dr-drill-scenario-library which supplies the scenarios.
+
+**Ефективно для:**
+
+- Drill — це script, не improvisation; кожен крок документований.
+- Score за RTO/RPO замість 'feels like it went ok'.
+- Post-mortem обов'язковий + 7-day deadline.
+- Pair з dr-drill-scenario-library: scenario → script execution.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Disaster-recovery plan + live drill' (role: role-software-architect) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- DR scenario library exists (use the library methodology first)
+- Quarterly or more frequent drill cadence
+- Team commits to producing a post-mortem within 7 days
+- RTO/RPO targets exist (otherwise 'score' is undefined)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No scenario library — author one first via dr-drill-scenario-library
+- First-ever DR drill with no targets — pick targets first, then script
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| dr-drill-scenario-library output (scenarios.yaml) | library | platform team |
+| RTO/RPO targets per service | SLO + DR policy | engineering leader |
+| Post-mortem template | templates/postmortem.md | incident-mgmt |
+| Drill calendar slot booked | team capacity | rotation owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[dr-drill-scenario-library]] | Supplies the scenario this script exercises |
+| [[on-call-rotation-bootstrap]] | Provides the owner/escalation references |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | medium | Worked example end-to-end | ~500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `dr_drill_script_template_template_fill` | haiku | Template fill, no judgment |
-| `dr_drill_script_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `dr_drill_script_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `declaration_announce` | haiku | Template fill comms |
+| `post_mortem_draft` | sonnet | Bounded structured writing from drill log |
+| `gap_synthesis` | opus | Cross-step pattern detection |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-dr-drill-script-template.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `role-software-architect/Disaster-recovery plan + live drill`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[dr-drill-scenario-library]]
+- [[on-call-rotation-bootstrap]]
+- [[alert-deduplication-playbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

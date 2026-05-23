@@ -1,14 +1,17 @@
 ---
 slug: slo-definition-template-per-service-class
 tier: pro
-group: devops-engineer
+group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f1dd1f4a398e61a6"
-summary: SLI/SLO definition templates keyed by service class (API, async worker, batch, static asset, scheduled job) so SLO authoring stops being dashboard-driven and starts being service-shape-driven, with explicit SLI selection rules and budget calibration.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "SLI/SLO definition templates keyed by service class (API, async worker, batch, static asset, scheduled job) with explicit SLI selection rules and error-budget calibration."
+content_id: "8fbeda51b7d78b38"
+complexity: medium
+produces: spec
+est_tokens: 4000
 tags: [slo, sli, service-class, devops-engineer, observability, prometheus]
 ---
 
@@ -16,78 +19,83 @@ tags: [slo, sli, service-class, devops-engineer, observability, prometheus]
 
 ## Summary
 
-**One-sentence:** SLI / SLO templates keyed by service class — API, async worker, batch job, static asset, scheduled job — so SLO authoring is driven by service shape, not by what the dashboard already shows.
+**One-sentence:** SLI/SLO definition templates keyed by service class (API, async worker, batch, static asset, scheduled job) with explicit SLI selection rules and error-budget calibration.
 
-**One-paragraph:** Most teams already have Prometheus + DORA metrics but no methodology for translating a service's shape into its SLI selection. The result is dashboard-driven SLO authoring: pick metrics that look good on Grafana, set the threshold to where the line happens to be, call it an SLO. This methodology pins per-class SLI selection rules: a user-facing API gets request-success + latency SLIs, an async worker gets queue-age + processing-success SLIs, a batch job gets completion-on-time + correctness SLIs, a static asset gets freshness + delivery-success SLIs, a scheduled job gets execution-success + on-time SLIs. Each class has a window (rolling 30 days standard), a target derived from user-acceptable error (not from current performance), and a budget-policy doc. Mechanism: identify service class → pick template → calibrate target with product → publish. Primary output: a `slo-defs.yaml` per service + a one-page rationale per SLO.
+**One-paragraph:** SLO authoring fails when teams reverse-engineer SLOs from existing dashboards instead of from service shape. The result: API SLOs measured by 'CPU < 80%' (not user-facing), worker SLOs missing entirely, batch SLOs treating success counts as latency. This methodology pins SLI templates per service class: API → availability + latency (RED), async worker → durability + processing-lag, batch → success-rate + completion-time, static asset → availability + freshness, scheduled job → schedule-adherence. Each template specifies the SLI query, the SLO target with rationale, and the error-budget window. Output: slo.yaml per service that ships into the alerting + matrix pipelines.
+
+**Ефективно для:**
+
+- SLO author не вигадує — pick template по service class.
+- Уникнення CPU-based SLO для user-facing API (не вимірює customer pain).
+- Узгодження SLI query format між teams (one PromQL per template).
+- Calibration: target + rationale + window замість магічних 99.9%.
 
 ## Applies If (ALL must hold)
 
-- service catalog with at least 3 services AND a service-class taxonomy in place
-- observability stack capable of computing the chosen SLIs (Prometheus + Grafana or equivalent)
-- product / business owner available to set user-acceptable thresholds
-- team accepts SLOs as ship gates, not just dashboards
+- Service catalog exists with service-shape metadata (HTTP API / async worker / batch / etc.)
+- Metrics pipeline (Prometheus / Datadog / Honeycomb) measures the relevant SLIs
+- Engineering org wants explicit SLOs (for paging, customer commitments, or error-budget policy)
+- There is a feedback loop: SLO miss → alert → action
 
 ## Skip If (ANY kills it)
 
-- single-service shop — adapt the template directly rather than build a class system
-- no observability for the chosen SLIs — instrument first
-- product refuses to set acceptable-error targets — SLO becomes engineering wishful thinking
-- team uses platform SLOs (e.g. inherited from cloud provider) without authority to adjust — use the inherited targets
+- Pre-product team — SLOs without customers are theatre; instrument first, SLO later
+- Single-tenant internal tool with no SLA — overhead exceeds value
+- Service-class taxonomy not yet defined — define classes first, then SLOs per class
 
 ## Prerequisites
 
-- service catalog with class labels
-- Prometheus or equivalent that can compute success rate and latency percentile
-- DORA metrics in place (`pro/infra/devops-engineer/dora-metrics`)
-- one-page SLO rationale template
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service catalog with service_class field | catalog YAML | platform team |
+| Metrics pipeline + recording rules | Prometheus config | SRE |
+| Error-budget policy | freeze-rules.yaml | engineering leader |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer/dora-metrics` | Vocabulary and tooling overlap |
-| `pro/infra/devops-engineer/prometheus-monitoring` | Underlying metric source |
-| `pro/infra/devops-engineer/slo-burn-decision-matrix` | What the SLOs feed into |
-| `geek/dev/software-developer/slo-burn-rate-review-protocol` | Weekly review consumer |
+| [[prometheus-monitoring]] | PromQL + metric naming conventions |
+| [[error-budget-policy-and-freeze-rules]] | How budgets become actions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: service-class first, SLI from class template, product-set target, budget-policy doc, 30-day window default | ~1100 |
-| `content/02-output-contract.xml` | essential | slo-defs.yaml schema per class, rationale template, SLI / SLO / SLA distinction | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: dashboard-driven SLOs, missing budget policy, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | medium | Worked example end-to-end | ~500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `service_class_assignment` | sonnet | Classify a service from its shape (endpoints, traffic pattern, dependencies) |
-| `sli_template_application` | haiku | Apply class-specific template |
-| `target_calibration_interview` | sonnet | Draft questions for product to set acceptable error |
-| `rationale_doc_drafter` | sonnet | Produce the one-page rationale |
+| `classify_service` | haiku | Pick one class from catalog metadata |
+| `target_rationale` | sonnet | Bounded judgment on benchmark vs SLA |
+| `template_fill` | haiku | Mechanical placeholder substitution |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/slo-defs.schema.yaml` | Schema for slo-defs.yaml |
-| `templates/sli-api.yaml` | API class SLIs |
-| `templates/sli-async-worker.yaml` | Worker class SLIs |
-| `templates/sli-batch.yaml` | Batch class SLIs |
-| `templates/sli-static.yaml` | Static asset class SLIs |
-| `templates/sli-scheduled.yaml` | Scheduled job SLIs |
-| `templates/rationale-one-pager.md` | Rationale doc shape |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/scaffold-slo.py` | Given service + class, produce slo-defs.yaml from template | Service onboarding |
-| `scripts/lint-slo-defs.py` | Validate slo-defs.yaml against schema | Pre-commit |
+| `scripts/validate-slo-definition-template-per-service-class.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodologies: `dora-metrics`, `prometheus-monitoring`, `slo-burn-decision-matrix`, `slo-burn-rate-review-protocol`
-- external: [Google SRE Workbook — SLO chapter](https://sre.google/workbook/implementing-slos/) · [Honeycomb on SLO design](https://www.honeycomb.io/) · [Nobl9 SLO guide](https://www.nobl9.com/resources)
+- [[prometheus-monitoring]]
+- [[error-budget-policy-and-freeze-rules]]
+- [[slo-burn-decision-matrix]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

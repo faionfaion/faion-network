@@ -1,23 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="terraform-iac Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for terraform-iac. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Terraform IaC Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the Terraform IaC methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Keep the module tree flat; prefer composition over deep nesting.</statement>
-      <rationale source="v1-source">Deep module nesting creates hard-to-trace dependency chains and makes plan output unreadable. Compose root modules from flat child modules rather than nesting child modules inside each other.</rationale>
+
+    <rule id="r1-workspace-per-env-layer" testable="true" depth="essential">
+      <statement>Each (environment, infra-layer) pair MUST be its own state workspace. prod-network, prod-data, prod-app, staging-network, etc. Cross-workspace dependencies via data sources or remote_state.</statement>
+      <rationale source="Terraform Cloud workspace pattern">Mixed-env state lets a dev apply touch prod; blast radius must be physically isolated.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Size modules to one logical component — not single resources, not entire application stacks.</statement>
-      <rationale source="v1-source">Too-small modules (single security group) provide no encapsulation benefit. Too-large modules (entire application stack) cannot be selectively applied and create blast radius for unrelated changes. Right size: VPC with subnets, NAT, and routing tables.</rationale>
+    <rule id="r2-module-from-registry" testable="true" depth="essential">
+      <statement>Reusable patterns MUST come from a registry (Terraform Registry or private) with semver tags. Module callers reference version explicitly. Inline copy-paste forbidden.</statement>
+      <rationale source="module ecosystem best practices">Modules in-place fork on first edit; registry + version enforces shared interface.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Never configure providers inside child modules; provider configuration belongs in root modules only.</statement>
-      <rationale source="v1-source">Provider config in child modules makes the module non-reusable across provider versions and authentication methods. Root modules own provider config; child modules inherit it.</rationale>
+    <rule id="r3-no-cross-env-modules" testable="true" depth="essential">
+      <statement>A module MUST NOT switch behaviour on env name (no if env == 'prod'). Pass behaviour as variables; let callers compose.</statement>
+      <rationale source="12-factor for IaC">Env conditionals couple modules to global state; variables keep modules pure.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Remote backend required for all team environments; never commit state files to version control.</statement>
-      <rationale source="v1-source">State files contain plaintext resource IDs, ARNs, and sometimes secrets. Local state causes concurrent apply conflicts. Committed state leaks sensitive infrastructure details.</rationale>
+    <rule id="r4-refactor-via-moved" testable="true" depth="essential">
+      <statement>Renames / re-parenting of resources MUST use moved blocks (TF &gt;=1.1). state rm + import is reserved for genuine state corruption + requires named owner approval.</statement>
+      <rationale source="HashiCorp moved-block docs">moved blocks are reviewable + reversible; state surgery is destructive and bypasses review.</rationale>
     </rule>
+    <rule id="r5-data-source-not-hard-id" testable="true" depth="essential">
+      <statement>Cross-workspace references MUST go through data sources or terraform_remote_state. Hard-coded resource IDs (vpc-abc123) forbidden.</statement>
+      <rationale source="Terraform composition patterns">Hard-coded IDs break on re-create; data sources self-heal.</rationale>
+    </rule>
+    <rule id="r6-blast-radius-documented" testable="true" depth="essential">
+      <statement>Each workspace MUST document its blast radius: which resources, which env, which downstream services depend on it. Document lives in workspace README.</statement>
+      <rationale source="blast-radius-rules-for-multi-component-changes">Implicit blast radius surfaces only during incidents; documenting it lets reviewers reason about plans.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

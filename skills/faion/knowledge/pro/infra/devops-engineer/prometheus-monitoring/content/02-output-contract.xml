@@ -1,22 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="prometheus-monitoring Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Prometheus Monitoring Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/prometheus-monitoring.json",
+  "type": "object",
+  "required": [
+    "metric_name",
+    "metric_type",
+    "labels",
+    "help_text",
+    "unit",
+    "scrape_interval_seconds",
+    "recording_rules",
+    "alerts"
+  ],
+  "properties": {
+    "metric_name": {
+      "type": "string",
+      "description": "string (snake_case, namespace_name_unit_suffix)"
+    },
+    "metric_type": {
+      "type": "string",
+      "description": "enum (counter | gauge | histogram | summary)"
+    },
+    "labels": {
+      "type": "array",
+      "description": "array (length \u226410, bounded value sets)"
+    },
+    "help_text": {
+      "type": "string",
+      "description": "string (\u2264200 chars)"
+    },
+    "unit": {
+      "type": "string",
+      "description": "string (seconds | bytes | ratio | none)"
+    },
+    "scrape_interval_seconds": {
+      "type": "integer",
+      "description": "integer (>=10)"
+    },
+    "recording_rules": {
+      "type": "array",
+      "description": "array (optional, name format level:metric:operation)"
+    },
+    "alerts": {
+      "type": "array",
+      "description": "array (each with runbook_url + for_duration)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "metric_name": "http_requests_total",
+  "metric_type": "counter",
+  "labels": [
+    "method",
+    "status_class",
+    "service"
+  ],
+  "help_text": "Total HTTP requests by method, status class, service.",
+  "unit": "none",
+  "scrape_interval_seconds": 15,
+  "recording_rules": [
+    "job:http_requests:rate5m"
+  ],
+  "alerts": [
+    {
+      "name": "HighErrorRate",
+      "for_duration": "5m",
+      "runbook_url": "https://runbooks/http-errors"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "metric_name": "HttpRequests",
+  "metric_type": "counter",
+  "labels": [
+    "user_id",
+    "request_id",
+    "email"
+  ],
+  "scrape_interval_seconds": 1
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>labels contain user_id, request_id, uuid, email (unbounded cardinality)</item>
+      <item>metric_name in camelCase or PascalCase</item>
+      <item>alert missing runbook_url annotation</item>
+      <item>scrape_interval_seconds &lt; 10</item>
+      <item>counter used in dashboard without rate() wrapper</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-prometheus-monitoring.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

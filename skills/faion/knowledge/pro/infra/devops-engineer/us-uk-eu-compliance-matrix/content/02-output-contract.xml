@@ -1,70 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Compliance Matrix — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `ComplianceMatrix` output covering 7 rows × 3 jurisdictions with binding evaluation and first-actions.</summary>
+<text id="02-output-contract" title="US / UK / EU Compliance Matrix Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`generated_at` — ISO-8601</item>
-      <item>`operator` — object {entity_name, primary_jurisdiction, processes_data_from: array of jurisdictions}</item>
-      <item>`source_data_effective_date` — ISO-8601 (must be within 18 months)</item>
-      <item>`rows` — array of EXACTLY 7 `RowObligation` objects in fixed order</item>
-      <item>`disclaimer` — literal "NOT LEGAL ADVICE — structured starting point for counsel review."</item>
-      <item>`bound_rows_count` — integer (rows where any jurisdiction threshold passes)</item>
-      <item>`recommended_legal_engagement` — boolean (true if `bound_rows_count &gt; 3`)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/us-uk-eu-compliance-matrix.json",
+  "type": "object",
+  "required": [
+    "business_entity",
+    "review_period",
+    "jurisdictions",
+    "contract_templates",
+    "tax_status",
+    "ai_act_features",
+    "counsel_signoff"
+  ],
+  "properties": {
+    "business_entity": {
+      "type": "string",
+      "description": "string"
+    },
+    "review_period": {
+      "type": "string",
+      "description": "string (YYYY-Q#)"
+    },
+    "jurisdictions": {
+      "type": "array",
+      "description": "array (each {code, customer_count, revenue, applicable_laws, lawful_basis_per_activity})"
+    },
+    "contract_templates": {
+      "type": "object",
+      "description": "object {buyer_type: template_path}"
+    },
+    "tax_status": {
+      "type": "array",
+      "description": "array (each {jurisdiction, threshold, current_volume, registered, action})"
+    },
+    "ai_act_features": {
+      "type": "array",
+      "description": "array (each {feature, risk_level, conformity_assessment, registration})"
+    },
+    "counsel_signoff": {
+      "type": "object",
+      "description": "object {name, date, scope}"
+    }
+  }
+}
+]]></code>
   </section>
 
-  <section title="RowObligation required fields">
-    <list>
-      <item>`row_id` — enum {entity_registration, data_basis, dpa, cookie_consent, marketing_email, ai_act, sales_tax_vat}</item>
-      <item>`jurisdictions` — object {us, uk, eu} each `{obligation, threshold, threshold_met: bool, statute_reference, effective_date}`</item>
-      <item>`first_action` — object `{action, owner_role, artifact, deadline_hint}` (NULL if no jurisdiction binds)</item>
-      <item>`requires_legal_review` — literal `true`</item>
-      <item>`notes` — string (≤ 240 chars)</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "business_entity": "Acme LLC (Delaware)",
+  "review_period": "2026-Q2",
+  "jurisdictions": [
+    {
+      "code": "US-CA",
+      "customer_count": 120,
+      "revenue": 80000,
+      "applicable_laws": [
+        "CCPA",
+        "CPRA"
+      ],
+      "lawful_basis_per_activity": {
+        "marketing": "consent"
+      }
+    }
+  ],
+  "contract_templates": {
+    "b2b_enterprise": "templates/dpa-scc.md",
+    "b2b_small": "templates/dpa.md",
+    "b2c": "templates/consumer-terms.md"
+  },
+  "tax_status": [
+    {
+      "jurisdiction": "US-CA",
+      "threshold": 500000,
+      "current_volume": 80000,
+      "registered": false,
+      "action": "monitor"
+    }
+  ],
+  "ai_act_features": [
+    {
+      "feature": "AI summarisation",
+      "risk_level": "limited",
+      "conformity_assessment": false,
+      "registration": false
+    }
+  ],
+  "counsel_signoff": {
+    "name": "Doe Privacy Counsel",
+    "date": "2026-05-15",
+    "scope": "EU + UK + US-CA"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "business_entity": "Acme",
+  "review_period": "2026-Q2",
+  "jurisdictions": [
+    {
+      "code": "global"
+    }
+  ],
+  "tax_status": [],
+  "counsel_signoff": null
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>`disclaimer` missing OR weakened.</description>
-      <reason>Violates r2. Disclaimer is required to limit operator + distributor exposure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Any `RowObligation` with `requires_legal_review: false`.</description>
-      <reason>Violates r2. Methodology never asserts a final compliance position.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`first_action` text starts with "consult counsel" without an artifact or owner.</description>
-      <reason>Violates r5 — concrete first-action anchor.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`source_data_effective_date &gt; 18 months` from `generated_at`.</description>
-      <reason>Violates r4 freshness.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`rows.length != 7` OR rows not in canonical order.</description>
-      <reason>Violates r1.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Allowed transformations">
     <list>
-      <item>Add a 4th column for additional jurisdictions (e.g. Canada PIPEDA) as an extension, not a replacement of the 3 core jurisdictions.</item>
-      <item>Aggregate state-level US statutes into the US column with footnotes.</item>
-      <item>Provide a markdown table representation alongside JSON.</item>
+      <item>jurisdictions code == 'global' (must be specific per market)</item>
+      <item>tax_status empty</item>
+      <item>counsel_signoff null or missing</item>
+      <item>ai_act_features absent if business serves EU users</item>
+      <item>lawful_basis_per_activity contains 'unknown'</item>
     </list>
   </section>
 
-  <reference path="templates/compliance-matrix.json">ComplianceMatrix JSON Schema.</reference>
-  <reference path="templates/matrix-source.yaml">Versioned statute / threshold source data.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Disclaimer present and literal.</item>
-      <item>7 rows in fixed order.</item>
-      <item>Each row has `requires_legal_review: true`.</item>
-      <item>Source data effective date within 18 months.</item>
-      <item>Bound rows have concrete first_action with artifact + owner.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-us-uk-eu-compliance-matrix.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

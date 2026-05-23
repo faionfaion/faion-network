@@ -1,45 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="SLO Burn Matrix — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Schema for slo-burn-matrix.yaml and per-event audit log shape.</summary>
+<text id="02-output-contract" title="SLO Burn Decision Matrix Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="portfolio_id" type="string"/>
-      <field name="version" format="semver"/>
-      <field name="burn_categories" type="list" min_entries="3"
-             item_required_keys="name,window,burn_rate_threshold"/>
-      <field name="service_classes" type="list" min_entries="3"
-             item_required_keys="name,examples,default_severity"/>
-      <field name="matrix" type="list" min_entries="9"
-             item_required_keys="burn_category,service_class,action,owner,revert_criteria,sla_hours"/>
-      <field name="actions_enum" enum="halt_canary,freeze_ship,focus_shift,accept,investigate"/>
-      <field name="audit_log_path" type="string"/>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/slo-burn-decision-matrix.json",
+  "type": "object",
+  "required": [
+    "matrix_version",
+    "portfolio_id",
+    "rows",
+    "audit_destination",
+    "default_cell"
+  ],
+  "properties": {
+    "matrix_version": {
+      "type": "string",
+      "description": "string (semver)"
+    },
+    "portfolio_id": {
+      "type": "string",
+      "description": "string"
+    },
+    "rows": {
+      "type": "array",
+      "description": "array (each {burn_category, service_class, action, owner, revert_criteria})"
+    },
+    "audit_destination": {
+      "type": "string",
+      "description": "string (log store URL)"
+    },
+    "default_cell": {
+      "type": "string",
+      "description": "string (escalate | accept)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">any matrix cell with action not in the enum</pattern>
-      <pattern id="f2">matrix cell missing owner OR revert_criteria</pattern>
-      <pattern id="f3">owner == "team" / "everyone" / "the org" — must be a role</pattern>
-      <pattern id="f4">revert_criteria == "manual judgement" without conditions</pattern>
-      <pattern id="f5">audit_log entries missing alert_id, cell, action, start_time, revert_time</pattern>
-      <pattern id="f6">freeze_ship action active &gt; sla_hours without revert evaluation</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "matrix_version": "1.0.0",
+  "portfolio_id": "acme-platform",
+  "rows": [
+    {
+      "burn_category": "fast",
+      "service_class": "user-facing-critical",
+      "action": "halt-canary",
+      "owner": "release-manager",
+      "revert_criteria": "burn_rate<1 for 6h"
+    },
+    {
+      "burn_category": "medium",
+      "service_class": "user-facing-critical",
+      "action": "freeze-ship",
+      "owner": "release-manager",
+      "revert_criteria": "budget>=20% remaining"
+    },
+    {
+      "burn_category": "slow",
+      "service_class": "user-facing-critical",
+      "action": "focus-shift",
+      "owner": "service-owner",
+      "revert_criteria": "next_release"
+    },
+    {
+      "burn_category": "fast",
+      "service_class": "internal",
+      "action": "accept",
+      "owner": "service-owner",
+      "revert_criteria": "auto"
+    }
+  ],
+  "audit_destination": "https://siem.acme/ingest/slo-matrix",
+  "default_cell": "escalate"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Add new burn categories (e.g. 30-day slow burn) without removing existing categories.</transformation>
-      <transformation>Add new service classes (e.g. partner-API SLA-bound) as the catalog grows.</transformation>
-      <transformation>Promote action severity for a cell after evidence (postmortem-driven).</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "matrix_version": "1.0.0",
+  "portfolio_id": "acme-platform",
+  "rows": [
+    {
+      "burn_category": "fast",
+      "service_class": "user-facing-critical",
+      "action": "depends",
+      "owner": "team"
+    }
+  ],
+  "default_cell": "accept"
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Matrix is at least 3 burn categories × 3 service classes</item>
-      <item>Every cell has action, owner, revert criteria</item>
-      <item>Actions are from the enumerated set</item>
-      <item>Owners are roles, not groups</item>
-      <item>Audit log path configured and writable</item>
-      <item>Open actions have not exceeded their SLA without revert evaluation</item>
+      <item>default_cell == accept (silent acceptance forbidden)</item>
+      <item>row.action == 'depends' or empty</item>
+      <item>row.owner == 'team' or 'us' (no named role)</item>
+      <item>row.revert_criteria empty</item>
+      <item>audit_destination empty</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-slo-burn-decision-matrix.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ssl-tls-setup Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ssl-tls-setup as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="SSL/TLS Setup Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="expired-cert-outage" severity="medium">
+      <description>Production HTTPS endpoint returns SSL_ERROR_BAD_CERT_DATE; customers locked out.</description>
+      <reason>Manual renewal procedure forgotten; cert expired Saturday morning.</reason>
+      <note>Fix: Install cert-manager. Create Certificate resource. Automate via Ingress annotation. Backfill remaining manually-managed certs.</note>
+    </antipattern>
+    <antipattern id="legacy-cipher-leftover" severity="medium">
+      <description>SSL Labs scan grades B due to TLS 1.0 + RC4 enabled.</description>
+      <reason>nginx config copied from a 2014 tutorial; never re-evaluated.</reason>
+      <note>Fix: Apply Mozilla Modern profile (ssl_protocols TLSv1.3; ssl_ciphers HIGH:!aNULL...). Run testssl.sh; iterate to A+.</note>
+    </antipattern>
+    <antipattern id="no-hsts" severity="medium">
+      <description>Penetration test flags missing HSTS; downgrade attack feasible.</description>
+      <reason>HSTS header never added.</reason>
+      <note>Fix: Add Strict-Transport-Security max-age=31536000; includeSubDomains; preload. Submit to hstspreload.org.</note>
+    </antipattern>
+    <antipattern id="wildcard-cert-leakage" severity="medium">
+      <description>Wildcard cert used everywhere; one leak compromises all subdomains.</description>
+      <reason>Wildcard purchased to 'save money'.</reason>
+      <note>Fix: Replace with per-host certs from Let's Encrypt (free). Wildcard reserved for cases with verified justification.</note>
+    </antipattern>
+    <antipattern id="missing-post-deploy-scan" severity="medium">
+      <description>TLS config regression goes unnoticed for weeks; flagged by external audit.</description>
+      <reason>No scan in CI; nobody runs testssl.sh.</reason>
+      <note>Fix: Add testssl.sh to deploy pipeline. Fail on grade &lt; A. Store the result as a change-record artifact.</note>
+    </antipattern>
+
   </section>
 </text>

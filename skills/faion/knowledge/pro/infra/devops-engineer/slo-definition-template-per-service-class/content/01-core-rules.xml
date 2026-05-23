@@ -1,90 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="SLO Definition Per Class — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules every SLO definition must satisfy. The rules turn SLO authoring from dashboard guesswork into a defensible engineering artefact.</summary>
+<text id="01-core-rules" title="SLO Definition Template Per Service Class Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the SLO Definition Template Per Service Class methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-service-class-first" testable="true" depth="essential">
-      <statement>The first decision when defining an SLO is the service's CLASS, not its metrics. Classes are from the closed enum: API, async-worker, batch, static-asset, scheduled-job, gateway, ML-inference. Custom classes require explicit team approval.</statement>
-      <rationale source="Google SRE Workbook chapter on choosing SLIs; field experience">Starting from metrics produces SLOs that fit the existing dashboard, not the user expectation. Starting from class invokes a template that has been validated against the failure modes of that class. The class drives the SLI selection.</rationale>
+    <rule id="r1-template-per-service-class" testable="true" depth="essential">
+      <statement>Each service-class MUST have a canonical SLI template (PromQL query + label keys + window). Authors fork the template; they don't write SLIs from scratch.</statement>
+      <rationale source="Google SRE Workbook Ch.4">Hand-rolled SLIs drift in format; templates make them comparable across teams.</rationale>
     </rule>
-
-    <rule id="r2-sli-from-template" testable="true" depth="essential">
-      <statement>Each service uses the SLIs from its class template AND no more than 2 additional service-specific SLIs. SLOs MUST be computable from the chosen SLIs.</statement>
-      <rationale source="SLO simplicity principle; alarm-fatigue research">More than ~4 SLIs per service produces dashboards nobody reads and alerts nobody responds to. The class template is the minimum; the additional 2 cap is the limit. Beyond that, the team is measuring everything and prioritising nothing.</rationale>
+    <rule id="r2-customer-facing-sli" testable="true" depth="essential">
+      <statement>User-facing SLIs MUST measure the customer experience: HTTP success rate, end-to-end latency, error rate. Resource-utilisation metrics (CPU, RAM) are NOT user-facing SLIs.</statement>
+      <rationale source="Google SRE Workbook — defining SLOs">CPU &lt; 80% can hold while customers see 5xx; SLIs measure the customer, not the box.</rationale>
     </rule>
-
-    <rule id="r3-product-set-target" testable="true" depth="essential">
-      <statement>SLO targets MUST be set by the product or business owner answering: "what user-experienced error rate is acceptable?" Targets derived from current performance ("we are already at 99.7, set the SLO at 99.7") are forbidden.</statement>
-      <rationale source="Google SRE Workbook chapter on user-centric SLOs; product-engineering alignment literature">Current-performance-derived targets create a system that defends mediocrity. User-acceptable targets create a system that ships when the user is happy. They are sometimes the same number; the difference is the conversation.</rationale>
+    <rule id="r3-target-with-rationale" testable="true" depth="essential">
+      <statement>Every SLO target carries a recorded rationale referencing customer commitment, business cost of breach, or peer benchmark. '99.9% because it sounds good' is rejected.</statement>
+      <rationale source="SLO design — Liu, Beyer et al.">Magic numbers calcify; documented rationale lets future authors recalibrate.</rationale>
     </rule>
-
-    <rule id="r4-budget-policy-doc" testable="true" depth="essential">
-      <statement>Every SLO has an accompanying one-page budget policy document: what triggers a freeze, what reverts it, who owns it. Without the doc, the SLO has no operational meaning.</statement>
-      <rationale source="Google SRE Workbook; field experience with policy-less budgets">An error budget without a policy is just a metric. The policy turns the budget into a contract between engineering, product, and operations: when budget burns, named consequences follow.</rationale>
+    <rule id="r4-window-matched-to-decision" testable="true" depth="essential">
+      <statement>Error-budget window MUST match the decision cycle: 30 days for ship-freeze decisions, 7 days for canary-halt decisions, 24h for incident bridge decisions.</statement>
+      <rationale source="multi-window multi-burn-rate alerting">30-day windows hide fast-burn; 1h windows are too noisy for ship-freeze. Window must match the action it gates.</rationale>
     </rule>
-
-    <rule id="r5-30-day-rolling-window-default" testable="true" depth="essential">
-      <statement>Default SLO window: 30-day rolling. Shorter (7-day) requires explicit justification (typically high-volume APIs); longer (90-day) is allowed for batch / scheduled with documented reason. Calendar-month windows are forbidden.</statement>
-      <rationale source="Google SRE Workbook; statistical-power considerations">7-day windows are noisy; 90+ day windows hide drift. 30-day is the canonical balance. Calendar-month windows create end-of-month panic when budget exhausts and a January-1 reset that masks systemic issues.</rationale>
+    <rule id="r5-sli-as-recording-rule" testable="true" depth="essential">
+      <statement>SLI PromQL MUST be a recording rule (level:metric:operation pattern), not an ad-hoc query in alert/dashboard. Recording rule is the canonical SLI series.</statement>
+      <rationale source="Prometheus recording-rule best practices">Ad-hoc queries drift; one recording rule per SLI prevents 3 dashboards measuring 'availability' differently.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Per-class SLI selection (defaults)">
-    <list>
-      <item><b>API</b>: request_success_rate (2xx + 3xx as success), request_latency_p99, request_latency_p50. Target template: 99.9% success / p99 ≤ N ms.</item>
-      <item><b>async-worker</b>: processing_success_rate, queue_age_p99, retry_rate. Target: 99.5% success / queue-age p99 ≤ N min.</item>
-      <item><b>batch</b>: completion_on_time_rate, completeness_rate (all expected outputs produced). Target: 99% on-time / 100% completeness.</item>
-      <item><b>static-asset</b>: delivery_success_rate, freshness_lag_p99. Target: 99.95% delivery / freshness ≤ 5 min.</item>
-      <item><b>scheduled-job</b>: execution_success_rate, on_time_start_rate. Target: 99% success / 99% on-time.</item>
-      <item><b>gateway</b>: same as API plus auth_success_rate, downstream_5xx_rate-pass-through. Target: 99.95% / p99 ≤ N ms.</item>
-      <item><b>ML-inference</b>: inference_success_rate, latency_p99, quality_metric (judge or proxy). Target: 99% / p99 ≤ N ms / quality ≥ baseline.</item>
-    </list>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="API SLO derived from product conversation">
-      <code lang="yaml"><![CDATA[
-service: checkout-api
-class: api
-sli_set:
-  - request_success_rate         # template
-  - request_latency_p99          # template
-  - request_latency_p50          # template
-  - payment_attempt_success_rate # service-specific (1 of 2 allowed extras)
-slo:
-  request_success_rate:
-    target: 99.95          # product set: each 1% maps to ~$10k revenue lost
-    window: 30d rolling
-  request_latency_p99:
-    target: <= 800ms       # product set: above 1s, cart abandonment +30%
-    window: 30d rolling
-budget_policy: docs/policies/checkout-api-budget.md
-      ]]></code>
-      <note>Illustrates r1 (class first), r2 (template + 1 extra), r3 (product set targets with rationale), r4 (policy doc), r5 (30-day window).</note>
-    </example>
-
-    <example type="bad" title="Dashboard-driven SLO">
-      <code lang="yaml"><![CDATA[
-service: checkout-api
-sli_set:
-  - cpu_usage          # not user-facing
-  - mem_usage          # not user-facing
-slo:
-  cpu_usage:
-    target: < 80%
-    window: calendar-month
-budget_policy: (none)
-      ]]></code>
-      <note>r1 violated (no class), r3 violated (no product input), r5 violated (calendar-month), r4 violated (no policy). CPU SLO does not map to user pain.</note>
-    </example>
+    <rule id="r6-class-coverage-required" testable="true" depth="essential">
+      <statement>Every service in the catalog MUST be assigned to exactly one service class; services without a class are flagged as gaps, not silently skipped.</statement>
+      <rationale source="catalog hygiene">Unclassified services produce orphan SLOs or none at all.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

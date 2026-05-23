@@ -3,73 +3,101 @@ slug: prometheus-monitoring
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Prometheus is the de facto standard for Kubernetes monitoring: pull-based metrics, PromQL queries, Alertmanager routing.
-content_id: "c6637d6806d5e305"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Prometheus monitoring spec: metric naming + label cardinality limits + recording rules + alert hygiene + scrape-interval discipline for Kubernetes workloads."
+content_id: "8ddc9fa9b05de568"
+complexity: medium
+produces: config
+est_tokens: 3800
 tags: [prometheus, monitoring, metrics, alerting, kubernetes]
 ---
+
 # Prometheus Monitoring
 
 ## Summary
 
-**One-sentence:** Prometheus is the de facto standard for Kubernetes monitoring: pull-based metrics, PromQL queries, Alertmanager routing.
+**One-sentence:** Prometheus monitoring spec: metric naming + label cardinality limits + recording rules + alert hygiene + scrape-interval discipline for Kubernetes workloads.
 
-**One-paragraph:** Prometheus is the de facto standard for Kubernetes monitoring: pull-based metrics, PromQL queries, Alertmanager routing. Never use unbounded labels — each unique value creates a time series. Alert on symptoms, not causes.
+**One-paragraph:** Prometheus is the default Kubernetes monitoring stack: pull-based metrics, PromQL queries, Alertmanager routing. The trap teams fall into: unbounded labels (user_id, request_id) blow up cardinality; counter values used directly in dashboards produce sawtooth graphs; alerts fire on causes (pod crashed) instead of symptoms (error rate up) creating alert fatigue. This methodology codifies the rules: histograms over summaries for distributed latency, snake_case namespace_name_unit naming, label-cardinality ≤10, scrape interval ≥15s default, recording rules for expensive dashboard queries, symptom-based alerts with runbook URLs.
+
+**Ефективно для:**
+
+- Kubernetes workload observability — service discovery + scrape + alert.
+- Custom-metrics для SLI/SLO measurement (RED/USE method).
+- Контроль cardinality blowup до того, як Prometheus OOM-нется.
+- Recording rules для expensive dashboard queries (10x швидше).
 
 ## Applies If (ALL must hold)
 
-- Kubernetes cluster and workload monitoring (kube-state-metrics, node-exporter, cAdvisor)
-- Application SLI/SLO measurement via custom metrics
+- Kubernetes cluster with workloads needing metric-based observability
+- Application SLI/SLO measurement via custom metrics (RED / USE method)
 - Alert routing with Alertmanager (Slack, PagerDuty, email)
 - Pre-computing expensive dashboard queries with recording rules
-- Long-term storage via remote write to Thanos, Mimir, or Cortex
 
 ## Skip If (ANY kills it)
 
 - Log aggregation — use Loki or ELK; Prometheus is metrics only
-- Distributed tracing — use Jaeger or Tempo
-- High-cardinality event data (per-request attributes) — use a log/trace system
-- When you need sub-second resolution — Prometheus scrape interval minimum is ~10s
+- Distributed tracing — use Jaeger or Tempo, not Prometheus
+- High-cardinality event data (per-request attributes) — use log/trace systems
+- Sub-second resolution required — Prometheus scrape interval minimum ~10s
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prometheus + Alertmanager + node-exporter | Helm charts or operator install | platform team |
+| ServiceMonitor CRD (Prometheus Operator) | Kubernetes manifests | ops |
+| Long-term storage backend (Thanos / Mimir / Cortex) | object-storage bucket + remote_write config | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[alert-deduplication-playbook]] | Alert hygiene context — what 'good alert' means |
+| [[slo-definition-template-per-service-class]] | Defines SLI targets the metrics measure |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `metric_audit` | haiku | Mechanical listing of cardinality offenders |
+| `rule_rewrite` | sonnet | Bounded judgment on symptom vs cause |
+| `recording_rule_design` | sonnet | PromQL synthesis from dashboard queries |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/alertmanager-config.yaml` | Alertmanager config template |
+| `templates/prometheus-rule.yaml` | Prometheus rule template |
+| `templates/prompt-monitoring-strategy.txt` | Prompt monitoring strategy template |
+| `templates/servicemonitor.yaml` | Servicemonitor template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-prometheus-monitoring.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[alert-deduplication-playbook]]
+- [[slo-definition-template-per-service-class]]
+- [[alert-noise-budget]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

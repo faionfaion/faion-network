@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="secrets-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for secrets-management. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Secrets Management Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the Secrets Management methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-no-static-credentials" testable="true" depth="essential">
+      <statement>Long-lived static credentials (access keys, service-account JSON keys, plaintext API tokens) MUST NOT be stored in code, env files committed to repos, or CI variables. All access uses cloud identity (IRSA / Workload Identity / OIDC).</statement>
+      <rationale source="AWS Security Best Practices; Verizon DBIR 2024">Static keys are the #1 cloud breach vector. They leak via repo pushes, screen recordings, log dumps. Identity-based auth has no key to leak.</rationale>
     </rule>
+    <rule id="r2-eso-for-k8s" testable="true" depth="essential">
+      <statement>Kubernetes secrets injection MUST use External Secrets Operator (ESO) or the platform's Secret Store CSI driver. Plaintext kubectl create secret is forbidden in production.</statement>
+      <rationale source="External Secrets Operator docs">ESO syncs from any backend (Vault, ASM, GSM) to a native Secret object, decoupling apps from backend choice and enabling automatic rotation.</rationale>
+    </rule>
+    <rule id="r3-30-day-rotation" testable="true" depth="essential">
+      <statement>All non-trivial credentials rotate on a 30-day or shorter cycle. Rotation MUST be automated; manual rotation is treated as a control gap.</statement>
+      <rationale source="NIST SP 800-53 IA-5; CIS Controls v8">Long credential lifetime increases breach blast radius. Automated rotation is the only practical control at scale.</rationale>
+    </rule>
+    <rule id="r4-least-privilege-policy" testable="true" depth="essential">
+      <statement>Every secret-accessing principal has a least-privilege policy: explicit secret paths, no wildcards, scoped to the calling service identity.</statement>
+      <rationale source="AWS IAM least-privilege; Vault policy patterns">A broad policy ('secrets/*') turns a single compromise into total exfiltration; tight scoping limits blast radius.</rationale>
+    </rule>
+    <rule id="r5-audit-log-on" testable="true" depth="essential">
+      <statement>Audit logging MUST be enabled on the secrets backend with logs shipped to a separate, immutable store. Logs include WHO accessed WHICH secret WHEN, with no PII redaction of the principal.</statement>
+      <rationale source="SOC 2 CC7.2; Vault audit devices">Audit logs are the forensic record after a breach. Logs in the same account as the backend can be tampered with by the same attacker.</rationale>
+    </rule>
+    <rule id="r6-no-secrets-in-env-images" testable="true" depth="essential">
+      <statement>Container images MUST NOT bake secrets into layers. Secrets are mounted at runtime via volume or env from a secret-store reference, never via ENV directives in Dockerfile.</statement>
+      <rationale source="OWASP Docker Security Cheat Sheet">Image layers are world-readable to anyone with pull access; baked secrets persist in registries forever.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,55 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="On-Call Rotation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the On-Call Charter, the paging-tool schedule, and the weekly on-call-load report.</summary>
+<text id="02-output-contract" title="On-Call Rotation Bootstrap Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="charter.team_name" type="string"/>
-      <field name="charter.effective_date" format="YYYY-MM-DD"/>
-      <field name="charter.shift_length_hours" type="enum" values="8|12|24|72|168"/>
-      <field name="charter.shift_cutover_time_local" format="HH:MM"/>
-      <field name="charter.participants" type="list_of_string" min="5" notes="github handles or email"/>
-      <field name="charter.tiers" type="enum" values="primary|primary_plus_secondary|three_tier"/>
-      <field name="charter.ack_sla_seconds" type="object" notes="keys: sev1, sev2, sev3"/>
-      <field name="charter.escalation_tree" type="ordered_list" min="2"/>
-      <field name="charter.comp_policy_doc_url" type="url"/>
-      <field name="charter.swap_policy" type="paragraph" max_words="120"/>
-      <field name="charter.rotation_owner" type="string"/>
-      <field name="schedule.tool" type="enum" values="pagerduty|opsgenie|betterstack|squadcast"/>
-      <field name="schedule.config_path" type="path"/>
-      <field name="load_report.period_start" format="YYYY-MM-DD"/>
-      <field name="load_report.period_end" format="YYYY-MM-DD"/>
-      <field name="load_report.per_engineer" type="list_of_object" notes="engineer + pages + off_hours_pages + weekend_pages"/>
-      <field name="load_report.red_line_crossings" type="list_of_object"/>
-      <field name="load_report.recommended_action" type="paragraph"/>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/on-call-rotation-bootstrap.json",
+  "type": "object",
+  "required": [
+    "charter",
+    "schedule",
+    "load_report"
+  ],
+  "properties": {
+    "charter": {
+      "type": "string",
+      "description": "string"
+    },
+    "schedule": {
+      "type": "string",
+      "description": "string (pagerduty|opsgenie|betterstack|squadcast)"
+    },
+    "load_report": {
+      "type": "string",
+      "description": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">charter.tiers = primary AND charter.participants &gt;= 8 (single-tier rotation for a team large enough to support secondary)</pattern>
-      <pattern id="f2">charter.ack_sla_seconds with sev1 &gt; 600 (sev-1 must be under 10 minutes)</pattern>
-      <pattern id="f3">charter.comp_policy_doc_url empty OR pointing to a placeholder</pattern>
-      <pattern id="f4">schedule.config_path missing OR not committed to a version-controlled repo (paging schedules drift without VC)</pattern>
-      <pattern id="f5">load_report omitted for more than 2 consecutive weeks (load-blindness is the failure mode the report exists to prevent)</pattern>
-      <pattern id="f6">red_line_crossings list non-empty AND recommended_action equals "monitor" — the red-line is the action threshold, not the watchlist</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "charter": {
+    "team_name": "platform",
+    "effective_date": "2026-06-01",
+    "shift_length_hours": 168,
+    "tiers": "primary_plus_secondary",
+    "ack_sla_seconds": {
+      "sev1": 300,
+      "sev2": 900,
+      "sev3": 0
+    },
+    "escalation_tree": [
+      "primary",
+      "secondary",
+      "manager"
+    ],
+    "comp_policy_doc_url": "https://wiki.acme/hr/on-call-comp",
+    "rotation_owner": "tlead@acme"
+  },
+  "schedule": {
+    "tool": "pagerduty",
+    "config_path": "config/pagerduty/platform.yaml"
+  },
+  "load_report": {
+    "period_start": "2026-05-16",
+    "period_end": "2026-05-22",
+    "per_engineer": [
+      {
+        "engineer": "alice",
+        "pages": 4,
+        "off_hours_pages": 2,
+        "weekend_pages": 0
+      }
+    ]
+  }
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Adjust shift_length when participant count drops below 5 (move to external retainer + smaller in-house rotation).</transformation>
-      <transformation>Suspend swap requests during a critical-release week with explicit announcement; do not silently freeze.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "charter": {
+    "team_name": "",
+    "shift_length_hours": 168,
+    "tiers": "primary",
+    "comp_policy_doc_url": ""
+  }
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
 
-    <schema-reference path="templates/on-call-charter.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Charter published to team wiki BEFORE first shift</item>
-      <item>Paging tool config committed to a version-controlled repo</item>
-      <item>Ack SLAs enforced in the tool, not by social pressure</item>
-      <item>Comp policy URL resolves to a real HR-handbook page</item>
-      <item>Two-tier rotation when participants ≥ 8</item>
-      <item>Weekly load report runs automatically on a cron, sent to engineering leader</item>
-      <item>Red-line crossings produce a named action, not just a notification</item>
+      <item>charter.tiers = primary AND charter.participants &gt;= 8 (single-tier for team large enough to support secondary)</item>
+      <item>charter.ack_sla_seconds.sev1 &gt; 600 (sev-1 must be under 10 minutes)</item>
+      <item>charter.comp_policy_doc_url empty OR points to placeholder</item>
+      <item>schedule.config_path missing OR not in version-controlled repo</item>
+      <item>load_report omitted for &gt;2 consecutive weeks</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-on-call-rotation-bootstrap.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

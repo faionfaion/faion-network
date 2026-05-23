@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ssl-tls-setup Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ssl-tls-setup. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="SSL/TLS Setup Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the SSL/TLS Setup methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-tls13-default" testable="true" depth="essential">
+      <statement>TLS 1.3 MUST be the negotiated default. TLS 1.2 enabled only as fallback for legacy clients with documented justification. TLS 1.0/1.1/SSLv3 MUST be disabled.</statement>
+      <rationale source="RFC 8446; PCI-DSS v4">TLS 1.3 removes legacy attack vectors (RC4, CBC, weak DH); 1.0/1.1 are forbidden by PCI-DSS and most modern compliance frameworks.</rationale>
     </rule>
+    <rule id="r2-modern-cipher-suite" testable="true" depth="essential">
+      <statement>Cipher suites limited to ECDHE-* + AES-GCM and ChaCha20-Poly1305. RSA key exchange, CBC modes, RC4, and DES are forbidden.</statement>
+      <rationale source="Mozilla Server-Side TLS — Modern profile">Modern ciphers offer forward secrecy + AEAD; old ciphers are subject to known plaintext/oracle attacks.</rationale>
+    </rule>
+    <rule id="r3-automated-renewal" testable="true" depth="essential">
+      <statement>Certificates MUST renew automatically ≥30 days before expiry via cert-manager + ACME. Manual renewal procedures are treated as control gaps.</statement>
+      <rationale source="cert-manager docs; postmortem patterns">Manual renewal is the #1 cause of certificate-expired outages; auto-renew eliminates the human step.</rationale>
+    </rule>
+    <rule id="r4-hsts-preload" testable="true" depth="essential">
+      <statement>Public web endpoints MUST emit HSTS header with max-age &gt;= 31536000 (1y) + includeSubDomains + preload. Domain submitted to hstspreload.org.</statement>
+      <rationale source="RFC 6797; hstspreload.org criteria">HSTS prevents downgrade to HTTP; preload removes the first-visit window.</rationale>
+    </rule>
+    <rule id="r5-ocsp-stapling" testable="true" depth="essential">
+      <statement>OCSP stapling MUST be enabled on the TLS terminator. Client-side OCSP queries are forbidden as they leak browsing to the CA.</statement>
+      <rationale source="RFC 6066 OCSP stapling">Stapling closes the privacy leak + improves handshake latency.</rationale>
+    </rule>
+    <rule id="r6-post-deploy-scan" testable="true" depth="essential">
+      <statement>Every TLS-touching change MUST run a post-deploy scan (testssl.sh / ssllabs-scan / SSL Labs API) and store the result in the change record. Grade &lt; A is a blocking finding.</statement>
+      <rationale source="OWASP TLS Cheat Sheet">Scanners catch the regressions humans miss: stale ciphers, missing HSTS, expired chain. Storing the scan creates an audit trail.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

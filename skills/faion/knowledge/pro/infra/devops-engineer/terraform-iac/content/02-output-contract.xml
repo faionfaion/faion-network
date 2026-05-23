@@ -1,22 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="terraform-iac Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Terraform IaC Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/terraform-iac.json",
+  "type": "object",
+  "required": [
+    "repo_layout",
+    "workspaces",
+    "module_sources",
+    "cross_workspace_pattern",
+    "refactor_method",
+    "blast_radius_doc_path"
+  ],
+  "properties": {
+    "repo_layout": {
+      "type": "string",
+      "description": "enum (monorepo | polyrepo)"
+    },
+    "workspaces": {
+      "type": "array",
+      "description": "array (each {env, layer, state_backend})"
+    },
+    "module_sources": {
+      "type": "array",
+      "description": "array (each registry + version)"
+    },
+    "cross_workspace_pattern": {
+      "type": "string",
+      "description": "enum (data_source | remote_state | output_consumed)"
+    },
+    "refactor_method": {
+      "type": "string",
+      "description": "enum (moved_block | import | state_rm_approved)"
+    },
+    "blast_radius_doc_path": {
+      "type": "string",
+      "description": "string (per workspace)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "repo_layout": "monorepo",
+  "workspaces": [
+    {
+      "env": "prod",
+      "layer": "network",
+      "state_backend": "s3://acme-tfstate/prod-network"
+    },
+    {
+      "env": "prod",
+      "layer": "app",
+      "state_backend": "s3://acme-tfstate/prod-app"
+    }
+  ],
+  "module_sources": [
+    {
+      "source": "registry.acme/vpc",
+      "version": "2.1.0"
+    }
+  ],
+  "cross_workspace_pattern": "remote_state",
+  "refactor_method": "moved_block",
+  "blast_radius_doc_path": "envs/prod/network/README.md"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "repo_layout": "monorepo",
+  "workspaces": [
+    {
+      "env": "all",
+      "layer": "all",
+      "state_backend": "s3://acme-tfstate/everything"
+    }
+  ],
+  "module_sources": [
+    {
+      "source": "../modules/vpc",
+      "version": "inline"
+    }
+  ],
+  "refactor_method": "state_rm"
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>single-state workspace spanning multiple envs</item>
+      <item>module_sources entry without semver tag</item>
+      <item>refactor_method == state_rm without approver field</item>
+      <item>cross_workspace_pattern == hardcoded_id</item>
+      <item>blast_radius_doc_path missing</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-terraform-iac.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>

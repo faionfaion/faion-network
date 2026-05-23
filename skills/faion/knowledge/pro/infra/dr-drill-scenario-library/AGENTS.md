@@ -3,78 +3,99 @@ slug: dr-drill-scenario-library
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "674c7776b8755303"
-summary: Dr Drill Scenario Library delivers a concrete, testable methodology that turns the recurring task of 'Disaster-recovery drill + plan refresh (4 weeks)' into an auditable artefact, addressing the gap: A reusable catalogue of DR scenarios (region loss, db corruption, secret-store l
-tags: [infra, pro, runbook, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Reusable catalogue of disaster-recovery scenarios (region loss, db corruption, secret-store loss, identity provider outage, vendor breach) with declaration, run, restore, and post-mortem steps."
+content_id: "e6cbfe18123b8736"
+complexity: deep
+produces: playbook-step
+est_tokens: 4300
+tags: [infra, pro, runbook, dr, disaster-recovery, drill]
 ---
-# Dr Drill Scenario Library
+
+# DR Drill Scenario Library
 
 ## Summary
 
-**One-sentence:** Dr Drill Scenario Library delivers a concrete, testable methodology that turns the recurring task of 'Disaster-recovery drill + plan refresh (4 weeks)' into an auditable artefact, addressing the gap: A reusable catalogue of DR scenarios (region loss, db corruption, secret-store loss, dependency outage) with expected RTO/RPO bands. Backup methodologies exist but no scenario library.
+**One-sentence:** Reusable catalogue of disaster-recovery scenarios (region loss, db corruption, secret-store loss, identity provider outage, vendor breach) with declaration, run, restore, and post-mortem steps.
 
-**One-paragraph:** A reusable catalogue of DR scenarios (region loss, db corruption, secret-store loss, dependency outage) with expected RTO/RPO bands. Backup methodologies exist but no scenario library. Dr Drill Scenario Library closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Disaster-recovery drill + plan refresh (4 weeks)' (role-devops-engineer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** DR drills without a scenario library default to 'last quarter's region failover, run it again'. Real DR programs need a library — a catalogue of scenarios covering region loss, database corruption (logical not physical), secret-store loss, identity provider outage, vendor breach, ransomware. Each scenario has declaration criteria, runbook steps, restore validation, success criteria, and a post-mortem template. The library is exercised on a rotating cycle so the team practices uncommon scenarios before they need them. Output: dr-scenarios.yaml + per-scenario runbook + 4-week drill rotation calendar.
+
+**Ефективно для:**
+
+- DR drill вже не 'та сама regional failover'; rotate через library.
+- Документована scenario для логічного db corruption (не lost-region).
+- Identity provider outage — real scenario, real runbook.
+- Drill rotation calendar: яка scenario наступного кварталу.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Disaster-recovery drill + plan refresh (4 weeks)' (role: role-devops-engineer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Business depends on infra continuity (paying customers, SLA, regulated workload)
+- DR drills are part of the compliance program (SOC2 CC7.5, ISO 22301)
+- Team has 4+ engineers to participate in drills
+- Multi-region or multi-vendor architecture (otherwise 'restore from backup' is the only scenario)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Pre-revenue product — DR effort exceeds value
+- Single-region single-vendor lock-in — write a single 'restore from backup' runbook instead
+- Compliance not required and customers don't ask for DR evidence
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Backup-verification-dr methodology | backup verification reports | platform team |
+| Runbook authoring discipline | runbook style guide | SRE |
+| Drill calendar slot (quarterly minimum) | team capacity | engineering leader |
+| Post-mortem template | incident-mgmt repo | incident commander |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[dr-drill-script-template]] | Per-scenario script structure |
+| [[on-call-rotation-bootstrap]] | Owners + escalation tree for drills |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `dr_drill_scenario_library_template_fill` | haiku | Template fill, no judgment |
-| `dr_drill_scenario_library_evidence_check` | sonnet | Bounded comparison + judgment |
-| `dr_drill_scenario_library_synthesis` | opus | Cross-input synthesis + final write-up |
+| `scenario_authoring` | opus | Cross-vendor + cross-component synthesis |
+| `runbook_draft` | sonnet | Bounded structured writing |
+| `rotation_calendar` | haiku | Mechanical scheduling |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.json` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-dr-drill-scenario-library.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
 
-- parent skill: `pro/infra/` (see neighbouring methodologies)
-- triggering activity: `role-devops-engineer/Disaster-recovery drill + plan refresh (4 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[dr-drill-script-template]]
+- [[on-call-rotation-bootstrap]]
+- [[error-budget-policy-and-freeze-rules]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.

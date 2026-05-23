@@ -1,22 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="terraform Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Terraform Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, with valid + invalid examples and a forbidden-pattern list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/terraform.json",
+  "type": "object",
+  "required": [
+    "terraform_version",
+    "provider_pins",
+    "backend",
+    "state_locking",
+    "apply_via_ci_only",
+    "modules_used",
+    "sensitive_marks_audited",
+    "drift_schedule"
+  ],
+  "properties": {
+    "terraform_version": {
+      "type": "string",
+      "description": "string (= pinned)"
+    },
+    "provider_pins": {
+      "type": "object",
+      "description": "object {provider: version}"
+    },
+    "backend": {
+      "type": "object",
+      "description": "object {type, config}"
+    },
+    "state_locking": {
+      "type": "boolean",
+      "description": "boolean (true)"
+    },
+    "apply_via_ci_only": {
+      "type": "boolean",
+      "description": "boolean (true)"
+    },
+    "modules_used": {
+      "type": "array",
+      "description": "array (each {source, version})"
+    },
+    "sensitive_marks_audited": {
+      "type": "boolean",
+      "description": "boolean (true)"
+    },
+    "drift_schedule": {
+      "type": "string",
+      "description": "string (cron)"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "terraform_version": "1.7.5",
+  "provider_pins": {
+    "aws": "= 5.40.0",
+    "random": "= 3.6.0"
+  },
+  "backend": {
+    "type": "s3",
+    "config": {
+      "bucket": "acme-tfstate",
+      "dynamodb_table": "acme-tflock"
+    }
+  },
+  "state_locking": true,
+  "apply_via_ci_only": true,
+  "modules_used": [
+    {
+      "source": "registry.acme/vpc",
+      "version": "2.1.0"
+    }
+  ],
+  "sensitive_marks_audited": true,
+  "drift_schedule": "0 8 * * MON"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "terraform_version": "latest",
+  "provider_pins": {},
+  "backend": {
+    "type": "local"
+  },
+  "state_locking": false,
+  "apply_via_ci_only": false
+}
+]]></code>
+    <note>Missing required fields and contains forbidden patterns; validator rejects.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>backend.type == local for shared envs</item>
+      <item>provider version uses ~&gt; or no operator (must be =)</item>
+      <item>apply_via_ci_only == false</item>
+      <item>modules_used contains entries without version pin</item>
+      <item>sensitive_marks_audited == false (review every secret-bearing variable)</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-terraform.py">Validator script enforcing required keys + forbidden patterns</reference>
 </text>
