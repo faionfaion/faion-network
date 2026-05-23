@@ -1,40 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Strategy Memo Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Strategy Memo Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Strategy Memo Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys, types, and forbidden patterns. Valid + invalid examples below.</summary>
 
-  <output-contract>
-    <required>
-      <field name="memo_url" type="string" required="true">URL to versioned memo (Notion/Coda/GDoc)</field>
-      <field name="decision_owner" type="string" required="true">single named PM / GM / founder handle</field>
-      <field name="vision_one_sentence" type="string" required="true">≤30 words; describes 12-month destination</field>
-      <field name="bets" type="list[3]" required="true">exactly three; each {name, anti_bet, metric, target, deadline}</field>
-      <field name="evidence_refs" type="list" required="true">≥3 links to grounding data (metrics dashboards, interview notes)</field>
-      <field name="pre_read_completed_by" type="list" required="true">≥2 stakeholders who reviewed before the meeting</field>
-      <field name="version" type="semver" required="true">memo version (bump on material change)</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">vision_one_sentence &gt; 50 words</pattern>
-      <pattern id="f2">bets.length != 3</pattern>
-      <pattern id="f3">any bet without anti_bet OR metric OR deadline</pattern>
-      <pattern id="f4">decision_owner = &apos;team&apos; / &apos;product&apos; / &apos;we&apos;</pattern>
-      <pattern id="f5">evidence_refs empty AND decision_owner != &apos;pending&apos;</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/strategy-memo-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/strategy-memo-template.json</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/strategy-memo.json",
+  "type": "object",
+  "required": [
+    "title",
+    "word_count",
+    "vision",
+    "bets",
+    "non_bets",
+    "success_metrics"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "word_count": {
+      "type": "integer",
+      "maximum": 1200
+    },
+    "vision": {
+      "type": "string",
+      "minLength": 60
+    },
+    "bets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "statement",
+          "signal",
+          "threshold",
+          "window"
+        ]
+      }
+    },
+    "non_bets": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "string"
+      }
+    },
+    "success_metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "metric",
+          "baseline",
+          "target",
+          "owner",
+          "review_date"
+        ]
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "title": "Faion 2026 Strategy",
+  "word_count": 1150,
+  "vision": "Be the methodology base of choice for AI-augmented solopreneur devs by 2027.",
+  "bets": [
+    {
+      "statement": "CLI distribution beats web for pro tier",
+      "signal": "CLI active users",
+      "threshold": ">2000",
+      "window": "6 months"
+    }
+  ],
+  "non_bets": [
+    "no enterprise SSO this year",
+    "no team plans",
+    "no on-prem",
+    "no co-pilot integration",
+    "no white-label"
+  ],
+  "success_metrics": [
+    {
+      "metric": "MRR",
+      "baseline": 0,
+      "target": 5000,
+      "owner": "ruslan",
+      "review_date": "2026-12-01"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "title": "Strategy",
+  "word_count": 3000,
+  "vision": "win",
+  "bets": [
+    {
+      "statement": "be best"
+    }
+  ]
+}
+]]></code>
+    <note>word_count &gt; 1200; vision too short; bet not falsifiable; non_bets &lt;5.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">word_count &gt;1200</pattern>
+    <pattern id="f2">missing Non-Bets section</pattern>
+    <pattern id="f3">aspirational bet without falsifiable signal</pattern>
+    <pattern id="f4">metric without baseline</pattern>
+  </section>
+
+  <reference path="scripts/validate-strategy-memo-template.py">Validator script (stdlib-only).</reference>
 </text>

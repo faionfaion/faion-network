@@ -3,82 +3,98 @@ slug: qbr-deck-template-services
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "bc80ab17bae7d33f"
-summary: QBR Deck Template Services — pinned template for the micro-agency founder: fixed shape + named owner + evidence anchors + outcome review, so quarter-end retention review (qbr cycle, 4 weeks) stops being folklore and starts being a reviewable operating tool.
-tags: [product, pro, template, qbr, deck, services]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pinned QBR deck template for the micro-agency founder: fixed shape, named owner, evidence anchors, outcome review — turning quarterly retainer reviews into a reviewable operating tool.
+content_id: "fe341171f1e2d1bb"
+complexity: medium
+produces: report
+est_tokens: 2800
+tags: [qbr, deck, template, services, retainer, micro-agency]
 ---
 # QBR Deck Template Services
 
 ## Summary
 
-**One-sentence:** QBR Deck Template Services — pinned template for the micro-agency founder: fixed shape + named owner + evidence anchors + outcome review, so quarter-end retention review (qbr cycle, 4 weeks) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned QBR deck template for the micro-agency founder: fixed shape, named owner, evidence anchors, outcome review — turning quarterly retainer reviews into a reviewable operating tool.
 
-**One-paragraph:** In product management, the micro-agency founder runs quarter-end retention review (qbr cycle, 4 weeks) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. ops-customer-success-metrics exists but no full QBR template/cadence is documented for services businesses. `qbr-deck-template-services` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the micro-agency founder starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Pinned QBR deck template for the micro-agency founder: fixed shape, named owner, evidence anchors, outcome review — turning quarterly retainer reviews into a reviewable operating tool. The methodology produces a `report` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний report, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p5-micro-agency-founder/Quarter-end retention review (QBR cycle, 4 weeks)`
-- the micro-agency founder owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Operating context matches the produces shape (`report`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the micro-agency founder.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the medium procedure. |
+| `synthesize-report` | opus | Final cross-input judgment producing the report. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/qbr-deck.md` | 10-slide QBR deck Markdown skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-qbr-deck-template-services.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- parent skill: `skills/faion/knowledge/pro/product/`
+- peer methodologies: siblings under the parent skill
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

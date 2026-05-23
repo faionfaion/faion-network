@@ -1,32 +1,158 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Acquisition Prep Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agency Acquisition Prep deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="cycle_id" format="iso_date_or_sprint_id" />
-      <field name="items" type="list" min="3" schema="{id,status,evidence,carryover}" />
-      <field name="pass_rate" format="float_0_to_1" />
-      <field name="carryover_items" type="list_of_ids" />
-      <field name="escalations" type="list" />
-    </required>
-    <forbidden>
-      <pattern id="f1">items marked done without evidence link</pattern>
-      <pattern id="f2">skipped items without one-line reason</pattern>
-      <pattern id="f3">carryover items aged &gt;3 cycles without escalation entry</pattern>
-      <pattern id="f4">items added mid-cycle without owner field</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Group similar items only if they share owner + source-of-truth.</transformation>
-      <transformation>Promote a carryover item to escalation when aging &gt;3.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every item has source link</item>
-      <item>Every skipped item has reason</item>
-      <item>Carryover and escalation lists are non-overlapping</item>
-      <item>Pass rate matches counted items</item>
-    </list>
+<text id="02-output-contract" title="Agency Acquisition Prep Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys, types, and forbidden patterns. Valid + invalid examples below.</summary>
+
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-acquisition-prep.json",
+  "type": "object",
+  "required": [
+    "cycle_id",
+    "lane",
+    "items",
+    "pass_rate",
+    "carryover",
+    "escalations"
+  ],
+  "properties": {
+    "cycle_id": {
+      "type": "string"
+    },
+    "lane": {
+      "enum": [
+        "strategic",
+        "financial",
+        "aqui-hire"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "evidence",
+          "owner"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "done",
+              "skipped",
+              "deferred"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "skip_reason": {
+            "type": "string"
+          },
+          "aging": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "pass_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "carryover": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "escalations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "reason"
+        ]
+      }
+    },
+    "founder_dependency_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "cycle_id": "2026-Q2",
+  "lane": "financial",
+  "items": [
+    {
+      "id": "data-room-refresh",
+      "status": "done",
+      "evidence": "https://drive/q2",
+      "owner": "ruslan"
+    },
+    {
+      "id": "founder-dep-audit",
+      "status": "done",
+      "evidence": "playbooks/founder-dep.md",
+      "owner": "ruslan"
+    },
+    {
+      "id": "loi-hygiene-template",
+      "status": "deferred",
+      "evidence": "no template author yet",
+      "owner": "ruslan",
+      "aging": 1
+    }
+  ],
+  "pass_rate": 0.67,
+  "carryover": [
+    "loi-hygiene-template"
+  ],
+  "escalations": [],
+  "founder_dependency_pct": 28
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "cycle_id": "Q2",
+  "items": [
+    {
+      "id": "x",
+      "status": "skipped"
+    }
+  ]
+}
+]]></code>
+    <note>Skipped item lacks skip_reason + owner; lane missing; &lt;3 items.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">mixed-lane items in same cycle</pattern>
+    <pattern id="f2">skipped item without reason</pattern>
+    <pattern id="f3">carryover aged &gt;3 cycles without escalation</pattern>
+    <pattern id="f4">founder_dependency_pct &gt;60 without action item</pattern>
+  </section>
+
+  <reference path="scripts/validate-agency-acquisition-prep.py">Validator script (stdlib-only).</reference>
 </text>

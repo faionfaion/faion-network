@@ -3,74 +3,98 @@ slug: product-led-growth
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: PLG uses the product itself as the primary acquisition, activation, and expansion engine: self-serve onboarding, a clearly defined "aha moment" under 5 minutes, usage-gated upgrade triggers, and PQL scoring that hands off to sales-assist at the right moment.
-content_id: "26749fdc15d89d48"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PLG uses the product itself as the primary acquisition, activation, and expansion engine: self-serve onboarding, aha-moment under 5 minutes, usage-gated upgrade triggers, and PQL scoring that hands off to sales-assist.
+content_id: "ae64906ad24e3542"
+complexity: deep
+produces: spec
+est_tokens: 4400
 tags: [plg, growth, activation, freemium, saas]
 ---
 # Product-Led Growth (PLG)
 
 ## Summary
 
-**One-sentence:** PLG uses the product itself as the primary acquisition, activation, and expansion engine: self-serve onboarding, a clearly defined "aha moment" under 5 minutes, usage-gated upgrade triggers, and PQL scoring that hands off to sales-assist at the right moment.
+**One-sentence:** PLG uses the product itself as the primary acquisition, activation, and expansion engine: self-serve onboarding, aha-moment under 5 minutes, usage-gated upgrade triggers, and PQL scoring that hands off to sales-assist.
 
-**One-paragraph:** PLG uses the product itself as the primary acquisition, activation, and expansion engine: self-serve onboarding, a clearly defined "aha moment" under 5 minutes, usage-gated upgrade triggers, and PQL scoring that hands off to sales-assist at the right moment. The agent workflow instruments the funnel, generates activation hypotheses, ships the smallest in-product change behind a feature flag, and gates experimentation behind SRM check and pre-registered MDE.
+**One-paragraph:** PLG uses the product itself as the primary acquisition, activation, and expansion engine: self-serve onboarding, aha-moment under 5 minutes, usage-gated upgrade triggers, and PQL scoring that hands off to sales-assist. The methodology produces a `spec` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний spec, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- SaaS / dev tools / API products where users can self-onboard without sales (Linear, Vercel, PostHog pattern).
-- ACV under ~$25k where sales-led economics break down; freemium → paid conversion is the growth lever.
-- Product produces measurable in-app events (signup, activation step, feature use) that can drive PQL scoring.
-- Bottom-up motion targeting individual contributors who later expand to teams (Slack, Notion, Figma pattern).
-- Existing product with traffic but flat activation — room for funnel instrumentation and onboarding redesign.
+- Operating context matches the produces shape (`spec`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- Highly regulated, procurement-heavy enterprise sales (defense, banking core) — buyer is not the user.
-- Products requiring data integration, on-prem deploy, or contracts before any value can be shown.
-- ACV above ~$100k where one closed deal pays for many SDRs; sales-led ROI dominates.
-- Pre-PMF: PLG amplifies a working loop; on a broken product it industrialises churn.
-- Network products without single-player value — optimising activation has no payoff if the user lands alone.
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the deep procedure. |
+| `synthesize-spec` | opus | Final cross-input judgment producing the spec. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pql-scorer.py` | Product-Qualified-Lead scorer from usage signals |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-led-growth.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/product-operations/`
+- parent skill: `skills/faion/knowledge/pro/product/product-operations/`
+- peer methodologies: siblings under the parent skill
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

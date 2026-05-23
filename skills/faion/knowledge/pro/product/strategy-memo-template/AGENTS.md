@@ -3,13 +3,16 @@ slug: strategy-memo-template
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9ab3812f06a0df0c"
-summary: "Produces a 2-page strategy memo (vision, bets, non-bets, success metrics) that replaces 40-slide decks for annual product strategy refresh."
-tags: [strategy-memo-template, product, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a 2-page strategy memo (vision, bets, non-bets, success metrics) that replaces 40-slide decks for annual product strategy refresh.
+content_id: "b66cca25f05e5490"
+complexity: medium
+produces: spec
+est_tokens: 2900
+tags: [strategy, memo, template, product, annual-planning]
 ---
 # Strategy Memo Template
 
@@ -17,64 +20,81 @@ tags: [strategy-memo-template, product, pro]
 
 **One-sentence:** Produces a 2-page strategy memo (vision, bets, non-bets, success metrics) that replaces 40-slide decks for annual product strategy refresh.
 
-**One-paragraph:** Reforge/Lenny-style strategy memo: forces a PM to fit annual direction onto one page of vision + one page of three numbered bets, each with a falsifiable success metric and an explicit anti-bet. Mechanism: structured template + 3-stakeholder pre-read + 60-min walk-through. Primary output: signed memo URL with version + decision-owner.
+**One-paragraph:** Produces a 2-page strategy memo (vision, bets, non-bets, success metrics) that replaces 40-slide decks for annual product strategy refresh. The methodology produces a `spec` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний spec, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- annual or H1/H2 product-strategy cycle is live
-- ≥1 prior quarter of product metrics is available for grounding
-- named decision-owner exists (head of product, founder, or GM)
+- Operating context matches the produces shape (`spec`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- company has <3 months of usage data — too early for falsifiable bets
-- no decision-owner — memo becomes a brainstorm with no commitment
-- team already runs OKRs with explicit bets — duplication risk
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
 ## Prerequisites
 
-- last 4 quarters of product metrics (DAU/WAU, retention, NPS, revenue)
-- current roadmap export (Linear/Jira/Notion)
-- calendar holds for 3 stakeholder pre-reads
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product` | parent domain group — provides operating context for Strategy Memo Template |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the medium procedure. |
+| `synthesize-spec` | opus | Final cross-input judgment producing the spec. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/strategy-memo-template.json` | JSON schema for the Strategy Memo Template output contract |
-| `templates/strategy-memo-template.md` | Markdown skeleton with the required fields |
+| `templates/strategy-memo.md` | 2-page strategy memo Markdown skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-strategy-memo-template.py` | Enforce Strategy Memo Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-strategy-memo-template.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/`
-- upstream playbook: `role-product-manager/Annual product strategy refresh`
-- solo/product/product-planning/portfolio-strategy
-- solo/product/product-manager/outcome-based-roadmaps-advanced
+- parent skill: `skills/faion/knowledge/pro/product/`
+- peer methodologies: siblings under the parent skill
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

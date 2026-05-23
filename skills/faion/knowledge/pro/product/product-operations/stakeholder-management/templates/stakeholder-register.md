@@ -1,36 +1,20 @@
-## Stakeholder Register: [Project/Product]
+<!-- purpose: Power/Interest + Attitude stakeholder register -->
+<!-- consumes: stakeholder identification -->
+<!-- produces: register markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: low -->
 
-**Date:** YYYY-MM-DD | **Owner:** [PM name] | **Next review:** YYYY-MM-DD
+# Stakeholder Register — {{project}}
 
-| Name | Role | Interest | Power | Attitude | Engagement | Owner | Cadence |
-|------|------|----------|-------|----------|------------|-------|---------|
-| [Name] | [Title] | H | H | Supporter | Partner | [PM] | Weekly 1:1 |
-| [Name] | [Title] | L | H | Unknown | Informed | [PM] | Monthly email |
-| [Name] | [Title] | H | L | Resistor | Involved | [Lead] | Bi-weekly review |
+| Name        | Power | Interest | Attitude  | Owner | Cadence  | Last Contact |
+|-------------|-------|----------|-----------|-------|----------|--------------|
+| VP Sales    | high  | high     | neutral   | ruslan| biweekly | 2026-05-18   |
+| CFO         | high  | low      | resistor  | ruslan| monthly  | 2026-05-10   |
 
-**Interest/Power:** H=High, M=Medium, L=Low
-**Attitude:** Supporter | Neutral | Resistor | Unknown (mark Unknown until evidence cited)
-**Engagement:** Partner | Involved | Informed | Monitor
+## Approval Gates
 
----
-
-### Detailed Profiles
-
-#### [Stakeholder 1]
-
-**Role:** [Title/Function]
-**Interest in project:** [What they care about — specific]
-**Potential concerns:** [What might worry them]
-**Influence:** [How they can affect the project]
-**Attitude source:** [meeting notes / org chart / interview — cite the source]
-**Communication preference:** [How/when to reach them]
-**Key messages:** [What to emphasize for this audience]
-**Approval gates:** [Any SDD tasks requiring their sign-off]
-
----
-
-### Former Stakeholders (archive — do not delete)
-
-| Name | Role | Left | Reason | Notes for future |
-|------|------|------|--------|-----------------|
-| [Name] | [Title] | YYYY-MM-DD | [left company / role changed] | [context for successor] |
+| Transition          | Approvers     |
+|---------------------|---------------|
+| backlog→todo        | ruslan        |
+| todo→in-progress    | ruslan, lara  |
+| in-progress→done    | ruslan        |

@@ -3,73 +3,101 @@ slug: stakeholder-management
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Stakeholder management identifies everyone affected by a product (end users, decision makers, influencers, builders, support, external), maps them on a Power/Interest grid with an explicit attitude column (Supporter/Neutral/Resistor), assigns a named owner and engagement cadence per stakeholder, and codifies approval gates so agents can block SDD transitions until named approvers sign off.
-content_id: "248ec3b180dc48b0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Stakeholder management identifies everyone affected by a product, maps them on a Power/Interest grid with explicit Supporter/Neutral/Resistor attitudes, assigns owners and cadence, and codifies approval gates.
+content_id: "a252fc7e580f13f1"
+complexity: medium
+produces: spec
+est_tokens: 3500
 tags: [stakeholder, engagement, management, communication, relationships]
 ---
 # Stakeholder Management
 
 ## Summary
 
-**One-sentence:** Stakeholder management identifies everyone affected by a product (end users, decision makers, influencers, builders, support, external), maps them on a Power/Interest grid with an explicit attitude column (Supporter/Neutral/Resistor), assigns a named owner and engagement cadence per stakeholder, and codifies approval gates so agents can block SDD transitions until named approvers sign off.
+**One-sentence:** Stakeholder management identifies everyone affected by a product, maps them on a Power/Interest grid with explicit Supporter/Neutral/Resistor attitudes, assigns owners and cadence, and codifies approval gates.
 
-**One-paragraph:** Stakeholder management identifies everyone affected by a product (end users, decision makers, influencers, builders, support, external), maps them on a Power/Interest grid with an explicit attitude column (Supporter/Neutral/Resistor), assigns a named owner and engagement cadence per stakeholder, and codifies approval gates so agents can block SDD transitions until named approvers sign off.
+**One-paragraph:** Stakeholder management identifies everyone affected by a product, maps them on a Power/Interest grid with explicit Supporter/Neutral/Resistor attitudes, assigns owners and cadence, and codifies approval gates. The methodology produces a `spec` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний spec, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- Cross-functional product launch with 5+ named stakeholders where misalignment has already cost time once.
-- Re-org or PM handover: dump every stakeholder relationship into a register so the incoming PM can start without rediscovery.
-- Roadmap quarter start: refresh the grid, decide which stakeholders move from Inform to Partner for upcoming bets.
-- An SDD feature has a named approval gate (legal, security, head of sales) — codify it so the executor agent blocks until the approver signs off.
-- Building a multi-agent comms pipeline where status-bot, release-notes-bot, and executive-summary-bot all pull audience from a shared register.
+- Operating context matches the produces shape (`spec`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- Solo founder pre-revenue with only customers and family — a 5-line note in the project README is sufficient.
-- Internal dev-tools used by under 10 engineers in the same Slack channel — async stand-up + RFC comments cover it.
-- Crisis/incident mode: run incident-management first, restore service, update the register post-mortem.
-- When the problem is "we don't know who's doing what work" — use raci-matrix or WBS, not this.
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the medium procedure. |
+| `synthesize-spec` | opus | Final cross-input judgment producing the spec. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/communication-plan.md` | Per-stakeholder communication cadence + channel |
+| `templates/meeting-template.md` | Stakeholder meeting agenda template |
+| `templates/stakeholder-lint.py` | Lint stakeholder register for missing owners/cadence |
+| `templates/stakeholder-register.md` | Power/Interest + Attitude register |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-stakeholder-management.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/product-operations/`
+- parent skill: `skills/faion/knowledge/pro/product/product-operations/`
+- peer methodologies: siblings under the parent skill
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

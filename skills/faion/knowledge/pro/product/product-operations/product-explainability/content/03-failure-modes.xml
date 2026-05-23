@@ -1,77 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="product-explainability Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for product-explainability as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Product Explainability Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>KB drift as default: marketing site, docs, pricing page, schema feed, and llms.txt diverge within weeks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each surface is edited by a different team on a different cadence. Without a single-source pipeline, contradiction is the natural state, not the exception.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Schema theater: teams add Product JSON-LD but description, audience, and feature fields repeat the marketing tagline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Retrieval systems get no new signal from paraphrased copy. The schema markup must carry information not already in the page text.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Capability-version skew: capability statements with no validFrom/validUntil dates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deprecated features keep getting recommended by AI assistants because there is no signal in the KB that they no longer exist. Date-bounded capability status is the fix.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Generator agents producing adjective-heavy copy ("best-in-class", "leading", "revolutionary").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force a "no adjectives, no superlatives" constraint in the system prompt and lint generated output. These tokens provide no retrieval signal and reduce trust.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Extractor agent fabricating capabilities to fill empty fields.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Refuse-on-unknown must be enforced via prompt and post-hoc validator that cross-checks capability names against the feature flag registry or source code. Invented capabilities create support and legal liability.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Limit array lost across multi-step pipeline summarization passes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Preserve the limits[] array verbatim across every pipeline stage. Never re-summarize limits — they carry legal and trust-critical precision that compression loses.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Probe agents producing the same response across runs due to same prompt and cached model state.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Vary question phrasing, user role, and timing across probe runs. Stable scores are an artifact of caching, not real representation quality.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Hallucinated since_version: agents guess versions if not given a changelog.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hard requirement: extractor must read a real changelog or refuse. Version strings must be validated against actual release tags.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Schema bloat: generator agents produce maximalist JSON-LD with every optional field.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>AI retrieval prefers small, dense, accurate markup. Cap field count; lint with structured-data-testing-tool.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Confidentiality leak: capability statements reveal unlaunched features, internal infra (vendor names, region IDs, partner SKUs).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Run a scrubber agent before any external publish — especially before pushing llms.txt or schema.org markup.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>No human checkpoint on deprecated flips: agent autonomously removes a capability from AI-mediated discovery.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Marking a capability deprecated removes it from AI discovery and impacts revenue. Always require a product-owner sign-off before status changes; never let the agent flip status autonomously.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Cross-locale drift via auto-translation: translation agents helpfully translate "limit" in ways that lose legal precision.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Limits and disclaimers go through human review per locale; non-negotiable. Never auto-translate capability limits.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>llms.txt echo chamber: many sites copy each other's llms.txt; the agent will follow the herd.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force a pre-publish diff against the top-3 competitors' llms.txt; if similarity &gt;0.7, regenerate. Avoid herd homogenization.</repair>
-    </failure-mode>
-    <failure-mode id="fm-14" severity="medium">
-      <description>Probe-set staleness: canonical question sets calcify while the product evolves.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Refresh the question set whenever a new capability ships or a customer reports a wrong AI answer. Stale questions produce artificially flat accuracy.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="no-schema-markup" severity="high">
+      <symptom>Product invisible in Perplexity / ChatGPT product comparisons.</symptom>
+      <root-cause source="schema.org/SoftwareApplication">schema.org markup absent on the product page.</root-cause>
+      <fix>Emit Product + SoftwareApplication JSON-LD; validate via product-kb-validate.sh.</fix>
+    </antipattern>
+    <antipattern id="capability-only-page" severity="high">
+      <symptom>AI surfaces claim product does X (it doesn't); customers churn after trial.</symptom>
+      <root-cause source="Internal — Perplexity hallucination audit">Feature page listed capabilities only; no boundary statement.</root-cause>
+      <fix>Add 'what this does NOT do' section per feature page.</fix>
+    </antipattern>
+    <antipattern id="jargon-heavy-public-kb" severity="medium">
+      <symptom>AI summaries garble feature descriptions; sales gets 'what does this even do?' calls.</symptom>
+      <root-cause source="Nielsen Norman Group">Public pages above Flesch-Kincaid grade 11.</root-cause>
+      <fix>Rewrite to ≤grade 11 or move behind login.</fix>
+    </antipattern>
+    <antipattern id="stale-changelog" severity="medium">
+      <symptom>AI surfaces serve last quarter's feature set; reps lose deals on outdated info.</symptom>
+      <root-cause source="JSON Feed v1.1 spec">No machine-readable changelog; updates only land in marketing posts.</root-cause>
+      <fix>Publish RSS + JSON Feed changelog within 24h of every release.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,44 +1,25 @@
--- ops-store/schema.sql — canonical Product Ops data schema.
--- Intended to be dbt-modelled afterwards. Each table maps to one source domain.
--- All cross-system IDs (Productboard, Jira, Linear) stored in source column.
+-- purpose: Operational metrics warehouse schema
+-- consumes: manual ingest or ETL
+-- produces: tables: north_star_daily, funnel_events, retention_cohorts
+-- depends-on: warehouse (DuckDB / Postgres)
+-- token-budget-impact: low
 
-create table feature (
-  id           text primary key,        -- canonical ID (e.g. PB-123)
-  source       text,                    -- productboard | jira | linear | github
-  title        text,
-  owner        text,
-  status       text,
-  target_date  date,
-  outcome      text,                    -- referenced outcome statement
-  metric       text,                    -- primary success metric
-  updated_at   timestamptz
+CREATE TABLE IF NOT EXISTS north_star_daily (
+  day DATE PRIMARY KEY,
+  value NUMERIC NOT NULL,
+  notes TEXT
 );
 
-create table release (
-  id                   text primary key,
-  name                 text,
-  ships_on             date,
-  scope_feature_ids    text[],          -- references feature.id[]
-  readiness_score      numeric,
-  updated_at           timestamptz
+CREATE TABLE IF NOT EXISTS funnel_events (
+  ts TIMESTAMP NOT NULL,
+  user_id TEXT NOT NULL,
+  step TEXT NOT NULL,
+  meta JSONB
 );
 
-create table risk (
-  id           serial primary key,
-  feature_id   text references feature(id),
-  kind         text,                    -- scope | dependency | resource | market
-  severity     int,                     -- 1-5
-  opened_at    timestamptz,
-  closed_at    timestamptz,
-  note         text
-);
-
-create table metric_kpi (
-  id                text primary key,
-  name              text,
-  definition_sql    text,               -- canonical SQL; never re-derive from prose
-  owner             text,
-  target            numeric,
-  current           numeric,
-  last_computed     timestamptz
+CREATE TABLE IF NOT EXISTS retention_cohorts (
+  cohort_week TEXT NOT NULL,
+  week_offset INT NOT NULL,
+  retained INT NOT NULL,
+  PRIMARY KEY (cohort_week, week_offset)
 );

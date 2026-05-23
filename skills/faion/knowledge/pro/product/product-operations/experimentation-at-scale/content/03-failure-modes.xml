@@ -1,42 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="experimentation-at-scale Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for experimentation-at-scale as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Experimentation at Scale Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Experimentation graveyards: large experiment counts with no learning-extraction step.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>100k tests per year without a weekly learning-extraction pass produces a write-only registry. The organizational value of experimentation is in the applied learnings, not the count.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent paraphrasing confidence intervals as "95% chance of winning."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>That is a Bayesian posterior, not a frequentist CI. Force the agent to copy vendor-emitted statistics verbatim; never let it re-state them in its own words.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hypothesis-author producing "we should redesign onboarding" instead of a behavioral prediction.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Solution-shaped hypotheses cannot be falsified. Constrain to Hypothesis-If-Then-Because schema with a numeric MDE field.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Metric-watcher posting "trending positive" messages that humans interpret as ship signals.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Label every non-decisional daily update explicitly: "Non-decisional; sequential testing not enabled. Minimum runtime not reached." Prevents premature ships.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Learning-extractor emitting a learning bullet from a single null result.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require N &gt;= 5 closed experiments sharing a theme before emitting a learning bullet. Single results are evidence, not learnings.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>API keys for LaunchDarkly/Statsig inlined in the model context.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Route credentials through the host environment, never into the model context window. Credentials in context leak to logs, caches, and prompt libraries.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Flag-deployer creating duplicate experiments on retry.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require an idempotency key (hash of experiment-id) on every vendor API call. Retries without idempotency keys create double-counted exposure events.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="post-hoc-metric-pick" severity="high">
+      <symptom>Experiment reports a 'lift' on secondary metric chosen after results were inspected.</symptom>
+      <root-cause source="Kohavi et al. — Trustworthy Online Controlled Experiments">No pre-registration; team selected the metric that looked best post-hoc.</root-cause>
+      <fix>Enforce pre-registration in templates/experiment-doc.yaml; CI check that doc exists and is signed off before flag is allocated.</fix>
+    </antipattern>
+    <antipattern id="srm-ignored" severity="high">
+      <symptom>Result shows +5% lift but treatment received 47% / control 53% of traffic.</symptom>
+      <root-cause source="Kohavi SRM Microsoft (2018)">Traffic splitter bug + no SRM check before reading results.</root-cause>
+      <fix>templates/srm_check.py MUST run before any results read; SRM-failing experiments are discarded.</fix>
+    </antipattern>
+    <antipattern id="no-guardrails" severity="high">
+      <symptom>Activation +3%; latency +400ms; ship-decision taken on primary metric alone.</symptom>
+      <root-cause source="Booking.com playbook">Guardrails not defined per surface.</root-cause>
+      <fix>Define guardrails per surface (latency, error-rate, revenue per session) and block shipping on degradation &gt; pre-registered threshold.</fix>
+    </antipattern>
+    <antipattern id="early-stop-on-peek" severity="high">
+      <symptom>Team halts experiment at day 4 because 'it looks significant'; replication later shows null.</symptom>
+      <root-cause source="Johari et al. — Peeking at A/B Tests (2017)">Peeking; no sequential-test correction.</root-cause>
+      <fix>Run to pre-registered sample size; OR pre-register a sequential design (mSPRT, group-sequential).</fix>
+    </antipattern>
   </section>
 </text>

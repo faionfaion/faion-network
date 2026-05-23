@@ -3,69 +3,98 @@ slug: win-loss-quarterly-pm-template
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Quarterly synthesis stitching CRM data + interviews + competitive notes — the integrated artefact P6 PMs own.
-content_id: "e40b5ac0f34ba324"
-tags: [win-loss-quarterly-pm-template, product, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Quarterly synthesis stitching CRM data, win-loss interviews, and competitive notes into the integrated artefact PMs own.
+content_id: "6d0bb30ca70e7a7b"
+complexity: medium
+produces: report
+est_tokens: 3000
+tags: [win-loss, quarterly, pm, template, synthesis, crm]
 ---
-
 # Win-Loss Quarterly PM Template
 
 ## Summary
 
-**One-sentence:** Quarterly synthesis stitching CRM data + interviews + competitive notes — the integrated artefact P6 PMs own.
+**One-sentence:** Quarterly synthesis stitching CRM data, win-loss interviews, and competitive notes into the integrated artefact PMs own.
 
-**One-paragraph:** Pro PMs in P6 product teams own quarterly win-loss; no current methodology stitches CRM + interviews + competitive into one. Output: quarterly template + stitching protocol + roadmap-feeding decisions.
+**One-paragraph:** Quarterly synthesis stitching CRM data, win-loss interviews, and competitive notes into the integrated artefact PMs own. The methodology produces a `report` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний report, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- PM owns win-loss in a B2B SaaS product
-- CRM data available + interview pipeline running
-- team has competitive-intel function (formal or informal)
+- Operating context matches the produces shape (`report`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- PLG self-serve with no sales motion (different process)
-- interview program not yet established (use win-loss-interview-program first)
-- single-rep startup where PM is rep (conflict of interest; use external interviewer)
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
 ## Prerequisites
 
-- CRM with stage / loss-reason fields populated
-- ≥10 win-loss interviews per quarter
-- competitive intelligence source
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent skill — provides operating context for this methodology |
-| `pro/research/win-loss-interview-program` | peer methodology — produces inputs or consumes outputs |
-| `pro/product/product-manager` | peer methodology — produces inputs or consumes outputs |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the medium procedure. |
+| `synthesize-report` | opus | Final cross-input judgment producing the report. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/win-loss-quarterly.md` | Quarterly win-loss synthesis report template |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-win-loss-quarterly-pm-template.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodology: `pro/research/win-loss-interview-program`
-- peer methodology: `pro/product/product-manager`
-- peer methodology: `pro/marketing/conversion-optimizer`
-- external: https://primaryintelligence.com/; https://www.lennyrachitsky.com/p/win-loss-analysis
+- parent skill: `skills/faion/knowledge/pro/product/`
+- peer methodologies: siblings under the parent skill
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

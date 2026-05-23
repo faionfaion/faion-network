@@ -1,62 +1,35 @@
-"""
-belief_update.py — weekly belief-update loop.
-Schedule via Dagster/cron or NERO 'schedule' skill.
-Reads events.ndjson (7-day rolling window), calls Claude belief-updater,
-writes versioned beliefs.yaml. Run 'git commit beliefs.yaml' after.
-"""
-import json
-import pathlib
-import yaml
-import datetime
-import anthropic
+#!/usr/bin/env python3
+# purpose: Bayesian belief-update tracker for product hypotheses
+# consumes: CLI args: --prior --likelihood-positive --observed (1/0)
+# produces: stdout: posterior belief
+# depends-on: stdlib
+# token-budget-impact: low
 
-EVENTS = pathlib.Path("events.ndjson")     # 7-day rolling window, one JSON per line
-BELIEFS = pathlib.Path("beliefs.yaml")     # versioned via git
-HISTORY = pathlib.Path("beliefs.history.ndjson")
+import argparse, sys
 
-client = anthropic.Anthropic()
+def update(prior, lik_pos, observed):
+    # P(H|E) = P(E|H) P(H) / P(E); P(E) = P(E|H)P(H) + P(E|~H)P(~H)
+    lik_neg = 1 - lik_pos
+    if observed:
+        pe = lik_pos * prior + lik_neg * (1 - prior)
+        return (lik_pos * prior) / pe
+    pe = lik_neg * prior + lik_pos * (1 - prior)
+    return (lik_neg * prior) / pe
 
-
-def load_window(days: int = 7) -> list[dict]:
-    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
-    out = []
-    for line in EVENTS.read_text().splitlines():
-        if not line.strip():
-            continue
-        ev = json.loads(line)
-        if datetime.datetime.fromisoformat(ev["ts"].rstrip("Z")) >= cutoff:
-            out.append(ev)
-    return out
-
-
-def run() -> None:
-    events = load_window()
-    prompt = f"""<role>belief-updater</role>
-<current_beliefs>{BELIEFS.read_text()}</current_beliefs>
-<events>{json.dumps(events, indent=2)}</events>
-<rules>Mutate a belief only if &gt;=3 independent events agree OR 1 high-severity
-contradicting event with cited source. Cite event_id per change. JSON only.</rules>"""
-
-    resp = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=8000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    delta = json.loads(resp.content[0].text)
-    beliefs = yaml.safe_load(BELIEFS.read_text()) or {}
-
-    for change in delta.get("changed", []):
-        beliefs[change["belief_id"]] = change["after"]
-        HISTORY.open("a").write(
-            json.dumps({**change, "ts": datetime.datetime.utcnow().isoformat() + "Z"}) + "\n"
-        )
-
-    BELIEFS.write_text(yaml.safe_dump(beliefs, sort_keys=True))
-    print(
-        f"changed={len(delta.get('changed', []))} "
-        f"pressure={len(delta.get('unchanged_with_pressure', []))}"
-    )
-
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--prior", type=float, default=0.5)
+    p.add_argument("--likelihood-positive", type=float, default=0.7)
+    p.add_argument("--observed", type=int, default=1)
+    p.add_argument("--self-test", action="store_true")
+    a = p.parse_args()
+    if a.self_test:
+        post = update(0.5, 0.8, 1)
+        ok = 0.7 < post < 0.85
+        sys.stdout.write(f"self-test post={post:.3f} pass={ok}\n")
+        sys.exit(0 if ok else 1)
+    post = update(a.prior, a.likelihood_positive, a.observed)
+    sys.stdout.write(f"posterior: {post:.3f}\n")
 
 if __name__ == "__main__":
-    run()
+    main()

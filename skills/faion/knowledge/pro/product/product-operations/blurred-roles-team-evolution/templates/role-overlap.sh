@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
-# role-overlap.sh — emit per-author file-area distribution from git history.
-# Usage: ./role-overlap.sh <since> <repo-root>
-# Example: ./role-overlap.sh 90.days .
-# Output: TSV with columns: commits, author, area
-# Interpretation: author touching >=3 distinct top-level areas = Venn-overlap territory;
-#                 author at 1 area = specialist. Feed to role-audit prompt.
+# purpose: Emit per-author file-area distribution from git history
+# consumes: git log
+# produces: stdout: per-author file-area summary
+# depends-on: git
+# token-budget-impact: low
 set -euo pipefail
-since="${1:-90.days}"
-root="${2:-.}"
-cd "$root"
-git log --since="$since" --name-only --pretty=format:'AUTHOR=%aN' \
-  | awk '
-    /^AUTHOR=/ { author=substr($0,8); next }
-    NF {
-      n=split($0,p,"/"); area=(n>1?p[1]:"root")
-      key=author"\t"area; count[key]++
-    }
-    END { for (k in count) print count[k]"\t"k }
-  ' \
-  | sort -nr \
-  | awk -F'\t' 'BEGIN{print "commits\tauthor\tarea"} {print $1"\t"$3"\t"$4}'
+SINCE="${1:-3 months ago}"
+git log --since="$SINCE" --pretty=format: --name-only \
+  | awk 'NF' \
+  | sed 's|/.*||' \
+  | sort | uniq -c | sort -rn \
+  | head -20
+echo "---"
+echo "by author (top 5 dirs each):"
+for a in $(git log --since="$SINCE" --format="%ae" | sort -u | head -10); do
+  echo "== $a =="
+  git log --since="$SINCE" --author="$a" --pretty=format: --name-only \
+    | awk 'NF' | sed 's|/.*||' \
+    | sort | uniq -c | sort -rn | head -5
+done

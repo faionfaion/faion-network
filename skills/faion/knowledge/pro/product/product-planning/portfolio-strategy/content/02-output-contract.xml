@@ -1,22 +1,153 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="portfolio-strategy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Portfolio Strategy (70/20/10) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys, types, and forbidden patterns. Valid + invalid examples below.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/portfolio-allocation.json",
+  "type": "object",
+  "required": [
+    "quarter",
+    "macro_condition",
+    "allocation_pct",
+    "bets",
+    "kill_criteria_count"
+  ],
+  "properties": {
+    "quarter": {
+      "type": "string",
+      "pattern": "^\\d{4}-Q[1-4]$"
+    },
+    "macro_condition": {
+      "enum": [
+        "growth",
+        "stable",
+        "recession"
+      ]
+    },
+    "allocation_pct": {
+      "type": "object",
+      "required": [
+        "h1",
+        "h2",
+        "h3"
+      ],
+      "properties": {
+        "h1": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "h2": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "h3": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "bets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "horizon",
+          "rationale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "horizon": {
+            "enum": [
+              "h1",
+              "h2",
+              "h3"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "kill_signal": {
+            "type": "string"
+          },
+          "kill_threshold": {
+            "type": "string"
+          },
+          "kill_window": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "kill_criteria_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "quarter": "2026-Q2",
+  "macro_condition": "stable",
+  "allocation_pct": {
+    "h1": 70,
+    "h2": 20,
+    "h3": 10
+  },
+  "bets": [
+    {
+      "id": "bet-cli-v1",
+      "horizon": "h1",
+      "rationale": "core revenue line"
+    },
+    {
+      "id": "bet-mobile",
+      "horizon": "h3",
+      "rationale": "new surface",
+      "kill_signal": "DAU",
+      "kill_threshold": "<500",
+      "kill_window": "8 weeks"
+    }
+  ],
+  "kill_criteria_count": 1
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "quarter": "Q2",
+  "allocation_pct": {
+    "h1": 100,
+    "h2": 0,
+    "h3": 0
+  },
+  "bets": []
+}
+]]></code>
+    <note>Quarter must be ISO; bets empty; default allocation violated without macro_condition.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">untagged bet</pattern>
+    <pattern id="f2">H3 bet without kill_criteria</pattern>
+    <pattern id="f3">intra-quarter macro shift without named trigger</pattern>
+    <pattern id="f4">silent re-allocation without decision record</pattern>
+  </section>
+
+  <reference path="scripts/validate-portfolio-strategy.py">Validator script (stdlib-only).</reference>
 </text>

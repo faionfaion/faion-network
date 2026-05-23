@@ -1,58 +1,38 @@
-"""
-pql-scorer.py — minimal PostHog PQL scorer.
-Weights in-app events into a score and writes back as person property
-so feature flags and sales-assist routing can consume it.
+#!/usr/bin/env python3
+# purpose: Product-Qualified-Lead scorer from usage signals
+# consumes: JSON stdin: {workspaces, integrations, invited_collaborators, depth_events}
+# produces: stdout: PQL score + tier
+# depends-on: stdlib (json)
+# token-budget-impact: low
 
-Usage: PH_HOST=https://app.posthog.com PH_KEY=phx_... python pql-scorer.py
+import argparse, json, sys
 
-Tune WEIGHTS per product. Recalibrate quarterly.
-"""
-import os, time, requests
+WEIGHTS = {"workspaces": 2, "integrations": 3, "invited_collaborators": 4, "depth_events": 1}
 
-HOST = os.environ["PH_HOST"].rstrip("/")
-KEY = os.environ["PH_KEY"]
+def score(d):
+    s = 0
+    for k, w in WEIGHTS.items():
+        s += min(d.get(k, 0), 10) * w
+    return s
 
-# Tune these weights per product; recalibrate quarterly.
-# Use upgrade-intent events (limit warnings, team invites) not vanity events.
-WEIGHTS = {
-    "workspace_created":   3,
-    "second_user_invited": 5,
-    "integration_added":   4,
-    "report_exported":     2,
-    "limit_warning_seen":  6,  # strongest buying signal
-}
-SINCE = int(time.time()) - 14 * 86400  # last 14 days
+def tier(s):
+    if s >= 60: return "hot"
+    if s >= 30: return "warm"
+    return "cold"
 
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--self-test", action="store_true")
+    a = p.parse_args()
+    if a.self_test:
+        d = {"workspaces": 3, "integrations": 4, "invited_collaborators": 5, "depth_events": 8}
+        s = score(d); t = tier(s)
+        ok = s > 30 and t in ("warm", "hot")
+        sys.stdout.write(f"self-test s={s} t={t} pass={ok}\n")
+        sys.exit(0 if ok else 1)
+    d = json.load(sys.stdin)
+    s = score(d)
+    sys.stdout.write(json.dumps({"score": s, "tier": tier(s)}) + "\n")
 
-def hog(path: str, **q):
-    r = requests.get(
-        f"{HOST}{path}",
-        headers={"Authorization": f"Bearer {KEY}"},
-        params=q,
-        timeout=30,
-    )
-    r.raise_for_status()
-    return r.json()
-
-
-scores: dict[str, int] = {}
-for evt, w in WEIGHTS.items():
-    page = hog("/api/event/", event=evt, after=SINCE)
-    for e in page.get("results", []):
-        did = e.get("distinct_id")
-        if did:
-            scores[did] = scores.get(did, 0) + w
-
-for did, score in scores.items():
-    tier = "hot" if score >= 12 else "warm" if score >= 6 else "cold"
-    requests.post(
-        f"{HOST}/api/projects/@current/persons/",
-        headers={"Authorization": f"Bearer {KEY}"},
-        json={
-            "distinct_id": did,
-            "properties": {"pql_score": score, "pql_tier": tier},
-        },
-        timeout=30,
-    )
-
-print(f"scored {len(scores)} users")
+if __name__ == "__main__":
+    main()

@@ -1,39 +1,120 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Sunset Vs Fold Framework Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Sunset Vs Fold Framework output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Sunset vs Fold Framework Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys, types, and forbidden patterns. Valid + invalid examples below.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/sunset-vs-fold-framework.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/sunset-vs-fold-framework.json</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sunset-vs-fold-record.json",
+  "type": "object",
+  "required": [
+    "product",
+    "decision",
+    "criteria_matrix",
+    "approvals",
+    "version"
+  ],
+  "properties": {
+    "product": {
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "sunset",
+        "fold",
+        "defer"
+      ]
+    },
+    "criteria_matrix": {
+      "type": "object",
+      "required": [
+        "revenue",
+        "strategic_adjacency",
+        "migration_cost",
+        "team_morale",
+        "customer_concentration"
+      ],
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 5
+      }
+    },
+    "fold_receiver_consent": {
+      "type": "string"
+    },
+    "migration_path": {
+      "type": "string"
+    },
+    "customer_notice_days": {
+      "type": "integer",
+      "minimum": 90
+    },
+    "approvals": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "who",
+          "role"
+        ]
+      }
+    },
+    "version": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "product": "legacy-x",
+  "decision": "sunset",
+  "criteria_matrix": {
+    "revenue": 1,
+    "strategic_adjacency": 0,
+    "migration_cost": 3,
+    "team_morale": 2,
+    "customer_concentration": 4
+  },
+  "migration_path": "Customers migrate to product Y; CSV export by 2026-Q4.",
+  "customer_notice_days": 120,
+  "approvals": [
+    {
+      "who": "ruslan",
+      "role": "founder"
+    },
+    {
+      "who": "lara",
+      "role": "vp-design"
+    }
+  ],
+  "version": "v1"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "product": "legacy-x",
+  "decision": "sunset"
+}
+]]></code>
+    <note>Missing criteria_matrix, migration_path, approvals, version.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">decision without criteria_matrix</pattern>
+    <pattern id="f2">fold without fold_receiver_consent</pattern>
+    <pattern id="f3">sunset with customer_notice_days &lt;90</pattern>
+    <pattern id="f4">verbal decision (no version/approvals)</pattern>
+  </section>
+
+  <reference path="scripts/validate-sunset-vs-fold-framework.py">Validator script (stdlib-only).</reference>
 </text>

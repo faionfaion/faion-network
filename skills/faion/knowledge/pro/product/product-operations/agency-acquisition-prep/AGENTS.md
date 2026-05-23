@@ -3,13 +3,16 @@ slug: agency-acquisition-prep
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Concrete operating checklist covering agency acquisition prep — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
-content_id: "1335c93c60356c4f"
-tags: [agency, checklist, product]
+content_id: "b23baecbb6041544"
+complexity: medium
+produces: checklist
+est_tokens: 2800
+tags: [agency, checklist, product, acquisition, exit-prep]
 ---
 # Agency Acquisition Prep
 
@@ -17,48 +20,61 @@ tags: [agency, checklist, product]
 
 **One-sentence:** Concrete operating checklist covering agency acquisition prep — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
 
-**One-paragraph:** Concrete operating checklist covering agency acquisition prep — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped. There is no exit methodology anywhere in the corpus. For pro-tier buyers ($35/mo, 1–3 person, $100K/mo), exit is real and 3–5 years out. Methodology should cover: founder-dependency reduction, deal lane choice, buyer outreach, basic LOI hygiene, due-diligence prep. Without it, the corpus implicitly tells founders to run forever.
+**One-paragraph:** Concrete operating checklist covering agency acquisition prep — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped. The methodology produces a `checklist` artefact gated by an explicit output contract (JSON Schema draft-07) + decision tree referencing core rules. Apply when the preconditions in `## Applies If` ALL hold and none of the `## Skip If` disqualifiers fires. Skip and reach for a sibling methodology otherwise.
+
+**Ефективно для:**
+
+- Repeatable cycles де треба явний checklist, не ad-hoc notes.
+- Командна робота з named owner per artefact (audit trail).
+- Pro-tier контекст: 3-20 retainer clients / mid-stage SaaS / agency-to-saas pivot.
+- AI-augmented workflows, де LLM-агент виконує частину кроків процедури.
 
 ## Applies If (ALL must hold)
 
-- You operate the recurring activity addressed by agency acquisition prep at least once per cycle (weekly, sprint, quarter, or annual).
-- You have authority to act on each item — checklist items without owners or budget are deferred.
-- Skipped items must be auditable: a written reason replaces the action.
-- Time-box: full pass completes within the cycle window (e.g., 30-90 min for weekly, 1-2 days for annual).
+- Operating context matches the produces shape (`checklist`) — outcome can be inspected as a discrete artefact.
+- Named human owner exists for the artefact + downstream actions (no orphan output).
+- Inputs listed in `## Prerequisites` are available before the run.
+- Cadence and time-box fit the cycle window the team actually operates.
+- Output will be reviewed against the JSON Schema in `content/02-output-contract.xml` before acceptance.
 
 ## Skip If (ANY kills it)
 
-- One-off events with no recurrence — checklist value is in the rhythm.
-- Activities without a named owner — items will not be done, only ticked.
-- Teams running a more granular checklist already — adding a meta-layer creates conflict.
+- One-off task with no recurrence — value of the methodology is the rhythm.
+- No named owner accountable for the produced artefact.
+- Team already runs a more granular methodology that supersedes this one.
+- Preconditions in `## Prerequisites` missing and no plan to source them this cycle.
 
 ## Prerequisites
 
-- Calendar slot dedicated to the cycle (recurring meeting / focus block).
-- Read-access to the source systems each item inspects (analytics, billing, repo).
-- Last cycle's output filed where current cycle can compare year-over-year.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs listed in `01-core-rules.xml` | system-of-record links (URL or path) | upstream owner |
+| Prior cycle output (if any) | this methodology's own artefact | git history |
+| Named owner for cycle | identity string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-operations/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `checklist_dry_run` | haiku | Template walk, no judgment needed |
-| `anomaly_flag` | sonnet | Compare current cycle vs prior, flag deltas |
-| `decision_synthesis` | opus | Consolidate flags into a corrective-action list |
+| `classify-inputs` | haiku | Mechanical mapping; no judgment. |
+| `apply-procedure` | sonnet | Cross-section reasoning over the medium procedure. |
+| `synthesize-checklist` | opus | Final cross-input judgment producing the checklist. |
 
 ## Templates
 
@@ -70,10 +86,14 @@ tags: [agency, checklist, product]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-acquisition-prep.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/product/product-operations/`
-- peer methodologies: see siblings under `pro/product/product-operations/`
+- parent skill: `skills/faion/knowledge/pro/product/product-operations/`
+- peer methodologies: siblings under the parent skill
 - external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.

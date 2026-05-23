@@ -1,66 +1,29 @@
-# Positioning Canvas: [Product]
+<!-- purpose: April Dunford 6-step positioning canvas -->
+<!-- consumes: competitor analysis, customer interviews -->
+<!-- produces: positioning statement + canvas markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: low -->
 
-## Competitive Alternatives
-What would customers do if we didn't exist?
+# Positioning Canvas — {{product}}
 
-| Alternative | Their Positioning | Their Weakness |
-|------------|-------------------|----------------|
-| [Alternative 1] | [Their tagline/focus] | [Gap we exploit] |
-| [Alternative 2] | [Their tagline/focus] | [Gap we exploit] |
-| Status quo | [What they do today] | [Pain we solve] |
+## 1. Competitive Alternatives (3-7, including 'do nothing' and 'spreadsheet')
+-
 
-## Unique Attributes (max 3)
+## 2. Unique Attributes (must be ones alternatives cannot truthfully claim)
+-
 
-| Attribute | Competitors Have? | Defensible? | Time-to-Copy (quarters) |
-|-----------|-------------------|-------------|------------------------|
-| [Attribute 1] | No | Yes | 8+ |
-| [Attribute 2] | Partially | Yes | 4 |
+## 3. Value Translation (quantified per segment)
+| Attribute | Segment | Quantified Value |
+|-----------|---------|------------------|
 
-## Value Translation (so-what ladder per attribute)
+## 4. Best-Fit Customer
+- Company size:
+- Role:
+- Trigger event:
+- Budget signal:
 
-| Attribute | Feature Benefit | Business Outcome | Measurable |
-|-----------|-----------------|------------------|------------|
-| [Attr 1] | [1st level] | [2nd level] | [hours/$/% saved] |
+## 5. Market Category
+-
 
-## Best-Fit Customer
-
-| Field | Value |
-|-------|-------|
-| Role | [job title] |
-| Company size | [# employees or revenue] |
-| Trigger event | [what just happened to make them look] |
-| Current alternative | [what they use today] |
-| Willingness-to-pay | [$/mo or $/yr] |
-
-Why they care: [Why our value matters specifically to them]
-
-## Market Category
-
-**Category:** [Name]
-**Type:** Existing | Subcategory | New
-**Rationale:** [Why this framing helps buyers understand us faster]
-
-## Positioning Statement
-
-For [target customer]
-Who [need / situation]
-[Product name] is [market category]
-That [key benefit with measurable]
-Unlike [top 1-2 alternatives]
-We [unique differentiator]
-
-## Proof Points
-
-1. [Citable URL or customer quote with measurable outcome]
-2. [Citable URL or customer quote with measurable outcome]
-3. [Citable URL or customer quote with measurable outcome]
-
-## Exclusion Test
-
-- Persona we don't want: [description] — excluded? Yes/No
-- Use case we don't serve: [description] — excluded? Yes/No
-- Price point that doesn't fit: [range] — excluded? Yes/No
-
-## Version
-
-Canvas version: [date YYYY-MM-DD] | Next review: [date]
+## 6. Positioning Statement
+- For [best-fit customer] who [trigger event], [product] is the [market category] that [unique value], unlike [alternatives].
