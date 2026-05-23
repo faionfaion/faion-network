@@ -1,22 +1,127 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="database-selection Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Database Selection Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid decision-record artefact for database-selection. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/database-selection.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "adr_id", "chosen_db", "scoring_matrix", "alternatives_rejected", "rollback_path", "reversibility"],
+  "properties": {
+  "artefact_id": {
+    "type": "string",
+    "minLength": 3
+  },
+  "owner": {
+    "type": "string",
+    "minLength": 3
+  },
+  "version": {
+    "type": "string",
+    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  },
+  "last_reviewed": {
+    "type": "string",
+    "format": "date"
+  },
+  "adr_id": {
+    "type": "string"
+  },
+  "chosen_db": {
+    "type": "string",
+    "minLength": 3
+  },
+  "scoring_matrix": {
+    "type": "array",
+    "minItems": 2
+  },
+  "alternatives_rejected": {
+    "type": "array",
+    "minItems": 2
+  },
+  "rollback_path": {
+    "type": "object",
+    "required": [
+      "engineering_weeks",
+      "dollars_contract_exit"
+    ]
+  },
+  "reversibility": {
+    "type": "string",
+    "enum": [
+      "two_way_door",
+      "partial_two_way",
+      "one_way_door_costly",
+      "one_way_door_irrevocable"
+    ]
+  }
+}
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "db-selection-orders-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "adr_id": "031",
+  "chosen_db": "PostgreSQL 16",
+  "scoring_matrix": [
+    {
+      "db": "Postgres",
+      "total": 18
+    },
+    {
+      "db": "Mongo",
+      "total": 14
+    }
+  ],
+  "alternatives_rejected": [
+    {
+      "option": "Mongo",
+      "reason": "weak transactional semantics for orders"
+    },
+    {
+      "option": "DynamoDB",
+      "reason": "ops team has no AWS muscle memory"
+    }
+  ],
+  "rollback_path": {
+    "engineering_weeks": 6,
+    "dollars_contract_exit": 0
+  },
+  "reversibility": "partial_two_way"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "alternatives_rejected": [
+    {
+      "option": "Mongo"
+    }
+  ],
+  "reversibility": "maybe"
+}
+]]></code>
+    <note>Owner plural; alternatives_rejected has only 1 entry without reason; reversibility not in enum.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="alternatives-too-few">`alternatives_rejected` has fewer than 2 entries — DB selection without ≥2 rejected alternatives is decision laundering.</pattern>
+    <pattern id="no-rollback-path">`rollback_path` missing required keys — DB selection MUST include rollback estimate.</pattern>
+    <pattern id="reversibility-not-enum">`reversibility` not in the 4-tier enum.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-database-selection.py">Stdlib-only validator implementing this schema.</reference>
 </text>

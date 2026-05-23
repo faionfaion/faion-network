@@ -1,22 +1,230 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="performance-architecture Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Performance Architecture Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-performance-architecture.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/performance-architecture.json",
+  "type": "object",
+  "title": "Performance spec",
+  "required": [
+    "spec_id",
+    "slo",
+    "baseline",
+    "cache_topology",
+    "load_test_gate",
+    "scaling_triggers",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^perf-[a-z0-9-]+$"
+    },
+    "slo": {
+      "type": "object",
+      "required": [
+        "p50_ms",
+        "p95_ms",
+        "p99_ms",
+        "availability_pct"
+      ],
+      "properties": {
+        "p50_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "p95_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "p99_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "availability_pct": {
+          "type": "number",
+          "minimum": 90,
+          "maximum": 100
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "p95_ms_observed",
+        "rps_observed"
+      ],
+      "properties": {
+        "p95_ms_observed": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rps_observed": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "cache_topology": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "layer",
+          "scope",
+          "ttl_s"
+        ],
+        "properties": {
+          "layer": {
+            "enum": [
+              "cdn",
+              "redis",
+              "db"
+            ]
+          },
+          "scope": {
+            "type": "string"
+          },
+          "ttl_s": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "load_test_gate": {
+      "type": "object",
+      "required": [
+        "tool",
+        "thresholds"
+      ],
+      "properties": {
+        "tool": {
+          "enum": [
+            "k6",
+            "vegeta",
+            "locust"
+          ]
+        },
+        "thresholds": {
+          "type": "object"
+        }
+      }
+    },
+    "scaling_triggers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "signal",
+          "threshold"
+        ],
+        "properties": {
+          "signal": {
+            "type": "string"
+          },
+          "threshold": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "perf-storefront-2026-05",
+  "slo": {
+    "p50_ms": 80,
+    "p95_ms": 200,
+    "p99_ms": 500,
+    "availability_pct": 99.9
+  },
+  "baseline": {
+    "p95_ms_observed": 320,
+    "rps_observed": 300
+  },
+  "cache_topology": [
+    {
+      "layer": "cdn",
+      "scope": "GET /items list",
+      "ttl_s": 60
+    },
+    {
+      "layer": "redis",
+      "scope": "hot SKU detail",
+      "ttl_s": 600
+    }
+  ],
+  "load_test_gate": {
+    "tool": "k6",
+    "thresholds": {
+      "http_req_duration": [
+        "p(95)<200",
+        "p(99)<500"
+      ],
+      "http_req_failed": [
+        "rate<0.001"
+      ]
+    }
+  },
+  "scaling_triggers": [
+    {
+      "signal": "cpu_pct",
+      "threshold": ">70 for 5m"
+    },
+    {
+      "signal": "p95_ms",
+      "threshold": ">180 for 5m"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "perf 1",
+  "slo": {
+    "p50_ms": 0,
+    "p95_ms": 0,
+    "p99_ms": 0,
+    "availability_pct": 50
+  },
+  "baseline": {
+    "p95_ms_observed": 0,
+    "rps_observed": 0
+  },
+  "cache_topology": [],
+  "load_test_gate": {
+    "tool": "manual",
+    "thresholds": {}
+  },
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: spec_id pattern violation; SLO out of bounds; empty baseline / cache_topology / scaling_triggers; load_test_gate.tool not in enum; version / date malformed.</note>
+  </example>
+  <reference path="scripts/validate-performance-architecture.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

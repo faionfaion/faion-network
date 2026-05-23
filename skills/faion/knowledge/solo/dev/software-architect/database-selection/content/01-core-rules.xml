@@ -1,15 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="database-selection Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for database-selection. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Database Selection Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every database-selection application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
+
     <rule id="r1" testable="true" depth="essential">
       <statement>Relational (PostgreSQL, MySQL) for ACID transactions and relational integrity. NewSQL (CockroachDB, TiDB, Spanner, YugabyteDB) for horizontally scaled SQL with strong consistency. Document (MongoDB, DynamoDB, Couchbase) for nested or evolving schema. Key-Value (Redis, Memcached, Valkey) for cache, sessions, leaderboards. Time-Series (TimescaleDB, InfluxDB, ClickHouse, QuestDB) for metrics, telemetry, append-heavy workloads. Graph (Neo4j, Neptune, ArangoDB) for many-hop relationship queries. Vector (Qdrant, Weaviate, Pinecone, pgvector) for embedding similarity search. Search (Elasticsearch, OpenSearch, Meilisearch, Typesense) for full-text and faceted retrieval.</statement>
       <rationale source="v1-source">Each paradigm is optimized for one access pattern. Forcing a paradigm onto the wrong workload causes 10x cost or 10x latency.</rationale>
     </rule>
+
     <rule id="r2" testable="true" depth="essential">
       <statement>CP (Consistency + Partition Tolerance) — finance, ledgers, inventory. AP (Availability + Partition Tolerance) — social feeds, streaming, telemetry. CA (Consistency + Availability) — single-region OLTP where partitions are rare. PACELC: when no Partition, choose PC (latency cost for consistency, e.g. Spanner) or PA (lower latency, eventual consistency, e.g. Cassandra/DynamoDB default).</statement>
       <rationale source="v1-source">CAP forces a choice during a network partition; PACELC forces a choice during normal operation. Both shape the user-visible failure mode.</rationale>
     </rule>
+
+    <rule id="r1-score-2-plus-candidates" testable="true" depth="essential">
+      <statement>Selection MUST score ≥3 candidates across 4 criteria (access fit, consistency, scale, ops fit) on a 1-5 scale. Selecting without scoring is blocked.</statement>
+      <rationale source="ATAM scoring; decision-record discipline">Scoring forces the picker to articulate trade-offs and surfaces hidden dimensions of the choice.</rationale>
+    </rule>
+
+    <rule id="r3-spike-required" testable="true" depth="essential">
+      <statement>Top-2 candidates MUST be subjected to a benchmark spike against realistic data + the 3 hottest queries before final selection.</statement>
+      <rationale source="Database engineering practice; SRE guidance">Vendor benchmarks are misleading at production scale; without a spike the selection rests on marketing materials.</rationale>
+    </rule>
+
+    <rule id="r4-rollback-path-required" testable="true" depth="essential">
+      <statement>ADR MUST include a rollback_path block with engineering_weeks + dollars_contract_exit + customer impact.</statement>
+      <rationale source="Bezos 1997 - decision reversibility">DB rollback is one of the highest-cost reversal scenarios; estimating it forces honest sizing of the choice.</rationale>
+    </rule>
+
+    <rule id="r5-pair-with-reversibility-tagging" testable="true" depth="essential">
+      <statement>DB selection ADR MUST be tagged with adr-reversibility-tagging; default expectation is partial_two_way or higher.</statement>
+      <rationale source="F-066 chunk grounding; pre-mortem discipline">Without reversibility tagging the selection escapes the cool-off / founder-signoff gates DB choices deserve.</rationale>
+    </rule>
+
+    <rule id="r6-no-default-postgres-without-scoring" testable="true" depth="essential">
+      <statement>Postgres (or any 'house default') MUST NOT be selected without scoring at least 2 alternatives. Familiarity bias is the leading cause of poor DB fit.</statement>
+      <rationale source="Empirical lesson; team practice">Forcing alternatives even when the house default wins documents the choice and accelerates future revisits.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-23 chunk-00 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

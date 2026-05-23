@@ -4,71 +4,99 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Designing secure systems with defense in depth, Zero Trust principles, and modern authentication/authorization patterns.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Zero-Trust, defence-in-depth architecture spec: identity + authZ matrix, secrets handling, OWASP ASVS L2 controls, threat-model, and incident-response gates. Output: security spec + STRIDE diagram.
 content_id: "fcfb7118c08f2a5a"
-tags: [security, zero-trust, authentication, authorization, threat-modeling]
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [security, zero-trust, owasp-asvs, threat-modeling, stride]
 ---
 # Security Architecture
 
 ## Summary
 
-**One-sentence:** Designing secure systems with defense in depth, Zero Trust principles, and modern authentication/authorization patterns.
+**One-sentence:** Zero-Trust, defence-in-depth architecture spec: identity + authZ matrix, secrets handling, OWASP ASVS L2 controls, threat-model, and incident-response gates. Output: security spec + STRIDE diagram.
 
-**One-paragraph:** Designing secure systems with defense in depth, Zero Trust principles, and modern authentication/authorization patterns. Security architecture is the systematic approach to protecting systems, data, and users through layered defenses. Modern security architecture follows the principle of "never trust, always verify" (Zero Trust) while implementing defense in depth across all layers.
+**One-paragraph:** Zero-Trust, defence-in-depth architecture spec: identity + authZ matrix, secrets handling, OWASP ASVS L2 controls, threat-model, and incident-response gates. Output: security spec + STRIDE diagram. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Service handles authentication, multi-tenant data, payment, PHI, or other regulated assets.
+- External attack surface (public APIs, file upload, admin portals) exists.
+- Compliance (SOC2 / HIPAA / PCI / GDPR) demands documented controls.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Designing authentication, authorization, and identity flows for a new product or new tenant model.
-- Threat modeling a new feature, integration, or third-party dependency before code freeze.
-- Compliance-driven design (SOC 2, HIPAA, GDPR, PCI-DSS, ISO 27001) that requires documented controls and evidence.
-- Reviewing existing architecture for Zero Trust gaps, secret-handling failures, or perimeter-only assumptions.
-- Hardening an LLM-augmented system — prompt-injection surface, tool-permission scope, exfiltration paths.
+- Service handles authentication, multi-tenant data, payment, PHI, or other regulated assets.
+- External attack surface (public APIs, file upload, admin portals) exists.
+- Compliance (SOC2 / HIPAA / PCI / GDPR) demands documented controls.
 
 ## Skip If (ANY kills it)
 
-- Fixing a single CVE in a dependency — use SCA tooling, not a full architecture loop.
-- Pure secret rotation operational tasks — use Vault/KMS runbooks.
-- UI form validation hygiene only — covered by application-developer methodologies.
+- Throwaway prototype with synthetic data, no real users, no public surface.
+- Internal-only tool behind corporate SSO + WireGuard, no regulated data.
+- Existing security spec ≤6 months old with no material context change.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Asset inventory (data classes + flows) | table + diagram | team / DPO |
+| User / tenant role matrix | table | PM / sec |
+| Existing IAM provider (OAuth/OIDC / SSO) | config | ops |
+| Compliance scope (SOC2 / HIPAA / PCI / GDPR) | doc | legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/quality-attributes]] | Security scenarios live as ISO-25010 security NFRs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 7-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `threat-model` | opus | STRIDE walkthrough requires strongest judgement. |
+| `authz-matrix` | sonnet | Bounded role × resource × operation enumeration. |
+| `secrets-handling-plan` | sonnet | Pick provider + rotation + scoping rules. |
+| `control-checklist` | haiku | Apply OWASP ASVS L2 checklist mechanically. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/threat-model-stride.md` | STRIDE threat-model skeleton + asset-attacker-control table. |
+| `templates/authz-matrix.json` | Authorisation matrix (role × resource × operation). |
+| `templates/security-spec.md` | Spec skeleton tying threat-model + controls + ASVS coverage. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-security-architecture.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/quality-attributes]]
+- [[solo/dev/software-architect/system-design-process]]
+- [[solo/dev/software-architect/serverless-architecture-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (assets, roles, IAM provider, compliance scope)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

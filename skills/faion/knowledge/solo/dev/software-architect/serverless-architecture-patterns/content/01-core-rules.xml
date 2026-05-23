@@ -1,23 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="serverless-architecture-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for serverless-architecture-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Serverless Architecture Patterns Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules grounding the serverless-architecture-patterns methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Each Lambda function MUST have a single responsibility scoped to one business capability or bounded context, NOT to one HTTP verb. A products function owns all product operations; separate functions own cart and orders domains.</statement>
-      <rationale source="v1-source">Functions scoped per HTTP verb cannot scale paths independently, share permissions inappropriately, and create deployment coupling. Domain scoping allows independent scaling, tailored IAM policies, and isolated failure domains.</rationale>
+    <rule id="r1-pick-by-invocation-pattern" testable="true" depth="essential">
+      <statement>Pattern selection MUST start from invocation pattern: sync HTTP → API Gateway + Lambda or containers; async event → EventBridge / SQS + Lambda; workflow &gt; 15min → Step Functions or containers; high fan-out → SQS / SNS + Lambda.</statement>
+      <rationale source="AWS Serverless lens; cloud-provider reference architectures.">Mismatched composition produces 10× cost or timeout failures.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every Lambda handler invoked from SQS, EventBridge, or async Lambda invocations MUST be idempotent. Implement with a deterministic idempotency key stored in DynamoDB with TTL, or use the aws-lambda-powertools idempotency decorator.</statement>
-      <rationale source="v1-source">Lambda retries are at-least-once across SQS, EventBridge, and async invokes. Non-idempotent handlers produce duplicate charges, duplicate emails, and corrupted state on retry.</rationale>
+    <rule id="r2-cost-modelled-at-target-rps" testable="true" depth="essential">
+      <statement>Cost MUST be modelled at expected RPS using vendor pricing (per-invocation + per-GB-sec + per-request downstream). The break-even RPS vs reserved containers MUST be named.</statement>
+      <rationale source="AWS / GCP serverless pricing case studies.">Above the break-even RPS (typically ~50-150 RPS for steady traffic), reserved compute wins on cost; cost-blind serverless picks burn budget.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>AWS clients (DynamoDB, S3, Secrets Manager, etc.) MUST be initialized at module scope outside the handler function, NOT inside the handler. Imports and expensive initializations also belong at module scope.</statement>
-      <rationale source="v1-source">Module-scope initialization runs once per container (warm invocation reuses the instance). Handler-scope initialization runs on every invocation, adding TLS handshake time, connection setup, and import time to every request.</rationale>
+    <rule id="r3-cold-start-budget" testable="true" depth="essential">
+      <statement>If latency budget is below 200ms p99, cold-start tolerance MUST be assessed; either provisioned concurrency, SnapStart, or container-based alternative MUST be chosen.</statement>
+      <rationale source="AWS Lambda SnapStart docs; cold-start benchmark studies.">Cold starts can blow a tight latency budget by 1-3 seconds; ignoring this produces SLO misses post-launch.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Synchronous Lambda-to-Lambda chains MUST NOT span more than one hop without Step Functions or an async messaging layer (SQS, EventBridge) in between.</statement>
-      <rationale source="v1-source">Synchronous chains compound latency additively, cascade timeouts (Lambda A times out waiting for Lambda B), and make error attribution impossible. Each hop also incurs invocation cost while waiting.</rationale>
+    <rule id="r4-idempotency-by-default" testable="true" depth="essential">
+      <statement>Every async-triggered Lambda MUST be idempotent: design for at-least-once delivery; key the operation by event id; persist a dedup record (DynamoDB / Redis) before side effects.</statement>
+      <rationale source="AWS event delivery semantics.">EventBridge / SQS / S3 events all deliver at-least-once; non-idempotent handlers create duplicate side effects.</rationale>
+    </rule>
+    <rule id="r5-observe-with-traces" testable="true" depth="essential">
+      <statement>Spec MUST include X-Ray / OpenTelemetry tracing wired through API Gateway → Lambda → downstream services; logs MUST include the correlation id.</statement>
+      <rationale source="OpenTelemetry + AWS X-Ray patterns.">Serverless decomposition fragments call paths; without traces, debugging incident root cause becomes guesswork.</rationale>
+    </rule>
+    <rule id="r6-iac-required" testable="true" depth="essential">
+      <statement>Pattern selection MUST include an IaC template (SAM / Serverless Framework / CDK / Pulumi); console-clicked stacks MUST NOT be approved.</statement>
+      <rationale source="Internal IaC drift audits.">Console state drifts; IaC is the only way to reproduce + audit serverless topology.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (workload profile, latency budget, exec profile, provider), apply r1 → r6 and emit the ADR.</statement>
+      <rationale source="Methodology design — gate rule.">Order encodes risk: invocation pattern first, cost second, cold start third, idempotency fourth, observability fifth, IaC last.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) sustained high RPS, (b) long-running stateful workload, (c) sub-50ms hard requirement. Choose containers and exit.</statement>
+      <rationale source="Preconditions — skip gate.">Serverless ceremony for these workloads loses on cost or correctness.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

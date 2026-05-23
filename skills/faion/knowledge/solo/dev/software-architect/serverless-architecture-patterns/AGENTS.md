@@ -4,70 +4,98 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Six core serverless patterns — API backend, event processing, saga/orchestration, fan-out/fan-in, CQRS with event sourcing, and edge computing — plus the most common anti-patterns and real-world examples from e-commerce, data pipelines, SaaS multi-tenant, and document processing use cases.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Routes a workload to the right serverless composition (API Gateway+Lambda, EventBridge, Step Functions, SQS fan-out) and emits a pattern ADR with cost + cold-start trade-offs.
 content_id: "2ef37eed60cd4a67"
-tags: [serverless, patterns, event-driven, step-functions, lambda]
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [serverless, lambda, step-functions, event-driven, fan-out]
 ---
 # Serverless Architecture Patterns
 
 ## Summary
 
-**One-sentence:** Six core serverless patterns — API backend, event processing, saga/orchestration, fan-out/fan-in, CQRS with event sourcing, and edge computing — plus the most common anti-patterns and real-world examples from e-commerce, data pipelines, SaaS multi-tenant, and document processing use cases.
+**One-sentence:** Routes a workload to the right serverless composition (API Gateway+Lambda, EventBridge, Step Functions, SQS fan-out) and emits a pattern ADR with cost + cold-start trade-offs.
 
-**One-paragraph:** Six core serverless patterns — API backend, event processing, saga/orchestration, fan-out/fan-in, CQRS with event sourcing, and edge computing — plus the most common anti-patterns and real-world examples from e-commerce, data pipelines, SaaS multi-tenant, and document processing use cases.
+**One-paragraph:** Routes a workload to the right serverless composition (API Gateway+Lambda, EventBridge, Step Functions, SQS fan-out) and emits a pattern ADR with cost + cold-start trade-offs. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Workload is event-driven, bursty, or has variable traffic and fits FaaS execution limits.
+- Operational team capacity is small; managed runtime preferred over self-hosted.
+- Cost model favours pay-per-invocation over reserved capacity (long idle / spiky).
+- Output produces `decision-record` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Composing Lambda functions into multi-step workflows requiring retry and error handling.
-- Building event-driven pipelines across SQS, SNS, EventBridge, and Kinesis.
-- Designing parallel processing with fan-out to multiple workers.
-- Implementing CQRS or event sourcing with separate read/write paths.
-- Reviewing existing serverless architecture for anti-patterns.
+- Workload is event-driven, bursty, or has variable traffic and fits FaaS execution limits.
+- Operational team capacity is small; managed runtime preferred over self-hosted.
+- Cost model favours pay-per-invocation over reserved capacity (long idle / spiky).
 
 ## Skip If (ANY kills it)
 
-- Greenfield non-serverless design — these patterns are Lambda/FaaS specific.
-- Simple CRUD endpoints without event-driven requirements — a plain API Gateway + Lambda suffices without pattern overhead.
+- Workload requires sustained high RPS where reserved compute is cheaper per request.
+- Long-running (> 15min on AWS) or stateful in-memory needs — choose containers / VMs.
+- Sub-50ms p99 latency requirement where cold start is unacceptable.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload profile (RPS, burst factor, idle fraction) | data | ops |
+| Latency budget (p50/p95/p99) | table | SRE |
+| Execution-time + memory profile | data | team |
+| Cloud provider + region | field | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/serverless-foundations]] | Foundational FaaS concepts. |
+| [[solo/dev/software-architect/serverless-cold-start-optimization]] | Cold-start mitigations apply when chosen. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 7-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-workload` | haiku | Lookup invocation pattern → candidate composition. |
+| `estimate-cost` | sonnet | Bounded calc: RPS × duration × memory + downstream services. |
+| `draft-adr` | sonnet | Compose ADR with rejected alternatives + cost + latency trade-offs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/serverless-pattern-adr.md` | ADR skeleton for serverless pattern selection. |
+| `templates/pattern-fit-matrix.md` | Matrix mapping workload signals to pattern fit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-serverless-architecture-patterns.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/serverless-foundations]]
+- [[solo/dev/software-architect/serverless-cold-start-optimization]]
+- [[solo/dev/software-architect/serverless-cost-optimization]]
+- [[solo/dev/software-architect/serverless-iac-and-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is the workload pattern compatible with serverless prerequisites?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

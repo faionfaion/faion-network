@@ -4,71 +4,100 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Identify, prioritize, and document non-functional requirements (NFRs) using ISO 25010 quality characteristics, scenario-driven specification, SLI/SLO definitions, and ATAM-style trade-off analysis.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Captures non-functional requirements (NFRs) as ISO-25010 quality scenarios with stimulus-response measurements, prioritised by ATAM utility tree; emits NFR spec + SLI/SLO doc.
 content_id: "8ef1d6b911be325d"
+complexity: medium
+produces: spec
+est_tokens: 5000
 tags: [quality-attributes, non-functional-requirements, slo, atam, iso-25010]
 ---
 # Quality Attributes Framework
 
 ## Summary
 
-**One-sentence:** Identify, prioritize, and document non-functional requirements (NFRs) using ISO 25010 quality characteristics, scenario-driven specification, SLI/SLO definitions, and ATAM-style trade-off analysis.
+**One-sentence:** Captures non-functional requirements (NFRs) as ISO-25010 quality scenarios with stimulus-response measurements, prioritised by ATAM utility tree; emits NFR spec + SLI/SLO doc.
 
-**One-paragraph:** Identify, prioritize, and document non-functional requirements (NFRs) using ISO 25010 quality characteristics, scenario-driven specification, SLI/SLO definitions, and ATAM-style trade-off analysis. Quality attributes must be testable: every attribute has a scenario with a measurable response measure before design decisions are made.
+**One-paragraph:** Captures non-functional requirements (NFRs) as ISO-25010 quality scenarios with stimulus-response measurements, prioritised by ATAM utility tree; emits NFR spec + SLI/SLO doc. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Service or product is past requirements gathering and needs measurable NFRs.
+- Architecture review identifies missing or qualitative NFRs that block SLO definition.
+- ATAM-style trade-off analysis is required (regulated, high-impact, cross-team domain).
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Architecture design phase: before selecting architecture style, database, or communication pattern.
-- During ATAM (Architecture Tradeoff Analysis Method) workshops to elicit and prioritize quality requirements from stakeholders.
-- When writing NFR specifications for a new service, product, or major feature increment.
-- Pre-launch: defining SLOs and alerting thresholds grounded in user-journey impact analysis.
-- Technical debt triage: deciding which quality deficits to address first based on user and business impact.
+- Service or product is past requirements gathering and needs measurable NFRs.
+- Architecture review identifies missing or qualitative NFRs that block SLO definition.
+- ATAM-style trade-off analysis is required (regulated, high-impact, cross-team domain).
 
 ## Skip If (ANY kills it)
 
-- Throwaway prototypes where shipping speed is the only constraint.
-- Single-user internal tools where availability, scalability, and security requirements are trivially low.
-- As a substitute for actual measurement — quality attribute scenarios define what to measure, not the measurement itself.
+- Throwaway prototype or pre-revenue experiment with no contractual quality requirements.
+- Internal CLI tool used by a single team — NFRs implicit in usability conversation.
+- Existing NFR doc still valid; review only needed if context changes materially.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stakeholder list with roles | table | PM |
+| Top-5 business goals | list | product |
+| Current SLI catalog (if any) | table | SRE |
+| Compliance + regulatory matrix | table | legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/performance-architecture]] | Latency / throughput SLOs land here as performance scenarios. |
+| [[solo/dev/software-architect/security-architecture]] | Security NFRs land here as security scenarios. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `collect-scenarios` | sonnet | Interview stakeholders to elicit stimulus-response scenarios. |
+| `build-utility-tree` | sonnet | Diverge / converge: cluster scenarios by quality attribute. |
+| `define-sli-slo` | sonnet | Translate scenarios into SLIs + SLO numbers. |
+| `score-tradeoffs` | haiku | Mechanical weighting + conflict-matrix construction. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/nfr-scenario.md` | Single ATAM-style scenario skeleton. |
+| `templates/nfr-spec.md` | NFR spec template aggregating scenarios into ISO-25010 categories. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-quality-attributes.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/performance-architecture]]
+- [[solo/dev/software-architect/security-architecture]]
+- [[solo/dev/software-architect/trade-off-quality-attributes]]
+- [[solo/dev/software-architect/trade-off-decision-matrix]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (stakeholders, goals, SLIs, compliance)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

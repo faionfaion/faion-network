@@ -1,75 +1,99 @@
 ---
 slug: data-modeling
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Build any persistent schema in three sequential passes: conceptual (entities/relationships in business terms) → logical (attributes, keys, cardinality, normalized to 3NF, technology-agnostic) → physical (tables, exact data types, indexes, partitions, engine-specific constraints).
-content_id: "68c014492b30f9ea"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Build any persistent schema in three sequential passes: conceptual (entities/relationships) → logical (attributes, keys, 3NF, tech-agnostic) → physical (tables, types, indexes, engine-specific).
+content_id: "fa94004622fe0fe7"
+complexity: deep
+produces: spec
+est_tokens: 5000
 tags: [data-modeling, database-design, schema-design, normalization, paradigm-selection, indexing, partitioning]
 ---
 # Data Modeling
 
 ## Summary
 
-**One-sentence:** Build any persistent schema in three sequential passes: conceptual (entities/relationships in business terms) → logical (attributes, keys, cardinality, normalized to 3NF, technology-agnostic) → physical (tables, exact data types, indexes, partitions, engine-specific constraints).
+**One-sentence:** Build any persistent schema in three sequential passes: conceptual (entities/relationships) → logical (attributes, keys, 3NF, tech-agnostic) → physical (tables, types, indexes, engine-specific).
 
-**One-paragraph:** Build any persistent schema in three sequential passes: conceptual (entities/relationships in business terms) → logical (attributes, keys, cardinality, normalized to 3NF, technology-agnostic) → physical (tables, exact data types, indexes, partitions, engine-specific constraints). Skipping the logical pass is the dominant cause of unmaintainable schemas and expensive migrations.
+**One-paragraph:** Data modeling is a three-pass discipline: conceptual (business terms only), logical (attributes + cardinality + 3NF, still tech-agnostic), physical (engine-specific types, indexes, partitions). Output is a schema spec at each level + migration plan, blocking the common failure of jumping straight to DDL.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Designing any new persistent data layer (greenfield service, new bounded context, or migration from legacy).
-- Choosing between database paradigms (relational, document, wide-column, key-value, graph, time-series, vector, search).
-- Normalizing an existing schema that exhibits update anomalies, JSON-blob misuse, or column duplication.
-- Adding an index strategy or partitioning plan before a table grows beyond ~10M rows or ~10 GB.
-- Refactoring a schema before introducing a write-heavy feature (events, audit logs, telemetry).
-- Performing an Architecture Decision Record (ADR) for storage choice or denormalization.
+- Designing a new schema OR migrating > 5 tables.
+- Workload has cross-entity queries with > 3 joins, OR data growth > 100M rows in 12 months.
+- Domain experts available for the conceptual pass.
 
 ## Skip If (ANY kills it)
 
-- Throwaway prototypes whose data will not be migrated to production — pick any paradigm and move on.
-- Read-only analytical sandboxes already covered by a star/snowflake schema in a warehouse.
-- Pure caching layers (Redis, Memcached) where the source of truth lives elsewhere.
+- Tiny app with < 5 tables and < 100K rows; build straight to DDL.
+- ORM-generated schema with no analytics or hot-path query.
+- Throwaway prototype.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Domain glossary | spreadsheet/markdown | domain expert |
+| Top 10 queries by frequency | list with SLO | tech lead |
+| Chosen DB engine | name + version | database-selection output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/database-selection` | Provides the engine the physical pass targets. |
+| `solo/dev/software-architect/arch-pattern-ddd` | Conceptual pass shares aggregates. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules + skip-this-methodology fallback | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the 3-pass spec + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | deep | 6-step procedure: glossary → conceptual → logical → physical → indexes → migration | ~900 |
+| `content/05-examples.xml` | medium | Worked example: 3-pass schema for an Ordering bounded context | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-conceptual` | sonnet | Per-aggregate entity-relationship synthesis. |
+| `design-indexes` | sonnet | Per-query index plan. |
+| `audit-cross-team` | opus | Spot inconsistent term usage across teams. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/schema-3-pass.md` | Three-pass schema spec: conceptual + logical + physical. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-data-modeling.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[database-selection]]
+- [[arch-pattern-ddd]]
+- [[caching-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

@@ -1,22 +1,134 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="modular-monolith Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Modular Monolith Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-modular-monolith.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/modular-monolith.json",
+  "type": "object",
+  "title": "Modular monolith module spec",
+  "required": [
+    "spec_id",
+    "modules",
+    "linter_in_ci",
+    "schema_per_module",
+    "event_bus",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^mm-[a-z0-9-]+$"
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "public_api",
+          "schema"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]+$"
+          },
+          "public_api": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "linter_in_ci": {
+      "type": "boolean",
+      "const": true
+    },
+    "schema_per_module": {
+      "type": "boolean",
+      "const": true
+    },
+    "event_bus": {
+      "enum": [
+        "in_process",
+        "rabbitmq",
+        "kafka",
+        "redis_streams"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "mm-acme-shop-2026-05",
+  "modules": [
+    {
+      "name": "orders",
+      "public_api": "src.orders.__public__",
+      "schema": "orders"
+    },
+    {
+      "name": "payments",
+      "public_api": "src.payments.__public__",
+      "schema": "payments"
+    },
+    {
+      "name": "inventory",
+      "public_api": "src.inventory.__public__",
+      "schema": "inventory"
+    },
+    {
+      "name": "users",
+      "public_api": "src.users.__public__",
+      "schema": "users"
+    }
+  ],
+  "linter_in_ci": true,
+  "schema_per_module": true,
+  "event_bus": "in_process",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "mm 1",
+  "modules": [
+    {
+      "name": "Utils",
+      "public_api": "",
+      "schema": ""
+    }
+  ],
+  "linter_in_ci": false,
+  "schema_per_module": false,
+  "event_bus": "shared_table",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: spec_id pattern violation; only one module; technical-layer module name (Utils); linter_in_ci false; schema_per_module false; event_bus not in enum; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-modular-monolith.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

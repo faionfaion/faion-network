@@ -1,22 +1,211 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-architecture Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Security Architecture Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-security-architecture.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-architecture.json",
+  "type": "object",
+  "title": "Security spec",
+  "required": [
+    "spec_id",
+    "identity",
+    "authz",
+    "secrets",
+    "threat_model_ref",
+    "ci_controls",
+    "incident_response",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^sec-[a-z0-9-]+$"
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "provider",
+        "mfa_scope"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 2
+        },
+        "mfa_scope": {
+          "enum": [
+            "admin_only",
+            "all_users",
+            "all_external"
+          ]
+        }
+      }
+    },
+    "authz": {
+      "type": "object",
+      "required": [
+        "model",
+        "tenant_filter"
+      ],
+      "properties": {
+        "model": {
+          "enum": [
+            "rbac",
+            "abac",
+            "hybrid"
+          ]
+        },
+        "tenant_filter": {
+          "enum": [
+            "rls",
+            "query_predicate",
+            "service_layer"
+          ]
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "required": [
+        "provider",
+        "rotation_days",
+        "per_service_scope"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "vault",
+            "aws_secrets_manager",
+            "gcp_secret_manager",
+            "azure_key_vault"
+          ]
+        },
+        "rotation_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365
+        },
+        "per_service_scope": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "threat_model_ref": {
+      "type": "string",
+      "minLength": 5
+    },
+    "ci_controls": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "enum": [
+          "sast",
+          "sca",
+          "secret_scan",
+          "iac_scan",
+          "dast",
+          "license_scan"
+        ]
+      }
+    },
+    "incident_response": {
+      "type": "object",
+      "required": [
+        "paging",
+        "tabletop_cadence_days"
+      ],
+      "properties": {
+        "paging": {
+          "type": "string",
+          "minLength": 3
+        },
+        "tabletop_cadence_days": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 365
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "sec-storefront-2026-05",
+  "identity": {
+    "provider": "auth0",
+    "mfa_scope": "admin_only"
+  },
+  "authz": {
+    "model": "rbac",
+    "tenant_filter": "rls"
+  },
+  "secrets": {
+    "provider": "vault",
+    "rotation_days": 90,
+    "per_service_scope": true
+  },
+  "threat_model_ref": "docs/security/threat-model-storefront-2026.md",
+  "ci_controls": [
+    "sast",
+    "sca",
+    "secret_scan",
+    "iac_scan"
+  ],
+  "incident_response": {
+    "paging": "pagerduty:secops-rotation",
+    "tabletop_cadence_days": 90
+  },
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "sec 1",
+  "identity": {
+    "provider": "",
+    "mfa_scope": "none"
+  },
+  "authz": {
+    "model": "trust",
+    "tenant_filter": "vibes"
+  },
+  "secrets": {
+    "provider": "env",
+    "rotation_days": 0,
+    "per_service_scope": false
+  },
+  "ci_controls": [
+    "lint"
+  ],
+  "incident_response": {
+    "paging": "",
+    "tabletop_cadence_days": 1000
+  },
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: spec_id pattern violation; identity provider empty; enum violations in mfa_scope / authz.model / tenant_filter / secrets.provider; rotation_days out of bounds; per_service_scope false; threat_model_ref empty; ci_controls &lt; 4 or invalid; paging empty; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-security-architecture.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

@@ -1,74 +1,100 @@
 ---
 slug: database-selection
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Framework for choosing among 100+ databases.
-content_id: "91da026146a06cff"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Framework for choosing among 100+ databases by access pattern, consistency need, scale envelope, and operational fit; output is a documented selection ADR.
+content_id: "8a3a6c835e7a876a"
+complexity: deep
+produces: decision-record
+est_tokens: 4200
 tags: [database, architecture, selection, cap-theorem, polyglot-persistence]
 ---
-# Database Selection Guide
+# Database Selection
 
 ## Summary
 
-**One-sentence:** Framework for choosing among 100+ databases.
+**One-sentence:** Framework for choosing among 100+ databases by access pattern, consistency need, scale envelope, and operational fit; output is a documented selection ADR.
 
-**One-paragraph:** Framework for choosing among 100+ databases. Relational for ACID. NewSQL for distributed SQL. Document for flexible schema. KV for cache. Time-series for metrics. Graph for relationships. Vector for embeddings. Search for full-text.
+**One-paragraph:** Database choice is one of the highest-rollback-cost architectural decisions. The framework forces the picker to score candidates against access patterns (read/write ratio, query shape), consistency needs (strong / RYW / eventual), scale envelope (rows × QPS), and operational fit (team familiarity, managed vs self-hosted). Output is an ADR with ≥2 rejected alternatives + a rollback path estimate.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Designing any new persistent data layer (greenfield or migration).
-- Choosing between paradigms: relational, document, wide-column, graph, time-series, vector, search.
-- Normalizing an existing schema with update anomalies, hotspots, or data duplication.
-- Modeling polyglot persistence: assigning each data domain to its optimal store.
-- Reviewing a system that misses latency, throughput, or consistency SLOs.
+- Choosing the primary DB for a new bounded context, OR replacing an existing DB.
+- Workload has ≥1 dimension that stresses defaults (rows > 100M, QPS > 1k, multi-region read).
+- Decision is consequential (>2 weeks rollback cost).
 
 ## Skip If (ANY kills it)
 
-- Existing database meets SLOs and team has operational expertise — do not swap.
-- Prototype with <1k rows and no production traffic — default to PostgreSQL, decide later.
-- Pure cache or session store — go straight to Redis without full selection cycle.
+- Tiny app with < 100K rows and < 100 QPS — Postgres default.
+- Org-wide DB lock-in already documented and not under review.
+- Prototype where DB is throwaway.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Access-pattern profile (read/write ratio, query shape) | table | tech lead |
+| Consistency need (strong/RYW/eventual) | doc | domain expert |
+| Scale envelope (rows × QPS × growth rate) | estimate | PM |
+| Operational constraints (managed/self/hetzner/AWS) | doc | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/architecture-decision-records` | Selection lands as an ADR. |
+| `solo/dev/software-architect/adr-reversibility-tagging` | DB selection is almost always partial_two_way or one_way_door_costly. |
+| `solo/dev/software-architect/data-modeling` | Drives schema design after selection. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the selection ADR + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | deep | 6-step procedure: profile → candidates → score → spike → ADR → rollback path | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-candidates` | sonnet | Per-criterion scoring matrix. |
+| `design-spike` | sonnet | Short benchmark plan for top 2 candidates. |
+| `audit-existing-fleet` | opus | Spot polyglot-persistence sprawl across the org. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/db-selection-adr.md` | Database selection ADR with scoring + rollback path. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-database-selection.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[data-modeling]]
+- [[architecture-decision-records]]
+- [[adr-reversibility-tagging]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

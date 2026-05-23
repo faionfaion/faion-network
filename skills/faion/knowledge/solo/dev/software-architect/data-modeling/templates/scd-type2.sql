@@ -1,3 +1,8 @@
+-- purpose: Slowly Changing Dimension Type 2 template.
+-- consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+-- produces: a data-modeling artefact validating against scripts/validate-data-modeling.py
+-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+-- token-budget-impact: ~400-1500 tokens once filled
 -- SCD Type 2 dimension table with upsert procedure
 -- Full history: one row per version; valid_from/valid_to/is_current pattern
 -- Engine: PostgreSQL

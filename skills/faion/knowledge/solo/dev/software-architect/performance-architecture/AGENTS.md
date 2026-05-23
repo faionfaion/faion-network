@@ -4,71 +4,98 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design systems to meet explicit SLO targets (p50/p95/p99, throughput, error rate, availability) by addressing all five layers: client, CDN/edge, load balancer, application, and data.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Defines numeric SLO targets, caching layers, database optimisation tactics, and load-test gates for a service; ships a performance spec + k6 baseline + scaling triggers.
 content_id: "ab7f78da35a65132"
-tags: [performance, slo, scalability, load-testing, optimization]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [performance, slo, caching, database-optimisation, load-testing]
 ---
 # Performance Architecture
 
 ## Summary
 
-**One-sentence:** Design systems to meet explicit SLO targets (p50/p95/p99, throughput, error rate, availability) by addressing all five layers: client, CDN/edge, load balancer, application, and data.
+**One-sentence:** Defines numeric SLO targets, caching layers, database optimisation tactics, and load-test gates for a service; ships a performance spec + k6 baseline + scaling triggers.
 
-**One-paragraph:** Design systems to meet explicit SLO targets (p50/p95/p99, throughput, error rate, availability) by addressing all five layers: client, CDN/edge, load balancer, application, and data. Run a measurement-first loop: profiler agent reads APM/traces → analyzer identifies bottleneck layer → designer proposes change with predicted p95 improvement → validator runs a load test that proves or disproves the prediction. Never optimize without a captured baseline.
+**One-paragraph:** Defines numeric SLO targets, caching layers, database optimisation tactics, and load-test gates for a service; ships a performance spec + k6 baseline + scaling triggers. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Service has externally observable latency / throughput / error-budget targets.
+- Adding a new feature whose latency budget could violate the existing SLO.
+- Post-incident response after a perf regression where SLO was missed.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Defining SLOs and error budgets at design time, before performance becomes a customer complaint.
-- Pre-launch capacity planning for a feature expected to receive measurable traffic.
-- Performance regression triage: structured layer-by-layer narrowing.
-- Cost optimization driven by tail latency or compute waste.
-- Pre-IPO/audit scenarios requiring documented performance commitments.
+- Service has externally observable latency / throughput / error-budget targets.
+- Adding a new feature whose latency budget could violate the existing SLO.
+- Post-incident response after a perf regression where SLO was missed.
 
 ## Skip If (ANY kills it)
 
-- Pure prototypes — premature optimization slows delivery without buying reliability.
-- Pages/APIs with no production traffic yet — measure first.
-- Hot-fixing a single slow query — use profiling tools directly, not a full architecture loop.
+- Internal one-off batch with no latency contract — focus on correctness, not perf budget.
+- Pre-revenue exploration where requirements are still moving — perf spec premature.
+- Service already meets all SLOs and has stable headroom > 50% — no spec changes needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current SLOs (p50 / p95 / p99 / availability) | table | SRE |
+| Baseline k6 / load-test report | JSON / HTML | QA / SRE |
+| Top-3 endpoints by RPS | table | ops / SRE |
+| Cache topology (CDN / Redis / DB) | diagram | architect |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/quality-attributes]] | Performance targets come from the quality-attributes scenarios. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `measure-baseline` | haiku | Mechanical: aggregate k6 / Prom data into a baseline table. |
+| `design-cache-topology` | sonnet | Bounded judgement: which layer (CDN / Redis / DB) absorbs which read. |
+| `plan-database-optimisation` | sonnet | Pick the tactic (indexes, materialised views, partitioning, read replicas). |
+| `define-load-test-gate` | haiku | Generate k6 thresholds matching the SLO. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/performance-spec.md` | Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate. |
+| `templates/k6-baseline.js` | k6 baseline script with SLO-derived thresholds. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-performance-architecture.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/quality-attributes]]
+- [[solo/dev/software-architect/serverless-cold-start-optimization]]
+- [[solo/dev/software-architect/system-design-process]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (SLOs, baseline, top-3 endpoints, cache topology)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

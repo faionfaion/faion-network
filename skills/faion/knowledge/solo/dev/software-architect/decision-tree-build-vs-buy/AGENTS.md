@@ -1,73 +1,98 @@
 ---
 slug: decision-tree-build-vs-buy
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use this decision tree to decide whether to build custom software or buy/adopt a commercial solution.
-content_id: "a5ba3c10d2eaee00"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decide whether to build custom software or buy/adopt a commercial solution by scoring strategic differentiation, TCO, time-to-value, and vendor lock-in.
+content_id: "951f361485530773"
+complexity: medium
+produces: decision-record
+est_tokens: 3900
 tags: [decision-tree, build-vs-buy, tco, vendor-evaluation, make-or-buy]
 ---
 # Build vs Buy Decision Tree
 
 ## Summary
 
-**One-sentence:** Use this decision tree to decide whether to build custom software or buy/adopt a commercial solution.
+**One-sentence:** Decide whether to build custom software or buy/adopt a commercial solution by scoring strategic differentiation, TCO, time-to-value, and vendor lock-in.
 
-**One-paragraph:** Use this decision tree to decide whether to build custom software or buy/adopt a commercial solution. Routes by strategic importance first, then TCO, time-to-value, and integration complexity. The 3-year TCO comparison is mandatory for any non-trivial decision.
+**One-paragraph:** Build-vs-buy is decided across four axes: strategic differentiation (is this our moat?), TCO over 3 years, time-to-value, and vendor lock-in. The tree forces a scoring across all four; result is a recommendation + rejected alternatives + rollback path. Default: buy non-differentiating capability; build only what carries the moat.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Evaluating a new capability where both custom development and commercial solutions exist.
-- Reviewing an existing custom-built solution to assess whether a commercial alternative now makes more sense.
-- Justifying a build decision to stakeholders — the tree output serves as the structured rationale.
-- Filtering vendor options: the tree shortlists to 2-3 candidates for a full vendor evaluation matrix.
+- Choice between building a capability or adopting a vendor/OSS is genuine.
+- Capability spans ≥1 quarter of engineering time if built.
+- ≥1 viable vendor or OSS alternative exists.
 
 ## Skip If (ANY kills it)
 
-- No commercial solutions exist — build is the only option; skip to implementation planning.
-- The capability is already built and working well — evaluate only at planned technology review intervals.
-- Trivial tooling (CLI helper, one-off script) — the overhead of running the tree exceeds the value.
+- No viable vendor/OSS option in the market.
+- Capability is core moat with no comparable substitute.
+- Throwaway prototype.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Capability charter (what it does, who uses it) | doc | PM |
+| 3-year TCO estimate per option | spreadsheet | finance/PM |
+| Strategic differentiation assessment | 1-paragraph | founder/architect |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/architecture-decision-records` | Result lands as an ADR. |
+| `solo/dev/software-architect/adr-reversibility-tagging` | Build-vs-buy choices are often one_way_door_costly. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the decision record + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: charter → score → tree → ADR → reversibility tag | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-axes` | sonnet | Per-axis scoring of build vs buy options. |
+| `audit-vendor-options` | sonnet | Market scan + viable alternatives. |
+| `cross-portfolio-audit` | opus | Spot 'build everything' or 'buy everything' org patterns. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/build-vs-buy-adr.md` | Build vs Buy ADR template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-decision-tree-build-vs-buy.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[architecture-decision-records]]
+- [[adr-reversibility-tagging]]
+- [[decision-tree-architecture-style]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

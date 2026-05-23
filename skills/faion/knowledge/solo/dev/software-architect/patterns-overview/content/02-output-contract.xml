@@ -1,22 +1,139 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="patterns-overview Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Design Patterns Overview Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator in scripts/validate-patterns-overview.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/patterns-overview.json",
+  "type": "object",
+  "title": "Pattern selection ADR",
+  "required": [
+    "adr_id",
+    "status",
+    "symptom",
+    "chosen_pattern",
+    "rejected",
+    "cost_score",
+    "fit_score",
+    "review_trigger",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "adr_id": {
+      "type": "string",
+      "pattern": "^adr-pat-[a-z0-9-]+$"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded",
+        "deprecated"
+      ]
+    },
+    "symptom": {
+      "type": "string",
+      "minLength": 20
+    },
+    "chosen_pattern": {
+      "type": "string",
+      "minLength": 2
+    },
+    "rejected": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "reason"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cost_score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "fit_score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "review_trigger": {
+      "type": "string",
+      "minLength": 10
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "adr-pat-billing-cb-2026-05",
+  "status": "accepted",
+  "symptom": "Billing API client fails intermittently with 5% error rate and cascading 30s timeouts during partner-side incidents.",
+  "chosen_pattern": "circuit_breaker",
+  "rejected": [
+    {
+      "pattern": "retry_with_backoff",
+      "reason": "Does not stop cascade during prolonged partner outage."
+    },
+    {
+      "pattern": "bulkhead",
+      "reason": "No thread-pool isolation needed; only one downstream."
+    }
+  ],
+  "cost_score": 2,
+  "fit_score": 4,
+  "review_trigger": "Circuit-open events < 5 per 30 days for 90 consecutive days \u2192 consider removal.",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "adr 1",
+  "status": "ok",
+  "symptom": "broken",
+  "chosen_pattern": "x",
+  "rejected": [
+    {
+      "pattern": "x",
+      "reason": ""
+    }
+  ],
+  "cost_score": 9,
+  "fit_score": 0,
+  "review_trigger": "",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: adr_id pattern violation; symptom too short; chosen_pattern too short; rejected &lt; 2 entries; cost_score / fit_score out of [1,5]; review_trigger empty; version / date malformed.</note>
+  </example>
+  <reference path="scripts/validate-patterns-overview.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

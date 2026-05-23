@@ -4,70 +4,97 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Walk this decision tree to select frontend frameworks, backend languages, and mobile platforms.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Picks a backend language + framework + datastore by walking team-expertise, performance-need, ecosystem-fit, and hiring-supply branches; emits a stack ADR with rejected alternatives.
 content_id: "780a229e1ebd3036"
-tags: [decision-tree, tech-stack, framework-selection, language-selection, frontend]
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [decision-tree, tech-stack, language-selection, framework-selection, datastore]
 ---
 # Technology Stack Selection Decision Tree
 
 ## Summary
 
-**One-sentence:** Walk this decision tree to select frontend frameworks, backend languages, and mobile platforms.
+**One-sentence:** Picks a backend language + framework + datastore by walking team-expertise, performance-need, ecosystem-fit, and hiring-supply branches; emits a stack ADR with rejected alternatives.
 
-**One-paragraph:** Walk this decision tree to select frontend frameworks, backend languages, and mobile platforms. The tree routes by application type first, then SEO requirements and team expertise. Output: recommended stack, runner-up, and rationale for the choice.
+**One-paragraph:** Picks a backend language + framework + datastore by walking team-expertise, performance-need, ecosystem-fit, and hiring-supply branches; emits a stack ADR with rejected alternatives. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Greenfield service / module that owns its own runtime and dependencies.
+- Major rewrite where current stack is the binding constraint.
+- Adopting a new language / framework for a specific workload (ML, real-time, embedded).
+- Output produces `decision-record` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Starting a new project or service and need to pick a technology stack.
-- Evaluating whether to adopt a new framework for an existing codebase.
-- Onboarding a team that needs a defensible technology choice with documented rationale.
-- Filtering 5-10 candidate technologies down to 2-3 for a deeper comparison matrix.
+- Greenfield service / module that owns its own runtime and dependencies.
+- Major rewrite where current stack is the binding constraint.
+- Adopting a new language / framework for a specific workload (ML, real-time, embedded).
 
 ## Skip If (ANY kills it)
 
-- When a hard constraint already gates the choice (contractual, compliance, existing vendor) — the constraint dominates the tree output.
-- For low-stakes tooling choices (CLI scripts, one-off automation) — pick what the team knows and move on.
-- When the team has deep expertise in one option and no strong counter-indicator — expertise weight will dominate anyway.
+- Stack mandated by org-wide platform policy — record the constraint and skip.
+- Library swap inside an existing service — that is a dependency decision, not a stack decision.
+- Throwaway prototype with < 1-month expected lifetime.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Team expertise inventory | table (language → headcount → senior years) | team |
+| Performance / scaling target | RPS / p95 / GB targets | PM / SRE |
+| Hiring market signal | table (language → 6-month hire success) | HR / lead |
+| Ecosystem dependencies | list of must-have libraries / SDKs | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/trade-off-decision-matrix]] | Stack picks consume the weighted scoring shape. |
+| [[solo/dev/software-architect/decision-tree-process]] | Tech stack decisions are an instance of the six-phase process. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `collect-team-expertise` | haiku | Mechanical headcount + senior-years aggregation. |
+| `score-stack-fit` | sonnet | Bounded scoring: workload niche × ecosystem maturity. |
+| `draft-stack-adr` | sonnet | Compose the ADR with rejected alternatives + rationale. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tech-stack-adr.md` | ADR skeleton for the chosen language + framework + datastore. |
+| `templates/stack-scoring.json` | Scoring payload for the candidate stacks. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-decision-tree-tech-stack.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/decision-tree-process]]
+- [[solo/dev/software-architect/decision-tree-cloud-provider]]
+- [[solo/dev/software-architect/trade-off-decision-matrix]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (expertise, perf, hiring, ecosystem)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

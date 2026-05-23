@@ -1,77 +1,98 @@
 ---
 slug: creational-patterns
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Object creation mechanisms that increase flexibility and reuse.
-content_id: "36b47157b368ac6a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Six GoF creational patterns (Factory Method, Abstract Factory, Builder, Prototype, Singleton, Object Pool) and DI for object creation that increases flexibility and reuse.
+content_id: "625f423d384dd530"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [design-patterns, creational, factory, builder, dependency-injection, object-pool, prototype, singleton]
 ---
 # Creational Design Patterns
 
 ## Summary
 
-**One-sentence:** Object creation mechanisms that increase flexibility and reuse.
+**One-sentence:** Six GoF creational patterns (Factory Method, Abstract Factory, Builder, Prototype, Singleton, Object Pool) and DI for object creation that increases flexibility and reuse.
 
-**One-paragraph:** Object creation mechanisms that increase flexibility and reuse. Factory Method for runtime type selection, Builder for complex multi-step construction, Dependency Injection for loose coupling, Object Pool for expensive resource reuse, Prototype for cloning, Abstract Factory for product families, Singleton for process-global resources (use sparingly).
+**One-paragraph:** Creational patterns control how objects are created so the rest of the system depends on abstractions instead of constructors. Output is a per-codebase creational-pattern selection record: which factories, which builder, which DI container, and the lint that prevents direct `new` of cross-context types.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Writing object-creation code where the concrete type is decided at runtime (e.g. payment provider by country, storage backend by config).
-- Constructor has 4+ parameters or many optional params — Builder beats telescoping constructors.
-- Refactoring code with duplicated `new X(...)` chains spread across modules — centralize via Factory.
-- Reviewing legacy code for Singleton overuse and proposing DI migrations.
-- Writing test fixtures and mocks — DI and Factory Method dramatically reduce test scaffolding.
-- Working with expensive-to-create resources (DB connections, HTTP clients, threads) — Object Pool.
+- Object construction is non-trivial (≥3 parameters, ≥1 invariant, async setup).
+- Multiple variants of the same type need to be created at runtime.
+- Tests need controlled fixtures of the same type.
 
 ## Skip If (ANY kills it)
 
-- Trivial constructors with 1-3 params — `dataclass` / record / struct is enough.
-- Cross-cutting infra concerns where DI containers already exist (FastAPI Depends, NestJS providers, Spring beans).
-- One-off scripts where pattern overhead exceeds the value.
-- High-performance hot paths where DI lookup cost matters (resolve once, hold reference).
-- Singleton for anything that holds mutable state, has dependencies, or differs between tests.
+- Trivial value objects with 1-2 fields.
+- Singletons would be the only choice — usually a sign of static state, refactor instead.
+- Throwaway prototype.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Construction hotspot list | list of types + call sites | tech lead |
+| DI framework / convention | name or 'manual' | team consensus |
+| Test fixture inventory | list | test lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/behavioral-patterns` | Creational patterns frequently pair with Strategy/State. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for selection record + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: hotspot → pattern → DI → tests → lint | ~700 |
+| `content/05-examples.xml` | medium | Worked example: Builder for a multi-field Order + Factory per payment provider | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-pattern` | sonnet | Per-hotspot pattern selection. |
+| `draft-builder` | sonnet | Multi-step constructor scaffold. |
+| `cross-codebase-audit` | opus | Spot direct `new` of cross-context types. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/creational-selection.md` | Creational pattern selection record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-creational-patterns.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[behavioral-patterns]]
+- [[structural-patterns]]
+- [[arch-pattern-clean]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

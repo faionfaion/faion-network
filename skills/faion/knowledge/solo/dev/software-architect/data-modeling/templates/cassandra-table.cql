@@ -1,3 +1,8 @@
+-- purpose: Cassandra wide-row table template.
+-- consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+-- produces: a data-modeling artefact validating against scripts/validate-data-modeling.py
+-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+-- token-budget-impact: ~400-1500 tokens once filled
 -- Cassandra / ScyllaDB table template
 -- Design: one table per query; partition key in every WHERE clause
 

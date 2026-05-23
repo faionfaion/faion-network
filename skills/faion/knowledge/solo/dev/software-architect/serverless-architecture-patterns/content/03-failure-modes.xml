@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="serverless-architecture-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for serverless-architecture-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>The Lambdalith: stuffing the entire application into one Lambda function with a giant if/elif router for all routes and HTTP methods.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cannot scale routes independently. One failure affects everything. All routes share the same permissions and timeout. Deployment cycle touches every path on every change.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Nano-Functions: over-fragmenting into tiny single-operation functions (one per HTTP verb, one per database operation).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Debugging nightmare with deep call stacks. High latency from function-to-function synchronous calls. Business logic cohesion is lost across dozens of tiny units.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Synchronous Chains: Lambda A → sync → Lambda B → sync → Lambda C → sync → Lambda D, all blocking.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Latency compounds linearly (100ms + 100ms + 100ms = 400ms+). Timeouts cascade. Cost doubles because Lambda A bills while waiting for B, C, D. Hard to trace and debug.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>No DLQ: async Lambda invocations and SQS consumers without a Dead Letter Queue configured.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Failed events silently disappear. There is no way to replay, inspect, or alert on failures. Critical business events (orders, payments) are lost permanently on repeated failure.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>No Idempotency: Lambda handler that charges a payment or sends a confirmation email without an idempotency key, despite being triggered from SQS or EventBridge.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lambda retries the same event on failure. Without idempotency the user is double-charged, double-notified, or data is duplicated.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Serverless Architecture Patterns Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-lambda-for-everything" severity="high">
+      <symptom>ADR proposes API Gateway + Lambda for a steady 1000 RPS read-only workload.</symptom>
+      <root-cause source="Serverless cost case studies.">r2 violated; no cost model.</root-cause>
+      <fix>Compute monthly cost at 1000 RPS; compare to Fargate / Cloud Run; choose the cheaper option above break-even.</fix>
+    </antipattern>
+    <antipattern id="fm-02-ignored-cold-start" severity="high">
+      <symptom>Latency SLO 100ms p99 on a JVM Lambda with no provisioned concurrency.</symptom>
+      <root-cause source="JVM cold-start benchmarks.">r3 violated.</root-cause>
+      <fix>Either reduce runtime (Node/Python), enable provisioned concurrency / SnapStart, or pick containers.</fix>
+    </antipattern>
+    <antipattern id="fm-03-non-idempotent-handler" severity="high">
+      <symptom>SQS-triggered Lambda creates a charge per message; duplicate deliveries double-charge customers.</symptom>
+      <root-cause source="SQS at-least-once delivery semantics.">r4 violated.</root-cause>
+      <fix>Persist event_id in DynamoDB conditional put; skip on duplicate.</fix>
+    </antipattern>
+    <antipattern id="fm-04-no-iac" severity="high">
+      <symptom>Lambdas + event sources clicked together in console; one accidental deletion bricks prod.</symptom>
+      <root-cause source="IaC drift audits.">r6 violated.</root-cause>
+      <fix>Reverse-engineer into SAM / CDK; remove console-edit IAM permissions.</fix>
+    </antipattern>
   </section>
 </text>
