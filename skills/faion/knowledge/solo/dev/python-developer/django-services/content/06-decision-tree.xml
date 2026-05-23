@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Django Services Layer Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+  <decision-tree>
+    <root-question id="q-root">Does the change perform writes across ≥2 models or trigger side effects?</root-question>
+    <branch when="operation_kind == read_only">
+      <conclusion ref="skip-this-methodology" verdict="skip — write a selector"/>
+    </branch>
+    <branch when="operation_kind == single_model_crud AND side_effects == 0">
+      <conclusion ref="skip-this-methodology" verdict="skip — inline ORM call"/>
+    </branch>
+    <branch when="write_count &gt;= 2 AND atomic == false">
+      <conclusion ref="atomic-on-multi-write" verdict="wrap in @transaction.atomic"/>
+    </branch>
+    <branch when="side_effects &gt; 0 AND on_commit == false">
+      <conclusion ref="on-commit-side-effects" verdict="defer via transaction.on_commit"/>
+    </branch>
+    <branch when="naming != entity_action">
+      <conclusion ref="entity-action-naming" verdict="rename to entity_action"/>
+    </branch>
+    <branch when="kw_only == false OR type_hints_complete == false">
+      <conclusion ref="kw-only-typed" verdict="make args kw-only and fully typed"/>
+    </branch>
+  </decision-tree>
+  <example trace="django-services-typical">
+    View POST /orders/ accepts payload, creates Order + OrderLine + AuditLog, then sends confirmation email. Extract into order_create(*, user: User, items: list[dict], notes: str | None = None) -&gt; Order. Wrap in @transaction.atomic because 3 writes. Replace send_email.delay(order.id) with transaction.on_commit(lambda: send_email.delay(order.id)). View becomes a 4-line dispatch.
+  </example>
+</text>

@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-celery Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-celery as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>LLMs trained on pre-5.4 docs emit transaction.on_commit(lambda: task.delay(...)) boilerplate instead of task.delay_on_commit(...).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both work, but delay_on_commit is cleaner. Standardise on the modern form. Document which version to use in the project AGENTS.md.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agents add bind=True to a task but never call self.retry, silently losing retry capability.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>bind=True is required for self.retry calls and self.request introspection. If neither is needed, omit bind=True.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Celery Beat in file-based scheduler mode resets schedule on every container redeploy; some periodic tasks miss their slot.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use django-celery-beat (DatabaseScheduler) or celery-redbeat so schedules survive deploys.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agents use CELERY_TASK_ALWAYS_EAGER=True in tests and ship code that only works in eager mode.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Eager mode hides broker bugs (visibility timeout, serialiser mismatch). Add at least one integration test against a real Redis worker.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Flower is wired behind a public ingress without authentication, exposing task payloads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always require basic-auth or VPN-only access for Flower. Task payloads may contain PII or credentials.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Django + Celery Background Jobs Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="delay-inside-atomic" severity="high">
+      <symptom>Task fires but the row it needs does not exist yet; intermittent 'object not found' errors.</symptom>
+      <root-cause source="Internal — failure-mode audit">Bare .delay() called inside @transaction.atomic instead of on_commit.</root-cause>
+      <fix>Wrap dispatch in transaction.on_commit(lambda: task.delay(...)) or use task.delay_on_commit if available.</fix>
+    </antipattern>
+    <antipattern id="non-idempotent-charge" severity="high">
+      <symptom>Duplicate charges on the same order after a transient broker error.</symptom>
+      <root-cause source="Internal — failure-mode audit">Task lacked idempotent-key + business_key check on entry.</root-cause>
+      <fix>Add `if already_processed(business_key): return existing_result`; rerun affected rows once cleaned.</fix>
+    </antipattern>
+    <antipattern id="retry-storm" severity="high">
+      <symptom>Downstream API goes flaky; thousands of retries land in the same 50ms window.</symptom>
+      <root-cause source="Internal — failure-mode audit">No jitter in retry policy.</root-cause>
+      <fix>Switch to full jitter; cap max_retries; add a circuit breaker.</fix>
+    </antipattern>
+    <antipattern id="silent-drop" severity="medium">
+      <symptom>Webhook task fails 5 times and disappears; nobody notices until customers complain.</symptom>
+      <root-cause source="Internal — failure-mode audit">No DLQ; max_retries hit and acked.</root-cause>
+      <fix>Add a DLQ + on-call alert; replay queue tool for the on-call to drain.</fix>
+    </antipattern>
   </section>
 </text>

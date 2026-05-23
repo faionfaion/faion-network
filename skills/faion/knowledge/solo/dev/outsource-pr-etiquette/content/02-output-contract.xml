@@ -1,39 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Outsource Pr Etiquette Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Outsource Pr Etiquette output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/outsource-pr-etiquette.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/outsource-pr-etiquette.json</item>
-    </list>
+<text id="02-output-contract" title="Outsource PR Etiquette Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the checklist artefact this methodology produces. Validator in scripts/validate-outsource-pr-etiquette.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/outsource-pr-etiquette.json",
+  "type": "object",
+  "title": "Outsource PR Etiquette",
+  "required": [
+    "pr_id",
+    "intent",
+    "diff_loc",
+    "reviewer",
+    "repro_steps",
+    "evidence_links",
+    "rollback"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "pr_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PR identifier (repo#number)."
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "feature",
+        "fix",
+        "refactor",
+        "chore",
+        "docs"
+      ],
+      "description": "Single intent of the PR."
+    },
+    "diff_loc": {
+      "type": "integer",
+      "description": "Changed lines excluding lockfiles."
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Single primary reviewer handle."
+    },
+    "repro_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ordered repro commands."
+    },
+    "evidence_links": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs to screenshots/logs/payloads."
+    },
+    "rollback": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-sentence rollback plan."
+    },
+    "waiver_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "If diff_loc>400 this MUST be set."
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "pr_id": "myorg/payments#482",
+  "intent": "fix",
+  "diff_loc": 132,
+  "reviewer": "alice",
+  "repro_steps": [
+    "git fetch origin pr/482",
+    "git checkout pr/482",
+    "pytest tests/test_refund.py -k flaky"
+  ],
+  "evidence_links": [
+    "https://gist.github.com/myorg/before.log",
+    "https://gist.github.com/myorg/after.log"
+  ],
+  "rollback": "git revert <sha> on main; no DB changes."
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pr_id": "myorg/payments#482",
+  "diff_loc": 612
+}
+]]></code>
+    <note>Forbidden traits: missing intent/reviewer/repro_steps/evidence_links/rollback; diff_loc&gt;400 without waiver_reason.</note>
+  </example>
+  <reference path="scripts/validate-outsource-pr-etiquette.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

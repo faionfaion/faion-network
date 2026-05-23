@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="decomposition-django Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for decomposition-django. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Decomposition: Django Monolith to Bounded Apps Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the decomposition-django methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="ownership-defines-boundary" testable="true" depth="essential">
+      <statement>App boundaries follow ownership (one team owns one app), not technical layers (no 'models' app, no 'utils' app).</statement>
+      <rationale source="DDD / Conway's Law; HackSoft styleguide.">Layer-based decomposition produces the same cross-imports back; ownership-based decomposition matches the deploy unit.</rationale>
+    </rule>
+    <rule id="explicit-app-contract" testable="true" depth="essential">
+      <statement>Each app exposes its public surface via a `contracts/` module (functions + types). Cross-app reaches outside `contracts/` are forbidden.</statement>
+      <rationale source="Modular monolith (Kamil Grzybek).">A named public surface is the only way to enforce 'small public, large private' inside one repo.</rationale>
+    </rule>
+    <rule id="import-linter-locked" testable="true" depth="essential">
+      <statement>An importlinter.ini contract enforces app dependency direction; CI fails on violation.</statement>
+      <rationale source="import-linter docs; internal — decomposition postmortems.">Without machine enforcement, the contract decays in weeks.</rationale>
+    </rule>
+    <rule id="models-move-in-one-pr" testable="true" depth="essential">
+      <statement>When moving a model to a new app, do it in one PR: create new app, move file, write data migration with RunPython for FK rewrites, delete old reference.</statement>
+      <rationale source="Django docs; internal — Q4 2025 model-move audit.">Multi-PR moves leave orphan ContentType rows and broken migrations; one PR keeps the schema coherent.</rationale>
+    </rule>
+    <rule id="celery-tasks-by-app" testable="true" depth="essential">
+      <statement>Each app owns its tasks module; tasks call services in the same app only. Cross-app effects go via an app's contracts function, not a direct task import.</statement>
+      <rationale source="Internal — celery-decoupling pattern.">Cross-app task imports replicate the model-import tangle they were supposed to fix.</rationale>
+    </rule>
+    <rule id="contenttype-data-migration" testable="true" depth="essential">
+      <statement>Model moves include a RunPython data migration that updates ContentType.app_label so generic relations keep working.</statement>
+      <rationale source="Django ContentType docs.">Stale ContentType rows break GenericForeignKey and admin in production weeks after the move.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the repo is &lt; 5k LOC OR team is single-developer OR stack is being rewritten off Django soon, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Decomposition pays back at scale; below threshold it adds ceremony without benefit.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

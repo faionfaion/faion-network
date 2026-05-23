@@ -1,45 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="QA Bug Bash Runbook — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A runbook artefact comprising: a step list (preconditions, action, actor, artefact, rollback), a wall-clock budget per phase, and a post-run record committed to the agreed evidence folder.</summary>
-
-  <section title="Required fields">
-    <list>
-      <item>step.precondition (state, alert, ticket, signal)</item>
-      <item>step.actor (role + system)</item>
-      <item>step.action (verb + object + parameters)</item>
-      <item>step.artefact (link / id of produced artefact)</item>
-      <item>step.rollback OR step.stop_branch</item>
-      <item>phase.budget (wall-clock minutes)</item>
-      <item>run-record (start_ts, end_ts, branches, exceptions, links)</item>
-    </list>
+<text id="02-output-contract" title="QA Bug Bash Runbook Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces. Validator in scripts/validate-qa-bug-bash-runbook.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-bug-bash-runbook.json",
+  "type": "object",
+  "title": "QA Bug Bash Runbook",
+  "required": [
+    "bash_id",
+    "release_id",
+    "duration_minutes",
+    "personas",
+    "charters",
+    "findings",
+    "dedup_count",
+    "ledger_path"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bash_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Session id (date+release)."
+    },
+    "release_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Linked release identifier."
+    },
+    "duration_minutes": {
+      "type": "integer",
+      "description": "Total duration; \u226460."
+    },
+    "personas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Personas covered."
+    },
+    "charters": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "List of {persona, mission, tester, charter_id}."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "List of {id, title, severity, repro, screenshot}."
+    },
+    "dedup_count": {
+      "type": "integer",
+      "description": "Number of dedupped findings."
+    },
+    "ledger_path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to committed bug ledger."
+    }
+  }
+}
+]]></code>
   </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>vague actors (&quot;someone notifies&quot;)</description>
-      <reason>Vague actors fail under stress.</reason>
-    </antipattern>
-    <antipattern>
-      <description>side-effect steps without rollback or STOP branch</description>
-      <reason>Operator gets stuck mid-procedure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no phase budgets</description>
-      <reason>Window-blowing runs go undetected until the second alarm.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing run-record after execution</description>
-      <reason>Without records the runbook cannot improve.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has precondition + actor + artefact + rollback.</item>
-      <item>Each phase carries a wall-clock budget.</item>
-      <item>Run record committed after execution.</item>
-      <item>Escalation criteria explicit.</item>
-      <item>Runbook owner named in header.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "bash_id": "bb-2026-05-23-v2.4",
+  "release_id": "v2.4.0",
+  "duration_minutes": 55,
+  "personas": [
+    "admin",
+    "end_user",
+    "integrator"
+  ],
+  "charters": [
+    {
+      "persona": "admin",
+      "mission": "Bulk-edit member roles",
+      "tester": "alice",
+      "charter_id": "c1"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f1",
+      "title": "Role bulk-edit ignores admin filter",
+      "severity": "S2",
+      "repro": "1. login admin 2. select 10 users 3. apply role",
+      "screenshot": "https://i.example/abc"
+    }
+  ],
+  "dedup_count": 3,
+  "ledger_path": "release/v2.4/bug-bash-ledger.csv"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "bash_id": "bb-2026-05-23-v2.4",
+  "duration_minutes": 120
+}
+]]></code>
+    <note>Forbidden traits: duration_minutes&gt;60; charters empty; findings without repro; severity not in S0..S3.</note>
+  </example>
+  <reference path="scripts/validate-qa-bug-bash-runbook.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

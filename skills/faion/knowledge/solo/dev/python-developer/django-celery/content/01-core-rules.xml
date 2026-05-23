@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-celery Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-celery. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Django + Celery Background Jobs Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the django-celery methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="on-commit-dispatch" testable="true" depth="essential">
+      <statement>Tasks dispatched from a transaction MUST use transaction.on_commit (or task.apply_async via on_commit hook). Bare .delay() inside @atomic is forbidden.</statement>
+      <rationale source="Django docs; internal — race-condition postmortems.">.delay() can execute before the commit completes, causing 'task fired but row does not exist' incidents.</rationale>
+    </rule>
+    <rule id="idempotent-key" testable="true" depth="essential">
+      <statement>Every task accepts a business id (order_id, refund_id) and is idempotent under that key. Retrying with the same key is a no-op or returns the same result.</statement>
+      <rationale source="Celery docs; payment-integration playbook.">Celery guarantees at-least-once delivery; non-idempotent tasks cause duplicate charges/emails on retry.</rationale>
+    </rule>
+    <rule id="bounded-retry" testable="true" depth="essential">
+      <statement>Tasks declare max_retries (≤5) and use exponential backoff with full jitter. Tasks without a retry policy use a project-wide default.</statement>
+      <rationale source="AWS Architecture Blog — exponential backoff + jitter.">Unbounded retries pin worker slots forever on a sick downstream; full jitter avoids retry storms.</rationale>
+    </rule>
+    <rule id="dead-letter-after-max" testable="true" depth="essential">
+      <statement>After max_retries the task acks to a dead-letter queue with the original payload + last exception. DLQ has an on-call alert.</statement>
+      <rationale source="Internal — DLQ design canon.">Silent drops hide failures for days; DLQ + alert ensures human attention.</rationale>
+    </rule>
+    <rule id="no-orm-in-args" testable="true" depth="essential">
+      <statement>Task arguments are JSON-serialisable primitives or model ids — never ORM instances or Decimals without conversion.</statement>
+      <rationale source="Celery docs — serialisation.">Pickling ORM objects breaks across migrations and across worker versions.</rationale>
+    </rule>
+    <rule id="task-per-app" testable="true" depth="essential">
+      <statement>Each Django app owns its tasks.py; cross-app effects go via the contracts module, not by importing another app's task.</statement>
+      <rationale source="Modular monolith; decomposition-django.">Cross-app task imports replicate the tight coupling decomposition was meant to fix.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If task volume &lt; 100/day OR no broker is set up OR job dispatch must be sub-second, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Celery overhead is wasted at low volume and unsuitable for tight-latency dispatch.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

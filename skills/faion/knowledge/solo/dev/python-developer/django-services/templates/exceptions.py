@@ -1,58 +1,19 @@
-"""
-Domain exception hierarchy for Django services.
+# __faion_header_v1__
+# purpose: Python scaffold realising the artefact in code.
+# consumes: see content/02-output-contract.xml
+# produces: code; depends-on: content/01-core-rules.xml#entity-action-naming
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#entity-action-naming","token_budget_impact":"~150 tokens when loaded"}}
+"""Django Services Layer scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
 
-Rules:
-- Never raise Http404 or DRF APIException inside services.
-- Raise domain exceptions; let the view/serializer layer translate them.
-- Use a two-level hierarchy: ApplicationError → domain-specific errors.
-- All domain exceptions are catchable as ApplicationError in middleware.
-"""
+# Minimal scaffold for the django-services methodology.
+# Replace this stub with real implementation; keep the header intact.
 
-
-class ApplicationError(Exception):
-    """
-    Base exception for all domain errors.
-
-    Attributes:
-        message: Human-readable error description.
-        extra: Optional dict for structured error context.
-    """
-
-    def __init__(self, message: str, extra: dict | None = None) -> None:
-        super().__init__(message)
-        self.message = message
-        self.extra = extra or {}
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
 
 
-# --- Order domain ---
-
-class OrderNotFoundError(ApplicationError):
-    pass
-
-
-class OrderAlreadyCancelledError(ApplicationError):
-    pass
-
-
-class OrderCannotBeModifiedError(ApplicationError):
-    pass
-
-
-# --- Product domain ---
-
-class ProductNotFoundError(ApplicationError):
-    pass
-
-
-class ProductOutOfStockError(ApplicationError):
-    pass
-
-
-# --- User domain ---
-
-class UserNotFoundError(ApplicationError):
-    pass
-
-
-class UserPermissionDeniedError(ApplicationError):
-    pass
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())

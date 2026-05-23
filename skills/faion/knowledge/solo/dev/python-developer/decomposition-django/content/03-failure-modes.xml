@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="decomposition-django Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for decomposition-django as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>services/ imports views/ or serializers/ for any reason.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Services are domain logic. Importing HTTP or serialization concerns couples the domain to delivery mechanism, making services impossible to test without an HTTP server.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent copies a function from views.py into services/ and leaves the original in views.py.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both copies compile. The view calls the old location; the new service is never actually used. Run grep for the old function name after the move and delete the source.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent proposes a utils.py or helpers.py per app as a first refactor step.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>utils.py is the next thing to decompose — it becomes a dumping ground for everything that doesn't fit the pattern. Ban it early in CLAUDE.md and redirect to services/ or selectors/.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agent applies @transaction.atomic to every service function as a default.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wrapping a single-write operation in a transaction is a no-op that wastes a DB connection slot and misleads readers into thinking the function coordinates multiple writes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Serializer create() or update() methods calling services directly.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This couples serializers to business logic, bypassing the view layer entirely. The view is responsible for calling the service with validated data; serializers only validate and transform.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Decomposition: Django Monolith to Bounded Apps Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="layer-app-utils" severity="high">
+      <symptom>Decomp creates a `utils` or `common` app that every other app imports.</symptom>
+      <root-cause source="Internal — failure-mode audit">Decomposed along technical layers, not ownership boundaries.</root-cause>
+      <fix>Delete the utils app; push helpers into the owning app or into contracts_shared with strict scope.</fix>
+    </antipattern>
+    <antipattern id="models-leak-private" severity="high">
+      <symptom>Cross-app code reaches `from orders.models import Order` instead of `from orders.contracts import get_order`.</symptom>
+      <root-cause source="Internal — failure-mode audit">explicit-app-contract rule not enforced; no importlinter contract.</root-cause>
+      <fix>Add importlinter contract forbidding non-contracts cross-app imports; refactor leak sites.</fix>
+    </antipattern>
+    <antipattern id="split-pr-model-move" severity="high">
+      <symptom>Model moved in PR-A; FK rewrites in PR-B two weeks later; ContentType broken between.</symptom>
+      <root-cause source="Internal — failure-mode audit">models-move-in-one-pr ignored; PR was 'too big'.</root-cause>
+      <fix>Re-do as one PR; revert split if needed.</fix>
+    </antipattern>
+    <antipattern id="cross-app-task-import" severity="medium">
+      <symptom>`payments.tasks.refund` imports `orders.models.Order` directly.</symptom>
+      <root-cause source="Internal — failure-mode audit">celery-tasks-by-app boundary not enforced.</root-cause>
+      <fix>Move the task to orders or call orders' contracts function from the payments task.</fix>
+    </antipattern>
   </section>
 </text>

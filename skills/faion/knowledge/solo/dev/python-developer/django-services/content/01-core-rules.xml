@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-services. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Django Services Layer Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the django-services methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="entity-action-naming" testable="true" depth="essential">
+      <statement>Service functions are named entity_action (e.g. order_create, user_deactivate). The convention is set project-wide and documented in AGENTS.md.</statement>
+      <rationale source="HackSoft Django Styleguide; internal — refactor audit.">entity_action makes grep -r 'order_' the canonical impact analysis tool; subject_verb scatters across files.</rationale>
+    </rule>
+    <rule id="kw-only-typed" testable="true" depth="essential">
+      <statement>All service arguments are keyword-only (leading `*`) with full type hints; the return type is hinted. TYPE_CHECKING is used for model types.</statement>
+      <rationale source="PEP 484; HackSoft styleguide.">Keyword-only prevents positional mistakes when signatures grow; type hints let pyright catch signature drift.</rationale>
+    </rule>
+    <rule id="atomic-on-multi-write" testable="true" depth="essential">
+      <statement>Apply @transaction.atomic only when the service performs ≥2 writes that must succeed together. Do not wrap read-only or single-write services.</statement>
+      <rationale source="Django transactions docs.">Unnecessary atomic blocks hold DB locks longer and nest savepoints with surprising rollback semantics.</rationale>
+    </rule>
+    <rule id="on-commit-side-effects" testable="true" depth="essential">
+      <statement>Side effects that must not run on rollback (Celery dispatch, webhook, email, cache invalidation) use transaction.on_commit.</statement>
+      <rationale source="Django docs; internal — payment incident Q4 2025.">.delay() or webhook fire inside @atomic can execute before commit completes; rollback then leaves a fired side effect with no row.</rationale>
+    </rule>
+    <rule id="services-own-writes-selectors-reads" testable="true" depth="essential">
+      <statement>Writes live in services; reads with complex permission/policy logic live in selectors. Views call one or the other, never both inline.</statement>
+      <rationale source="HackSoft styleguide.">Mixing reads and writes in views replicates the fat-view problem the service layer is supposed to fix.</rationale>
+    </rule>
+    <rule id="validate-input-once" testable="true" depth="essential">
+      <statement>Inputs are validated by a DRF serializer (or pydantic at the boundary). Services receive validated python types, not raw request data.</statement>
+      <rationale source="DRF docs; defense-in-depth.">Re-validating inside services duplicates rules and lets unsafe paths skip validation.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the change is a single-model CRUD with no cross-model logic OR is read-only OR is a derived property, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Forcing the service layer on trivial code adds ceremony with no payback.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

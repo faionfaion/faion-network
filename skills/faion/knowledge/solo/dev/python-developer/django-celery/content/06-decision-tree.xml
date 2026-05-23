@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Django + Celery Background Jobs Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+  <decision-tree>
+    <root-question id="q-root">Is the workload high-volume async work compatible with at-least-once delivery?</root-question>
+    <branch when="task_volume_per_day &lt; 100">
+      <conclusion ref="skip-this-methodology" verdict="skip — Celery overhead wasted"/>
+    </branch>
+    <branch when="dispatch_latency_required_ms &lt; 1000">
+      <conclusion ref="skip-this-methodology" verdict="skip — use a tighter queue"/>
+    </branch>
+    <branch when="dispatched_inside_transaction == true AND dispatch_mode != on_commit">
+      <conclusion ref="on-commit-dispatch" verdict="switch to on_commit dispatch"/>
+    </branch>
+    <branch when="idempotent_key_present == false">
+      <conclusion ref="idempotent-key" verdict="add business key + dedupe check"/>
+    </branch>
+    <branch when="max_retries &gt; 5 OR jitter == none">
+      <conclusion ref="bounded-retry" verdict="fix retry policy"/>
+    </branch>
+    <branch when="dlq_queue == null">
+      <conclusion ref="dead-letter-after-max" verdict="configure DLQ + alert"/>
+    </branch>
+  </decision-tree>
+</text>

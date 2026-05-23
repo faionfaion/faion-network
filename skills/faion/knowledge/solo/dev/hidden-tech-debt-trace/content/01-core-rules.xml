@@ -1,46 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Hidden Tech Debt Trace Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Hidden Tech Debt Trace must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Hidden Tech Debt Trace Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the Hidden Tech Debt Trace methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+
+  <section title="Rule set">
+
+    <rule id="anchor-evidence-required" testable="true" depth="essential">
+      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
+      <rationale source="Anti-hallucination practice for Hidden Tech Debt Trace">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="owner-and-last-touched" testable="true" depth="essential">
+      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
+      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="template-version-pinned" testable="true" depth="essential">
+      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
+      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for code, architecture, release, performance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
+      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
+      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
     </rule>
+
+    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
+      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
+      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
+      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-hidden-tech-debt-trace.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Merge AI-Generated Code Without Bleeding (role: role-software-developer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: `technical-debt` exists but is generic. Specific AI-era debt patterns (silent-skip tests, hallucinated abstractions, mock-only test coverage, copy-pasted Stack-Overflow-via-LLM) need their own catalogue + scan recipes.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

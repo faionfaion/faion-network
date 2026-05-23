@@ -4,76 +4,94 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Outsource Pr Etiquette: codified dev practice that turns the recurring 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Writes outsource-friendly pull requests with bounded scope, named reviewer, repro steps, screenshots, and a rollback plan so a timezone-shifted reviewer can decide without back-and-forth.
 content_id: "0a0278c4c505fae9"
-tags: [outsource-pr-etiquette, dev, solo]
+complexity: light
+produces: checklist
+est_tokens: 3400
+tags: [pull-request, outsource, etiquette, code-review, communication]
 ---
-# Outsource Pr Etiquette
+# Outsource PR Etiquette
 
 ## Summary
 
-**One-sentence:** Outsource Pr Etiquette: codified dev practice that turns the recurring 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)' decision into a repeatable, auditable artefact.
+**One-sentence:** Writes outsource-friendly pull requests with bounded scope, named reviewer, repro steps, screenshots, and a rollback plan so a timezone-shifted reviewer can decide without back-and-forth.
 
-**One-paragraph:** Outsource Pr Etiquette addresses the gap identified by the role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition) playbook: Writing PRs that survive a stranger reviewer (timezone-shifted, opinionated, unknown to you) is a learned skill faion doesn't cover. Distinct from code-review-process which assumes peer review. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Writes outsource-friendly pull requests with bounded scope, named reviewer, repro steps, screenshots, and a rollback plan so a timezone-shifted reviewer can decide without back-and-forth. Codifies the PR shape an outsource reviewer can land in one pass: ≤400 LOC diff, single intent, named reviewer, repro steps, before/after evidence, rollback plan. Decision tree, output contract, failure modes, and the decision tree live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Working with outsourced or external reviewers in a different timezone.
+- Reviewer cannot ping the author synchronously to ask clarifying questions.
+- Average review latency exceeds 24h and round-trips compound the delay.
+- Output produces `checklist` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Working with outsourced or external reviewers in a different timezone.
+- Reviewer cannot ping the author synchronously to ask clarifying questions.
+- Average review latency exceeds 24h and round-trips compound the delay.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Reviewer sits next to you and reviews synchronously — overhead doesn't pay back.
+- Single-author repo with no reviewer at all — use a self-review checklist instead.
+- PR is a one-line typo or trivial config bump where a templated note is overkill.
 
 ## Prerequisites
 
-- recent context for the role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Linked issue/spec | URL | Jira/Linear/GitHub issue |
+| Diff size baseline | int (LOC) | git diff --stat |
+| Reviewer roster | list of handles | team CODEOWNERS |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[code-review-process]] | Underlying review etiquette this layers onto. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-pr-body` | sonnet | Compose summary, motivation, repro, rollback from the diff and linked issue. |
+| `scrub-secrets` | haiku | Mechanical regex scrub of API keys / tokens before posting. |
+| `name-reviewer` | haiku | Lookup CODEOWNERS by changed paths. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/outsource-pr-etiquette.json` | JSON schema for the Outsource Pr Etiquette output contract |
-| `templates/outsource-pr-etiquette.md` | Markdown skeleton with the required fields |
+| `templates/pr_body.md` | Markdown skeleton for the artefact. |
+| `templates/checklist.md` | Markdown checklist scaffolding the artefact items. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-outsource-pr-etiquette.py` | Enforce Outsource Pr Etiquette output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-outsource-pr-etiquette.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- upstream playbook: `role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)`
+- [[code-review-process]]
+- [[git-workflow]]
+- [[pr-description-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is the reviewer outsourced or timezone-shifted such that round-trips cost ≥1 working day?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

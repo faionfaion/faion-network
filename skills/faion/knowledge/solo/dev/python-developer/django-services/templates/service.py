@@ -1,63 +1,19 @@
-"""
-Canonical Django service template.
+# __faion_header_v1__
+# purpose: Python scaffold realising the artefact in code.
+# consumes: see content/02-output-contract.xml
+# produces: code; depends-on: content/01-core-rules.xml#entity-action-naming
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#entity-action-naming","token_budget_impact":"~150 tokens when loaded"}}
+"""Django Services Layer scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
 
-Usage:
-    from apps.orders.services import order_create
+# Minimal scaffold for the django-services methodology.
+# Replace this stub with real implementation; keep the header intact.
 
-    order = order_create(user=request.user, data=validated_data)
-
-Rules:
-- Functions named entity_action (order_create, order_cancel)
-- Keyword-only arguments after the first positional
-- @transaction.atomic on write operations
-- Raise domain exceptions, never HTTP exceptions
-- Inside atomic block: use task.delay_on_commit() instead of task.delay()
-"""
-from django.db import transaction
-
-from apps.orders.models import Order
-from apps.orders.exceptions import OrderAlreadyCancelledError
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
 
 
-@transaction.atomic
-def order_create(*, user, product_id: int, quantity: int) -> Order:
-    """
-    Create a new order for the given user.
-
-    Raises:
-        ProductNotFoundError: if product_id does not exist
-    """
-    from apps.products.selectors import product_get  # late import avoids circular dep
-
-    product = product_get(id=product_id)
-
-    order = Order.objects.create(
-        user=user,
-        product=product,
-        quantity=quantity,
-        status=Order.Status.PENDING,
-    )
-
-    # Use delay_on_commit so task only runs after DB commit
-    from apps.notifications.tasks import notify_order_created
-    notify_order_created.delay_on_commit(order_id=order.id)
-
-    return order
-
-
-@transaction.atomic
-def order_cancel(*, order: Order, reason: str = "") -> Order:
-    """
-    Cancel an existing order.
-
-    Raises:
-        OrderAlreadyCancelledError: if order is already cancelled
-    """
-    if order.status == Order.Status.CANCELLED:
-        raise OrderAlreadyCancelledError(f"Order {order.id} is already cancelled.")
-
-    order.status = Order.Status.CANCELLED
-    order.cancel_reason = reason
-    order.save(update_fields=["status", "cancel_reason", "updated_at"])
-
-    return order
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
