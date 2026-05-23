@@ -13,6 +13,11 @@ Rules per checklist B5.1..B5.8:
 Usage:
   validate-methodology-decision-tree.py <dir>          # one
   validate-methodology-decision-tree.py --all          # whole knowledge tree
+
+F-067 note: this validator inspects only content/*.xml — it never reads
+YAML frontmatter or meta.json. No metadata source switch is required for
+the meta.json migration; the XML checks are stable across pre- and
+post-migration corpora.
 """
 from __future__ import annotations
 
@@ -118,16 +123,22 @@ def main() -> int:
             ap.error("provide target dir or --all")
         targets = [Path(args.target).resolve()]
 
+    def _display(p: Path) -> str:
+        try:
+            return str(p.relative_to(REPO_ROOT))
+        except ValueError:
+            return str(p)
+
     fail = 0
     for d in targets:
         errs = validate_dir(d)
         if errs:
             fail += 1
-            print(f"FAIL {d.relative_to(REPO_ROOT)}")
+            print(f"FAIL {_display(d)}")
             for e in errs:
                 print(f"  - {e}")
         elif not args.all:
-            print(f"PASS {d.relative_to(REPO_ROOT)}")
+            print(f"PASS {_display(d)}")
     if args.all:
         print(f"\nsummary: {len(targets)-fail} pass / {fail} fail / {len(targets)} total")
     return 0 if fail == 0 else 1

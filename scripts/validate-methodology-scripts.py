@@ -9,6 +9,7 @@ Rules per checklist B4.1..B4.5:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -18,7 +19,21 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 KNOWLEDGE = REPO_ROOT / "skills" / "faion" / "knowledge"
 
 
-def _slug_from_frontmatter(agents_md: Path) -> str | None:
+def _slug_from_meta(dir_path: Path) -> str | None:
+    """F-067: read slug from meta.json (canonical) or AGENTS.md frontmatter (fallback)."""
+    meta_path = dir_path / "meta.json"
+    if meta_path.exists():
+        try:
+            data = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if isinstance(data, dict):
+            slug = data.get("slug")
+            if isinstance(slug, str) and slug.strip():
+                return slug.strip()
+        return None
+    # F-067 transitional fallback; remove after T11.
+    agents_md = dir_path / "AGENTS.md"
     if not agents_md.exists():
         return None
     text = agents_md.read_text(encoding="utf-8", errors="replace")
@@ -41,7 +56,7 @@ def validate_dir(dir_path: Path) -> list[str]:
     contract = dir_path / "content" / "02-output-contract.xml"
     if not _output_contract_has_schema(contract):
         return errs  # no schema declared → no validator script required
-    slug = _slug_from_frontmatter(dir_path / "AGENTS.md") or dir_path.name
+    slug = _slug_from_meta(dir_path) or dir_path.name
     candidates = [
         dir_path / "scripts" / f"validate-{slug}.py",
         dir_path / "scripts" / "validate-output.py",
@@ -70,16 +85,22 @@ def main() -> int:
             ap.error("provide target dir or --all")
         targets = [Path(args.target).resolve()]
 
+    def _display(p: Path) -> str:
+        try:
+            return str(p.relative_to(REPO_ROOT))
+        except ValueError:
+            return str(p)
+
     fail = 0
     for d in targets:
         errs = validate_dir(d)
         if errs:
             fail += 1
-            print(f"FAIL {d.relative_to(REPO_ROOT)}")
+            print(f"FAIL {_display(d)}")
             for e in errs:
                 print(f"  - {e}")
         elif not args.all:
-            print(f"PASS {d.relative_to(REPO_ROOT)}")
+            print(f"PASS {_display(d)}")
     if args.all:
         print(f"\nsummary: {len(targets)-fail} pass / {fail} fail / {len(targets)} total")
     return 0 if fail == 0 else 1

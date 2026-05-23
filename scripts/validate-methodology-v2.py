@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """
-Validate methodology v2 directory shape (F-059).
+Validate methodology v2 directory shape (F-059, F-067 metadata refactor).
 
 A v2 methodology is a directory containing:
 
   <dir>/
-  ├── AGENTS.md              (frontmatter + 9 required H2 sections)
+  ├── meta.json              (F-067 canonical metadata: 14 required keys)
+  ├── AGENTS.md              (body sections only post-F-067; frontmatter is
+  │                           the transitional fallback while migration is
+  │                           in flight — removed after F-067 T11)
   ├── content/
   │   ├── 01-core-rules.xml      (required)
   │   ├── 02-output-contract.xml (optional)
   │   └── 03-failure-modes.xml   (optional)
   ├── templates/             (optional)
   └── scripts/               (optional)
+
+F-067 transitional behaviour: this validator reads meta.json when present
+and falls back to AGENTS.md frontmatter when not. Body-section checks always
+run against AGENTS.md.
 
 Usage:
 
@@ -30,13 +37,17 @@ jump directly to the failure site.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 
-REQUIRED_FRONTMATTER_KEYS = (
+# F-067: metadata source is meta.json (sibling of AGENTS.md). Frontmatter in
+# AGENTS.md is the transitional fallback while corpus migration is in flight;
+# it is removed after T11 ships.
+REQUIRED_META_KEYS = (
     "slug",
     "tier",
     "group",
@@ -50,7 +61,8 @@ REQUIRED_FRONTMATTER_KEYS = (
 )
 
 # F-066 B1 keys are required for refactored methodologies (status=active).
-F066_FRONTMATTER_KEYS = (
+# Under F-067 these are part of the unified meta.json required set.
+F066_META_KEYS = (
     "complexity",
     "produces",
     "est_tokens",
@@ -58,10 +70,16 @@ F066_FRONTMATTER_KEYS = (
 )
 
 VALID_COMPLEXITY = {"light", "medium", "deep"}
+# F-067 meta-schema.json allows free-form `produces` (regex ^[a-z][a-z0-9-]*$);
+# legacy F-066 frontmatter restricted it to the closed set below. We keep the
+# closed set for frontmatter-fallback paths and skip it for meta.json paths
+# (the JSON Schema regex covers the meta.json side).
 VALID_PRODUCES = {
     "checklist", "rubric", "spec", "report",
     "code", "config", "playbook-step", "decision-record",
 }
+# Schema-friendly produces regex (matches meta-schema.json `produces`).
+PRODUCES_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 
 REQUIRED_SECTIONS = (
     "Summary",
@@ -145,45 +163,127 @@ def frontmatter_body(text: str) -> str:
     return m.group(2) if m else text
 
 
-def validate_agents_md(agents_path: Path, report: Report) -> None:
+def _meta_from_json(meta_path: Path, report: Report) -> dict | None:
+    """Read meta.json. Returns parsed dict or None on parse error (after reporting)."""
+    try:
+        raw = meta_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        report.fail(meta_path, "META_READ", f"unreadable meta.json: {exc}")
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        report.fail(meta_path, "META_PARSE", f"invalid JSON in meta.json: {exc}")
+        return None
+    if not isinstance(data, dict):
+        report.fail(meta_path, "META_SHAPE", "meta.json root must be a JSON object")
+        return None
+    return data
+
+
+def _normalise(value: object) -> str:
+    """Stringify a metadata value for unified validation (both JSON + frontmatter)."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip().strip('"').strip("'")
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return ",".join(str(v) for v in value)
+    return str(value).strip()
+
+
+def _present(value: object) -> bool:
+    """True if a metadata key is non-empty (string non-blank, list non-empty)."""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple)):
+        return len(value) > 0
+    return True
+
+
+def validate_meta(meta_path: Path, agents_path: Path, report: Report) -> None:
+    """F-067: validate metadata. Prefer meta.json; fall back to AGENTS.md frontmatter.
+
+    Source precedence:
+      1. <dir>/meta.json  (post-migration canonical source)
+      2. AGENTS.md YAML frontmatter  (F-067 transitional fallback; remove after T11)
+    """
+    meta: dict | None = None
+    source = ""
+
+    if meta_path.exists():
+        meta = _meta_from_json(meta_path, report)
+        source = "meta.json"
+    else:
+        # F-067 transitional fallback; remove after T11.
+        if not agents_path.exists():
+            report.fail(agents_path, "AGENTS_MISSING",
+                        "AGENTS.md not found (and no meta.json sibling)")
+            return
+        fm = parse_frontmatter(agents_path.read_text(encoding="utf-8"))
+        if fm is None:
+            report.fail(meta_path, "META_MISSING",
+                        "no meta.json found and AGENTS.md has no YAML frontmatter "
+                        "(post-F-067 expects meta.json; pre-migration expects frontmatter)")
+            return
+        meta = fm
+        source = "AGENTS.md frontmatter"
+
+    if meta is None:
+        return  # parse error already reported
+
+    location = meta_path if source == "meta.json" else agents_path
+
+    for key in REQUIRED_META_KEYS:
+        if key not in meta or not _present(meta[key]):
+            report.fail(location, "META_KEY",
+                        f"required metadata key missing or empty in {source}: '{key}'")
+
+    cid = _normalise(meta.get("content_id"))
+    if cid and not CONTENT_ID_RE.fullmatch(cid):
+        report.fail(location, "CONTENT_ID_FORMAT",
+                    f"content_id='{cid}' must be 16 lowercase hex chars")
+
+    # F-066 B1 additional keys — required only when status=active (refactored).
+    status = _normalise(meta.get("status"))
+    if status == "active":
+        for key in F066_META_KEYS:
+            if key not in meta or not _present(meta[key]):
+                report.fail(location, "F066_META_KEY",
+                            f"F-066 required key missing or empty in {source}: '{key}'")
+        cx = _normalise(meta.get("complexity"))
+        if cx and cx not in VALID_COMPLEXITY:
+            report.fail(location, "F066_COMPLEXITY",
+                        f"complexity must be one of {sorted(VALID_COMPLEXITY)}, got '{cx}'")
+        pr = _normalise(meta.get("produces"))
+        if pr:
+            # F-067 meta.json: open-form regex per meta-schema.json.
+            # Frontmatter fallback: legacy closed set (F-066 B1).
+            if source == "meta.json":
+                if not PRODUCES_RE.fullmatch(pr):
+                    report.fail(location, "F066_PRODUCES",
+                                f"produces='{pr}' must match ^[a-z][a-z0-9-]*$")
+            elif pr not in VALID_PRODUCES:
+                report.fail(location, "F066_PRODUCES",
+                            f"produces must be one of {sorted(VALID_PRODUCES)}, got '{pr}'")
+
+
+def validate_agents_md_body(agents_path: Path, report: Report) -> None:
+    """Validate AGENTS.md body sections only (metadata moved to meta.json under F-067)."""
     if not agents_path.exists():
         report.fail(agents_path, "AGENTS_MISSING", "AGENTS.md not found")
         return
 
     text = agents_path.read_text(encoding="utf-8")
-
-    fm = parse_frontmatter(text)
-    if fm is None:
-        report.fail(agents_path, "FRONTMATTER_MISSING",
-                    "AGENTS.md must start with --- YAML frontmatter --- block")
-    else:
-        for key in REQUIRED_FRONTMATTER_KEYS:
-            if key not in fm or not fm[key]:
-                report.fail(agents_path, "FRONTMATTER_KEY",
-                            f"required frontmatter key missing or empty: '{key}'")
-        cid = fm.get("content_id", "").strip().strip('"').strip("'")
-        if cid and not CONTENT_ID_RE.fullmatch(cid):
-            report.fail(agents_path, "CONTENT_ID_FORMAT",
-                        f"content_id='{cid}' must be 16 lowercase hex chars")
-
-        # F-066 B1 additional keys — required only when status=active (refactored).
-        status = fm.get("status", "").strip().strip('"').strip("'")
-        if status == "active":
-            for key in F066_FRONTMATTER_KEYS:
-                if key not in fm or not fm[key]:
-                    report.fail(agents_path, "F066_FRONTMATTER_KEY",
-                                f"F-066 required key missing or empty: '{key}'")
-            cx = fm.get("complexity", "").strip().strip('"').strip("'")
-            if cx and cx not in VALID_COMPLEXITY:
-                report.fail(agents_path, "F066_COMPLEXITY",
-                            f"complexity must be one of {sorted(VALID_COMPLEXITY)}, got '{cx}'")
-            pr = fm.get("produces", "").strip().strip('"').strip("'")
-            if pr and pr not in VALID_PRODUCES:
-                report.fail(agents_path, "F066_PRODUCES",
-                            f"produces must be one of {sorted(VALID_PRODUCES)}, got '{pr}'")
-
+    # Strip leading frontmatter if present (F-067 transitional); body checks
+    # apply to the markdown body either way.
     body = frontmatter_body(text)
     headings = {h.strip() for h in HEADING_RE.findall(body)}
+
     # Section names may include optional parenthetical qualifiers, e.g.
     # "Applies If (ALL must hold)". Match by prefix to be tolerant.
     # Writers may also use v1-legacy section names (Why / When To Use / etc.) —
@@ -244,7 +344,10 @@ def validate_methodology_dir(root: Path, report: Report) -> None:
         report.fail(root, "NOT_A_DIR", "path is not a directory")
         return
 
-    validate_agents_md(root / "AGENTS.md", report)
+    # F-067: metadata = meta.json (canonical) with frontmatter fallback;
+    # body sections live in AGENTS.md and are validated separately.
+    validate_meta(root / "meta.json", root / "AGENTS.md", report)
+    validate_agents_md_body(root / "AGENTS.md", report)
 
     content_dir = root / "content"
     if not content_dir.is_dir():

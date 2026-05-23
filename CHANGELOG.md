@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-067: corpus restructure to domain-first layout (2625 methodologies + 444 playbooks).
+- F-067: migration tooling (`scripts/migrate-f067.py`, `scripts/regen-tier-manifest.py`, `scripts/regen-domains-xml.py`, `scripts/slug-rename-map.json`), runtime `meta.json` schema (`skills/meta-schema.json`), validator + retriever updates with meta.json + frontmatter fallback.
 - F-066 Phase D: tier-manifest re-sync to v7 — 2625 entries regenerated from current AGENTS.md frontmatter.
 - F-066 Phase C: corpus validator repair (B1 envelope, decision-tree depth, template headers, scripts) — 436 files normalized to v3 spec.
 - F-066 refactor: harvest +135 files (batch 0).
