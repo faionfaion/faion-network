@@ -1,4 +1,10 @@
-"""Clean Architecture use case skeleton with Input/Output dataclasses and dependency injection."""
+"""
+purpose: Clean Architecture use case skeleton with Input/Output dataclasses + dependency injection.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (clean-architecture)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Generic, TypeVar
@@ -9,11 +15,8 @@ OutputT = TypeVar("OutputT")
 
 class UseCase(ABC, Generic[InputT, OutputT]):
     @abstractmethod
-    async def execute(self, input_data: InputT) -> OutputT:
-        pass
+    async def execute(self, input_data: InputT) -> OutputT: ...
 
-
-# --- Example: CreateUser use case ---
 
 @dataclass
 class CreateUserInput:
@@ -24,20 +27,3 @@ class CreateUserInput:
 @dataclass
 class CreateUserOutput:
     user_id: str
-    name: str
-    email: str
-
-
-class CreateUserUseCase(UseCase[CreateUserInput, CreateUserOutput]):
-    def __init__(self, user_repository, unit_of_work, event_publisher):
-        self._user_repository = user_repository
-        self._unit_of_work = unit_of_work
-        self._event_publisher = event_publisher
-
-    async def execute(self, input_data: CreateUserInput) -> CreateUserOutput:
-        # 1. Check preconditions via repository
-        # 2. Create domain entity
-        # 3. Persist via unit_of_work
-        # 4. Publish domain events
-        # 5. Return output DTO
-        raise NotImplementedError

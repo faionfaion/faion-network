@@ -1,49 +1,26 @@
--- Event store schema for PostgreSQL event sourcing implementation
-
--- Core events table
+-- purpose: PostgreSQL DDL with append-only constraints + snapshots table.
+-- consumes: see content/02-output-contract.xml inputs
+-- produces: artefact conforming to content/02-output-contract.xml (event-sourcing-implementation)
+-- depends-on: content/01-core-rules.xml
+-- token-budget-impact: small (template is loaded only when an artefact is being authored)
+-- append-only events table + per-aggregate version uniqueness
 CREATE TABLE events (
-    id           BIGSERIAL    PRIMARY KEY,
-    event_id     UUID         NOT NULL UNIQUE,
-    stream_id    VARCHAR(255) NOT NULL,
-    version      INTEGER      NOT NULL,
-    event_type   VARCHAR(255) NOT NULL,
-    event_data   JSONB        NOT NULL,
-    metadata     JSONB        NOT NULL DEFAULT '{}',
-    occurred_at  TIMESTAMP    NOT NULL,
-    created_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
-
-    -- Optimistic concurrency: concurrent appends to same version fail
-    CONSTRAINT events_stream_version_unique UNIQUE (stream_id, version)
+    event_id        UUID         PRIMARY KEY,
+    aggregate_id    UUID         NOT NULL,
+    aggregate_type  TEXT         NOT NULL,
+    event_type      TEXT         NOT NULL,
+    payload         JSONB        NOT NULL,
+    occurred_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    version         INTEGER      NOT NULL,
+    UNIQUE (aggregate_id, version)
 );
+CREATE INDEX events_aggregate_idx ON events(aggregate_id, version);
+REVOKE UPDATE, DELETE ON events FROM PUBLIC;  -- append-only at grant level
 
-CREATE INDEX events_stream_id_idx   ON events(stream_id);
-CREATE INDEX events_event_type_idx  ON events(event_type);
-CREATE INDEX events_occurred_at_idx ON events(occurred_at);
-
--- Snapshots table (one snapshot per stream, UPSERT)
 CREATE TABLE snapshots (
-    stream_id   VARCHAR(255) PRIMARY KEY,
-    version     INTEGER      NOT NULL,
-    state       JSONB        NOT NULL,
-    created_at  TIMESTAMP    NOT NULL
-);
-
--- Example projection: order details read model
-CREATE TABLE order_details (
-    order_id     UUID         PRIMARY KEY,
-    customer_id  UUID         NOT NULL,
-    status       VARCHAR(50)  NOT NULL,
-    created_at   TIMESTAMP    NOT NULL,
-    placed_at    TIMESTAMP,
-    shipped_at   TIMESTAMP,
-    delivered_at TIMESTAMP
-);
-
-CREATE TABLE order_items (
-    id           BIGSERIAL      PRIMARY KEY,
-    order_id     UUID           NOT NULL REFERENCES order_details(order_id),
-    product_id   UUID           NOT NULL,
-    product_name VARCHAR(255)   NOT NULL,
-    quantity     INTEGER        NOT NULL,
-    unit_price   DECIMAL(10, 2) NOT NULL
+    aggregate_id    UUID         NOT NULL,
+    version         INTEGER      NOT NULL,
+    state           JSONB        NOT NULL,
+    captured_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (aggregate_id, version)
 );

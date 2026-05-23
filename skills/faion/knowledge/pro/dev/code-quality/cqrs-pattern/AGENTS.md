@@ -3,73 +3,98 @@ slug: cqrs-pattern
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Command Query Responsibility Segregation (CQRS) separates read and write operations into distinct models: commands change state and return void or an ID; queries return data and never modify state.
-content_id: "ba7dfdc2a5642e86"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a CQRS skeleton: Command + CommandHandler returning None/ID; Query + QueryHandler returning a read model; a Mediator that dispatches by type with no handler doing both shapes.
+content_id: "d00dd225398d26ea"
+complexity: medium
+produces: code
+est_tokens: 4300
 tags: [cqrs, architecture, command, query, event-driven]
 ---
 # CQRS Pattern
 
 ## Summary
 
-**One-sentence:** Command Query Responsibility Segregation (CQRS) separates read and write operations into distinct models: commands change state and return void or an ID; queries return data and never modify state.
+**One-sentence:** Produces a CQRS skeleton: Command + CommandHandler returning None/ID; Query + QueryHandler returning a read model; a Mediator that dispatches by type with no handler doing both shapes.
 
-**One-paragraph:** Command Query Responsibility Segregation (CQRS) separates read and write operations into distinct models: commands change state and return void or an ID; queries return data and never modify state. The concrete rule: a handler class is either a CommandHandler (returns None or ID) or a QueryHandler (returns a read model) — never both. This split allows each side to evolve independently: write side uses the domain model with full invariant enforcement; read side uses flat projections optimized for query patterns (Redis, Elasticsearch, denormalized SQL views).
+**One-paragraph:** CQRS separates write and read sides into distinct models: commands change state and return None or an ID; queries return data and never modify state. A handler is either CommandHandler or QueryHandler — never both. This lets the write side enforce invariants on a domain model while the read side uses flat projections optimised per query (Redis, Elasticsearch, denormalised SQL views).
+
+**Ефективно для:**
+
+- High read/write ratio з різними optimization patterns.
+- Складний domain + кілька read models per use case.
+- Audit trail через events що драйвлять projections.
+- Eventual consistency через design, не випадково.
 
 ## Applies If (ALL must hold)
 
-- High read/write ratio where each side has different optimization requirements
-- Complex domain with separate read models needed per use case
-- Systems requiring audit trails where events drive read model projections
-- Applications with eventual consistency requirements (microservices, event-driven)
-- Paired with event sourcing where projections rebuild from the event log
+- High read/write ratio where each side has different optimization needs.
+- Complex domain with separate read models per use case.
+- System needs event-driven projections rebuilding read models.
+- Application paired with event sourcing.
 
 ## Skip If (ANY kills it)
 
-- Simple CRUD apps — the two-model overhead exceeds benefit when reads and writes are symmetric
-- Teams unfamiliar with eventual consistency — stale reads cause correctness bugs if the team does not design for them
-- Systems that need immediate read-after-write consistency and cannot tolerate any lag
-- Small domains where a single repository and DTO cover all query needs without duplication
+- Simple CRUD where reads and writes are symmetric.
+- Team unfamiliar with eventual consistency.
+- System needs immediate read-after-write consistency.
+- Small domain where a single repository covers all queries.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Domain model with identified commands + queries | list | domain expert |
+| Read-side persistence target (Redis / SQL view / Elasticsearch) | infra | team |
+| Mediator or DI container | tool | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[clean-architecture]] | CQRS handlers sit in the application layer; clean-architecture defines that layer |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-handlers` | sonnet | Generate CommandHandler + QueryHandler stubs. |
+| `author-mediator` | sonnet | Write the dispatcher with type-based routing. |
+| `validate-output` | haiku | Schema check via the validator script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/command-handler.py` | Command + CommandHandler skeleton; returns None or ID only. |
+| `templates/query-handler.py` | Query + QueryHandler skeleton; returns a read model only. |
+| `templates/mediator.py` | Type-based Mediator dispatching to the right handler. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cqrs-pattern.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/code-quality/`
+- [[clean-architecture]]
+- [[event-sourcing-basics]]
+- [[event-sourcing-implementation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree gates CQRS on read/write asymmetry + team readiness for eventual consistency; otherwise plain repository pattern is enough.

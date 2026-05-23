@@ -1,43 +1,35 @@
-"""CQRS command-side skeleton: Command base, CommandHandler base, example PlaceOrderCommand."""
+"""
+purpose: Command + CommandHandler skeleton; returns None or ID only.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (cqrs-pattern)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, List, TypeVar
-from uuid import UUID
+from typing import Generic, TypeVar
+from uuid import UUID, uuid4
 
 T = TypeVar("T")
 
 
 @dataclass
-class Command(ABC):
-    """Base for all commands. Commands change state; never return read models."""
+class Command:
+    pass
 
 
 class CommandHandler(ABC, Generic[T]):
-    """Base for command handlers. handle() returns None or an ID."""
-
     @abstractmethod
-    async def handle(self, command: T) -> None:
-        pass
+    async def handle(self, cmd: Command) -> T | None: ...
 
-
-# --- Example usage ---
 
 @dataclass
 class PlaceOrderCommand(Command):
-    order_id: UUID
-    customer_id: UUID
-    items: List[dict]
-    shipping_address: dict
+    user_id: UUID
+    items: list[str]
 
 
-class PlaceOrderHandler(CommandHandler[PlaceOrderCommand]):
-    def __init__(self, order_repository, event_bus):
-        self._order_repository = order_repository
-        self._event_bus = event_bus
-
-    async def handle(self, command: PlaceOrderCommand) -> None:
-        # 1. Reconstruct / create aggregate
-        # 2. Apply domain logic
-        # 3. Persist
-        # 4. Publish events post-save
-        pass
+class PlaceOrderHandler(CommandHandler[UUID]):
+    async def handle(self, cmd: PlaceOrderCommand) -> UUID:
+        # validate, write to event store, return new id
+        return uuid4()

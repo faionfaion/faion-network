@@ -1,32 +1,31 @@
-"""FastAPI microservice entrypoint with lifespan, health check, and versioned API router."""
-from contextlib import asynccontextmanager
-from fastapi import APIRouter, FastAPI
+"""
+purpose: FastAPI service skeleton with circuit-breaker import + DB ownership.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (microservices-design)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
+from fastapi import FastAPI
+from .infra.circuit_breaker import CircuitBreaker
+from .infra.db import owned_db_session
 
-health_router = APIRouter()
+app = FastAPI(title="orders-service")
 
-
-@health_router.get("/health")
-async def health():
-    # Extend to check DB/broker connectivity
-    return {"status": "ok"}
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    # await init_db()
-    # await init_message_bus()
-    yield
-    # Shutdown
-    # await close_message_bus()
-    # await close_db()
+_payment_breaker = CircuitBreaker(failure_threshold=5, reset_after_sec=30)
 
 
-app = FastAPI(
-    title="<Service Name>",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+@app.get("/orders/{order_id}")
+async def get_order(order_id: str):
+    async with owned_db_session() as db:
+        # only this service writes to this DB
+        return await db.fetch_one("SELECT id, status FROM orders WHERE id = $1", order_id)
 
-app.include_router(health_router, tags=["health"])
-# app.include_router(router, prefix="/api/v1", tags=["<domain>"])
+
+@app.post("/orders/{order_id}/charge")
+async def charge(order_id: str):
+    return await _payment_breaker.call(_charge_payment, order_id)
+
+
+async def _charge_payment(order_id: str):
+    # HTTP call to payments service; never import payments code directly
+    ...

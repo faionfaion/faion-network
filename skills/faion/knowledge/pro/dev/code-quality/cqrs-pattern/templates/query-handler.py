@@ -1,36 +1,26 @@
-"""CQRS query-side skeleton: Query base, QueryHandler base, OrderDto read model."""
+"""
+purpose: Query + QueryHandler skeleton; returns a read model only.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (cqrs-pattern)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 from uuid import UUID
 
 T = TypeVar("T")
-R = TypeVar("R")
 
 
 @dataclass
-class Query(ABC):
-    """Base for all queries. Queries never modify state."""
+class Query:
+    pass
 
 
-class QueryHandler(ABC, Generic[T, R]):
-    """Base for query handlers. Returns a read model."""
-
+class QueryHandler(ABC, Generic[T]):
     @abstractmethod
-    async def handle(self, query: T) -> R:
-        pass
-
-
-# --- Example read model and handler ---
-
-@dataclass
-class OrderDto:
-    id: UUID
-    customer_id: UUID
-    status: str
-    items: list
-    total: float
-    placed_at: Optional[str]
+    async def handle(self, q: Query) -> T: ...
 
 
 @dataclass
@@ -38,12 +28,14 @@ class GetOrderQuery(Query):
     order_id: UUID
 
 
-class GetOrderHandler(QueryHandler[GetOrderQuery, OrderDto]):
-    def __init__(self, read_store):
-        self._read_store = read_store
+@dataclass
+class OrderView:
+    order_id: UUID
+    status: str
+    total_cents: int
 
-    async def handle(self, query: GetOrderQuery) -> OrderDto:
-        data = await self._read_store.get(f"order:{query.order_id}")
-        if not data:
-            raise KeyError(f"Order not found: {query.order_id}")
-        return OrderDto(**data)
+
+class GetOrderHandler(QueryHandler[OrderView]):
+    async def handle(self, q: GetOrderQuery) -> OrderView:
+        # read from projection / view
+        return OrderView(q.order_id, "placed", 0)

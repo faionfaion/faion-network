@@ -1,54 +1,131 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Client-Conventions Guardrail Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>The methodology produces a single guardrail file at the agreed path (default AGENTS.md or CLAUDE.md), versioned, evidence-backed, and treated as input to every agent task.</summary>
+<text id="02-output-contract" title="client-conventions-reverse-engineering Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <section title="Required sections in the guardrail file">
-    <list>
-      <item><code>## Machine-Enforced Rules</code> — lint, format, type-check, pre-commit references. "Run X; do not duplicate rules here."</item>
-      <item><code>## Naming and File Conventions</code> — file paths, class names, function names, test patterns, with evidence rows.</item>
-      <item><code>## Structural / Layering Rules</code> — which layer may call which; where new code goes by category.</item>
-      <item><code>## Import Discipline</code> — relative vs absolute, allowed external libs, banned imports.</item>
-      <item><code>## Dependency Policy</code> — package manager, pinning, agent permission level for new deps.</item>
-      <item><code>## Branch + Commit Conventions</code> — branch naming, commit message format, PR title format.</item>
-      <item><code>## Review Feedback Log</code> — appended rules from rejected PRs, with date + evidence.</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/client-conventions-reverse-engineering.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "client_repo",
+    "lint_tool",
+    "lint_config_path",
+    "naming",
+    "branching_model",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^(?!team$|we$|us$|engineering$).+",
+      "minLength": 2
+    },
+    "client_repo": {
+      "type": "string",
+      "minLength": 5
+    },
+    "lint_tool": {
+      "type": "string",
+      "minLength": 2
+    },
+    "lint_config_path": {
+      "type": "string",
+      "minLength": 3
+    },
+    "naming": {
+      "type": "object",
+      "required": [
+        "files",
+        "classes",
+        "functions"
+      ]
+    },
+    "branching_model": {
+      "enum": [
+        "trunk",
+        "github-flow",
+        "gitflow",
+        "release-flow"
+      ]
+    },
+    "commit_format": {
+      "type": "string"
+    },
+    "layering_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    }
+  }
+}
+]]></code>
   </section>
 
-  <section title="Required per-rule metadata">
-    <list>
-      <item><code>statement</code>: one imperative sentence.</item>
-      <item><code>evidence</code>: &gt;= 2 citations (file paths OR PR comments).</item>
-      <item><code>confidence</code>: high / medium (tentative; verify on first PR).</item>
-      <item><code>verified_by</code> + ISO date.</item>
-    </list>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "rrev-2026-05-23",
+  "owner": "@ruslan",
+  "client_repo": "github.com/acme/web",
+  "lint_tool": "eslint",
+  "lint_config_path": ".eslintrc.json",
+  "naming": {
+    "files": "kebab-case",
+    "classes": "PascalCase",
+    "functions": "camelCase"
+  },
+  "branching_model": "github-flow",
+  "commit_format": "conventional",
+  "layering_rules": [
+    "no DB calls from controllers"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "client_repo": "",
+  "lint_tool": "",
+  "lint_config_path": "",
+  "naming": {},
+  "branching_model": "ad-hoc",
+  "version": "v1",
+  "last_reviewed": "soon"
+}
+]]></code>
+    <note>owner=&apos;team&apos;; lint metadata empty; naming missing required keys; branching_model not in enum.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">owner = &apos;team&apos; / &apos;we&apos; / empty.</forbidden>
+    <forbidden id="f2">Rule entries without a source path or PR/commit citation.</forbidden>
+    <forbidden id="f3">Multiple convention files instead of a single guardrail.</forbidden>
+    <forbidden id="f4">Inferring implicit conventions from &lt; 20 PRs.</forbidden>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Rule listed without evidence rows.</description>
-      <reason>Violates r2. Becomes a hallucinated convention the agent enforces and reviewers reject.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Rule contradicts the lint config (file says camelCase, eslint enforces snake_case).</description>
-      <reason>Lint wins. Either fix the rule statement or fix the lint config — not both silently.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Guardrail file covers formatting but lacks layering / import / dependency sections.</description>
-      <reason>Violates r3 + r4. Produces functionally-correct code that PR review will reject for structure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Review-feedback-log absent or stale (no entries added in &gt; 60 days while PR rejections still happen for convention reasons).</description>
-      <reason>Violates r5. Guardrail rots.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>All 7 sections present and non-empty (or marked "N/A — justified").</item>
-      <item>Every rule has &gt;= 2 evidence rows.</item>
-      <item>No rule contradicts an active lint or formatter rule.</item>
-      <item>Review-feedback-log was updated within last 30 days (if PRs landed in that window).</item>
-      <item>Guardrail file is checked into the repo at the path the agent reads from.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-client-conventions-reverse-engineering.py">Validator script.</reference>
 </text>

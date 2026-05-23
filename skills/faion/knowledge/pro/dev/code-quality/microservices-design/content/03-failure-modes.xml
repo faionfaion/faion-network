@@ -1,17 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="microservices-design Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for microservices-design as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="microservices-design Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the microservices-design methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Services call each other synchronously for every operation, creating a chain where all services must be up for any request to succeed.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Availability multiplies: if each service is 99% up, a chain of 5 synchronous calls is only 95% available. This defeats the resilience benefit of microservices.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Multiple services query the same database tables directly, sharing schema ownership implicitly.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Schema changes in one service break all other services sharing the table. This creates a hidden coupling that makes independent deployment impossible.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-shared-table" severity="high">
+      <symptom>Two services SELECT from the same orders table; one ALTER breaks both.</symptom>
+      <root-cause source="r1">Author treated DB as shared store.</root-cause>
+      <fix>Move ownership to a single service; expose reads via API or async event.</fix>
+    </antipattern>
+
+    <antipattern id="fm-cross-service-import" severity="high">
+      <symptom>payments package imports orders.models.Order; deploy lockstep returns.</symptom>
+      <root-cause source="r2">Author shortcut to avoid an API call.</root-cause>
+      <fix>Define an OrderView in payments; populate via a contract call or async event.</fix>
+    </antipattern>
+
+    <antipattern id="fm-cascading-failure" severity="high">
+      <symptom>payments service slow; orders piles up requests; entire mesh stalls.</symptom>
+      <root-cause source="r3">No circuit breaker.</root-cause>
+      <fix>Wrap the call in CircuitBreaker with reasonable thresholds + timeout.</fix>
+    </antipattern>
+
+    <antipattern id="fm-no-tracing" severity="medium">
+      <symptom>A user reports a 30s checkout; team has no distributed trace; root cause hunt takes days.</symptom>
+      <root-cause source="r5">OpenTelemetry not wired.</root-cause>
+      <fix>Add tracing middleware + propagate trace IDs; ship a Jaeger/Tempo backend.</fix>
+    </antipattern>
+
+    <antipattern id="fm-breaking-change-no-version" severity="medium">
+      <symptom>orders v1 contract changed; payments deploys break.</symptom>
+      <root-cause source="r6">API not versioned.</root-cause>
+      <fix>Add /v1 in URL or v1 in proto package; support old version &gt;= N days.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -3,74 +3,103 @@ slug: microservices-design
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Microservices architecture structures an application as independently deployable services where each service owns its data, exposes a well-defined API, and communicates through HTTP or async messaging.
-content_id: "81a5166177c7a679"
-tags: [microservices, architecture, distributed-systems, async-messaging, fastapi]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a microservices spec naming bounded contexts, per-service data ownership, transport contracts (HTTP/gRPC/async), circuit-breaker policies, and rules forbidding cross-service code imports and shared tables.
+content_id: "4b2e088e60a637ca"
+complexity: deep
+produces: spec
+est_tokens: 5200
+tags: [microservices, architecture, distributed-systems, async-messaging, saga]
 ---
 # Microservices Design
 
 ## Summary
 
-**One-sentence:** Microservices architecture structures an application as independently deployable services where each service owns its data, exposes a well-defined API, and communicates through HTTP or async messaging.
+**One-sentence:** Produces a microservices spec naming bounded contexts, per-service data ownership, transport contracts (HTTP/gRPC/async), circuit-breaker policies, and rules forbidding cross-service code imports and shared tables.
 
-**One-paragraph:** Microservices architecture structures an application as independently deployable services where each service owns its data, exposes a well-defined API, and communicates through HTTP or async messaging. The core rules: each service has exactly one database (no shared tables); services never import each other's code directly; failures in one service must not cascade to others.
+**One-paragraph:** Microservices structure an application as independently deployable services where each service owns its data, exposes a well-defined API, and communicates via HTTP/gRPC or async messaging. Each service has exactly one database (no shared tables); services never import each other's code directly; failures in one service must not cascade to others.
+
+**Ефективно для:**
+
+- Large application з кількома teams що працюють паралельно.
+- Independent scaling (checkout 10x під час flash sales, user service ні).
+- Continuous deployment де lockstep releases — bottleneck.
+- Technology diversity з justified причиною (ML Python, billing Java).
 
 ## Applies If (ALL must hold)
 
-- Large application where multiple teams work on different features simultaneously
-- Systems requiring independent scaling (checkout scales at 10x normal during flash sales; user service does not)
-- Organizations practicing continuous deployment where lockstep releases are a bottleneck
-- Technology diversity is justified (ML service in Python, billing in Java, web frontend in Node)
-- High availability requirement where a single service failure must not take down the whole product
+- Large application with multiple teams working on different features simultaneously.
+- Independent scaling required.
+- Continuous deployment without lockstep release.
+- Technology diversity justified.
+- High availability where one service failure must not take down the product.
 
 ## Skip If (ANY kills it)
 
-- Single team or early-stage startup — operational overhead (observability, CI/CD per service, networking) exceeds benefit
-- Domain not yet stable — premature service boundaries become costly to re-draw as the model evolves
-- Team lacks experience with distributed systems — eventual consistency, network failures, and distributed tracing require operational maturity
-- Transactions must be ACID across multiple business entities — sagas add significant complexity compared to a monolith with a single DB
-- Tight latency budget — each service hop adds network round-trip time
+- Single team / early-stage startup.
+- Domain not yet stable — premature service boundaries are costly.
+- Team lacks distributed-systems experience.
+- ACID across multiple business entities — sagas add significant complexity.
+- Tight latency budget — each hop adds round-trip time.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Bounded-context map | Markdown | domain expert |
+| Per-service data ownership table | spreadsheet | team |
+| Transport policy (HTTP/gRPC/async) | ADR | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[domain-driven-design]] | Bounded contexts from DDD are the service boundaries |
+| [[cap-pacelc-walkthrough]] | Each service's data store is chosen with CAP/PACELC explicit |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 7-step end-to-end procedure | ~800 |
+| `content/05-examples.xml` | medium | One fully-worked example matching the output schema | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `inventory-services` | sonnet | Map bounded contexts to services + owners. |
+| `design-transports` | sonnet | Pick HTTP vs gRPC vs async per interaction. |
+| `author-failure-modes` | opus | Cross-service synthesis on circuit breakers + sagas. |
+| `validate-output` | haiku | Schema check via the validator script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/service-main.py` | FastAPI service skeleton with circuit-breaker import + DB ownership. |
+| `templates/circuit-breaker.py` | Circuit breaker (CLOSED → OPEN → HALF_OPEN → CLOSED) for inter-service calls. |
+| `templates/message-bus.py` | Async message bus for inter-service events (publish + subscribe). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-microservices-design.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/code-quality/`
+- [[domain-driven-design]]
+- [[event-sourcing-implementation]]
+- [[cap-pacelc-walkthrough]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree gates microservices on team count, scaling asymmetry, and ops maturity; otherwise modular monolith is the better default.

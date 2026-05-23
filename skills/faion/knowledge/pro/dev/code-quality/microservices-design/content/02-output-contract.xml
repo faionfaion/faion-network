@@ -1,22 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="microservices-design Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="microservices-design Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/microservices-design.json",
+  "type": "object",
+  "required": [
+    "services",
+    "no_shared_tables",
+    "no_cross_service_imports",
+    "circuit_breakers_present",
+    "tracing_present"
+  ],
+  "properties": {
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "owner",
+          "data_store",
+          "transport"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "data_store": {
+            "type": "string"
+          },
+          "transport": {
+            "enum": [
+              "http",
+              "grpc",
+              "async",
+              "mixed"
+            ]
+          }
+        }
+      },
+      "minItems": 2
+    },
+    "no_shared_tables": {
+      "const": true
+    },
+    "no_cross_service_imports": {
+      "const": true
+    },
+    "circuit_breakers_present": {
+      "const": true
+    },
+    "tracing_present": {
+      "const": true
+    },
+    "api_versioning_scheme": {
+      "enum": [
+        "url-path",
+        "accept-header",
+        "proto-package"
+      ]
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "services": [
+    {
+      "name": "orders",
+      "owner": "@orders-team",
+      "data_store": "postgres-orders",
+      "transport": "mixed"
+    },
+    {
+      "name": "payments",
+      "owner": "@payments-team",
+      "data_store": "postgres-payments",
+      "transport": "http"
+    }
+  ],
+  "no_shared_tables": true,
+  "no_cross_service_imports": true,
+  "circuit_breakers_present": true,
+  "tracing_present": true,
+  "api_versioning_scheme": "url-path"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "services": [
+    {
+      "name": "orders",
+      "owner": "team",
+      "data_store": "shared-db",
+      "transport": "http"
+    }
+  ],
+  "no_shared_tables": false,
+  "no_cross_service_imports": false,
+  "circuit_breakers_present": false,
+  "tracing_present": false
+}
+]]></code>
+    <note>Only one service; owner=&apos;team&apos;; shared DB; no circuit breakers; no tracing.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">Shared database table across more than one service.</forbidden>
+    <forbidden id="f2">Direct import of one service&apos;s package from another.</forbidden>
+    <forbidden id="f3">Synchronous inter-service call without a circuit breaker.</forbidden>
+    <forbidden id="f4">Unversioned API endpoints.</forbidden>
+  </section>
+
+  <reference path="scripts/validate-microservices-design.py">Validator script.</reference>
 </text>

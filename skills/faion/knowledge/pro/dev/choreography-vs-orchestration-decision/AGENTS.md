@@ -3,80 +3,96 @@ slug: choreography-vs-orchestration-decision
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Choreography Vs Orchestration Decision: codified dev practice that turns the recurring 'role-software-architect/Microservice extraction safety gate' decision into a repeatable, auditable artefact.
-content_id: "cd431a66b1bd3463"
-tags: [choreography-vs-orchestration-decision, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a versioned ADR choosing choreography (event-driven, no central coordinator) vs orchestration (central saga coordinator) for a specific cross-service workflow, with operational ownership named.
+content_id: "e68565bcafca16c8"
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [choreography, orchestration, saga, decision-record, pro]
 ---
-# Choreography Vs Orchestration Decision
+# Choreography vs Orchestration Decision
 
 ## Summary
 
-**One-sentence:** Choreography Vs Orchestration Decision: codified dev practice that turns the recurring 'role-software-architect/Microservice extraction safety gate' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a versioned ADR choosing choreography (event-driven, no central coordinator) vs orchestration (central saga coordinator) for a specific cross-service workflow, with operational ownership named.
 
-**One-paragraph:** Choreography Vs Orchestration Decision addresses the gap surfaced by 'role-software-architect/Microservice extraction safety gate'. event-driven-architecture mentions sagas but doesn't decide choreography vs orchestration. This decision drives operational ownership and is a frequent ADR. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** When event-driven-architecture mentions sagas but does not decide choreography vs orchestration, this methodology produces the decision. Operational ownership is the determining factor: choreography spreads ownership (and debugging cost) across emitters; orchestration concentrates it on the coordinator service. The ADR names the chosen pattern, the workflow it covers, and a single accountable owner.
+
+**Ефективно для:**
+
+- Saga рішення — choreography чи orchestration на конкретному flow.
+- Operational ownership: хто володіє debug + retry + DLQ.
+- ADR форм у git-store, versioned + reviewable.
+- Anti-debate-club: рішення в артефакті, не на стенду.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-architect/Microservice extraction safety gate' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Task is an instance of role-software-architect/Microservice extraction safety gate OR adjacent.
+- Operator has the workflow definition + service map available.
+- Output will be consumed downstream (not discarded).
+- Tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Team already maintains a working ADR for this workflow.
+- Greenfield prototype with no production users.
+- Single-service workflow — no saga, no decision.
 
 ## Prerequisites
 
-- recent context for the 'role-software-architect/Microservice extraction safety gate' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow definition (steps + branches) | diagram or BPMN | team |
+| Service map (owners + emit/consume events) | Markdown table | platform |
+| Operational SLOs (debug latency, retry policy) | doc | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[microservices-design]] | Service boundaries are the precondition for the saga split |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical capture of workflow + services. |
+| `synthesize-decision` | sonnet | Per-workflow judgment on ownership vs latency trade-off. |
+| `review-for-compliance` | opus | Cross-team synthesis when ownership is contested. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/choreography-vs-orchestration-decision.json` | JSON schema for the Choreography Vs Orchestration Decision output contract |
-| `templates/choreography-vs-orchestration-decision.md` | Markdown skeleton with the required fields |
+| `templates/choreography-vs-orchestration-decision.json` | JSON skeleton matching the output contract. |
+| `templates/choreography-vs-orchestration-decision.md` | Markdown skeleton with both options + trade-offs. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-choreography-vs-orchestration-decision.py` | Enforce Choreography Vs Orchestration Decision output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-choreography-vs-orchestration-decision.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
+| `scripts/validate-choreography-vs-orchestration-decision.py` | Validator script. | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- upstream playbook: `role-software-architect/Microservice extraction safety gate`
-- methodology family: `pro/dev/` (gap-p2 batch, F-059-063)
+- [[cap-pacelc-walkthrough]]
+- [[microservices-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree gates on workflow size and natural ownership distribution; orchestration is the default unless ownership is already distributed.

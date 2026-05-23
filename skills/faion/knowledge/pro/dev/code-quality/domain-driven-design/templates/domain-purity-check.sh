@@ -1,17 +1,13 @@
+# purpose: Shell script: greps domain/ for framework imports; exits 1 if any.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml (domain-driven-design)
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small (template is loaded only when an artefact is being authored)
 #!/usr/bin/env bash
-# domain-purity-check.sh — fail if domain/ imports infrastructure libs.
-# Usage: domain-purity-check.sh <repo-root>
 set -euo pipefail
-
-ROOT="${1:-.}"
-FORBIDDEN='sqlalchemy|django\.db|pymongo|redis|requests|httpx|aiohttp|kafka|boto3|fastapi|flask|pydantic\.BaseModel'
-
-mapfile -t files < <(find "$ROOT" -type d -name domain -prune -exec grep -rlE "^(import|from) ($FORBIDDEN)" {} + || true)
-
-if [ "${#files[@]}" -gt 0 ]; then
-  echo "DDD violation: infrastructure imports inside domain layer:"
-  printf '  %s\n' "${files[@]}"
+ROOT=${1:-myapp/domain}
+if grep -RnE "^(from|import) (django|sqlalchemy|flask|fastapi|requests|aiohttp|httpx)" "$ROOT"; then
+  echo "FAIL: framework import found in domain layer"
   exit 1
 fi
-
-echo "domain/ is pure (no forbidden imports)."
+echo OK

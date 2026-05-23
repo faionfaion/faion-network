@@ -1,39 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="microservices-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for microservices-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="microservices-design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the microservices-design methodology. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Each service is a completely independent deployment unit: its own repository (or isolated module), its own Dockerfile, its own database, its own CI/CD pipeline.</statement>
-      <rationale source="v1-source">Shared infrastructure creates hidden coupling. A database schema change in a shared DB can break all services that read it, defeating independent deployability.</rationale>
+      <statement>Each service owns its data. No shared tables across services; cross-service reads go through APIs or events, never direct DB queries.</statement>
+      <rationale source="v1-source">Shared tables couple services through schema; one migration breaks N services.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Every service exposes a /health endpoint. The health check returns 200 only when the service and its critical dependencies (DB, broker) are reachable.</statement>
-      <rationale source="v1-source">Load balancers and orchestrators use health checks to route traffic. A service that responds 200 while its DB is down accepts requests it cannot fulfill.</rationale>
+      <statement>Services never import each other&apos;s code directly. Cross-service interactions go through transport contracts (HTTP/gRPC/async).</statement>
+      <rationale source="v1-source">Code imports re-create the monolith inside a service mesh.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Prefer asynchronous messaging (events) over synchronous HTTP for cross-service state changes. Use synchronous HTTP only for queries where the caller needs an immediate response.</statement>
-      <rationale source="v1-source">Synchronous chains create availability dependencies: if any service in the chain is down, the entire chain fails. Async events allow each service to process when available.</rationale>
+      <statement>Failures in one service must not cascade. Use circuit breakers + timeouts + bulkheads on every inter-service call.</statement>
+      <rationale source="v1-source">Without circuit breakers, one slow service propagates latency to the entire mesh.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>HTTP clients must set explicit timeouts. Default timeout is 10 seconds maximum — never use no timeout in production.</statement>
-      <rationale source="v1-source">Without timeouts, a slow downstream service holds a thread/connection indefinitely, cascading into resource exhaustion in the caller.</rationale>
+      <statement>Async messaging is the default for cross-service workflows that span more than two services; sagas (orchestration or choreography per ADR) coordinate multi-step transactions.</statement>
+      <rationale source="v1-source">Synchronous chains amplify latency and failure surface.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Every HTTP call to another service must go through a circuit breaker. When the failure threshold is exceeded, the breaker opens and fails fast instead of waiting for timeout.</statement>
-      <rationale source="v1-source">Without a circuit breaker, a slow or unavailable downstream service holds connections and threads in the caller, cascading into resource exhaustion across the entire system.</rationale>
+      <statement>Every service ships with health/liveness/readiness probes + structured logs + tracing instrumentation (OpenTelemetry). No service is observable-by-accident.</statement>
+      <rationale source="v1-source">Distributed systems are unobservable without explicit instrumentation.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Circuit breaker states: CLOSED (normal), OPEN (fail fast, reset after recovery_timeout), HALF_OPEN (test with limited calls, close if successful).</statement>
-      <rationale source="v1-source">HALF_OPEN prevents the breaker from staying open indefinitely after the downstream service recovers. It allows gradual traffic restoration.</rationale>
+      <statement>API contracts are versioned (URL path / Accept header / proto package). Breaking changes ship a new version; old version is supported for &gt;=N days.</statement>
+      <rationale source="v1-source">Lockstep deployment across services destroys the independent-deployment property.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Every saga step must have a compensating action written before the happy path is merged. Compensation runs in reverse order when any step fails.</statement>
-      <rationale source="v1-source">A saga without compensations is an incomplete transaction. If step 2 fails after step 1 succeeds, step 1's side effect is permanent and cannot be undone.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Prefer orchestration (one central orchestrator) over choreography when more than 3-4 services participate. Choreography with many services creates spaghetti event flows that are impossible to debug.</statement>
-      <rationale source="v1-source">Orchestration centralizes the saga state machine and makes the flow readable as code. Choreography distributes it across services with no single place to observe the overall state.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>
+      <rationale source="Skip-rule guard">Prevents duplicate work and wrong-tool application.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

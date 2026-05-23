@@ -1,91 +1,61 @@
-"""PostgreSQL event store skeleton with optimistic concurrency, serialize, and deserialize."""
+"""
+purpose: Python event store with append (optimistic concurrency) + load + snapshot.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (event-sourcing-implementation)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
+from __future__ import annotations
 import json
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type
+from dataclasses import asdict
+from typing import List, Optional
+from uuid import UUID
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+import psycopg
 
 
 class ConcurrencyError(Exception):
     pass
 
 
-class UnknownEventType(Exception):
-    pass
+class PostgresEventStore:
+    def __init__(self, conn: psycopg.Connection) -> None:
+        self.conn = conn
 
+    def append(self, aggregate_id: UUID, aggregate_type: str, events: List[object], expected_version: int) -> None:
+        with self.conn.cursor() as cur:
+            for i, ev in enumerate(events, start=1):
+                try:
+                    cur.execute(
+                        "INSERT INTO events(event_id, aggregate_id, aggregate_type, event_type, payload, version)"
+                        " VALUES (%s, %s, %s, %s, %s, %s)",
+                        (str(getattr(ev, "event_id")), str(aggregate_id), aggregate_type, type(ev).__name__,
+                         json.dumps(asdict(ev), default=str), expected_version + i),
+                    )
+                except psycopg.errors.UniqueViolation as e:
+                    raise ConcurrencyError(f"stream moved at version {expected_version + i}") from e
 
-# Registry: populated by decorating event classes with @register_event
-EVENT_REGISTRY: Dict[str, Type] = {}
-
-
-def register_event(cls):
-    EVENT_REGISTRY[cls.__name__] = cls
-    return cls
-
-
-class EventStore(ABC):
-    @abstractmethod
-    async def append(self, stream_id: str, events: List, expected_version: int) -> None: ...
-
-    @abstractmethod
-    async def read_stream(self, stream_id: str, from_version: int = 0) -> List: ...
-
-
-class PostgresEventStore(EventStore):
-    def __init__(self, session: AsyncSession):
-        self._session = session
-
-    async def append(self, stream_id: str, events: List, expected_version: int) -> None:
-        result = await self._session.execute(
-            text("SELECT COALESCE(MAX(version), 0) FROM events WHERE stream_id = :s"),
-            {"s": stream_id},
-        )
-        current = result.scalar()
-        if current != expected_version:
-            raise ConcurrencyError(f"Expected version {expected_version}, got {current}")
-
-        for i, event in enumerate(events):
-            version = expected_version + i + 1
-            await self._session.execute(
-                text("""
-                    INSERT INTO events
-                        (event_id, stream_id, version, event_type, event_data, metadata, occurred_at)
-                    VALUES
-                        (:eid, :sid, :ver, :etype, :edata, :meta, :occ)
-                """),
-                {
-                    "eid": str(event.event_id), "sid": stream_id, "ver": version,
-                    "etype": type(event).__name__,
-                    "edata": json.dumps(self._serialize(event)),
-                    "meta": json.dumps(getattr(event, "metadata", {})),
-                    "occ": event.occurred_at,
-                },
+    def load_events(self, aggregate_id: UUID, from_version: int = 0) -> list[dict]:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "SELECT version, event_type, payload FROM events WHERE aggregate_id = %s AND version > %s ORDER BY version",
+                (str(aggregate_id), from_version),
             )
-        await self._session.commit()
+            return [{"version": v, "type": t, "payload": p} for v, t, p in cur.fetchall()]
 
-    async def read_stream(self, stream_id: str, from_version: int = 0) -> List:
-        result = await self._session.execute(
-            text("""
-                SELECT event_type, event_data, metadata, occurred_at
-                FROM events
-                WHERE stream_id = :s AND version > :v
-                ORDER BY version ASC
-            """),
-            {"s": stream_id, "v": from_version},
-        )
-        return [
-            self._deserialize(row.event_type, json.loads(row.event_data),
-                              json.loads(row.metadata), row.occurred_at)
-            for row in result
-        ]
+    def load_snapshot(self, aggregate_id: UUID) -> Optional[dict]:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "SELECT version, state FROM snapshots WHERE aggregate_id = %s ORDER BY version DESC LIMIT 1",
+                (str(aggregate_id),),
+            )
+            row = cur.fetchone()
+            return {"version": row[0], "state": row[1]} if row else None
 
-    def _serialize(self, event) -> dict:
-        return {k: str(v) for k, v in event.__dict__.items()
-                if k not in ("event_id", "occurred_at", "metadata")}
-
-    def _deserialize(self, event_type: str, data: dict, metadata: dict, occurred_at) -> Any:
-        cls = EVENT_REGISTRY.get(event_type)
-        if not cls:
-            raise UnknownEventType(event_type)
-        return cls(**data, metadata=metadata, occurred_at=occurred_at)
+    def save_snapshot(self, aggregate_id: UUID, version: int, state: dict) -> None:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO snapshots(aggregate_id, version, state) VALUES (%s, %s, %s)"
+                " ON CONFLICT (aggregate_id, version) DO NOTHING",
+                (str(aggregate_id), version, json.dumps(state)),
+            )

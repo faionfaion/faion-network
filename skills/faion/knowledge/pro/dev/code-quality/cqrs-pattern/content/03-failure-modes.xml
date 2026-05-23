@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cqrs-pattern Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cqrs-pattern as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="cqrs-pattern Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the cqrs-pattern methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Command handler returns a DTO or full entity after saving, forcing the handler to also build a read projection inline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Couples write and read optimization. Breaks the single-responsibility of commands. Prevents independent scaling of read and write sides.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Query handler modifies state (increments view count, updates last-seen timestamp) as part of returning data.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Callers assume reads are idempotent and safe to retry. Hidden writes violate this assumption, cause double-counting, and break eventual consistency reasoning.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-mixed-handler" severity="high">
+      <symptom>OrderHandler.handle(...) does both write and read; tests are confusing; coupling reappears.</symptom>
+      <root-cause source="r1">Author conflated shapes.</root-cause>
+      <fix>Split into PlaceOrderHandler (command) + GetOrderHandler (query).</fix>
+    </antipattern>
+
+    <antipattern id="fm-mutation-in-query" severity="high">
+      <symptom>GetOrderHandler updates a counter on read; data drifts.</symptom>
+      <root-cause source="r2">Author optimised the wrong side.</root-cause>
+      <fix>Move the counter increment to a CommandHandler triggered explicitly; queries stay pure reads.</fix>
+    </antipattern>
+
+    <antipattern id="fm-no-mediator" severity="medium">
+      <symptom>Handlers import each other; CQRS topology becomes a spaghetti graph.</symptom>
+      <root-cause source="r5">Author skipped dispatch layer.</root-cause>
+      <fix>Add a Mediator + register handlers at composition root.</fix>
+    </antipattern>
+
+    <antipattern id="fm-undocumented-lag" severity="medium">
+      <symptom>Read side lags writes by 2 seconds; users see stale data; team blames &apos;eventual consistency&apos;.</symptom>
+      <root-cause source="r4">Lag never measured.</root-cause>
+      <fix>Measure projection_lag_ms_p95; publish SLO; reduce via projection-restart automation.</fix>
+    </antipattern>
+
   </section>
 </text>

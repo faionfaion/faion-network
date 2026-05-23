@@ -1,22 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-implementation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="event-sourcing-implementation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-implementation.json",
+  "type": "object",
+  "required": [
+    "event_store_kind",
+    "schema_path",
+    "uses_expected_version_check",
+    "append_only_at_grant_level",
+    "snapshot_threshold"
+  ],
+  "properties": {
+    "event_store_kind": {
+      "enum": [
+        "postgresql",
+        "eventstoredb",
+        "kafka",
+        "custom"
+      ]
+    },
+    "schema_path": {
+      "type": "string",
+      "minLength": 3
+    },
+    "uses_expected_version_check": {
+      "const": true
+    },
+    "append_only_at_grant_level": {
+      "const": true
+    },
+    "snapshot_threshold": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "projection_via_event_bus": {
+      "type": "boolean"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "event_store_kind": "postgresql",
+  "schema_path": "db/event-store-schema.sql",
+  "uses_expected_version_check": true,
+  "append_only_at_grant_level": true,
+  "snapshot_threshold": 50,
+  "projection_via_event_bus": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "event_store_kind": "custom",
+  "schema_path": "",
+  "uses_expected_version_check": false,
+  "append_only_at_grant_level": false,
+  "snapshot_threshold": 1
+}
+]]></code>
+    <note>schema_path empty; no expected_version check; not append-only; snapshot threshold too low.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">UPDATE/DELETE permissions on the events table for the application role.</forbidden>
+    <forbidden id="f2">Append without expected_version check.</forbidden>
+    <forbidden id="f3">Snapshot overwrite (UPDATE on existing (aggregate_id, version)).</forbidden>
+    <forbidden id="f4">Inline projection inside the append transaction.</forbidden>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-implementation.py">Validator script.</reference>
 </text>

@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-implementation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-implementation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="event-sourcing-implementation Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the event-sourcing-implementation methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-no-concurrency-check" severity="high">
+      <symptom>Two concurrent appends both succeed at version=4; replay diverges.</symptom>
+      <root-cause source="r1">Author skipped expected_version.</root-cause>
+      <fix>Use UNIQUE (aggregate_id, version) + catch UniqueViolation as ConcurrencyError.</fix>
+    </antipattern>
+
+    <antipattern id="fm-mutable-store" severity="high">
+      <symptom>DBA runs UPDATE events SET payload=... to fix a typo; audit trail compromised.</symptom>
+      <root-cause source="r2">Grant-level append-only not configured.</root-cause>
+      <fix>REVOKE UPDATE, DELETE ON events FROM PUBLIC; emit a compensating event instead.</fix>
+    </antipattern>
+
+    <antipattern id="fm-blocking-projection" severity="high">
+      <symptom>Append commits only after projection updates; one slow projection blocks all writes.</symptom>
+      <root-cause source="r4">Author coupled the two.</root-cause>
+      <fix>Decouple: append commits → EventBus async dispatches → projection handlers retry independently.</fix>
+    </antipattern>
+
+    <antipattern id="fm-non-deterministic-replay" severity="medium">
+      <symptom>Aggregate uses datetime.now() inside _apply; replays produce different state.</symptom>
+      <root-cause source="r5">Side-effect in handler.</root-cause>
+      <fix>Handlers must be pure functions of the event payload; capture timestamps in the event, not at replay time.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,47 +1,45 @@
-"""Event-sourced aggregate base class with _apply dispatch, version tracking, and pending events."""
+"""
+purpose: Aggregate base class with _apply dispatch + version tracking + pending events.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (event-sourcing-basics)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
+from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from typing import List, Type
-from uuid import UUID
-
-
-def _to_snake(name: str) -> str:
-    """Convert CamelCase event class name to snake_case handler name."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+from uuid import UUID, uuid4
 
 
 @dataclass
-class EventSourcedAggregate:
-    """Base for event-sourced aggregates.
-
-    Subclass and implement:
-    - _on_<event_name_snake_case>(self, event) for each event type
-    - create() classmethod factory
-    - from_events() classmethod for replay
-    - Command methods that call self._apply(SomeEvent(...))
-    """
-
-    id: UUID = field(default=None)
+class Aggregate:
+    id: UUID = field(default_factory=uuid4)
     version: int = 0
-    _pending_events: List = field(default_factory=list, repr=False)
+    _pending: List[object] = field(default_factory=list)
+
+    def apply_new(self, event: object) -> None:
+        self._apply(event)
+        self.version += 1
+        self._pending.append(event)
+
+    def _apply(self, event: object) -> None:
+        # convention: dispatch to apply_<EventClassName>
+        name = type(event).__name__
+        snake = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+        method = getattr(self, f"apply_{snake}", None)
+        if method is None:
+            raise NotImplementedError(f"no apply_{snake} on {type(self).__name__}")
+        method(event)
+
+    def flush_pending(self) -> List[object]:
+        events, self._pending = self._pending, []
+        return events
 
     @classmethod
-    def from_events(cls, aggregate_id: UUID, events: List) -> "EventSourcedAggregate":
-        instance = cls(id=aggregate_id)
-        for event in events:
-            instance._apply(event, is_new=False)
-        return instance
-
-    def _apply(self, event, is_new: bool = True) -> None:
-        handler_name = f"_on_{_to_snake(type(event).__name__)}"
-        handler = getattr(self, handler_name, None)
-        if handler:
-            handler(event)
-        self.version += 1
-        if is_new:
-            self._pending_events.append(event)
-
-    def collect_pending_events(self) -> List:
-        events = self._pending_events.copy()
-        self._pending_events.clear()
-        return events
+    def load_from_events(cls, events: list[object]) -> "Aggregate":
+        agg = cls()
+        for ev in events:
+            agg._apply(ev)
+            agg.version += 1
+        return agg

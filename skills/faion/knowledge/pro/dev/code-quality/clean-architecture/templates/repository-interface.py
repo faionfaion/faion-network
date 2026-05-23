@@ -1,35 +1,17 @@
-"""Abstract repository interface template — lives in domain/, implemented in infrastructure/."""
+"""
+purpose: Repository interface owned by the domain layer.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (clean-architecture)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+"""
 from abc import ABC, abstractmethod
-from typing import Generic, List, Optional, TypeVar
-from uuid import UUID
-
-EntityT = TypeVar("EntityT")
+from typing import Optional
 
 
-class Repository(ABC, Generic[EntityT]):
-    """Generic repository interface. Subclass per aggregate root."""
+class UserRepository(ABC):
+    @abstractmethod
+    async def get_by_id(self, user_id: str) -> Optional[object]: ...
 
     @abstractmethod
-    async def find_by_id(self, entity_id: UUID) -> Optional[EntityT]:
-        pass
-
-    @abstractmethod
-    async def save(self, entity: EntityT) -> None:
-        pass
-
-    @abstractmethod
-    async def delete(self, entity: EntityT) -> None:
-        pass
-
-
-# --- Example: UserRepository ---
-
-class UserRepository(Repository):
-    """Repository for the User aggregate root."""
-
-    @abstractmethod
-    async def find_by_email(self, email: str) -> Optional[object]:
-        pass
-
-    # Infrastructure implementation in infrastructure/persistence/repositories/user_repository_impl.py
-    # Never import the implementation from domain/ or application/
+    async def save(self, user: object) -> None: ...

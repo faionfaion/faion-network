@@ -1,27 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="event-sourcing-basics Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the event-sourcing-basics methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mutable event: assigning to event.customer_id after construction.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Breaks immutability guarantee. Any code that cached the event has an inconsistent copy, making replay non-deterministic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Catch-all event: OrderUpdated with entire_order_data: dict containing all order fields.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Loses intent (what specifically changed?), bloats the event log, and makes schema evolution impossible without breaking all existing consumers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Assigning new values to event fields after construction (e.g., event.customer_id = new_id).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Events stored in the event log become inconsistent with in-memory events. Replay produces different state than the original, making the event log unreliable as the source of truth.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using a single event type like OrderUpdated that carries the entire order state as a dict.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Loses intent (which field actually changed?), makes projections load unnecessary data, and makes schema evolution impossible without breaking all consumers that parse the dict.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-mutable-event" severity="high">
+      <symptom>Engineer &apos;fixes a typo&apos; in a stored event; replay diverges; audit trail compromised.</symptom>
+      <root-cause source="r1">Events treated as mutable rows.</root-cause>
+      <fix>Make event tables append-only; add INSERT-only DB grant; correct via a Compensated event.</fix>
+    </antipattern>
+
+    <antipattern id="fm-imperative-event-name" severity="medium">
+      <symptom>Event named &apos;PlaceOrder&apos;; downstream confuses command and fact.</symptom>
+      <root-cause source="r2">Author named the trigger, not the result.</root-cause>
+      <fix>Rename to OrderPlaced; update consumers.</fix>
+    </antipattern>
+
+    <antipattern id="fm-inline-mutation" severity="high">
+      <symptom>Command handler sets order.status=&apos;placed&apos; directly without emitting an event.</symptom>
+      <root-cause source="r3">Author shortcut.</root-cause>
+      <fix>Route every state change through apply_new(OrderPlaced(...)).</fix>
+    </antipattern>
+
+    <antipattern id="fm-no-concurrency-check" severity="high">
+      <symptom>Two concurrent appends both succeed at version=4; replay diverges.</symptom>
+      <root-cause source="r4">Optimistic concurrency missing.</root-cause>
+      <fix>Add expected_version on append; reject if stream moved.</fix>
+    </antipattern>
+
   </section>
 </text>

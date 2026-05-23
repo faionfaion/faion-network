@@ -1,0 +1,29 @@
+# purpose: GitHub Actions workflow bundling all 6 gates.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml (ci-prod-readiness-gates)
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small (template is loaded only when an artefact is being authored)
+name: prod-readiness
+on:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        run: make lint
+      - name: Perf budget
+        run: scripts/check-perf-budget.sh prod-readiness.yaml
+      - name: A11y
+        run: pa11y-ci --config .pa11yci.json
+      - name: SLO instrumentation
+        run: scripts/check-slo-instrumented.sh
+      - name: Dep vuln
+        uses: aquasecurity/trivy-action@0.19.0
+        with:
+          scan-type: fs
+          severity: HIGH,CRITICAL
+      - name: License
+        run: scripts/check-licenses.sh
