@@ -3,72 +3,94 @@ slug: helm-charts
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Helm is the package manager for Kubernetes (v4+ as of 2026).
-content_id: "4241bbaf3ffb9121"
-tags: [helm, kubernetes, charts, package-management, production-reliability]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Helm chart scaffold: Chart.yaml v2 with kubeVersion, values.schema.json, pinned dependencies, lint-clean templates and test hooks."
+content_id: "5755fabb492020af"
+complexity: medium
+produces: code
+est_tokens: 4000
+tags: [helm, kubernetes, packaging, chart, templates]
 ---
-# Helm Charts
+# Helm Chart Authoring
 
 ## Summary
 
-**One-sentence:** Helm is the package manager for Kubernetes (v4+ as of 2026).
+**One-sentence:** Helm chart scaffold: Chart.yaml v2 with kubeVersion, values.schema.json, pinned dependencies, lint-clean templates and test hooks.
 
-**One-paragraph:** Helm is the package manager for Kubernetes (v4+ as of 2026). Charts bundle related K8s resources into configurable, versioned packages. Every production chart must include: resource requests/limits, HPA, PodDisruptionBudget, pod anti-affinity, all three health probes, and a non-root security context.
+**One-paragraph:** Helm chart scaffold: Chart.yaml v2 with kubeVersion, values.schema.json, pinned dependencies, lint-clean templates and test hooks. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `code` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-helm-charts.py` before publication.
+
+**Ефективно для:**
+
+- Авторинг нового Helm-chart для in-house сервісу.
+- Додавання values.schema.json до існуючого chart.
+- Pinning + Chart.lock для chart з зовнішніми залежностями.
 
 ## Applies If (ALL must hold)
 
-- Complex applications with many K8s resources across multiple environments
-- Reusable deployment packages shared across teams or clusters
-- GitOps workflows (ArgoCD, Flux) where charts are the unit of change
-- Multi-environment deploys with per-environment values-{env}.yaml files
+- Input matches the methodology scope (helm-charts) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `code` before publication.
 
 ## Skip If (ANY kills it)
 
-- Quick experiments or learning — plain YAML is simpler
-- Small, static setups with no variation across environments — use Kustomize
-- Single-resource deployments — overhead not justified
-- When you want Helm to manage secrets — use External Secrets Operator instead
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Application spec | container image + ports + env contract | service team |
+| Target cluster constraint | min Kubernetes version + ingress class | platform team |
+| Values surface | list of operator-tunable knobs | owner of the app |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[kubernetes]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-code-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Chart.yaml` | Working scaffold (Chart.yaml / Jenkinsfile / nginx.conf depending on slug) |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-helm-charts.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[kubernetes]]
+- [[kubernetes-deployment]]
+- [[gitops]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `chart-yaml-v2-strict` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

@@ -3,71 +3,95 @@ slug: gcp-gke-architecture
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GKE provides two cluster modes (Autopilot and Standard), multiple topology options (zonal/regional/multi-cluster), and several node pool strategies (general, spot, GPU, high-memory).
-content_id: "455912253758728e"
-tags: [gcp, gke, kubernetes, terraform, autopilot]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Architecture spec for GKE: cluster mode (Autopilot/Standard), regional vs zonal topology, node-pool taxonomy and Workload Identity wiring."
+content_id: "3381b130c5a009f3"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [gcp, gke, kubernetes, autopilot, node-pools]
 ---
-# GKE Architecture Patterns
+# GKE Cluster Architecture
 
 ## Summary
 
-**One-sentence:** GKE provides two cluster modes (Autopilot and Standard), multiple topology options (zonal/regional/multi-cluster), and several node pool strategies (general, spot, GPU, high-memory).
+**One-sentence:** Architecture spec for GKE: cluster mode (Autopilot/Standard), regional vs zonal topology, node-pool taxonomy and Workload Identity wiring.
 
-**One-paragraph:** GKE provides two cluster modes (Autopilot and Standard), multiple topology options (zonal/regional/multi-cluster), and several node pool strategies (general, spot, GPU, high-memory). Choose Autopilot for most workloads; use Standard only for GPU, privileged containers, or deep custom node configs.
+**One-paragraph:** Architecture spec for GKE: cluster mode (Autopilot/Standard), regional vs zonal topology, node-pool taxonomy and Workload Identity wiring. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `spec` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-gcp-gke-architecture.py` before publication.
+
+**Ефективно для:**
+
+- Дизайн нового GKE кластера: Autopilot vs Standard.
+- Топологія node-pools під on-demand + Spot + GPU.
+- Налаштування private cluster + Workload Identity.
 
 ## Applies If (ALL must hold)
 
-- Deploying containerized workloads on GCP requiring Kubernetes orchestration.
-- Production services requiring 99.9%+ availability — use regional topology.
-- Batch or fault-tolerant workloads — use spot node pools for 70-90% cost reduction.
-- ML inference or video processing — use GPU-attached node pools in Standard mode.
-- Multi-region failover or global routing — use multi-cluster topology.
+- Input matches the methodology scope (gcp-gke-architecture) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `spec` before publication.
 
 ## Skip If (ANY kills it)
 
-- Fully serverless stateless workloads — Cloud Run is simpler and cheaper than GKE for event-driven HTTP.
-- Small single-binary services with predictable load — over-engineering adds cluster management cost.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload catalogue | name → resource shape / GPU / spot-tolerant flag | platform team |
+| SLO + DR requirement | RPO / RTO per environment | product owner |
+| Existing GCP project + VPC | project_id + subnet CIDRs | gcp-landing-zone |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-spec-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.md` | Spec skeleton with scope / components / decisions / risks sections |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-gke-architecture.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[gcp]]
+- [[gcp-network-architecture]]
+- [[kubernetes]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `autopilot-vs-standard` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

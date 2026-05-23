@@ -1,51 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gitlab-cicd Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gitlab-cicd. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitLab CI/CD Pipeline Design Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the gitlab-cicd methodology, each paired with rationale and source reference.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use rules: instead of only/except for all conditional job execution.</statement>
-      <rationale source="v1-source">only/except is deprecated and cannot combine conditions. rules: supports if/changes/exists combinators and per-rule variable overrides.</rationale>
+
+    <rule id="staged-pipeline-shape" testable="true" depth="essential">
+      <statement>Structure pipelines into explicit stages (build → test → scan → deploy) with needs: between jobs to keep the critical path short.</statement>
+      <rationale source="faion-network methodology base v1.1">Stage-only ordering serialises independent work; needs:-based DAG cuts pipeline time without losing ordering.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use needs: to form a DAG — jobs start when their specific dependencies finish, not after the whole stage finishes.</statement>
-      <rationale source="v1-source">Stage-based execution forces serial stage gates. needs: allows test and lint to run in parallel after build, cutting wall-clock time by 30-60%.</rationale>
+    <rule id="oidc-to-cloud" testable="true" depth="essential">
+      <statement>Use GitLab JWT (id_tokens) with cloud OIDC trust to mint short-lived credentials instead of CI/CD variables of type Variable.</statement>
+      <rationale source="faion-network methodology base v1.1">Variable-typed secrets are exfiltratable from any job logs; OIDC tokens expire in minutes.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Keep compiled outputs in artifacts, keep dependency folders in cache.</statement>
-      <rationale source="v1-source">Artifacts are guaranteed delivery between jobs. Cache is best-effort and shared across pipelines. Mixing them causes missing dist/ in deploy jobs.</rationale>
+    <rule id="protected-variables" testable="true" depth="essential">
+      <statement>Mark every long-lived credential as Protected + Masked and only expose them on protected branches and protected tags.</statement>
+      <rationale source="faion-network methodology base v1.1">Unprotected variables leak to merge-request pipelines from forks and feature branches.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Scope cache keys with a lockfile hash to invalidate when dependencies change.</statement>
-      <rationale source="v1-source">A stale cache with the wrong package versions causes intermittent test failures that are hard to reproduce.</rationale>
+    <rule id="required-mr-approvals" testable="true" depth="essential">
+      <statement>Require 1+ approval on protected branches with eligible approvers restricted to a code-owners group, and block self-approval.</statement>
+      <rationale source="faion-network methodology base v1.1">Self-approval and arbitrary-approver patterns defeat the four-eyes rule that approvals exist to enforce.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Parallelize independent jobs using needs: [] or needs: [specific-job] rather than stage ordering.</statement>
-      <rationale source="v1-source">With stage ordering, lint waits for all build jobs. With needs: lint can run in parallel with other test jobs as soon as its single dependency finishes.</rationale>
+    <rule id="child-pipelines-monorepo" testable="true" depth="essential">
+      <statement>Use child / parent pipelines and rules: changes to scope monorepo builds to changed paths instead of always running the whole graph.</statement>
+      <rationale source="faion-network methodology base v1.1">Path-scoped child pipelines turn a 30-minute monorepo build into a 5-minute targeted build on most merge requests.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Set expire_in on all artifacts. Use 1 day for CI intermediates, longer only for release artifacts.</statement>
-      <rationale source="v1-source">Without expiry, artifacts accumulate indefinitely. GitLab default is 30 days which fills storage.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Include GitLab security templates via include: rather than writing custom SAST/DAST jobs.</statement>
-      <rationale source="v1-source">GitLab-maintained templates stay updated with new vulnerability signatures. Custom jobs require ongoing maintenance.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Mark all CI/CD secrets as Protected AND Masked in GitLab variable settings.</statement>
-      <rationale source="v1-source">Protected limits the variable to protected branches/tags. Masked prevents the value from appearing in job logs. Both are required; neither alone is sufficient.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Define environment: name and url on every deploy job, and pair with an on_stop job.</statement>
-      <rationale source="v1-source">Environments enable deployment tracking, approval workflows, and rollback. Without on_stop, review namespaces accumulate and consume cluster resources.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Enable Docker BuildKit and use --cache-from with the latest tag to speed up image builds.</statement>
-      <rationale source="v1-source">Without layer cache reuse, every build starts from scratch. BuildKit parallelizes layer builds and enables cache import/export.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Use when: manual for production deployments; use automated sync for staging.</statement>
-      <rationale source="v1-source">Production requires human gate. Staging should be continuously deployed to catch integration issues early.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

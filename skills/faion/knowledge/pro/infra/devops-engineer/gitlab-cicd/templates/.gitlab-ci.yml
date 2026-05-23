@@ -1,0 +1,40 @@
+# purpose: gitlab-cicd config skeleton
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+stages: [build, test, scan, deploy]
+
+default:
+  image: registry.gitlab.com/org/ci-base:1.0.0
+  interruptible: true
+
+variables:
+  GIT_DEPTH: "1"
+
+.oidc-aws: &oidc-aws
+  id_tokens:
+    AWS_CI_OIDC:
+      aud: sts.amazonaws.com
+
+build:
+  stage: build
+  script: [make build]
+
+test:
+  stage: test
+  script: [make test]
+  needs: [build]
+
+scan:
+  stage: scan
+  script: [make scan]
+  needs: [build]
+
+deploy:
+  stage: deploy
+  <<: *oidc-aws
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  script: [make deploy]

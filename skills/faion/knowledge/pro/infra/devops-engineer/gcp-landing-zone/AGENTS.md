@@ -3,71 +3,95 @@ slug: gcp-landing-zone
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A GCP landing zone (cloud foundation) is a modular configuration enabling enterprise adoption of Google Cloud.
-content_id: "1e5e4d021896cbc6"
-tags: [gcp, landing-zone, terraform, iam, organization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Landing-zone spec for new GCP organisations: folder hierarchy, baseline org policies, Workload Identity Federation, centralised logging and billing-export wiring."
+content_id: "a12021d613f69055"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [gcp, landing-zone, org-policy, workload-identity, governance]
 ---
-# GCP Landing Zone Design
+# GCP Landing Zone
 
 ## Summary
 
-**One-sentence:** A GCP landing zone (cloud foundation) is a modular configuration enabling enterprise adoption of Google Cloud.
+**One-sentence:** Landing-zone spec for new GCP organisations: folder hierarchy, baseline org policies, Workload Identity Federation, centralised logging and billing-export wiring.
 
-**One-paragraph:** A GCP landing zone (cloud foundation) is a modular configuration enabling enterprise adoption of Google Cloud. It establishes resource hierarchy, IAM, network architecture, security controls, and monitoring as a reusable foundation before any workload is deployed.
+**One-paragraph:** Landing-zone spec for new GCP organisations: folder hierarchy, baseline org policies, Workload Identity Federation, centralised logging and billing-export wiring. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `spec` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-gcp-landing-zone.py` before publication.
+
+**Ефективно для:**
+
+- Розгортання нової GCP-організації з нуля.
+- Впровадження org-policy + централізованого логування.
+- Підключення SSO + MFA + IdP до GCP.
 
 ## Applies If (ALL must hold)
 
-- Starting a new GCP organization or migrating from another cloud.
-- Setting up multi-environment (production, staging, development) project structures.
-- Enforcing org-wide security policies (no SA keys, no public IPs, location restrictions).
-- Deploying a Shared VPC host project for centralized network administration.
-- Establishing FinOps foundations: billing export, budgets, cost labels.
+- Input matches the methodology scope (gcp-landing-zone) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `spec` before publication.
 
 ## Skip If (ANY kills it)
 
-- Single-project proofs of concept — org-level setup overhead is not justified.
-- Personal/sandbox accounts without an organization — many controls require org node.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Org charter | list of environments + regulated workloads | compliance / leadership |
+| IdP integration target | OIDC discovery URL + group mapping | identity team |
+| Billing account | billing_account_id + budget alert thresholds | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-spec-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.md` | Spec skeleton with scope / components / decisions / risks sections |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-landing-zone.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[gcp]]
+- [[gcp-network-architecture]]
+- [[iac-pr-review-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `folder-per-environment` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

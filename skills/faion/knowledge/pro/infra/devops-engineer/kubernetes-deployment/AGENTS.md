@@ -3,71 +3,94 @@ slug: kubernetes-deployment
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Kubernetes offers two built-in strategies (Recreate and Rolling Update) and three advanced strategies via Argo Rollouts (Blue-Green, Canary, A/B Testing).
-content_id: "276516038785fbfe"
-tags: [kubernetes, deployment, argo-rollouts, blue-green, canary]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Decision record selecting Rolling Update, Blue-Green or Canary deployment strategy with rollback wiring and progressive-delivery gating."
+content_id: "19536d42ddccf098"
+complexity: medium
+produces: decision-record
+est_tokens: 4000
+tags: [kubernetes, deployment-strategy, blue-green, canary, argo-rollouts]
 ---
 # Kubernetes Deployment Strategies
 
 ## Summary
 
-**One-sentence:** Kubernetes offers two built-in strategies (Recreate and Rolling Update) and three advanced strategies via Argo Rollouts (Blue-Green, Canary, A/B Testing).
+**One-sentence:** Decision record selecting Rolling Update, Blue-Green or Canary deployment strategy with rollback wiring and progressive-delivery gating.
 
-**One-paragraph:** Kubernetes offers two built-in strategies (Recreate and Rolling Update) and three advanced strategies via Argo Rollouts (Blue-Green, Canary, A/B Testing). 80% of Kubernetes outages stem from deployment errors. The default Rolling Update is zero-downtime but has medium rollback speed; Blue-Green provides instant rollback at 2x resource cost; Canary is the most risk-averse — it shifts traffic incrementally while Prometheus/Datadog analysis gates each step.
+**One-paragraph:** Decision record selecting Rolling Update, Blue-Green or Canary deployment strategy with rollback wiring and progressive-delivery gating. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `decision-record` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-kubernetes-deployment.py` before publication.
+
+**Ефективно для:**
+
+- Вибір deployment-стратегії для нового сервісу.
+- Налаштування canary metric-analysis через Argo Rollouts.
+- Перехід з Recreate на Rolling Update / Blue-Green.
 
 ## Applies If (ALL must hold)
 
-- Any production Kubernetes deployment that requires zero downtime (Rolling Update minimum).
-- Critical services needing instant rollback — use Blue-Green.
-- High-traffic systems where a bad deploy must not reach all users — use Canary.
-- GitOps workflows — Argo Rollouts integrates natively with Argo CD.
+- Input matches the methodology scope (kubernetes-deployment) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `decision-record` before publication.
 
 ## Skip If (ANY kills it)
 
-- Applications that cannot run two versions simultaneously (DB schema breaking change) — use Recreate or migrate schema first.
-- Dev/staging environments where downtime is acceptable — Recreate is simpler.
-- Teams without Prometheus metrics or observability — Canary analysis gates require metrics; fall back to Rolling Update.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service traffic profile | RPS + acceptable error budget per service | product owner |
+| Rollback contract | max time-to-rollback target | release manager |
+| Available analysis source | Prometheus / Datadog metric for canary analysis | observability team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[kubernetes]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-decision-record-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | ADR-style skeleton with context / options / decision / consequences |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-kubernetes-deployment.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[kubernetes]]
+- [[gitops]]
+- [[helm-charts]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `strategy-matches-state` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

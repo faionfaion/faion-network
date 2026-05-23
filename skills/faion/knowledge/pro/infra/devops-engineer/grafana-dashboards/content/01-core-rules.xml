@@ -1,35 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="grafana-dashboards Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for grafana-dashboards. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Grafana Dashboard Design Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the grafana-dashboards methodology, each paired with rationale and source reference.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use RED (Rate, Errors, Duration) for service dashboards and USE (Utilization, Saturation, Errors) for infrastructure/hardware dashboards. Do not mix them in the same row.</statement>
-      <rationale source="v1-source">RED answers "is the service healthy from the user's perspective?" USE answers "is the infrastructure saturating?" Mixing them creates cognitive overhead for on-call engineers who need fast answers.</rationale>
+
+    <rule id="red-or-use-structure" testable="true" depth="essential">
+      <statement>Every service dashboard MUST follow RED (Rate / Errors / Duration) for request-driven services or USE (Utilisation / Saturation / Errors) for resources.</statement>
+      <rationale source="faion-network methodology base v1.1">RED/USE are the literature-validated minimum panels; freeform panels miss the symptoms on-call needs first.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Structure dashboards hierarchically: summary row at top (stat panels), detail rows below (time series). Use Grafana 12 Tabs to segment cluster/namespace/pod views without splitting into separate dashboards.</statement>
-      <rationale source="v1-source">On-call engineers need the summary answer in under 5 seconds. Separate dashboards require navigation time; tabs keep context while segregating detail.</rationale>
+    <rule id="dashboard-as-code" testable="true" depth="essential">
+      <statement>Store dashboard JSON in Git, generate via grafonnet / jsonnet where multiple dashboards share variables, and deploy via Grafana provisioning manifests.</statement>
+      <rationale source="faion-network methodology base v1.1">Hand-edited dashboards drift between environments; provisioning + JSON in Git keeps them reproducible.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every dashboard must have at minimum three variables: datasource (type: datasource), namespace (type: query), and interval (type: interval with auto).</statement>
-      <rationale source="v1-source">Datasource variable enables multi-cluster reuse. Namespace variable enables team-specific scoping. Interval variable prevents fixed time windows from producing misleading rates.</rationale>
+    <rule id="variable-parameterisation" testable="true" depth="essential">
+      <statement>Parameterise dashboards on service / namespace / region variables and forbid hard-coded label values inside panel queries.</statement>
+      <rationale source="faion-network methodology base v1.1">Hard-coded labels create N copies of the same dashboard; variable parameterisation collapses them to one.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use Stat panels for current values needing instant color-coded status. Use Time series for trends. Use Gauge for percentage values with min/max bounds (SLO compliance, error budget). Use Table for multi-dimensional comparisons.</statement>
-      <rationale source="v1-source">Choosing the wrong panel type forces users to mentally transform data. A Stat panel for a time-based trend loses context; a Time series for a single current value adds unnecessary visual noise.</rationale>
+    <rule id="alert-linked-panel" testable="true" depth="essential">
+      <statement>Link every alert to the dashboard panel that triggered it and embed the alert query in that panel.</statement>
+      <rationale source="faion-network methodology base v1.1">Without an alert→panel link, on-call wastes minutes finding the visualisation that explains the page.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Provision all production dashboards as Kubernetes ConfigMaps with the grafana_dashboard=1 label. Never rely on UI-created dashboards in production.</statement>
-      <rationale source="v1-source">UI dashboards are lost on pod restart or cluster recreation. ConfigMap-provisioned dashboards are version-controlled, reviewed in PRs, and survive infra events. The label triggers automatic discovery by Grafana's sidecar.</rationale>
+    <rule id="retention-aware-queries" testable="true" depth="essential">
+      <statement>Match panel queries to the retention of the data source — do not query 30-day rollup for a real-time panel or 1-min raw for a quarterly view.</statement>
+      <rationale source="faion-network methodology base v1.1">Mismatched query range blows out backend query cost or returns no data — both kill dashboard trust.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Configure Grafana to load dashboards from a folder mounted via the sidecar. Set allowUiUpdates: false in production to prevent UI drift from the Git-managed source.</statement>
-      <rationale source="v1-source">allowUiUpdates: true allows operators to save UI changes that are then lost on the next pod restart (they are not written back to the ConfigMap). Disabling it enforces the GitOps workflow.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Add deployment and alert annotations to all service dashboards. Annotations correlate metric changes with the events that caused them.</statement>
-      <rationale source="v1-source">Without deployment markers, engineers spend minutes correlating a latency spike to the release that caused it. Annotations make the correlation instant and reduce MTTR.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
     </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

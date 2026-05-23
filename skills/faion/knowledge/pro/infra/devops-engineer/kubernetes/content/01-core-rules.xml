@@ -1,11 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="kubernetes Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for kubernetes. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Production Readiness Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the kubernetes methodology, each paired with rationale and source reference.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="requests-limits-on-every-container" testable="true" depth="essential">
+      <statement>Every container MUST declare CPU + memory requests AND limits; base requests on observed P95, not guesses.</statement>
+      <rationale source="faion-network methodology base v1.1">Missing requests/limits triggers OOMKill or noisy-neighbour at the worst time — admission controllers can enforce this.</rationale>
     </rule>
+    <rule id="three-probes" testable="true" depth="essential">
+      <statement>Configure startupProbe (slow-start apps), readinessProbe (traffic gating) and livenessProbe (deadlock recovery) on every container.</statement>
+      <rationale source="faion-network methodology base v1.1">Each probe addresses a distinct failure mode — collapsing them onto one creates measurable downtime.</rationale>
+    </rule>
+    <rule id="security-context-hardened" testable="true" depth="essential">
+      <statement>Every container sets runAsNonRoot: true, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false and capabilities.drop ['ALL'].</statement>
+      <rationale source="faion-network methodology base v1.1">Together these four flags neutralise the most common container-escape primitives.</rationale>
+    </rule>
+    <rule id="pdb-for-replicas-gt-one" testable="true" depth="essential">
+      <statement>Define a PodDisruptionBudget for every Deployment with &gt; 1 replicas; set minAvailable to at least 1 (or maxUnavailable = 1 for larger ones).</statement>
+      <rationale source="faion-network methodology base v1.1">Without a PDB, voluntary disruption (node drain, upgrade) can take the whole service down simultaneously.</rationale>
+    </rule>
+    <rule id="no-latest-tag" testable="true" depth="essential">
+      <statement>Never use the 'latest' tag in production; pin to an immutable tag or — preferably — sha256 digest.</statement>
+      <rationale source="faion-network methodology base v1.1">latest re-tags silently; pinned digest is the only deploy-time-knowable image.</rationale>
+    </rule>
+    <rule id="scaler-stack" testable="true" depth="essential">
+      <statement>Use HPA for request-driven workloads, VPA for resource-request right-sizing and Karpenter or Cluster Autoscaler for nodes — these complement, not replace, each other.</statement>
+      <rationale source="faion-network methodology base v1.1">Each scaler addresses a different axis; treating them as substitutes leaves one axis unmanaged.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

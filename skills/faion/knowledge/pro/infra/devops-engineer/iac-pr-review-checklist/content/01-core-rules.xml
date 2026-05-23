@@ -1,68 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="IaC PR Review Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable axis rules every IaC PR review must apply. A PR may not be approved if any axis returns a block verdict.</summary>
+<text id="01-core-rules" title="IaC Pull-Request Review Checklist Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the iac-pr-review-checklist methodology, each paired with rationale and source reference.</summary>
 
-  <section title="The five axes">
+  <section title="Rule set">
 
-    <rule id="r1-blast-radius-tier" testable="true" depth="essential">
-      <statement>Map every changed resource to a blast radius tier (S0 = global outage if misconfigured, S1 = single-region outage, S2 = single service, S3 = sandbox). Reject PR if blast radius tier is unstated for ANY changed resource, OR if S0 / S1 changes lack a documented mitigation (canary, feature flag, or maintenance window).</statement>
-      <rationale source="incident postmortems">Most production IaC outages stem from a high-blast-radius change reviewed without the reviewer realizing the tier. Forcing per-resource tier surfaces the risk upfront.</rationale>
+    <rule id="blast-radius-named" testable="true" depth="essential">
+      <statement>PR description names the blast radius (modules + environments affected) and the rollback path before review starts.</statement>
+      <rationale source="faion-network methodology base v1.1">Without a named blast radius, the reviewer cannot reason about acceptable change risk.</rationale>
     </rule>
-
-    <rule id="r2-iam-changes-explicit" testable="true" depth="essential">
-      <statement>Every IAM-policy / role-binding / service-account change requires an explicit reviewer comment naming: principal, added_permissions, removed_permissions, scope_of_resources. Reject PR if IAM changes are present without this summary, OR if any added_permission grants wildcard ("*") action on production resources.</statement>
-      <rationale source="cloud-security audit findings">Silent IAM escalation is the most common audit finding. Wildcard policies appear regularly because the original author "just needed it to work."</rationale>
+    <rule id="plan-or-diff-attached" testable="true" depth="essential">
+      <statement>PR carries the terraform plan / helm diff / kustomize build output as a comment or artefact, dated within the review window.</statement>
+      <rationale source="faion-network methodology base v1.1">Reviewing source without plan is reviewing intent without effect — the divergence is where incidents live.</rationale>
     </rule>
-
-    <rule id="r3-state-safety" testable="true" depth="essential">
-      <statement>For Terraform / OpenTofu PRs: reviewer must verify the plan output contains no destroy-and-recreate operations on stateful resources (databases, queues, storage buckets, persistent volumes). Reject PR if such operations are detected, unless a documented state-migration ticket is linked.</statement>
-      <rationale source="data-loss postmortems">Destroy-and-recreate on a stateful resource silently drops production data. Plan-output review catches this in seconds.</rationale>
+    <rule id="no-state-mutation-in-pr" testable="true" depth="essential">
+      <statement>PRs that touch state movement (terraform state mv / rm) or destructive replacements MUST flag the mutation in the title and require two approvers.</statement>
+      <rationale source="faion-network methodology base v1.1">State mutations are not retriable; the title-flag is the documented attention-grabbing convention.</rationale>
     </rule>
-
-    <rule id="r4-secrets-handling" testable="true" depth="essential">
-      <statement>Verify: (a) no plaintext secrets in diff, (b) secrets-manager references resolve via supported syntax, (c) any new secret has a documented rotation policy, (d) GHA workflows referencing `secrets.X` declare `permissions:` block. Reject PR on any failure.</statement>
-      <rationale source="GHA / Terraform leak studies">Even encrypted-at-rest secrets leak through unscoped GHA permissions or untemplated secret references. The four sub-checks are non-optional.</rationale>
+    <rule id="secrets-never-in-diff" testable="true" depth="essential">
+      <statement>The diff MUST not contain plaintext secrets, key material, or cloud account IDs outside the documented allow-list.</statement>
+      <rationale source="faion-network methodology base v1.1">Once secrets land in a public PR they are burned even if reverted — never-in-diff is the only safe rule.</rationale>
     </rule>
-
-    <rule id="r5-rollback-plan-required" testable="true" depth="essential">
-      <statement>PR description must include a rollback plan with: rollback_command, expected_state_after_rollback, max_time_to_rollback. Reject PR if any of these three fields is missing, vague ("revert the commit"), or unverified.</statement>
-      <rationale source="MTTR studies">Outages where rollback is undefined extend MTTR by 3-10×. Pre-defined rollback turns recovery into a deterministic action.</rationale>
+    <rule id="iam-minimum-and-explicit" testable="true" depth="essential">
+      <statement>Any IAM change is explicit (no resource = "*"), uses managed policies where possible, and the PR enumerates new permissions in plain language.</statement>
+      <rationale source="faion-network methodology base v1.1">IAM is the recurring breach root cause; explicit + plain-language change forces the reviewer to actually read it.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Reviewer comment with per-axis verdict">
-      <code lang="text"><![CDATA[
-## Review
-
-[blast_radius]    S1  — RDS instance + IAM role. Mitigation: maintenance window
-                       declared 2026-05-22 23:00 UTC. ✅
-[iam]             added: rds:Describe* on prod-db (scoped). removed: none.
-                       no wildcards. ✅
-[state_safety]    plan output: 0 destroy + 0 recreate. ✅
-[secrets]         no plaintext secrets. RDS password sourced from
-                       aws_secretsmanager_secret_version.db_pwd. rotation = 90d. ✅
-[rollback]        rollback_command: `terraform apply -target=... -auto-approve`
-                       expected_state: prior tag v3.4.1. max_time: 8 min. ✅
-
-Verdict: APPROVE.
-      ]]></code>
-      <note>Illustrates the five axes producing a single approval verdict.</note>
-    </example>
-
-    <example type="bad" title="Rubber-stamp review">
-      <code lang="text"><![CDATA[
-"LGTM"
-      ]]></code>
-      <note>Illustrates the absence of every axis. PRs approved with "LGTM" alone fail this methodology.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

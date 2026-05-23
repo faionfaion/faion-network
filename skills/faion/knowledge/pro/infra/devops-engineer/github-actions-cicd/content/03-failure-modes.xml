@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="github-actions-cicd Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for github-actions-cicd as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="GitHub Actions CI/CD Hardening Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real github-actions-cicd deployments, each paired with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Uploading node_modules/ as an artifact between jobs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>node_modules can be hundreds of MB. Use actions/cache for dependencies; use artifacts only for build outputs (dist/, coverage/).</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="floating-action-tag" severity="high">
+      <symptom>Build pipeline silently picks up a malicious release of a third-party action.</symptom>
+      <root-cause source="faion-network field reports">Action pinned to @v4 or @main, not a SHA.</root-cause>
+      <fix>Pin every third-party action to a full 40-character commit SHA; review SHA bumps as code.</fix>
+    </antipattern>
+
+    <antipattern id="default-token-write" severity="medium">
+      <symptom>A compromised job pushes to the repo because GITHUB_TOKEN had write contents scope.</symptom>
+      <root-cause source="faion-network field reports">permissions: not set at workflow / job level; default is too permissive.</root-cause>
+      <fix>Set permissions: contents: read at top of workflow; grant write scopes only on the jobs that need them.</fix>
+    </antipattern>
+
+    <antipattern id="long-lived-cloud-secret" severity="high">
+      <symptom>Cloud breach traced back to an AWS access key stored as a repo secret.</symptom>
+      <root-cause source="faion-network field reports">Secrets stored as long-lived credentials instead of OIDC.</root-cause>
+      <fix>Configure cloud OIDC trust + id-token: write; mint short-lived credentials per run.</fix>
+    </antipattern>
+
+    <antipattern id="fork-pr-trust-leak" severity="high">
+      <symptom>Untrusted fork PR runs in pull_request_target context with access to secrets.</symptom>
+      <root-cause source="faion-network field reports">pull_request_target combined with checkout of fork code without trust gate.</root-cause>
+      <fix>Gate on label / member / signed commit; never checkout fork code into a context that has secrets.</fix>
+    </antipattern>
+
   </section>
 </text>

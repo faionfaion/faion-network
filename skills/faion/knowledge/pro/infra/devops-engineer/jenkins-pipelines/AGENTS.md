@@ -3,72 +3,94 @@ slug: jenkins-pipelines
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Declarative Jenkins pipelines for production CI/CD: parallel stages, Kubernetes pod agents, shared libraries, and multi-environment deployment with manual approval gates.
-content_id: "bd5eaa1e821029c1"
-tags: [jenkins, pipelines, ci-cd, declarative, kubernetes]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Declarative Jenkinsfile scaffold: typed parameters, parallel stages, Kubernetes pod agents, shared-library pinning and post-build cleanup."
+content_id: "850ff92f03458214"
+complexity: medium
+produces: code
+est_tokens: 4000
+tags: [jenkins, cicd, declarative-pipeline, shared-library, kubernetes-agent]
 ---
-# Jenkins Pipelines
+# Jenkins Declarative Pipelines
 
 ## Summary
 
-**One-sentence:** Declarative Jenkins pipelines for production CI/CD: parallel stages, Kubernetes pod agents, shared libraries, and multi-environment deployment with manual approval gates.
+**One-sentence:** Declarative Jenkinsfile scaffold: typed parameters, parallel stages, Kubernetes pod agents, shared-library pinning and post-build cleanup.
 
-**One-paragraph:** Declarative Jenkins pipelines for production CI/CD: parallel stages, Kubernetes pod agents, shared libraries, and multi-environment deployment with manual approval gates. Default to declarative syntax; use scripted only for dynamic logic (e.g., detecting changed services in a monorepo).
+**One-paragraph:** Declarative Jenkinsfile scaffold: typed parameters, parallel stages, Kubernetes pod agents, shared-library pinning and post-build cleanup. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `code` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-jenkins-pipelines.py` before publication.
+
+**Ефективно для:**
+
+- Міграція FreeStyle job → declarative Jenkinsfile.
+- Налаштування Kubernetes agent pool.
+- Pinning shared-library версій.
 
 ## Applies If (ALL must hold)
 
-- CI/CD pipelines on an existing Jenkins installation
-- Multi-environment deployments requiring human approval gates before production
-- Monorepo builds that need to detect changed services and build only those
-- Containerized builds requiring isolated, disposable Kubernetes pod agents
+- Input matches the methodology scope (jenkins-pipelines) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `code` before publication.
 
 ## Skip If (ANY kills it)
 
-- New projects without existing Jenkins investment — prefer GitHub Actions or GitLab CI
-- Simple single-step builds — overhead of Jenkins setup is not justified
-- When you need native OIDC cloud auth without plugins — Jenkins requires plugins for this
-- GitOps-first workflows — ArgoCD/Flux are better fits than Jenkins for K8s GitOps
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Jenkins controller version | LTS minor + plugin set | ci team |
+| Agent topology | static vs Kubernetes vs cloud agents + labels | platform team |
+| Shared-library catalogue | available globals + versions | ci team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[github-actions-cicd]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-code-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Jenkinsfile` | Working scaffold (Chart.yaml / Jenkinsfile / nginx.conf depending on slug) |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-jenkins-pipelines.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[github-actions-cicd]]
+- [[gitlab-cicd]]
+- [[gitops]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `declarative-default` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

@@ -3,71 +3,95 @@ slug: gcp-network-architecture
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GCP networking centers on VPC design (Single, Shared, Hub-and-Spoke), IP address planning for GKE secondary ranges, Private Service Connect for private Google API access, Cloud NAT for egress, and hierarchical firewall policies for org-wide security.
-content_id: "1cba3f48bfbdfaca"
-tags: [gcp, vpc, networking, terraform, shared-vpc]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Network spec for GCP: Shared VPC topology, CIDR allocation for GKE secondary ranges, Private Service Connect, Cloud NAT and hierarchical firewall policy."
+content_id: "5c4be672a0f2d6d7"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [gcp, vpc, shared-vpc, private-service-connect, firewall]
 ---
-# GCP Network Architecture Patterns
+# GCP Network Architecture
 
 ## Summary
 
-**One-sentence:** GCP networking centers on VPC design (Single, Shared, Hub-and-Spoke), IP address planning for GKE secondary ranges, Private Service Connect for private Google API access, Cloud NAT for egress, and hierarchical firewall policies for org-wide security.
+**One-sentence:** Network spec for GCP: Shared VPC topology, CIDR allocation for GKE secondary ranges, Private Service Connect, Cloud NAT and hierarchical firewall policy.
 
-**One-paragraph:** GCP networking centers on VPC design (Single, Shared, Hub-and-Spoke), IP address planning for GKE secondary ranges, Private Service Connect for private Google API access, Cloud NAT for egress, and hierarchical firewall policies for org-wide security. Shared VPC is the standard pattern for multi-project environments.
+**One-paragraph:** Network spec for GCP: Shared VPC topology, CIDR allocation for GKE secondary ranges, Private Service Connect, Cloud NAT and hierarchical firewall policy. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `spec` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-gcp-network-architecture.py` before publication.
+
+**Ефективно для:**
+
+- Дизайн Shared VPC для організації з 5+ проектами.
+- Розрахунок CIDR під GKE pod / service ranges.
+- Налаштування Cloud NAT + hierarchical firewall.
 
 ## Applies If (ALL must hold)
 
-- Designing a multi-project GCP environment — use Shared VPC to centralize network control.
-- Deploying GKE clusters — plan pod and service secondary CIDR ranges before creating subnets.
-- Private instances needing Google API access (Cloud SQL, Storage, BigQuery) — use Private Service Connect.
-- Private instances needing internet egress without public IPs — use Cloud NAT.
-- Enterprise environments with on-premises connectivity — design hub-and-spoke topology with VPN or Interconnect.
+- Input matches the methodology scope (gcp-network-architecture) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `spec` before publication.
 
 ## Skip If (ANY kills it)
 
-- Single-project sandbox environments — Shared VPC overhead is not justified; use a simple single VPC.
-- Fully public serverless workloads (Cloud Run with default networking) — VPC plumbing adds complexity with no benefit.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Environment list with /16 budget | env → required IP space | architecture review |
+| Service-project list | service projects that attach to host VPC | gcp-landing-zone |
+| Egress requirements | domain allow-list + bandwidth target | security team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-spec-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.md` | Spec skeleton with scope / components / decisions / risks sections |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-network-architecture.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[gcp]]
+- [[gcp-landing-zone]]
+- [[gcp-gke-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `shared-vpc-default` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

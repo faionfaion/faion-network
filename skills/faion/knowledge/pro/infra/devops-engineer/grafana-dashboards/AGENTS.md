@@ -3,73 +3,95 @@ slug: grafana-dashboards
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Grafana is the leading open-source observability platform for visualizing metrics, logs, and traces.
-content_id: "b612033fa605e75c"
-tags: [grafana, monitoring, observability, dashboards, prometheus]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Dashboard spec: RED/USE structure, variable parameterisation, alert-linked panels and version-controlled JSON dashboards with provisioning manifests."
+content_id: "0908116fb03800f5"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [grafana, observability, dashboards, prometheus, alerting]
 ---
-# Grafana Dashboards
+# Grafana Dashboard Design
 
 ## Summary
 
-**One-sentence:** Grafana is the leading open-source observability platform for visualizing metrics, logs, and traces.
+**One-sentence:** Dashboard spec: RED/USE structure, variable parameterisation, alert-linked panels and version-controlled JSON dashboards with provisioning manifests.
 
-**One-paragraph:** Grafana is the leading open-source observability platform for visualizing metrics, logs, and traces. Use the RED method (Rate, Errors, Duration) for service dashboards and the USE method (Utilization, Saturation, Errors) for infrastructure. Provision dashboards as code via ConfigMaps or GitOps — never rely on UI-only dashboards that vanish on pod restart.
+**One-paragraph:** Dashboard spec: RED/USE structure, variable parameterisation, alert-linked panels and version-controlled JSON dashboards with provisioning manifests. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `spec` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-grafana-dashboards.py` before publication.
+
+**Ефективно для:**
+
+- Дизайн RED/USE dashboards для нового сервісу.
+- Перехід з ручних на JSON-as-code dashboards.
+- Зв'язування alert ↔ panel для on-call.
 
 ## Applies If (ALL must hold)
 
-- Visualizing Prometheus, Loki, or Elasticsearch data for ops teams.
-- Building SLO dashboards showing error budgets alongside availability.
-- Creating on-call runbook dashboards with annotated deployment markers.
-- Standardizing observability across microservices with shared dashboard templates.
-- Grafana 12+: using Tabs to segment large dashboards without splitting metrics.
+- Input matches the methodology scope (grafana-dashboards) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `spec` before publication.
 
 ## Skip If (ANY kills it)
 
-- Business intelligence / analytics — use dedicated BI tools (Looker, Metabase).
-- Alerting without Alertmanager/Grafana Alerting configured — dashboards alone do not page.
-- Replacing application logging — Grafana shows metrics, not log content (use Explore for that).
-- Public customer-facing status pages — use Statuspage or similar.
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service SLOs | service → latency / error / saturation thresholds | product owner |
+| Metric source inventory | Prometheus / Loki / Tempo data-source IDs | observability team |
+| Alert routing rules | team → notification channel map | on-call rota |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[kubernetes]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-spec-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.md` | Spec skeleton with scope / components / decisions / risks sections |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-grafana-dashboards.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[kubernetes]]
+- [[iac-pr-review-checklist]]
+- [[gitops]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `red-or-use-structure` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

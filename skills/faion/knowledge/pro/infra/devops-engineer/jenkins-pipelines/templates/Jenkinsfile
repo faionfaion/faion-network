@@ -1,0 +1,36 @@
+// purpose: jenkins-pipelines code skeleton
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~200-1000 tokens when loaded as context
+@Library('shared-lib@v1.2.3') _
+pipeline {
+  agent {
+    kubernetes { yaml libraryResource('agents/standard.yaml') }
+  }
+  options {
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '50'))
+    disableConcurrentBuilds()
+  }
+  stages {
+    stage('Build') { steps { sh 'make build' } }
+    stage('Test') {
+      parallel {
+        stage('unit') { steps { sh 'make test-unit' } }
+        stage('integration') { steps { sh 'make test-int' } }
+        stage('scan') { steps { sh 'make scan' } }
+      }
+    }
+    stage('Deploy') {
+      when { branch 'main' }
+      input { message 'Promote to prod?'; ok 'Deploy'; submitter 'release-managers' }
+      steps { sh 'make deploy ENV=prod' }
+    }
+  }
+  post {
+    always { cleanWs() }
+    failure { slackSend channel: '#deploy', message: "FAIL: ${env.JOB_NAME} #${env.BUILD_NUMBER}" }
+  }
+}

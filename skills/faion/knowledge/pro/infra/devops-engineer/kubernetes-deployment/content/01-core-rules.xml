@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="kubernetes-deployment Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for kubernetes-deployment. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Deployment Strategies Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the kubernetes-deployment methodology, each paired with rationale and source reference.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Configure maxUnavailable and maxSurge explicitly; never rely on defaults for production services.</statement>
-      <rationale source="v1-source">Default values (25% each) may cause too-aggressive rollouts for services with tight SLAs. Conservative settings (maxUnavailable: 1, maxSurge: 2) ensure only one pod is unavailable at a time while allowing faster rollout.</rationale>
+
+    <rule id="strategy-matches-state" testable="true" depth="essential">
+      <statement>Recreate is only acceptable for stateful singletons; stateless services MUST use Rolling Update, Blue-Green or Canary.</statement>
+      <rationale source="faion-network methodology base v1.1">Recreate causes a downtime window every deploy — unacceptable for any user-facing service.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Always configure an AnalysisTemplate with concrete success thresholds before enabling automated canary promotion.</statement>
-      <rationale source="v1-source">Canary without analysis is just a slow rolling update. The value comes from metric-gated promotion: if error rate exceeds threshold during any step, the rollout automatically aborts and reverts to stable.</rationale>
+    <rule id="rolling-update-bounds" testable="true" depth="essential">
+      <statement>For Rolling Update, set maxSurge and maxUnavailable explicitly (do not rely on defaults) sized to the replica count and to PDB minAvailable.</statement>
+      <rationale source="faion-network methodology base v1.1">Default 25%/25% breaks PDB on small replica counts; explicit values keep rollout safe.</rationale>
     </rule>
+    <rule id="blue-green-trigger-switch" testable="true" depth="essential">
+      <statement>Blue-Green deployments MUST flip traffic via service selector or weighted ingress with a documented rollback step that flips back in &lt; 60 seconds.</statement>
+      <rationale source="faion-network methodology base v1.1">Without a fast, single-action rollback, Blue-Green loses the only property that justifies its cost.</rationale>
+    </rule>
+    <rule id="canary-metric-analysis" testable="true" depth="essential">
+      <statement>Canary deployments MUST attach metric-based analysis (Argo Rollouts AnalysisTemplate, Flagger metric refs) that auto-aborts on threshold breach.</statement>
+      <rationale source="faion-network methodology base v1.1">Time-based canaries miss regressions that show up under real traffic; metric analysis is what makes canary safe.</rationale>
+    </rule>
+    <rule id="rollback-tested-quarterly" testable="true" depth="essential">
+      <statement>Rollback procedure is documented per service AND exercised at least quarterly in a non-trivial scenario.</statement>
+      <rationale source="faion-network methodology base v1.1">Rollback that has never been run is theatre — the quarterly drill is what proves it works.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

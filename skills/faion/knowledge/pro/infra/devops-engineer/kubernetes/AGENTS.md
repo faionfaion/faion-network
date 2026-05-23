@@ -3,72 +3,94 @@ slug: kubernetes
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Kubernetes production readiness requires: always set resource requests AND limits, configure liveness + readiness + startup probes, enforce runAsNonRoot: true + readOnlyRootFilesystem: true + allowPrivilegeEscalation: false + capabilities.
-content_id: "81419648c7c4d695"
-tags: [kubernetes, k8s, container-orchestration, production-readiness, security-context]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Production-readiness checklist for Kubernetes workloads: resource requests + limits, three probes, hardened security context, PDB, image pinning and HPA wiring."
+content_id: "1f1c5e5e3a458516"
+complexity: medium
+produces: checklist
+est_tokens: 4000
+tags: [kubernetes, production-readiness, security-context, probes, hpa]
 ---
-# Kubernetes
+# Kubernetes Production Readiness
 
 ## Summary
 
-**One-sentence:** Kubernetes production readiness requires: always set resource requests AND limits, configure liveness + readiness + startup probes, enforce runAsNonRoot: true + readOnlyRootFilesystem: true + allowPrivilegeEscalation: false + capabilities.
+**One-sentence:** Production-readiness checklist for Kubernetes workloads: resource requests + limits, three probes, hardened security context, PDB, image pinning and HPA wiring.
 
-**One-paragraph:** Kubernetes production readiness requires: always set resource requests AND limits, configure liveness + readiness + startup probes, enforce runAsNonRoot: true + readOnlyRootFilesystem: true + allowPrivilegeEscalation: false + capabilities.drop: ["ALL"] on every container, and define a PodDisruptionBudget for every Deployment with more than one replica. Never use latest image tags in production.
+**One-paragraph:** Production-readiness checklist for Kubernetes workloads: resource requests + limits, three probes, hardened security context, PDB, image pinning and HPA wiring. Use it whenever the `Applies If` preconditions all hold; the methodology produces a single `checklist` artefact that conforms to `content/02-output-contract.xml` and is verified by `scripts/validate-kubernetes.py` before publication.
+
+**Ефективно для:**
+
+- Production readiness review для нового сервісу.
+- Аудит resource requests / limits / probes на існуючих Deployment.
+- Виставлення PDB + HPA + security context на бойових namespaces.
 
 ## Applies If (ALL must hold)
 
-- Deploying any containerized workload that needs horizontal scaling, rolling updates, or self-healing
-- Multi-service application where service discovery via DNS is needed
-- Workloads requiring persistent storage with automated provisioning
-- Environments where GitOps (ArgoCD/Flux) manages the desired state
+- Input matches the methodology scope (kubernetes) — not an adjacent workload.
+- All artefacts in `Prerequisites` are present and within their freshness window.
+- Owner is identified and can review the produced `checklist` before publication.
 
 ## Skip If (ANY kills it)
 
-- Single-container application with no scaling needs — Docker Compose or a simple VM is simpler
-- Stateful workloads with complex data replication not supported by a Kubernetes Operator — managed databases are a better fit
-- Batch/ETL workload that runs infrequently — serverless (Cloud Run, Lambda) avoids paying for idle nodes
-- Team has no Kubernetes operational experience and production SLO is tight — operational learning curve is high
+- Input is an adjacent workload covered by a more specific methodology in `[[Related]]`.
+- Required prerequisite artefact is unavailable or older than the documented freshness window.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload manifest | Deployment / StatefulSet YAML under review | service team |
+| Observed utilisation | P95 CPU / memory from prior staging run | observability team |
+| Cluster constraints | PodSecurityStandard level + admission policies | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[kubernetes-deployment]] | upstream context likely already loaded when this methodology fires |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output/gate per step | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| gather-and-validate-inputs | haiku | Mechanical inventory + freshness check. |
+| apply-core-rules | sonnet | Rule-by-rule reasoning over the inputs. |
+| draft-checklist-artefact | sonnet | Template filling with bounded judgement. |
+| validate-and-publish | haiku | Script-driven validation + traceability wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/checklist.md` | Checklist skeleton with id / rule / MUST/SHOULD / evidence columns |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-kubernetes.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[kubernetes-deployment]]
+- [[helm-charts]]
+- [[image-digest-pinning-policy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `requests-limits-on-every-container` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.

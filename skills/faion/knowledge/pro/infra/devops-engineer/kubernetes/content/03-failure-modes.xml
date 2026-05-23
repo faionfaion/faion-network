@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="kubernetes Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for kubernetes as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Kubernetes Production Readiness Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real kubernetes deployments, each paired with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Setting requests equal to limits (Guaranteed QoS) for all pods.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Guaranteed QoS is appropriate for latency-sensitive workloads. For most workloads, Burstable QoS (requests lower than limits) allows better bin-packing and handles traffic spikes without OOMKill.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Setting HPA minReplicas to 1 for production services.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A single replica has no redundancy during rolling updates, node maintenance, or pod restarts. Use minReplicas: 2 minimum; add PodAntiAffinity to spread across nodes.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="latest-tag-in-prod" severity="high">
+      <symptom>Re-rollouts pull a different image than the last verified release.</symptom>
+      <root-cause source="faion-network field reports">Workload pinned to image:latest or another floating tag.</root-cause>
+      <fix>Pin to immutable tag or sha256 digest; admission controller rejects floating tags in prod namespaces.</fix>
+    </antipattern>
+
+    <antipattern id="no-readiness-probe" severity="medium">
+      <symptom>Service receives traffic before warmup completes; cold-start errors visible to users.</symptom>
+      <root-cause source="faion-network field reports">Container missing readinessProbe; readiness defaults to true at pod start.</root-cause>
+      <fix>Add readinessProbe matching the warmup signal; verify ramp-up via canary.</fix>
+    </antipattern>
+
+    <antipattern id="memory-limit-not-equal-request" severity="high">
+      <symptom>Random OOMKills during traffic peaks.</symptom>
+      <root-cause source="faion-network field reports">Memory request &lt; limit; kernel OOM-kills the largest delta when node is contended.</root-cause>
+      <fix>Set memory request = limit; alert on RSS approaching 90% of the limit.</fix>
+    </antipattern>
+
+    <antipattern id="missing-pdb" severity="medium">
+      <symptom>Node drain takes all replicas of a service down simultaneously.</symptom>
+      <root-cause source="faion-network field reports">Deployment has &gt; 1 replicas but no PodDisruptionBudget.</root-cause>
+      <fix>Define a PDB with minAvailable ≥ 1; tune to PDB + replicas pair.</fix>
+    </antipattern>
+
   </section>
 </text>

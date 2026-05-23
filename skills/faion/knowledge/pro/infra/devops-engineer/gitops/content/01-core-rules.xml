@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gitops Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gitops. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GitOps Delivery Pattern Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>≥5 testable rules grounding the gitops methodology, each paired with rationale and source reference.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Prefer pull-based GitOps for security-focused, multi-cluster, or compliance-driven environments.</statement>
-      <rationale source="v1-source">Pull-based (ArgoCD, FluxCD) eliminates cluster credentials from CI pipelines — the agent inside the cluster only needs read access to the Git repo. Push-based requires exposing cluster API credentials to external CI systems, which must be rotated and audited separately.</rationale>
+
+    <rule id="git-is-source-of-truth" testable="true" depth="essential">
+      <statement>Declarative manifests in Git are the single source of truth — cluster state is reconciled from Git, never edited live.</statement>
+      <rationale source="faion-network methodology base v1.1">Out-of-band kubectl edits create silent drift; reconciliation from Git makes the cluster diffable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use the hybrid model (CI pushes manifest updates to Git, GitOps agent applies) for most new deployments.</statement>
-      <rationale source="v1-source">Hybrid combines push-model velocity for image builds and tag updates with pull-model safety for apply and drift detection. CI never has cluster credentials; the GitOps agent reconciles from Git state.</rationale>
+    <rule id="apps-vs-envs-split" testable="true" depth="essential">
+      <statement>Split repos (or paths) into apps/ (Helm charts + Kustomize bases) and envs/ (per-environment values + overlays).</statement>
+      <rationale source="faion-network methodology base v1.1">Mixing app definition with env-specific values blocks promotion via simple PR; the split makes promotion a single-line change.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use folder-per-environment, not branch-per-environment, for environment separation.</statement>
-      <rationale source="v1-source">Branch-based environments require cross-branch cherry-picks for config changes and make diff visibility hard. Folder-based environments (apps/{app}/overlays/{staging,prod}) keep all environments in one PR diff and enable Kustomize overlays without branching complexity.</rationale>
+    <rule id="reconciler-policy" testable="true" depth="essential">
+      <statement>Configure the reconciler (Argo CD / Flux) with automated sync + self-heal + prune for non-prod and manual sync gating for prod.</statement>
+      <rationale source="faion-network methodology base v1.1">Auto-prune in prod is the documented foot-gun; manual gating keeps the human in the rollback loop.</rationale>
     </rule>
+    <rule id="drift-detection-alert" testable="true" depth="essential">
+      <statement>Alert on detected drift between cluster and Git within 5 minutes and fail the pipeline if drift persists past the SLO.</statement>
+      <rationale source="faion-network methodology base v1.1">Silent drift is the failure mode that turns GitOps into theatre; the alert is the only honest detector.</rationale>
+    </rule>
+    <rule id="progressive-rollout" testable="true" depth="essential">
+      <statement>Wire progressive rollout (Argo Rollouts / Flagger) for any service with measurable traffic, with metric-based analysis gating each step.</statement>
+      <rationale source="faion-network methodology base v1.1">Stepwise rollout with metric gating turns a bad deploy into a 1-2% blast radius instead of 100%.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, do NOT run this methodology — return early with reason.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree's negative branch must terminate cleanly without partial output.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold AND scope is explicit, run the methodology end-to-end and produce the canonical artefact.</statement>
+      <rationale source="F-066 decision-tree contract">Decision tree positive-branch terminus; aliases the apply-end-to-end verdict.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
