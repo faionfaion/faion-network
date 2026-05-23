@@ -1,37 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedding-models Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedding-models as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Embedding Models Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns from embedding-model selection deployments.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>OpenAI batch API returns embeddings in a list that may not be in input order; agents that skip the sort step get misaligned embeddings for shuffled batches.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The API does not guarantee order preservation. Always sort by response.data[i].index before pairing with input texts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>BGE-M3 lexical_weights output is a sparse dict per document, not a dense array — agents expecting list[float] will crash; handle both dense and sparse paths.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>BGE-M3 supports hybrid search with sparse weights. Agents must check the output type and handle sparse dict format differently from dense arrays.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>SentenceTransformer model download at first use can take 30s-5min; agents in time-bounded tasks must pre-download models or use a local model cache.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>First call to model.encode() triggers a multi-gigabyte download from HuggingFace. Agents should pre-download during setup, not during the inference loop.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>When using Matryoshka dimension reduction (dimensions param), the truncated vector is NOT simply the first N values of the full vector — it is separately trained; do not slice full-dim embeddings manually.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Matryoshka is a training technique that produces independent models at each dimension. Slicing full-dim embeddings produces garbage.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Voyage AI and Cohere have per-request token limits (varies by plan); agents must chunk texts before calling embed for texts &gt;model context limit.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>API documentation specifies limits but does not enforce them with clear errors. Oversized requests silently truncate or fail with cryptic errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Sentence-transformers GPU inference requires matching CUDA/torch versions; a CUDA version mismatch silently falls back to CPU without an error.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CUDA mismatch is detected at runtime but silently downgraded to CPU. Agent will see 10x slower inference and assume the model is just slow.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="openai-unsorted-batch" severity="high">
+      <symptom>RAG returns wrong documents intermittently; ~1% of queries off by one input.</symptom>
+      <root-cause source="OpenAI API docs">Response not order-preserving; code paired by list index instead of `item.index`.</root-cause>
+      <fix>`response.data.sort(key=lambda x: x.index)` before mapping back to input texts.</fix>
+    </antipattern>
+
+    <antipattern id="cohere-no-input-type" severity="high">
+      <symptom>Cohere NDCG 5–10pp below expected on bench.</symptom>
+      <root-cause source="Cohere docs">`input_type` parameter omitted; defaulted to generic mode.</root-cause>
+      <fix>Pass `input_type='search_document'` at index time, `'search_query'` at query time. Reject Cohere config that does not specify both.</fix>
+    </antipattern>
+
+    <antipattern id="dimensions-on-ada-002" severity="medium">
+      <symptom>Ingestion fails with API error OR (worse) silently rejects and embedding has wrong dim.</symptom>
+      <root-cause source="OpenAI docs">`dimensions` only supported on `text-embedding-3-*`.</root-cause>
+      <fix>Validate at config time: `dimensions` only allowed when model_name starts with `text-embedding-3-`.</fix>
+    </antipattern>
+
+    <antipattern id="mistral-512-truncation" severity="medium">
+      <symptom>Mistral embeds long docs but retrieval misses tail content; no error.</symptom>
+      <root-cause source="Mistral docs">Some versions silently truncate at 512 tokens.</root-cause>
+      <fix>Pre-chunk to `max_context_tokens` from quirks. Reject single texts exceeding model context.</fix>
+    </antipattern>
+
+    <antipattern id="bge-m3-sparse-shape-mismatch" severity="high">
+      <symptom>BGE-M3 embed call returns dict; downstream code expects list[float]; ingestion fails silently or rows have empty vectors.</symptom>
+      <root-cause source="BGE-M3 docs">Sparse format is dict[token → weight], not dense array.</root-cause>
+      <fix>Convert: route to a sparse-capable DB OR convert dict to dense float array before upsert.</fix>
+    </antipattern>
+
   </section>
 </text>

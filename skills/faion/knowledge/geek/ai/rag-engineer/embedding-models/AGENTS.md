@@ -3,72 +3,102 @@ slug: embedding-models
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Different models trade off quality, cost, context length, and language coverage.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Picks embedding model for a corpus class (general/code/multilingual) — pins model+version, handles Cohere input_type, OpenAI dimensions, Mistral/Voyage caveats, SentenceTransformer singleton.
 content_id: "ef33781808b6be25"
+complexity: medium
+produces: code
+est_tokens: 3700
 tags: [embeddings, models, batch-processing, api, rag]
 ---
 # Embedding Models
 
 ## Summary
 
-**One-sentence:** Different models trade off quality, cost, context length, and language coverage.
+**One-sentence:** Picks embedding model for a corpus class (general/code/multilingual) — pins model+version, handles Cohere input_type, OpenAI dimensions, Mistral/Voyage caveats, SentenceTransformer singleton.
 
-**One-paragraph:** Different models trade off quality, cost, context length, and language coverage. text-embedding-3-large leads MTEB benchmarks for English but costs 6x more than text-embedding-3-small and stores 2x more per vector. Local models (BGE-M3) are free and support multilingual + sparse output for hybrid search, but require GPU for production throughput. Cohere v3's input_type asymmetry (search_document vs search_query) improves retrieval NDCG by 5-10% over generic mode. Model selection is a load-bearing decision: a model change invalidates the entire index.
+**One-paragraph:** Each provider has quirks that, when missed, cost recall silently: OpenAI returns batches out of order, Cohere ignores input_type → 5–10% loss, Mistral truncates at 512 tokens, BGE-M3 sparse format mismatches dense DB clients. This methodology produces a `ModelSelector` artefact + bench harness that pins model name + version, applies provider tuning, and benchmarks Recall@10 against the domain set.
+
+**Ефективно для:**
+
+- New project — pick embedding model + provider.
+- Migration between providers — confirm portability.
+- Code corpora — Voyage-code-3, OpenAI text-embedding-3-large.
+- Multilingual — Voyage, BGE-M3, Cohere embed-multilingual.
+- High-storage-cost corpus — Matryoshka dim reduction with OpenAI v3.
 
 ## Applies If (ALL must hold)
 
-- Selecting an embedding model at the start of a RAG project (pin model before indexing)
-- Benchmarking multiple providers to find the best price/quality ratio for a specific corpus
-- Migrating an index from one model to another (e.g., ada-002 → text-embedding-3-large)
-- Building code-search RAG where general-purpose models underperform (use voyage-code-3 or BGE-M3)
-- Processing multilingual corpora where English-only models degrade retrieval quality
+- New project OR provider migration.
+- Domain bench set available (≥50 pairs).
+- Vector DB chosen with metric pinned.
+- Named owner.
 
 ## Skip If (ANY kills it)
 
-- Corpus is already indexed and migration cost outweighs quality gain — benchmark first
-- Latency budget is <20ms — API models add network RTT; local models add model-load overhead
-- Fully offline/air-gapped deployment with no GPU — local models on CPU are slow for batches >1k
+- Existing model meets recall target + no migration pending.
+- No bench set.
+- Single-provider lock-in for regulatory reasons.
+- Greenfield prototype.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Candidate model catalog | YAML | platform |
+| Domain bench set | JSONL | eval repo |
+| Vector DB config (metric + dim) | YAML | platform |
+| Token budget for bench | int | finops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[embedding-generation]]` | Calling convention. |
+| `[[embedding-applications]]` | Pipeline that uses the choice. |
+| `[[rag-bench-harness-template]]` | Bench. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 12 rules + run/skip terminals | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for model-selection artefact | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 5-step: shortlist → tune → bench → pick winner → deploy | ~700 |
+| `content/06-decision-tree.xml` | essential | Routes corpus class to model family | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `shortlist` | sonnet | Provider-aware judgment. |
+| `run-bench` | haiku | Numeric. |
+| `pick-winner` | opus | Multi-axis trade-off. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/embedding_pipeline.py` | Pipeline class with bench + selection. |
+| `templates/model-selection.json` | Selection artefact skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-embedding-models.py` | Validate model-selection artefact | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[embedding-generation]]
+- [[embedding-applications]]
+- [[embedding-caching]]
+- [[embedding-cost-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes corpus class (general/code/multilingual/legal-biomedical) to candidate family. The bench gate picks the winner within family.

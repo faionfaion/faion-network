@@ -1,5 +1,9 @@
-"""
-EmbeddingPipeline — full pipeline: chunk → cache-check → batch embed.
+# purpose: EmbeddingPipeline — chunk → cache-check → batch embed driven by model-selection.json.
+# consumes: model-selection.json + tokenizer + provider client + (optional) cache
+# produces: list of {id, vector, metadata} ready for vector DB upsert
+# depends-on: content/01-core-rules.xml r1, r4, r5, r7, r10, r11, r12
+# token-budget-impact: provider embedding API only; 0 LLM tokens for the wiring
+"""EmbeddingPipeline — full pipeline: chunk → cache-check → batch embed.
 
 Usage:
     config = EmbeddingConfig(model="text-embedding-3-large", chunk_size=500)

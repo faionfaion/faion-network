@@ -1,55 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="embedding-models Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for embedding-models. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Embedding Models Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>12 testable rules + 2 terminal conclusions every model-selection artefact must enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Sort batch response by item.index before mapping back to inputs; the OpenAI API may return embeddings out of order.</statement>
-      <rationale source="v1-source">Skipping the sort step produces misaligned embeddings for shuffled input batches, a silent correctness bug.</rationale>
+    <rule id="r1-openai-sort-by-index" testable="true" depth="essential">
+      <statement>OpenAI batch response sorted by `item.index` before mapping back to inputs.</statement>
+      <rationale source="OpenAI API docs">Response order is not guaranteed; skipping sort produces misaligned embeddings.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The dimensions parameter is only valid for text-embedding-3 models; applying it to ada-002 raises an error.</statement>
-      <rationale source="v1-source">ada-002 does not support Matryoshka dimension reduction; the parameter is silently rejected in some SDK versions and raises in others.</rationale>
+
+    <rule id="r2-dimensions-v3-only" testable="true" depth="essential">
+      <statement>`dimensions` parameter only valid for `text-embedding-3-*`; applying to `ada-002` rejected.</statement>
+      <rationale source="OpenAI docs">ada-002 does not support Matryoshka.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Mistral embed has a 512-token context limit on some versions; longer texts are silently truncated.</statement>
-      <rationale source="v1-source">Truncation without error means the embedding represents only the first 512 tokens. Pre-chunk long texts.</rationale>
+
+    <rule id="r3-mistral-512-truncation" testable="true" depth="essential">
+      <statement>Mistral embed has 512-token context on some versions. Pre-chunk longer texts; do not rely on silent truncation.</statement>
+      <rationale source="Mistral docs">Silent truncation drops tail content.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Always pass input_type to Cohere embed-v3; omitting it defaults to generic mode and degrades retrieval NDCG by ~5-10%.</statement>
-      <rationale source="v1-source">Cohere v3 models are trained with asymmetric input types. The generic default underperforms the asymmetric search_document/search_query split.</rationale>
+
+    <rule id="r4-cohere-input-type" testable="true" depth="essential">
+      <statement>Cohere embed-v3 MUST receive `input_type` per call. Generic default degrades NDCG 5–10%.</statement>
+      <rationale source="Cohere docs">Asymmetric input types are a tuning lever.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Instantiate SentenceTransformer once per process; do not create multiple instances on the same GPU.</statement>
-      <rationale source="v1-source">Each instance loads the full model into GPU RAM. Two bge-large-en-v1.5 instances on a 16 GB GPU will OOM.</rationale>
+
+    <rule id="r5-sentence-transformer-singleton" testable="true" depth="essential">
+      <statement>SentenceTransformer instantiated once per process. Multiple instances on same GPU OOM.</statement>
+      <rationale source="HuggingFace docs">Each instance loads multi-GB weights.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>BGE-M3 sparse embeddings are dict[token → weight], not dense arrays; adapt before storing in vector DBs that expect dense float arrays.</statement>
-      <rationale source="v1-source">Most vector DB clients (Qdrant, Chroma) expect float lists for dense vectors. The sparse dict format requires special sparse-vector handling.</rationale>
+
+    <rule id="r6-bge-m3-sparse-shape" testable="true" depth="essential">
+      <statement>BGE-M3 sparse embeddings are `dict[token → weight]`, not dense arrays. Adapt or use a sparse-capable DB.</statement>
+      <rationale source="BGE-M3 docs">Mismatch silently fails on dense-only DB clients.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Pin the exact model name (including version suffix if the provider uses them) in config — providers silently update model weights.</statement>
-      <rationale source="v1-source">Pinning guarantees reproducible results across ingestion runs. Unpinned models silently pick up provider updates, invalidating cached embeddings.</rationale>
+
+    <rule id="r7-pin-model-version" testable="true" depth="essential">
+      <statement>Pin exact `model_name` + `model_version`. Providers silently update weights.</statement>
+      <rationale source="OpenAI silent-versioning">Unpinned models invalidate cached vectors silently.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Run MTEB benchmark scores for your specific task type (retrieval vs. clustering vs. classification) — aggregate MTEB rank ≠ RAG retrieval rank.</statement>
-      <rationale source="v1-source">MTEB leaderboard aggregates results across 56 tasks. Your specific task (e.g., legal document retrieval) may have different winner than the overall leaderboard.</rationale>
+
+    <rule id="r8-mteb-task-specific" testable="true" depth="essential">
+      <statement>Use MTEB retrieval (not aggregate) score for ranking candidates.</statement>
+      <rationale source="MTEB structure">Aggregate over 56 tasks misleads when only retrieval matters.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>For OpenAI text-embedding-3 models, start with dimensions=512; benchmark vs. full 1536/3072 before paying for extra storage.</statement>
-      <rationale source="v1-source">Dimension reduction via Matryoshka is trained and lossless up to a point. 512 dims captures ~98% of semantic quality while reducing storage by 6.7x vs 3072 dims.</rationale>
+
+    <rule id="r9-start-dim-512" testable="true" depth="essential">
+      <statement>For OpenAI text-embedding-3, start with `dimensions=512`; bench vs 1536/3072 before paying for storage.</statement>
+      <rationale source="OpenAI Matryoshka paper">512 captures ~98% of quality at 6.7x storage savings vs 3072.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Always use Cohere input_type="search_document" at index time and input_type="search_query" at query time — asymmetric embedding is a significant quality lever.</statement>
-      <rationale source="v1-source">Asymmetric embeddings align the embedding space to the retrieval task, improving NDCG by 5-10% vs generic embedding.</rationale>
+
+    <rule id="r10-asymmetric-index-query" testable="true" depth="essential">
+      <statement>Use `search_document` at index time and `search_query` at query time for Cohere/Voyage. Asymmetric embedding boosts NDCG 5–10%.</statement>
+      <rationale source="Cohere/Voyage docs">Asymmetric models are trained for this split.</rationale>
     </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Pre-normalize all embeddings to unit length before storing; dot product then equals cosine similarity and is faster in most vector DBs.</statement>
-      <rationale source="v1-source">Normalized vectors allow dot-product similarity to equal cosine similarity, which is faster to compute. Many vector DBs optimize for unit-normalized vectors.</rationale>
+
+    <rule id="r11-pre-normalize-cosine" testable="true" depth="essential">
+      <statement>Pre-normalize vectors to unit length when cosine intended. Dot product then equals cosine and is faster.</statement>
+      <rationale source="Vector DB optimization">Normalized cosine = dot product; faster compute.</rationale>
     </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Track the model name as metadata on every vector — if you ever need to migrate, you can identify which vectors need re-embedding.</statement>
-      <rationale source="v1-source">Multi-model indexes allow gradual migration and A/B testing. Single-model metadata on storage makes full-corpus re-embedding the only option.</rationale>
+
+    <rule id="r12-version-metadata-per-vector" testable="true" depth="essential">
+      <statement>Store `model_name + version` per vector. Lets partial re-embedding on deprecation.</statement>
+      <rationale source="Internal — multi-model migration">Single-model collection metadata forces full re-embed; per-vector lets gradual migration.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>New project OR provider migration AND bench set available → run the 5-step selection procedure.</statement>
+      <rationale source="self">Positive-branch conclusion target.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Existing model meets recall target AND no migration pending → skip; reuse selection.</statement>
+      <rationale source="self">Negative-branch conclusion target.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

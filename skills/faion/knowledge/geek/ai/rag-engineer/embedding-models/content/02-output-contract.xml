@@ -1,22 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="embedding-models Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Embedding Models Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the model-selection artefact + examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/embedding-models.json",
+  "type": "object",
+  "required": ["model_name", "model_version", "provider", "corpus_class", "dim", "metric", "mteb_retrieval_score", "domain_recall10", "provider_quirks"],
+  "properties": {
+    "model_name": {"type": "string", "minLength": 2},
+    "model_version": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["openai", "cohere", "voyage", "mistral", "google", "azure", "local"]},
+    "corpus_class": {"enum": ["general", "code", "multilingual", "legal", "biomedical"]},
+    "dim": {"type": "integer", "minimum": 256, "maximum": 4096},
+    "metric": {"enum": ["cosine", "dot_product", "l2"]},
+    "mteb_retrieval_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "domain_recall10": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "provider_quirks": {
+      "type": "object",
+      "properties": {
+        "cohere_input_type_index": {"type": "string"},
+        "cohere_input_type_query": {"type": "string"},
+        "openai_dimensions": {"type": "integer"},
+        "max_context_tokens": {"type": "integer"}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item id="f1">model_version empty (rule r7)</item>
+      <item id="f2">Cohere selection without input_type quirks (rule r4)</item>
+      <item id="f3">domain_recall10 missing OR &lt; baseline (rule r8)</item>
+      <item id="f4">ada-002 with openai_dimensions param (rule r2)</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "model_name": "text-embedding-3-large",
+  "model_version": "2026-04",
+  "provider": "openai",
+  "corpus_class": "general",
+  "dim": 512,
+  "metric": "cosine",
+  "mteb_retrieval_score": 0.668,
+  "domain_recall10": 0.78,
+  "provider_quirks": {
+    "openai_dimensions": 512,
+    "max_context_tokens": 8191
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "model_name": "text-embedding-ada-002",
+  "model_version": "",
+  "provider": "openai",
+  "corpus_class": "general",
+  "dim": 128,
+  "metric": "cosine",
+  "mteb_retrieval_score": 0.6,
+  "domain_recall10": 0.4,
+  "provider_quirks": {"openai_dimensions": 128}
+}
+]]></code>
+    <note>version empty (f1); ada-002 + dimensions param (f4); dim out of range; domain_recall10 below baseline (f3).</note>
+  </example>
+
+  <reference path="scripts/validate-embedding-models.py">Validator script</reference>
 </text>
