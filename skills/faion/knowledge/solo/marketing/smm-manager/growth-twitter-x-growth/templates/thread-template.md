@@ -1,3 +1,11 @@
+<!--
+purpose: Markdown skeleton for a generic X thread (non-launch variant).
+consumes: operator's thread topic + 5-7 sub-points
+produces: a Markdown thread draft ready to schedule on X
+depends-on: content/01-core-rules.xml (r3 weekly-thread rule)
+token-budget-impact: ~300 tokens
+-->
+
 # Twitter/X Thread Template
 
 ## Tweet 1 — Hook

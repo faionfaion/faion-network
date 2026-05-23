@@ -1,3 +1,11 @@
+"""__faion_header__
+purpose: Compute community health metrics from a Discord/Circle/Slack export.
+consumes: platform activity CSV/JSON export
+produces: JSON health-score dict (DAU/MAU, post rate, churn-risk members)
+depends-on: AGENTS.md Task Routing (score_community_health → haiku)
+token-budget-impact: ~500 tokens
+"""
+
 """
 Score community health from a Discord, Circle, or Slack activity export.
 

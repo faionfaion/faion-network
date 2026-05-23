@@ -3,74 +3,95 @@ slug: growth-social-media-strategy
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The PACE framework (Platform → Audience → Content → Engagement) for solopreneurs building an audience on social media.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a PACE strategy spec (Platform → Audience → Content → Engagement) that picks ≤2 primary platforms and locks one weekly atomization loop for a solo operator."
 content_id: "3f695d18e318a26c"
-tags: [social-media, growth, engagement, strategy, content-calendar]
+complexity: medium
+produces: spec
+est_tokens: 4600
+tags: [social-media, strategy, PACE, calendar, audience]
 ---
-# Social Media Strategy
+
+# Growth Social Media Strategy
 
 ## Summary
 
-**One-sentence:** The PACE framework (Platform → Audience → Content → Engagement) for solopreneurs building an audience on social media.
+**One-sentence:** Produces a PACE strategy spec (Platform → Audience → Content → Engagement) that picks ≤2 primary platforms and locks one weekly atomization loop for a solo operator.
 
-**One-paragraph:** The PACE framework (Platform → Audience → Content → Engagement) for solopreneurs building an audience on social media. Master one platform before adding another; commit to six months before evaluating results. Track engagement rate, not follower count, as the primary KPI.
+**Ефективно для:** Solo operators spread across five platforms with zero compounding traction — needs the discipline pivot from 'be everywhere' to 'one atomization loop'.
+
+**One-paragraph:** Solo operators lose traction by trying to be everywhere. The PACE spec forces ≤2 primary platforms picked on Audience + Time-fit criteria, a weekly atomization loop (one long-form → 5 shorter cuts), and an engagement quota that scales with the size of the audience. Output is a 12-week strategy spec consumed by the content calendar + scheduler.
 
 ## Applies If (ALL must hold)
 
-- Choosing which platform(s) to invest in for a new product or personal brand
-- Designing a content calendar with pillar distribution and posting frequency
-- Batch-generating post drafts (threads, carousels, text posts) for a defined platform
-- Running a monthly strategy review: what to double down on, what to cut
-- Briefing an agent to produce a 4-week content calendar in JSON format
+- Solo operator runs all content alone (no team).
+- Operator has audience-growth or pipeline goals (not vanity reach).
+- Operator can produce one long-form piece per week as the atomization seed.
 
 ## Skip If (ANY kills it)
 
-- Real-time trend hijacking — requires human judgment on brand safety and timing
-- Community management and comment responses — relationship quality requires a human
-- Generating content for all platforms simultaneously from one prompt — quality degrades
-- Accounts under 1 month old with no ICP data — build ICP clarity first
-- When the goal is paid acquisition; use ppc-manager methodology instead
+- Operator has no clear ICP yet — pick ICP first, strategy after.
+- Operator wants daily output on 4+ platforms — that's a content-team brief, not solo.
+- Goal is paid-ads acquisition only — switch to paid-acquisition methodology.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| ICP definition (segment + pain + buying trigger) | single page | internal positioning doc |
+| audience-fit matrix per platform candidate | scoring sheet | internal research |
+| weekly time budget (hours) | integer | self-managed |
+| long-form seed (blog / podcast / video) chosen | string | founder decision |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/marketing/smm-manager/growth-linkedin-strategy` | Single-platform branch when LinkedIn chosen. |
+| `solo/marketing/smm-manager/growth-twitter-x-growth` | Single-platform branch when X chosen. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
+| `content/05-examples.xml` | essential | One worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `score_platforms_for_icp` | sonnet | Per-instance judgement on fit. |
+| `draft_atomization_plan` | sonnet | Long-form → 5-cut decomposition. |
+| `review_for_burnout_risk` | opus | Cross-cutting capacity check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/growth-social-media-strategy.json` | JSON Schema for the output contract. |
+| `templates/growth-social-media-strategy.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-growth-social-media-strategy.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/smm-manager/`
+- [[growth-linkedin-strategy]] — LinkedIn-only branch.
+- [[growth-twitter-x-growth]] — X-only branch.
+- [[solo-content-calendar-template]] — downstream calendar.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

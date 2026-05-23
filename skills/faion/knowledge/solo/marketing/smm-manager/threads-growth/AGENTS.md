@@ -3,74 +3,94 @@ slug: threads-growth
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A conversation-first growth system for Threads: post 5+ short punchy posts per day, reply thoughtfully to large accounts to drive discovery, and adapt content from Instagram or Twitter to Threads' casual tone.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Generates a conversation-first Threads growth playbook-step (≥5 short posts/day + replies to large accounts + adapted IG/X content in casual tone)."
 content_id: "b5e3aefc41974123"
-tags: [threads, conversation, growth, social-media, meta]
+complexity: medium
+produces: playbook-step
+est_tokens: 4000
+tags: [threads, meta, conversation, growth, social-media]
 ---
+
 # Threads Growth
 
 ## Summary
 
-**One-sentence:** A conversation-first growth system for Threads: post 5+ short punchy posts per day, reply thoughtfully to large accounts to drive discovery, and adapt content from Instagram or Twitter to Threads' casual tone.
+**One-sentence:** Generates a conversation-first Threads growth playbook-step (≥5 short posts/day + replies to large accounts + adapted IG/X content in casual tone).
 
-**One-paragraph:** A conversation-first growth system for Threads: post 5+ short punchy posts per day, reply thoughtfully to large accounts to drive discovery, and adapt content from Instagram or Twitter to Threads' casual tone. No links in posts — Threads suppresses promotional content. No official third-party posting API as of 2026; all posting is manual.
+**Ефективно для:** Solo creators with existing IG/X audiences who need a Threads presence without doubling content workload — leans on adaptation + reply-density.
+
+**One-paragraph:** Threads rewards conversational density. This methodology produces a daily playbook-step: ≥5 short punchy posts, thoughtful replies to large accounts for discovery, and content adapted (not copy-pasted) from existing IG or X to Threads' casual tone. Output is a daily batch + reply-target list consumed by Meta's native scheduler.
 
 ## Applies If (ALL must hold)
 
-- Generating daily post batches (20-30 drafts) across hot takes, this-or-that, fill-in-blank, experience stories, and predictions
-- Drafting reply templates for a specific niche (to be edited and sent by a human)
-- Planning a cross-platform content flow from Instagram or Twitter to Threads
-- Repurposing Twitter/X thread content into Threads-native conversational format
-- Writing a Month 2-3 optimization plan: which post types to double down on
+- An existing audience exists on IG or X (≥1k followers) to seed Threads cross-promotion.
+- Operator can spend 20-30 minutes/day on Threads.
+- Buyers / audience are on Meta platforms.
+- Operator can adapt voice from formal (X) to casual (Threads).
 
 ## Skip If (ANY kills it)
 
-- Automated posting or replying — no official API for write access; all posting is manual
-- Engagement pod coordination — Threads community strongly penalizes inauthentic engagement
-- Generating long-form content — Threads punishes long posts; max 300 characters is target
-- Accounts without an Instagram presence — Threads account depends on Instagram; fix that first
-- Generating posts that mimic trends without knowing current platform culture
+- No IG or X audience to cross-promote — Threads is hard to grow from zero.
+- Buyers are not on Meta (e.g., dev-tools B2B targeting backend engineers).
+- Operator refuses casual register — Threads suppresses corporate tone.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| existing IG or X audience snapshot | follower count + URL | platform export |
+| daily 20-30 min Threads slot | calendar block | self-managed |
+| adaptation guide (X → Threads, IG caption → Threads) | doc | internal style guide |
+| large-account reply target list | csv | manual curation |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/marketing/smm-manager/instagram-growth` | IG source for adapted content. |
+| `solo/marketing/smm-manager/growth-twitter-x-growth` | X source for adapted content. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `adapt_x_to_threads` | haiku | Tone conversion — bounded transformation. |
+| `draft_native_thread_posts` | sonnet | Conversation-shaped hooks. |
+| `review_voice_drift` | opus | Cross-platform voice consistency. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/threads-growth.json` | JSON Schema for the output contract. |
+| `templates/threads-growth.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-threads-growth.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/smm-manager/`
+- [[instagram-growth]] — IG cross-source.
+- [[growth-twitter-x-growth]] — X cross-source.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

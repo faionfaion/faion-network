@@ -1,3 +1,11 @@
+"""__faion_header__
+purpose: Generate a 10-slide IG carousel outline (cover + 8 content + CTA).
+consumes: topic + 8 key points + CTA string
+produces: JSON list of slide dicts (slide_no, type, text)
+depends-on: AGENTS.md Templates row
+token-budget-impact: ~300 tokens
+"""
+
 """
 Generate a 10-slide Instagram carousel text outline from a topic, key points, and CTA.
 Input: topic (str), key_points (list of str), cta (str)

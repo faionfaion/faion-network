@@ -1,3 +1,11 @@
+<!--
+purpose: Markdown skeleton for a community's published guidelines page.
+consumes: founder's tone + named host + ritual cadence decisions
+produces: a Markdown guidelines doc consumed by the community platform
+depends-on: content/01-core-rules.xml (light-moderation rule r5)
+token-budget-impact: ~300 tokens
+-->
+
 # [Community Name] Guidelines
 
 ## Our Purpose

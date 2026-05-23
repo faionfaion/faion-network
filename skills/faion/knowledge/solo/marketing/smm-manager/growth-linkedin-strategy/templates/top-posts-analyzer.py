@@ -1,3 +1,11 @@
+"""__faion_header__
+purpose: Rank LinkedIn posts by engagement rate from a Shield analytics CSV export.
+consumes: shieldapp.ai CSV export
+produces: JSON top-N posts list with engagement rate, impressions, text
+depends-on: AGENTS.md Task Routing (score_top_posts → haiku)
+token-budget-impact: ~400 tokens
+"""
+
 """
 Parse a Shield analytics CSV export to find top N posts by engagement rate.
 

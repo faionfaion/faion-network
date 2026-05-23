@@ -1,64 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Launch Thread — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `LaunchThread` object containing exactly 7 ordered tweets with media slots and CTA.</summary>
+<text id="02-output-contract" title="Tweet Thread Launch Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Tweet Thread Launch Template output. Subagent must satisfy this before returning to the caller.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`launch_id` — slug</item>
-      <item>`product_name` — string</item>
-      <item>`launch_url` — string (the single CTA URL)</item>
-      <item>`launch_date` — ISO-8601 date</item>
-      <item>`tweets` — array of EXACTLY 7 objects `{position: 1-7, body, char_count, media_url, media_type ∈ {gif, video, image, none}, role ∈ {hook, demo, problem, solve, price, cta, social_proof}}`</item>
-      <item>`social_proof_meta` — object `{quote_consent: bool, source_user, source_role, source_link}`</item>
-      <item>`platform` — enum {twitter, x, threads, linkedin, multi}</item>
-      <item>`scheduled_for` — ISO-8601 (typically T-0:30 launch day)</item>
-    </list>
-  </section>
+  <output-contract>
+    <required>
+      <field name="launch_id" type="string" required="true">kebab-case slug</field>
+      <field name="operator" type="string" required="true">named launcher</field>
+      <field name="tweets" type="array" required="true">exactly 7 tweets with id + text + media</field>
+      <field name="demo_gif_url" type="string" required="true">&lt;30s gif/mp4 URL</field>
+      <field name="hook_variants_tested" type="array" required="true">≥3 variants with pre-launch impressions</field>
+      <field name="social_proof_quote" type="object" required="true">{quote, handle, consent_logged_at}</field>
+      <field name="scheduled_for" type="date-time" required="true">ISO timestamp</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
+    </required>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>`tweets.length != 7`.</description>
-      <reason>Violates r1.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Tweet at position 1 contains URL OR position-6 tweet missing URL.</description>
-      <reason>Violates r4.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Position 2 has `media_type: none` OR position 7 has `media_type: none`.</description>
-      <reason>Violates r3 mandatory media slots.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Any tweet `char_count` exceeds the per-position limit.</description>
-      <reason>Violates r2 character limits.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Social-proof tweet body uses generic praise ("loved by founders", "trusted by indies") without a named quote OR metric.</description>
-      <reason>Violates r5 social-proof verbatim rule.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`social_proof_meta.quote_consent: false`.</description>
-      <reason>Cannot publish without explicit consent token.</reason>
-    </antipattern>
-  </section>
+    <forbidden>
+      <pattern id="f1">tweets count != 7</pattern>
+      <pattern id="f2">demo_gif_url empty OR static-image URL</pattern>
+      <pattern id="f3">social_proof_quote missing consent_logged_at</pattern>
+      <pattern id="f4">hook_variants_tested count &lt; 3</pattern>
+      <pattern id="f5">tweet text exceeding platform char limit</pattern>
+    </forbidden>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Substitute `gif` with `video` if upload fails — preserve media presence.</item>
-      <item>Translate copy into 1 additional language for multi-launch (clone thread, keep structure).</item>
-      <item>A/B variant of hook ONLY — preserve 7-tweet structure.</item>
-    </list>
-  </section>
+    <allowed-transformations>
+      <transformation>Allowed to swap tweet #3 (problem) and #4 (solve) order for narrative variety.</transformation>
+      <transformation>Allowed to add a single bonus tweet #8 if it carries a coupon or PH launch link.</transformation>
+    </allowed-transformations>
 
-  <reference path="templates/launch-thread.json">LaunchThread JSON Schema.</reference>
+    <schema-reference path="templates/tweet-thread-launch-template.json"/>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>Exactly 7 tweets ordered by role hook→demo→problem→solve→price→cta→social_proof.</item>
-      <item>Single URL in position 6.</item>
-      <item>Position 2 + 7 have media.</item>
-      <item>Tweet 1 ≤ 240 chars; tweet 6 ≤ 180+URL.</item>
-      <item>Social proof has consent + verbatim quote or metric.</item>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/tweet-thread-launch-template.json</item>
     </list>
   </section>
 </text>

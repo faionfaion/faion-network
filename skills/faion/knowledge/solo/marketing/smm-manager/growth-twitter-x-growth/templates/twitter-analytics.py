@@ -1,3 +1,11 @@
+"""__faion_header__
+purpose: Parse Twitter Analytics CSV for engagement-rate ranking.
+consumes: Twitter native CSV export with impressions + engagements columns
+produces: JSON list of top tweets with engagement rate
+depends-on: AGENTS.md Task Routing (score_outliers → haiku)
+token-budget-impact: ~300 tokens
+"""
+
 """
 Parse Twitter Analytics CSV export for engagement rate analysis.
 Expects columns: 'impressions', 'engagements', 'Tweet text' (Twitter native export format).

@@ -1,3 +1,11 @@
+<!--
+purpose: Community launch checklist scaffolding for the Seed → Nurture → Scale → Monetize stages.
+consumes: operator's seed list + ritual decisions from AGENTS.md Prerequisites
+produces: a Markdown checklist driving the first 8 weeks of community ops
+depends-on: content/01-core-rules.xml + AGENTS.md Prerequisites table
+token-budget-impact: ~400 tokens
+-->
+
 # Community Launch Checklist
 
 ## Pre-Launch

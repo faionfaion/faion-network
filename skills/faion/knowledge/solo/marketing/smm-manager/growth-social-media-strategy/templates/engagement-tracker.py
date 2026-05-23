@@ -1,3 +1,11 @@
+"""__faion_header__
+purpose: Weekly engagement-rate tracker from platform analytics CSV.
+consumes: CSV with impressions + engagements columns
+produces: JSON {avg, median, top, count} engagement metrics
+depends-on: AGENTS.md Task Routing (score_engagement → haiku)
+token-budget-impact: ~300 tokens
+"""
+
 """
 Weekly engagement rate tracker from platform analytics CSV exports.
 Input: CSV with at least two columns for impressions and engagements.

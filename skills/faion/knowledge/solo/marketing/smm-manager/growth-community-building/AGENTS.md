@@ -3,73 +3,93 @@ slug: growth-community-building
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A step-by-step playbook for building a product or professional community with lasting engagement.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Generates a four-stage community launch playbook-step (Seed 50 → Nurture rituals → Scale pairing → Monetize) with pre-seeded conversations and one platform locked in."
 content_id: "b03a3bcf6d617936"
+complexity: medium
+produces: playbook-step
+est_tokens: 4400
 tags: [community, engagement, discord, growth, retention]
 ---
-# Community Building
+
+# Growth Community Building
 
 ## Summary
 
-**One-sentence:** A step-by-step playbook for building a product or professional community with lasting engagement.
+**One-sentence:** Generates a four-stage community launch playbook-step (Seed 50 → Nurture rituals → Scale pairing → Monetize) with pre-seeded conversations and one platform locked in.
 
-**One-paragraph:** A step-by-step playbook for building a product or professional community with lasting engagement. The four-stage model is: Seed (50 hand-picked members) → Nurture (rituals: daily standup, weekly office hours, monthly AMA) → Scale (member-to-member connections via pairing, breakout groups) → Monetize (community as product feature). Core rule: one platform, pre-seeded with 5-10 planted conversations before the first invitation wave.
+**Ефективно для:** Solo founders launching a Discord/Slack/Circle community as a growth or retention lever, who tend to over-invite before seeding any conversation.
+
+**One-paragraph:** Most indie communities die because the founder invites 500 people into an empty room. This methodology produces a four-stage launch step — Seed (50 hand-picked + 5-10 planted conversations) → Nurture (3 rituals: daily standup, weekly office hours, monthly AMA) → Scale (member-to-member pairing) → Monetize (community as product feature). It rejects multi-platform launches, requires a named host, and enforces a 'no empty room' rule before any public invitation wave.
 
 ## Applies If (ALL must hold)
 
-- Drafting launch materials: welcome messages, guidelines, onboarding sequences, ritual prompts.
-- Generating invitation scripts tailored to specific member profiles.
-- Producing weekly ritual content (standups, AMA question lists, challenge briefs, roundup newsletters).
-- Analyzing community health metrics from platform exports to identify churn risk.
-- Writing community guidelines and moderation playbooks.
+- Community is positioned as a product or retention lever, not a vanity channel.
+- One platform is chosen (Discord OR Slack OR Circle OR Telegram — not multiple).
+- A named host is committed to ≥3 rituals/week.
+- Founder can hand-pick the first 50 seed members.
 
 ## Skip If (ANY kills it)
 
-- Real-time community moderation — requires human judgment on nuance, context, and tone.
-- Automated mass-invitation campaigns — platforms detect and ban bots; personal invitations require human send.
-- Communities with fewer than 10 seeded members — agent-generated content in an empty community reads hollow.
-- Replacing the community manager role entirely — member trust is built through perceived human presence.
+- Founder wants to launch on three platforms simultaneously — community fragments.
+- No human can be the public face — agent-only communities read hollow.
+- Product has <100 paying users AND community is treated as 'marketing'.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| platform pick (Discord/Slack/Circle/Telegram) | string | founder decision |
+| seed list of 50 hand-picked names + handles | csv | founder rolodex |
+| named host with calendar holds for 3 rituals/week | name + schedule | founder or co-host |
+| 5-10 pre-written conversation prompts | list of strings | internal content bank |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/marketing/smm-manager/growth-social-media-strategy` | Audience-source layer feeding seed list. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_welcome_kit` | sonnet | Branded language + guidelines + ritual prompts. |
+| `score_community_health` | haiku | Deterministic metric tally. |
+| `review_moderation_edge_cases` | opus | Human-context judgement at scale. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/growth-community-building.json` | JSON Schema for the output contract. |
+| `templates/growth-community-building.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-growth-community-building.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/smm-manager/`
+- [[growth-social-media-strategy]] — seed audience funnel.
+- [[social-proof-harvest]] — testimonial source from active members.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

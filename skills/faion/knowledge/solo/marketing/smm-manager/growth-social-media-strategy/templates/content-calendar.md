@@ -1,3 +1,11 @@
+<!--
+purpose: Markdown skeleton for a per-month cross-platform content calendar.
+consumes: PACE spec output from AGENTS.md (primary platforms + atomization loop)
+produces: a Markdown calendar consumed by the scheduler
+depends-on: content/02-output-contract.xml (PACE spec)
+token-budget-impact: ~400 tokens
+-->
+
 # Social Media Calendar — [Month]
 
 ## Content Pillars

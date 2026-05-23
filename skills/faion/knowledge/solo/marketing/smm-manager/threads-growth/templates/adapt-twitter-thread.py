@@ -1,3 +1,11 @@
+"""__faion_header__
+purpose: Adapt a Twitter/X thread into Threads-native conversational posts.
+consumes: list of tweet strings
+produces: list of short Threads posts (casual register)
+depends-on: AGENTS.md Task Routing (adapt_x_to_threads → haiku)
+token-budget-impact: ~250 tokens
+"""
+
 """
 Adapt a Twitter/X thread into Threads-native conversational posts.
 Input: list of tweet strings (the thread), optional max_posts limit.

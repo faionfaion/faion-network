@@ -3,74 +3,95 @@ slug: growth-twitter-x-growth
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A positioning-first Twitter/X growth system: define a unique angle, post 3-5 times daily, write 1-2 threads per week, and reply 20-30 times daily to accounts larger than you.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Generates a positioning-first X growth playbook-step (unique angle → 3-5 posts/day → 1-2 threads/week → 20-30 daily replies to larger accounts)."
 content_id: "4f09b0413010b8d7"
+complexity: medium
+produces: playbook-step
+est_tokens: 4400
 tags: [twitter, x, growth, threads, build-in-public]
 ---
-# Twitter/X Growth
+
+# Growth Twitter X Growth
 
 ## Summary
 
-**One-sentence:** A positioning-first Twitter/X growth system: define a unique angle, post 3-5 times daily, write 1-2 threads per week, and reply 20-30 times daily to accounts larger than you.
+**One-sentence:** Generates a positioning-first X growth playbook-step (unique angle → 3-5 posts/day → 1-2 threads/week → 20-30 daily replies to larger accounts).
 
-**One-paragraph:** A positioning-first Twitter/X growth system: define a unique angle, post 3-5 times daily, write 1-2 threads per week, and reply 20-30 times daily to accounts larger than you. The first 15 words of every tweet are the hook. Thread tweet 1 must standalone; external links in tweets reduce reach — put them in the first reply or pinned tweet instead.
+**Ефективно для:** Solo builders posting on X without a defined angle, getting baseline impressions, and frustrated that 'engagement isn't compounding'.
+
+**One-paragraph:** X rewards angle + reply-density. This methodology produces a positioning-first growth step: a unique angle statement (what you say that nobody else says), a 3-5 posts/day baseline, 1-2 long threads per week, and 20-30 daily replies to accounts larger than yours. Output is a per-week schedule + reply target list consumed by the operator's posting tool.
 
 ## Applies If (ALL must hold)
 
-- Generating weekly tweet batches (15-20 drafts) and thread outlines across content pillars
-- Drafting bio, pinned tweet, and banner copy for profile optimization
-- Producing build-in-public update templates (monthly revenue, wins/losses, next steps)
-- Analyzing Twitter Analytics CSV export to identify top hooks and best posting times
-- Writing a thread: hook tweet + promise tweet + 5-8 value tweets + summary + CTA
+- Operator commits ≥45 minutes/day to X.
+- A unique-angle statement exists (one sentence: 'I post X that nobody else does').
+- Operator can run at ≥3 posts/day for 90 days.
+- Account is operator-owned (not a brand-owned company account).
 
 ## Skip If (ANY kills it)
 
-- Automated posting or replying — bot-style automation risks account suspension
-- Generating content for trending topics without current context — agent's trend knowledge is outdated
-- Mass DM outreach — X ToS prohibits unsolicited commercial DMs at scale
-- Engagement pods — coordinated inauthentic engagement violates platform rules
-- New accounts (under 1K followers) using engagement metrics calibrated for established accounts
+- Buyers are not on X — pick a platform where they are.
+- Operator refuses to share opinions (X rewards perspective, not safe content).
+- Account is automated repost-only — algorithm suppresses pure aggregators.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| unique-angle statement (1 sentence) | string | founder decision |
+| reply target list (20-30 accounts > 5x your size) | csv | manual curation |
+| 3-5 daily posts queue with hook variants | queue | internal swipe file |
+| thread topic backlog (≥6 weeks) | list | internal idea bank |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/marketing/smm-manager/growth-social-media-strategy` | PACE umbrella. |
+| `solo/marketing/swipe-file-tweet-hooks` | Hook variants source. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_thread_outline` | sonnet | Structured argument with reveal arc. |
+| `rank_reply_candidates` | haiku | Bounded scoring on a target list. |
+| `audit_angle_drift` | opus | Cross-week judgement on positioning consistency. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/growth-twitter-x-growth.json` | JSON Schema for the output contract. |
+| `templates/growth-twitter-x-growth.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-growth-twitter-x-growth.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/marketing/smm-manager/`
+- [[growth-social-media-strategy]] — PACE umbrella.
+- [[swipe-file-tweet-hooks]] — hook bank.
+- [[twitter-x-monetization-thread-to-product]] — monetization funnel.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
