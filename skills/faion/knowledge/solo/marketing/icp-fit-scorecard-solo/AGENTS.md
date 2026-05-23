@@ -3,78 +3,102 @@ slug: icp-fit-scorecard-solo
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9b944d199fb81866"
-summary: "Icp Fit Scorecard Solo — testable methodology for growth, acquisition, content, GTM. Per-customer ICP scoring that drives anti-customer removal + onboarding tone; nothing operationalises this today."
-tags: [marketing, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-customer ICP score (0-100) across 5 weighted signals — pain, budget, urgency, fit, accessibility — driving keep / nurture / remove decisions and onboarding tone.
+content_id: "d8397876225ccfbf"
+complexity: medium
+produces: rubric
+est_tokens: 4400
+tags: [icp, scoring, anti-customer, onboarding, solo-saas]
 ---
-# Icp Fit Scorecard Solo
+# ICP Fit Scorecard (Solo)
 
 ## Summary
 
-**One-sentence:** Icp Fit Scorecard Solo — testable methodology for growth, acquisition, content, GTM. Per-customer ICP scoring that drives anti-customer removal + onboarding tone; nothing operationalises this today.
+**One-sentence:** Per-customer ICP score (0-100) across 5 weighted signals — pain, budget, urgency, fit, accessibility — driving a keep / nurture / remove decision and onboarding tone per customer.
 
-**One-paragraph:** Icp Fit Scorecard Solo closes a known gap in marketing practice: Per-customer ICP scoring that drives anti-customer removal + onboarding tone; nothing operationalises this today. The methodology is anchored to the recurring activity 'Quarterly persona & pricing recalibration (light, monthly check-in) (role: p1-solo-saas-builder)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Solo founders cannot afford "all customers welcome". This scorecard scores each active and prospective customer on 5 signals — pain match (0-25), budget fit (0-20), urgency (0-15), product fit (0-25), accessibility (0-15) — summing to 0-100. Bands route the action: 70+ keep + invest, 40-69 nurture, &lt;40 remove (sunset offer or polite no). Re-scored quarterly. Output is a row per customer in a flat sheet + an aggregated histogram + a monthly remove-list for proactive sunsetting.
+
+**Ефективно для:**
+
+- Solo SaaS with 30-300 customers and a known anti-ICP problem (high-support customers from outside the target band).
+- Quarterly persona / pricing recalibration where you need real per-customer evidence, not gut feel.
+- Onboarding-tone tuning: keep customers get founder-touch, nurture get default flow, remove get a sunset email.
+- Building a defensible signal for raise-prices conversations ("we removed N customers, the remaining cohort scores 60+").
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Quarterly persona & pricing recalibration (light, monthly check-in) (role: p1-solo-saas-builder)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator has 30+ active customers and can pull per-customer activity + revenue data.
+- Operator has authority to remove customers (sunset offer, refund, polite no) — not blocked by contract.
+- A documented ICP persona exists (even if rough).
+- The cost of supporting a bad-fit customer is non-trivial (≥1h support/month per).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Fewer than 30 customers — anchoring on so few is over-fitting; iterate qualitatively first.
+- Pure transactional product where every customer is one-time — scorecard overhead does not pay back.
+- Operator cannot act on the output (no permission to sunset / no budget to invest in keepers).
+- All customers are enterprise-procured with multi-year contracts you cannot exit.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ICP persona doc | markdown | founder |
+| Customer activity export (last 90d) | CSV | analytics |
+| Revenue per customer (MRR / LTV) | CSV | billing |
+| Support-ticket volume per customer (90d) | CSV | helpdesk |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[pricing-experiment-runbook]] | Scorecard outputs feed the "who to grandfather" decision in a price change. |
+| [[hook-bank-template]] | Reply patterns from spiked hooks help refine ICP pain signal. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: 5 weighted signals, 100-cap, band thresholds, quarterly re-score, evidence per signal, remove-action defined | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for customer scorecard rows + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix): vanity-band, no-act, evidence-skip, retro-score | 700 |
+| `content/04-procedure.xml` | essential | 6-step procedure: gather data → score 5 signals → band → review action → execute → re-score quarterly | 800 |
+| `content/05-examples.xml` | essential | Worked example: 80-customer SaaS scoring + remove list of 8 | 700 |
+| `content/06-decision-tree.xml` | essential | Tree routing observable signals → rule id | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `icp_fit_scorecard_solo_template_fill` | haiku | Template fill, no judgement |
-| `icp_fit_scorecard_solo_evidence_check` | sonnet | Bounded comparison + judgement |
-| `icp_fit_scorecard_solo_synthesis` | opus | Cross-input synthesis + final write-up |
+| `signal_score_compute` | haiku | Mechanical arithmetic. |
+| `evidence_attachment` | sonnet | Bounded comparison of citation vs claim. |
+| `band_decision_review` | sonnet | Apply band thresholds to action set. |
+| `remove_communication` | sonnet | Tone-sensitive sunset email per customer. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/scorecard.csv` | Per-customer scorecard skeleton (one row per customer) |
+| `templates/sunset-email.md` | Sunset/remove email template |
+| `templates/_smoke-test.json` | Minimum viable scorecard for validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-icp-fit-scorecard-solo.py` | Validate scorecard rows + math against 02-output-contract schema | Pre-commit / quarterly review |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `Quarterly persona & pricing recalibration (light, monthly check-in) (role: p1-solo-saas-builder)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[pricing-experiment-runbook]]
+- [[hook-bank-template]]
+- [[ih-build-update-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps customer count, ICP persona availability, signal coverage, and authority-to-act to a rule from `01-core-rules.xml`, telling the agent whether to apply the scorecard, block on missing inputs, or skip the methodology entirely. Walk it on every fresh invocation; do not cache outcomes.

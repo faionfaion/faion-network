@@ -1,60 +1,136 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Pricing Experiment Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the Experiment Plan, the Stripe config checklist, the post-experiment Decision Memo.</summary>
+<text id="02-output-contract" title="Pricing Experiment Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema draft-07 pinning the shape of {experiment_plan, stripe_preflight, decision_memo}. Validator enforces this contract before launch and at end_date.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pricing-experiment-runbook.json",
+  "type": "object",
+  "required": ["plan", "stripe_preflight", "decision_memo"],
+  "properties": {
+    "plan": {
+      "type": "object",
+      "required": ["experiment_id", "start_date", "end_date", "duration_days",
+                   "variant_old", "variant_new", "audience", "exposure_rule",
+                   "success_metric_primary", "success_metric_threshold",
+                   "significance_target", "guardrail_metrics", "grandfathering",
+                   "currencies_in_test", "tax_behavior"],
+      "properties": {
+        "experiment_id": {"type": "string", "minLength": 3},
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": "string", "format": "date"},
+        "duration_days": {"type": "integer", "minimum": 7, "maximum": 90},
+        "variant_old": {"type": "object", "required": ["stripe_price_id"]},
+        "variant_new": {"type": "object", "required": ["stripe_price_id"]},
+        "audience": {"type": "string",
+          "enum": ["new_signups_only", "new_and_existing_with_grandfather", "specific_segment"]},
+        "exposure_rule": {"type": "string", "minLength": 5},
+        "success_metric_primary": {"type": "string"},
+        "success_metric_threshold": {"type": "number"},
+        "significance_target": {"type": "string",
+          "enum": ["p<0.05", "p<0.10", "bayesian_95"]},
+        "guardrail_metrics": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "grandfathering": {
+          "type": "object",
+          "required": ["audience", "mechanism", "stripe_coupon_id", "window_months"]
+        },
+        "currencies_in_test": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "tax_behavior": {"type": "string", "enum": ["inclusive", "exclusive"]}
+      }
+    },
+    "stripe_preflight": {
+      "type": "object",
+      "required": ["passed_at", "checks_run"],
+      "properties": {
+        "passed_at": {"type": "string", "format": "date-time"},
+        "checks_run": {"type": "array", "minItems": 4, "items": {"type": "string"}}
+      }
+    },
+    "decision_memo": {
+      "type": "object",
+      "required": ["written_at", "decision", "metric_readouts", "next_action"],
+      "properties": {
+        "written_at": {"type": "string", "format": "date-time"},
+        "decision": {"type": "string",
+          "enum": ["adopt_new", "revert_to_old", "extend_with_adjustment"]},
+        "metric_readouts": {"type": "object"},
+        "qualitative_signals": {"type": "string"},
+        "next_action": {"type": "string", "minLength": 5}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "plan": {
+    "experiment_id": "exp-2026-q2-pricing",
+    "start_date": "2026-06-01",
+    "end_date": "2026-07-30",
+    "duration_days": 60,
+    "variant_old": {"stripe_price_id": "price_old_19"},
+    "variant_new": {"stripe_price_id": "price_new_29"},
+    "audience": "new_signups_only",
+    "exposure_rule": "random 50/50 by signup-id hash mod 2",
+    "success_metric_primary": "trial_to_paid_conversion_pct",
+    "success_metric_threshold": 0.18,
+    "significance_target": "p<0.05",
+    "guardrail_metrics": ["refund_rate", "dispute_rate", "support_ticket_rate"],
+    "grandfathering": {
+      "audience": "all subs active before 2026-06-01",
+      "mechanism": "100% off coupon on new Price",
+      "stripe_coupon_id": "grandfather_q2_2026",
+      "window_months": 12
+    },
+    "currencies_in_test": ["usd"],
+    "tax_behavior": "exclusive"
+  },
+  "stripe_preflight": {
+    "passed_at": "2026-05-28T09:00:00Z",
+    "checks_run": ["new_price_exists", "old_price_active", "coupon_attached", "no_orphan_subs"]
+  },
+  "decision_memo": {
+    "written_at": "2026-07-31T18:00:00Z",
+    "decision": "adopt_new",
+    "metric_readouts": {"trial_to_paid_new": 0.21, "trial_to_paid_old": 0.17},
+    "qualitative_signals": "no refund spike, 2 dispute tickets (baseline)",
+    "next_action": "Move all new signups to price_new_29 on 2026-08-01."
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "plan": {"experiment_id": "x", "duration_days": 200, "tax_behavior": "n/a"},
+  "stripe_preflight": {"passed_at": "earlier", "checks_run": []},
+  "decision_memo": {}
+}
+]]></code>
+    <note>experiment_id too short, duration_days exceeds 90, tax_behavior not in enum, checks_run empty, decision_memo missing required fields.</note>
+  </example>
 
   <output-contract>
-    <required>
-      <field name="plan.experiment_id" type="string" notes="slug e.g. exp-2026-q2-pricing"/>
-      <field name="plan.start_date" format="YYYY-MM-DD"/>
-      <field name="plan.end_date" format="YYYY-MM-DD"/>
-      <field name="plan.duration_days" type="integer" min="7" max="90"/>
-      <field name="plan.variant_old.stripe_price_id" type="string"/>
-      <field name="plan.variant_new.stripe_price_id" type="string"/>
-      <field name="plan.audience" type="enum" values="new_signups_only|new_and_existing_with_grandfather|specific_segment"/>
-      <field name="plan.exposure_rule" type="paragraph" notes="how visitors map to variants"/>
-      <field name="plan.success_metric_primary" type="string" notes="e.g. trial_to_paid_conversion_pct"/>
-      <field name="plan.success_metric_threshold" type="number"/>
-      <field name="plan.significance_target" type="enum" values="p&lt;0.05|p&lt;0.10|bayesian_95"/>
-      <field name="plan.guardrail_metrics" type="list_of_string" min="1" notes="refund_rate, dispute_rate, support_ticket_rate"/>
-      <field name="plan.grandfathering" type="object" notes="audience + mechanism + coupon_id + window_months"/>
-      <field name="plan.currencies_in_test" type="list_of_string"/>
-      <field name="plan.tax_behavior" type="enum" values="inclusive|exclusive"/>
-      <field name="stripe_preflight.passed_at" format="ISO8601"/>
-      <field name="stripe_preflight.checks_run" type="list_of_string"/>
-      <field name="decision_memo.written_at" format="ISO8601"/>
-      <field name="decision_memo.decision" type="enum" values="adopt_new|revert_to_old|extend_with_adjustment"/>
-      <field name="decision_memo.metric_readouts" type="object"/>
-      <field name="decision_memo.qualitative_signals" type="paragraph"/>
-      <field name="decision_memo.next_action" type="paragraph"/>
-    </required>
-
     <forbidden>
-      <pattern id="f1">plan.start_date later than the Stripe-config-checklist completion date (going live without verification)</pattern>
-      <pattern id="f2">grandfathering applied via "we will just not bill them yet" with no Stripe coupon or separate Price (grandfathering must be in Stripe, not in goodwill)</pattern>
-      <pattern id="f3">old Stripe Price object archived or deleted (must remain active so grandfathered subscriptions renew correctly)</pattern>
-      <pattern id="f4">multi-currency experiment without a separate Price per currency</pattern>
-      <pattern id="f5">decision_memo.decision = extend_with_adjustment for the third extension in a row (experiment is being kept alive to avoid the decision)</pattern>
-      <pattern id="f6">stripe_preflight.passed_at missing OR more than 7 days before plan.start_date</pattern>
+      <pattern id="f1">plan.start_date later than stripe_preflight.passed_at (going live without verification).</pattern>
+      <pattern id="f2">Grandfathering applied via "we will just not bill them yet" with no Stripe coupon or separate Price.</pattern>
+      <pattern id="f3">Old Stripe Price object archived or deleted (must remain active for grandfathered subs).</pattern>
+      <pattern id="f4">Multi-currency experiment without a separate Price per currency.</pattern>
+      <pattern id="f5">decision_memo.decision = extend_with_adjustment for the third extension in a row.</pattern>
+      <pattern id="f6">stripe_preflight.passed_at missing OR more than 7 days before plan.start_date.</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Pause the experiment mid-window (Stripe new-signup routing reverts to old Price) without ending it, when a guardrail metric is approached but not breached.</transformation>
-      <transformation>Localise the customer announcement copy per currency-region; keep the substance identical.</transformation>
-      <transformation>Round MRR delta numbers to the nearest $50 when reporting; keep dollar precision in the underlying readout file.</transformation>
+      <transformation>Pause the experiment mid-window (new-signup routing reverts) when a guardrail is approached but not breached.</transformation>
+      <transformation>Localise customer announcement copy per currency-region; keep substance identical.</transformation>
+      <transformation>Round MRR delta to nearest $50 in the memo display; keep raw precision in readouts.</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/experiment-plan.md"/>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Plan written and committed BEFORE any Stripe change</item>
-      <item>Grandfather policy explicit, with Stripe coupon ID</item>
-      <item>scripts/stripe-pre-flight.py returned green within 7 days of start</item>
-      <item>Currency-per-Price object and tax_behavior documented</item>
-      <item>Customer announcement sent before experiment goes live</item>
-      <item>Decision Memo committed within 48h of end_date</item>
-      <item>Old Stripe Price object remains active (never deleted)</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-pricing-experiment-runbook.py">Validator script</reference>
 </text>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Pricing Experiment Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7-step procedure to design, launch, run, and close a Stripe-based pricing experiment.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="baseline-snapshot">
+      <input>90 days of MRR, trial-to-paid conversion, churn rate, refund_rate, dispute_rate.</input>
+      <action>Export from Stripe + analytics. Persist baseline values to plan.baseline. Required for guardrail thresholds.</action>
+      <output>baseline.json committed alongside the Plan.</output>
+    </step>
+
+    <step n="2" name="pre-commit-plan">
+      <input>baseline + intent (variant, audience, hypothesis).</input>
+      <action>Fill templates/experiment-plan.md. Specify experiment_id, dates, duration (7-90d), variant_old / variant_new, audience, exposure_rule, success_metric, significance_target, guardrails, grandfathering policy, currencies, tax_behavior, termination rules.</action>
+      <output>experiment-plan.md committed to the marketing repo BEFORE any Stripe change.</output>
+      <decision-gate>Plan missing any required field → block. r1.</decision-gate>
+    </step>
+
+    <step n="3" name="grandfathering-pin">
+      <input>Plan + Stripe Dashboard.</input>
+      <action>Create either (a) a separate Stripe Price object that existing subs stay on indefinitely, or (b) a 100% off coupon stacked on the new Price for the grandfather window. Attach coupon to all eligible customer IDs. Record stripe_coupon_id in Plan.</action>
+      <output>Stripe coupon + attachment confirmations.</output>
+      <decision-gate>Old Stripe Price object must remain active — never archive or delete. r2.</decision-gate>
+    </step>
+
+    <step n="4" name="stripe-config-build">
+      <input>Plan + Stripe Dashboard / API access.</input>
+      <action>Create new Price object per currency in plan.currencies_in_test. Set tax_behavior. Wire pricing-page A/B router (random hash, geo split, or cohort flag).</action>
+      <output>Stripe config + pricing-page router live.</output>
+    </step>
+
+    <step n="5" name="pre-flight-validation">
+      <input>Plan + Stripe config.</input>
+      <action>Run scripts/validate-pricing-experiment-runbook.py against the artefact bundle. Run scripts/stripe-pre-flight.py (or equivalent) against production Stripe to verify: new Price exists, old Price active, coupon attached to eligible customers, no orphan subs, no test-mode artefacts in live.</action>
+      <output>stripe_preflight.passed_at + checks_run committed to bundle.</output>
+      <decision-gate>Pre-flight not green within 7 days of plan.start_date → block launch. r3.</decision-gate>
+    </step>
+
+    <step n="6" name="customer-announcement-and-run">
+      <input>Plan + recipient list + Plan.start_date arriving.</input>
+      <action>Send customer-facing announcement explaining the change and grandfather rules. Flip the pricing-page router. Monitor guardrails daily. Trigger termination rule if refund_rate &gt; 2× baseline OR dispute_rate &gt; 0.5%.</action>
+      <output>Experiment running with daily guardrail readouts.</output>
+    </step>
+
+    <step n="7" name="forced-decision-memo">
+      <input>Plan.end_date + readout data.</input>
+      <action>Within 48h of end_date, write templates/decision-memo.md: metric readouts per variant, significance verdict, qualitative signals, single binary decision (adopt_new / revert_to_old / extend_with_adjustment with named change). Commit. Post a one-paragraph customer announcement of the outcome.</action>
+      <output>decision-memo.md committed; pricing-page router updated to the chosen variant.</output>
+      <decision-gate>Third extend_with_adjustment in a row → reject. Force adopt or revert. r5.</decision-gate>
+    </step>
+
+  </section>
+</text>

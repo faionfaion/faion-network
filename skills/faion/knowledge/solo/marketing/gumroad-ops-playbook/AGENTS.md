@@ -3,78 +3,102 @@ slug: gumroad-ops-playbook
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c3cc01bc5ce3b38a"
-summary: "Gumroad Ops Playbook — testable methodology for growth, acquisition, content, GTM. Gumroad is the default distribution channel for indie digital products (templates, ebooks, mini-tools). No methodology covers listing optimization, A/B copy, affiliate setup, EU VAT handling, license key delivery."
-tags: [marketing, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Operate a Gumroad product end-to-end — listing fields, A/B copy, affiliate program, EU VAT (Gumroad acts as MoR), license key delivery, post-purchase upsell.
+content_id: "d7f54bfa8f37a083"
+complexity: medium
+produces: playbook-step
+est_tokens: 4600
+tags: [gumroad, distribution, indie-product, mor, affiliate, license-key]
 ---
 # Gumroad Ops Playbook
 
 ## Summary
 
-**One-sentence:** Gumroad Ops Playbook — testable methodology for growth, acquisition, content, GTM. Gumroad is the default distribution channel for indie digital products (templates, ebooks, mini-tools). No methodology covers listing optimization, A/B copy, affiliate setup, EU VAT handling, license key delivery.
+**One-sentence:** Operate a Gumroad product end-to-end — listing fields, A/B copy, affiliate program, EU VAT (Gumroad acts as Merchant of Record), license key delivery, post-purchase upsell.
 
-**One-paragraph:** Gumroad Ops Playbook closes a known gap in marketing practice: Gumroad is the default distribution channel for indie digital products (templates, ebooks, mini-tools). No methodology covers listing optimization, A/B copy, affiliate setup, EU VAT handling, license key delivery. The methodology is anchored to the recurring activity 'Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Gumroad is the default distribution channel for indie digital products (templates, ebooks, mini-tools, prompt packs). This playbook closes the gap: listing-page optimisation (cover, subtitle, social proof slot), A/B copy via Gumroad's experiments, affiliate program setup (commission %, payout cadence), EU VAT handled by Gumroad as Merchant of Record (you do NOT collect VAT yourself), license key delivery for paid software via Gumroad's license API, and post-purchase upsell to a follow-on product. Output is a Gumroad listing config + ops checklist + monthly review cadence.
+
+**Ефективно для:**
+
+- Selling digital files / templates / mini-tools where you want zero billing/tax burden.
+- Cross-border buyers (EU especially) — Gumroad as MoR handles VAT automatically.
+- License-keyed software where validation needs Gumroad's license API.
+- Affiliate-driven micro-launches (Product Hunt + HN + IH same week).
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- The product is a digital good distributable via Gumroad (file download, license key, link drop).
+- Founder is comfortable letting Gumroad take the 10% + payment fees in exchange for MoR + tax handling.
+- The product has at least one strong cover image + a 280-char subtitle drafted.
+- A follow-on or upsell product exists or is planned within 90 days.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Product is a SaaS subscription with high ARPU — Stripe-direct is cheaper at scale.
+- Founder must keep all tax/legal responsibility (Gumroad MoR clause unacceptable).
+- File too large or licensing rules incompatible with Gumroad's terms (e.g. NSFW thresholds).
+- Product is enterprise-procured with NET-30 invoicing — Gumroad does not support invoicing.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product cover image (1280×720+) | PNG / JPG | designer |
+| Subtitle ≤280 chars | string | founder |
+| Pricing decision (fixed, pwyw, tiers) | scalar | founder |
+| Affiliate commission % decision (0-90) | scalar | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[lemon-squeezy-ops-playbook]] | Sibling MoR — used when Gumroad's terms or fees do not fit. |
+| [[pricing-experiment-runbook]] | Pricing-change discipline carries over to Gumroad's A/B copy. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: 6-field listing, MoR not collecting VAT yourself, license API for software, affiliate 30-50% range, A/B copy 2-week min, monthly review | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for listing config + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix): cover blur, missing license, affiliate broken, double-tax | 700 |
+| `content/04-procedure.xml` | essential | 6-step procedure: build cover → fill fields → wire license/affiliate → A/B copy → launch → monthly review | 800 |
+| `content/05-examples.xml` | essential | Worked example: $19 prompt-pack listing with affiliate at 50% | 700 |
+| `content/06-decision-tree.xml` | essential | Tree routing observables → rule id | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `gumroad_ops_playbook_template_fill` | haiku | Template fill, no judgement |
-| `gumroad_ops_playbook_evidence_check` | sonnet | Bounded comparison + judgement |
-| `gumroad_ops_playbook_synthesis` | opus | Cross-input synthesis + final write-up |
+| `listing_field_fill` | haiku | Template fill once decisions are made. |
+| `subtitle_copywriting` | sonnet | 280-char hook with tone control. |
+| `affiliate_program_setup` | sonnet | Commission + payout + recruitment mechanics. |
+| `monthly_review` | sonnet | Aggregate metrics + narrate top sellers. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/gumroad-listing.yaml` | Listing field skeleton ready to fill |
+| `templates/affiliate-invite.md` | Affiliate recruitment email template |
+| `templates/_smoke-test.json` | Minimum viable listing config for validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-gumroad-ops-playbook.py` | Validate listing config against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[lemon-squeezy-ops-playbook]]
+- [[pricing-experiment-runbook]]
+- [[ih-build-update-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps product type (file/license/saas), MoR acceptance, cover quality, and affiliate intent to a rule from `01-core-rules.xml`, telling the agent whether to publish, block on a missing field, or skip Gumroad for a better-fit channel. Walk it on every fresh listing; do not cache outcomes across products.

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Internal Link Rotation Schedule Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to set up and run the quarterly internal-link rotation.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="confirm-graph-spec">
+      <input>Current internal-linking-strategy-graph output.</input>
+      <action>Confirm graph spec exists and crawl_date is within 30 days. Otherwise re-run that methodology first.</action>
+      <output>graph-spec.yaml referenced + cluster list extracted.</output>
+      <decision-gate>graph spec missing or stale → exit to [[internal-linking-strategy-graph]].</decision-gate>
+    </step>
+
+    <step n="2" name="assign-rotation-order">
+      <input>Cluster list + prior quarter retrospective (if any).</input>
+      <action>Fix the rotation order for the quarter. Slot every 14 days. Fill rotation_calendar with slot_n + scheduled_date + cluster_id. status='scheduled'.</action>
+      <output>rotation_calendar block.</output>
+      <decision-gate>Order changes mid-quarter forbidden. Rule r4.</decision-gate>
+    </step>
+
+    <step n="3" name="run-60min-audit-per-slot">
+      <input>Scheduled slot + cluster + graph spec.</input>
+      <action>Time-box 60 min. Walk cluster: orphans, low-inbound spokes, anchor diversity, hub backlinks. Ship in-window fixes; defer the rest with 30-day SLA.</action>
+      <output>audit_log row + deferred_fixes entries.</output>
+      <decision-gate>duration_minutes &gt; 60 → block (rule r2); defer overflow.</decision-gate>
+    </step>
+
+    <step n="4" name="log-and-escalate-fixes">
+      <input>deferred_fixes register.</input>
+      <action>For each new deferred fix: set due_date = logged_at + 30d. For each existing fix past due_date and status='open': escalate to next rotation's first slot (status='escalated').</action>
+      <output>Updated deferred_fixes block.</output>
+    </step>
+
+    <step n="5" name="end-of-quarter-retrospective">
+      <input>All audit_log + deferred_fixes rows for the quarter.</input>
+      <action>Write 1-page retrospective. Cover: total fixes shipped vs deferred, SLA-miss count, recurring offender clusters, rotation-order adjustments for next quarter. Persist to retrospective block.</action>
+      <output>retrospective block + next-quarter rotation_order_proposed.</output>
+      <decision-gate>Retrospective absent at quarter close → block. Rule r6.</decision-gate>
+    </step>
+
+  </section>
+</text>

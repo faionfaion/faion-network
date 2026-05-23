@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Layer a Go service into handler / service / repository packages with HTTP types confined to handler and ORM types confined to repository.
-content_id: "c5198cd547e903b3"
+content_id: "18bd72bee2cb0a58"
 complexity: medium
 produces: code
 est_tokens: 3800

@@ -1,46 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Lemon Squeezy Ops Playbook Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Lemon Squeezy Ops Playbook must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Lemon Squeezy Ops Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every Lemon Squeezy operation must satisfy. Hard rules; designed to prevent double-VAT, license bypass, dunning gaps, and affiliate churn.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-six-field-store" testable="true" depth="essential">
+      <statement>Every LS store carries 6 mandatory fields: store_id, store_name, currency (usd | eur), refund_policy (one of LS enums), uses_mor=true, variant_count (1-8 active variants).</statement>
+      <rationale source="LS dashboard data on store-setup completeness">Stores missing any of the six fields cannot publish variants reliably; LS rejects payouts on incomplete stores.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r2-mor-not-self-vat" testable="true" depth="essential">
+      <statement>Lemon Squeezy acts as Merchant of Record. You do NOT collect VAT/GST yourself on LS-billed transactions. Your invoicing system must NOT issue a separate VAT invoice for those sales.</statement>
+      <rationale source="LS MoR terms; EU VAT framework">Double-taxing the buyer is the most expensive LS mistake — leads to chargebacks and possible account suspension. LS remits VAT and provides MoR receipts.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r3-license-api-for-software" testable="true" depth="essential">
+      <statement>For software / license-keyed variants, license key delivery uses Lemon Squeezy's License API. The client validates the key at startup and on a daily cadence.</statement>
+      <rationale source="LS License API docs; piracy-mitigation patterns">Hard-coded keys defeat the purpose. License API also lets you revoke keys on refund without rebuilding the binary.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for growth, acquisition, content, GTM">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r4-dunning-cadence" testable="true" depth="essential">
+      <statement>Failed renewals trigger a 3-email dunning sequence: T+1 (soft reminder), T+4 (payment-method update CTA), T+8 (final notice + grace-period offer). After T+10, subscription is auto-cancelled with a re-subscribe link.</statement>
+      <rationale source="SaaS dunning-recovery benchmarks (Profitwell + Chargebee studies)">Three-touch dunning recovers 35-45% of failed renewals; single-email recovers &lt;15%.</rationale>
     </rule>
+
+    <rule id="r5-affiliate-commission-band" testable="true" depth="essential">
+      <statement>Affiliate commission is set between 30% and 50% for indie LS launches. Below 30% does not motivate; above 50% leaves the founder margin-thin on LS fees.</statement>
+      <rationale source="Affiliate-marketing benchmarks; LS partner-program threads">30% is the engagement floor; 50% is the ceiling where founder still nets positive after LS fees.</rationale>
+    </rule>
+
+    <rule id="r6-monthly-review-with-promotion" testable="true" depth="essential">
+      <statement>Monthly: pull LS dashboard CSV. Compute conversion_rate, refund_rate, mrr per variant. Promote top 2 to feature spots; demote bottom 2 (archive or unbundle).</statement>
+      <rationale source="Indie-catalogue management practice">Without monthly pruning, the catalogue rots and dashboard noise hides the few variants that compound.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When preconditions in Applies-If hold and no Skip-If trigger applies, walk the 6-step procedure end-to-end and run the validator before publishing the store.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree run leaf for canonical execution path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree skip leaf for non-applicable inputs.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: Merchant-of-record alternative to Stripe (handles global tax). The standard pick for non-US nomads. Zero faion coverage; pricing/subscription docs assume Stripe-direct.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
   </see-also>
 </text>

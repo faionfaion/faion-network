@@ -1,57 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="In Issue Ad Format Library Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid In Issue Ad Format Library artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="In-Issue Ad Format Library Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema draft-07 for the ad-format library + rotation plan + benchmark block plus valid/invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/in-issue-ad-format-library.json",
+  "type": "object",
+  "required": ["library", "baseline", "rotation_plan", "review"],
+  "properties": {
+    "library": {
+      "type": "object",
+      "required": ["top_banner", "soft_ps", "mid_issue_case", "dedicated_send"],
+      "additionalProperties": false,
+      "properties": {
+        "top_banner": {"type": "object", "required": ["max_per_issue"]},
+        "soft_ps": {"type": "object", "required": ["max_per_4_issues"]},
+        "mid_issue_case": {"type": "object", "required": ["max_per_2_issues"]},
+        "dedicated_send": {"type": "object", "required": ["max_per_6_issues"]}
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["ctr_pct", "cvr_pct", "computed_at"],
+      "properties": {
+        "ctr_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "cvr_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "computed_at": {"type": "string", "format": "date"}
+      }
+    },
+    "rotation_plan": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["issue_n", "format", "cta_destination"],
+        "properties": {
+          "issue_n": {"type": "integer", "minimum": 1},
+          "format": {"type": "string",
+            "enum": ["top_banner", "soft_ps", "mid_issue_case", "dedicated_send", "none"]},
+          "cta_destination": {"type": "string",
+            "enum": ["product_paywall", "waitlist", "lead_magnet", "feature_announcement", "none"]}
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["reviewed_at"],
+      "properties": {
+        "reviewed_at": {"type": "string", "format": "date"},
+        "promoted_format": {"type": "string"},
+        "demoted_format": {"type": "string"}
+      }
+    }
+  }
+}
+]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "library": {
+    "top_banner": {"max_per_issue": 1},
+    "soft_ps": {"max_per_4_issues": 3},
+    "mid_issue_case": {"max_per_2_issues": 1},
+    "dedicated_send": {"max_per_6_issues": 1}
+  },
+  "baseline": {"ctr_pct": 3.2, "cvr_pct": 0.6, "computed_at": "2026-05-23"},
+  "rotation_plan": [
+    {"issue_n": 1, "format": "top_banner", "cta_destination": "product_paywall"},
+    {"issue_n": 2, "format": "soft_ps", "cta_destination": "lead_magnet"},
+    {"issue_n": 3, "format": "mid_issue_case", "cta_destination": "product_paywall"},
+    {"issue_n": 4, "format": "none", "cta_destination": "none"},
+    {"issue_n": 5, "format": "soft_ps", "cta_destination": "waitlist"},
+    {"issue_n": 6, "format": "dedicated_send", "cta_destination": "product_paywall"}
+  ],
+  "review": {"reviewed_at": "2026-05-23", "promoted_format": "mid_issue_case", "demoted_format": "dedicated_send"}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "library": {"top_banner": {"max_per_issue": 5}, "soft_ps": {}, "mid_issue_case": {},
+              "dedicated_send": {}, "footer_micro": {}},
+  "baseline": {"ctr_pct": 200, "cvr_pct": -1, "computed_at": "later"},
+  "rotation_plan": [{"issue_n": 1, "format": "popup", "cta_destination": "mixed"}],
+  "review": {}
+}
+]]></code>
+    <note>library has unauthorised format (footer_micro), missing required caps, baseline values out of range, rotation_plan uses unknown format + mixed CTA destination, review missing reviewed_at.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">library contains a format not in {top_banner, soft_ps, mid_issue_case, dedicated_send}.</pattern>
+      <pattern id="f2">rotation_plan exceeds per-format cadence cap across any 6-issue window.</pattern>
+      <pattern id="f3">6-issue window contains zero 'none' issues (trust-reset gap missing).</pattern>
+      <pattern id="f4">cta_destination='mixed' OR plan has issue with multiple ads same format same destination.</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Mark an issue as 'none' format / 'none' destination to enforce trust-reset gap.</transformation>
+      <transformation>Carry baseline forward unchanged if computed_at &lt; 30 days ago.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-in-issue-ad-format-library.py">Validator script</reference>
 </text>

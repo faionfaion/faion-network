@@ -3,78 +3,102 @@ slug: lemon-squeezy-ops-playbook
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4c1354291e9b4f1d"
-summary: "Lemon Squeezy Ops Playbook — testable methodology for growth, acquisition, content, GTM. Merchant-of-record alternative to Stripe (handles global tax). The standard pick for non-US nomads. Zero faion coverage; pricing/subscription docs assume Stripe-direct."
-tags: [marketing, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Operate a Lemon Squeezy store as Stripe alternative — store config, license API, EU VAT (LS as MoR), affiliate program, dunning, monthly review.
+content_id: "8fb4e7aa0b5f6c59"
+complexity: medium
+produces: playbook-step
+est_tokens: 4500
+tags: [lemon-squeezy, distribution, mor, indie-saas, vat, license-api]
 ---
 # Lemon Squeezy Ops Playbook
 
 ## Summary
 
-**One-sentence:** Lemon Squeezy Ops Playbook — testable methodology for growth, acquisition, content, GTM. Merchant-of-record alternative to Stripe (handles global tax). The standard pick for non-US nomads. Zero faion coverage; pricing/subscription docs assume Stripe-direct.
+**One-sentence:** Operate a Lemon Squeezy store as Stripe alternative — store config, License API, EU VAT (Lemon Squeezy as Merchant of Record), affiliate program, dunning recovery, monthly review.
 
-**One-paragraph:** Lemon Squeezy Ops Playbook closes a known gap in marketing practice: Merchant-of-record alternative to Stripe (handles global tax). The standard pick for non-US nomads. Zero faion coverage; pricing/subscription docs assume Stripe-direct. The methodology is anchored to the recurring activity 'Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Lemon Squeezy (LS) is the default Merchant-of-Record alternative to Stripe for non-US indie operators — global tax handled, dispute risk on LS, payouts in USD/EUR. This playbook closes the gap: store + variant model (1 store, ≤8 active variants), License API for software protection, EU VAT remitted by LS (you do NOT collect VAT yourself), affiliate program with 30-50% commission, dunning email cadence for failed renewals, monthly catalogue review with promote/demote. Output is the LS store config + variant table + ops checklist.
+
+**Ефективно для:**
+
+- Non-US founders avoiding Stripe Atlas / US LLC overhead for global tax compliance.
+- SaaS or digital product with EU buyer share &gt; 20% (VAT load is real).
+- License-keyed software needing LS License API verification.
+- Affiliate-driven launches where commission tracking via LS is acceptable.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Product is digital (file, license, subscription) compatible with LS terms.
+- Founder is comfortable with LS's ~5% + payment fees in exchange for MoR + tax handling.
+- Founder has at least one variant (price point) defined.
+- Founder accepts USD or EUR payouts to a supported bank.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Enterprise NET-30 invoicing required — LS does not support invoicing terms.
+- Product violates LS terms (NSFW, certain crypto, regulated services).
+- High-ARPU SaaS where Stripe-direct margin difference outweighs MoR convenience.
+- Founder already on Stripe with Atlas + tax software — switching cost not justified.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Store name + ≤8 variant definitions | YAML | founder |
+| Refund policy (one of LS enums) | string | founder |
+| License API decision (on/off per variant) | bool | founder |
+| Affiliate commission % decision (0-90) | scalar | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[gumroad-ops-playbook]] | Sibling MoR — used when Gumroad fits better (smaller catalogue). |
+| [[pricing-experiment-runbook]] | LS supports A/B price testing; the runbook discipline carries over. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: 6-field store, MoR not self-VAT, License API for software, dunning email cadence, affiliate 30-50%, monthly review | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for store + variants + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix): double-VAT, license bypass, dunning gap, affiliate drop | 700 |
+| `content/04-procedure.xml` | essential | 6-step procedure: store setup → variants → license → affiliate → dunning → monthly review | 800 |
+| `content/05-examples.xml` | essential | Worked example: 3-variant LS store with EU buyer 35% | 700 |
+| `content/06-decision-tree.xml` | essential | Tree routing observables → rule id | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `lemon_squeezy_ops_playbook_template_fill` | haiku | Template fill, no judgement |
-| `lemon_squeezy_ops_playbook_evidence_check` | sonnet | Bounded comparison + judgement |
-| `lemon_squeezy_ops_playbook_synthesis` | opus | Cross-input synthesis + final write-up |
+| `store_field_fill` | haiku | Template fill once decisions are made. |
+| `dunning_copy` | sonnet | Tone-sensitive sequence for failed renewals. |
+| `affiliate_program_setup` | sonnet | Commission + payout + recruitment. |
+| `monthly_review` | sonnet | Aggregate metrics + narrate top variants. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ls-store.yaml` | Store + variants skeleton ready to fill |
+| `templates/dunning-sequence.md` | 3-email dunning sequence for failed renewals |
+| `templates/_smoke-test.json` | Minimum viable LS store config for validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-lemon-squeezy-ops-playbook.py` | Validate LS store config against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `Micro-Launch Stack (PH + HN + IH + X same week) (role: p2-indie-hacker)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[gumroad-ops-playbook]]
+- [[pricing-experiment-runbook]]
+- [[ih-build-update-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps product type, MoR acceptance, license needs, EU share, and affiliate intent to a rule from `01-core-rules.xml`, telling the agent whether to publish, block on a missing gate, or skip LS for Stripe-direct. Walk it on every fresh store change; do not cache outcomes across products.

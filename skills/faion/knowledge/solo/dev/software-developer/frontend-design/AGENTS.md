@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Run a multi-phase workflow that produces 3-5 distinct UI design variants, picks one by taste, and ships components colocated with stories and tests.
-content_id: "5ae6e00f1000265b"
+content_id: "58bb6eef20d16532"
 complexity: medium
 produces: spec
 est_tokens: 4600
@@ -83,7 +83,7 @@ tags: [frontend-design, ui-design, design-tokens, storybook, component-library]
 
 | File | Purpose |
 |------|---------|
-| none | This methodology ships no template files. |
+| `templates/frontend-spec.md` | Frontend design spec skeleton: brief, variant set, chosen variant, tokens, Storybook pin, planned components. |
 
 ## Scripts
 

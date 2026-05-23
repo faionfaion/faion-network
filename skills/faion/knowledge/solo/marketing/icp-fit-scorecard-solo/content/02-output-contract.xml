@@ -1,57 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Icp Fit Scorecard Solo Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Icp Fit Scorecard Solo artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="ICP Fit Scorecard Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema draft-07 for a scorecard bundle (rows + histogram + remove_list) plus valid/invalid examples.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/icp-fit-scorecard-solo.json",
+  "type": "object",
+  "required": ["version", "scored_at", "rows", "histogram", "remove_list"],
+  "properties": {
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "scored_at": {"type": "string", "format": "date"},
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["customer_id", "pain_match", "budget_fit", "urgency",
+                     "product_fit", "accessibility", "total", "band", "evidence"],
+        "properties": {
+          "customer_id": {"type": "string"},
+          "pain_match": {"type": "integer", "minimum": 0, "maximum": 25},
+          "budget_fit": {"type": "integer", "minimum": 0, "maximum": 20},
+          "urgency": {"type": "integer", "minimum": 0, "maximum": 15},
+          "product_fit": {"type": "integer", "minimum": 0, "maximum": 25},
+          "accessibility": {"type": "integer", "minimum": 0, "maximum": 15},
+          "total": {"type": "integer", "minimum": 0, "maximum": 100},
+          "band": {"type": "string", "enum": ["keep", "nurture", "remove"]},
+          "evidence": {
+            "type": "object",
+            "required": ["pain_match", "budget_fit", "urgency", "product_fit", "accessibility"],
+            "additionalProperties": {"type": "string", "minLength": 5}
+          },
+          "remove_action_due": {"type": "string", "format": "date"}
+        }
+      }
+    },
+    "histogram": {
+      "type": "object",
+      "required": ["keep", "nurture", "remove", "median"],
+      "properties": {
+        "keep": {"type": "integer", "minimum": 0},
+        "nurture": {"type": "integer", "minimum": 0},
+        "remove": {"type": "integer", "minimum": 0},
+        "median": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "remove_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["customer_id", "action", "due_date"],
+        "properties": {
+          "customer_id": {"type": "string"},
+          "action": {"type": "string", "enum": ["sunset_email", "refund_offer", "polite_no", "exception"]},
+          "due_date": {"type": "string", "format": "date"},
+          "exception_reason": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "version": "1.1.0",
+  "scored_at": "2026-05-23",
+  "rows": [
+    {
+      "customer_id": "cus_001",
+      "pain_match": 22, "budget_fit": 18, "urgency": 12, "product_fit": 23, "accessibility": 13,
+      "total": 88, "band": "keep",
+      "evidence": {
+        "pain_match": "ticket #482 cited 4h/week wasted on the exact problem the product solves",
+        "budget_fit": "subscribed to Pro plan in week 1; no expansion gap",
+        "urgency": "self-reported deadline in onboarding survey",
+        "product_fit": "uses 7 of 8 core features per analytics export 2026-05-10",
+        "accessibility": "responds within 24h; allowlists founder email"
+      }
+    }
+  ],
+  "histogram": {"keep": 28, "nurture": 44, "remove": 8, "median": 58},
+  "remove_list": [
+    {"customer_id": "cus_120", "action": "sunset_email", "due_date": "2026-06-15"}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "1",
+  "scored_at": "later",
+  "rows": [{"customer_id": "x", "pain_match": 50, "budget_fit": 30, "total": 150, "band": "keep",
+            "evidence": {}}],
+  "histogram": {"keep": 0, "nurture": 0, "remove": 0, "median": 200},
+  "remove_list": []
+}
+]]></code>
+    <note>version not semver, signal values exceed maxima, total exceeds 100, band inconsistent with total, evidence empty, histogram.median exceeds 100.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">row.total != pain_match + budget_fit + urgency + product_fit + accessibility.</pattern>
+      <pattern id="f2">row.band='keep' AND total &lt; 70 (band drift).</pattern>
+      <pattern id="f3">row.band='remove' AND no entry in remove_list (no-act run).</pattern>
+      <pattern id="f4">Any signal in evidence empty or under 5 chars (unevidenced score).</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Round signal scores to nearest integer; band derived from rounded total.</transformation>
+      <transformation>Anonymise customer_id (hash) when publishing histogram externally.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-icp-fit-scorecard-solo.py">Validator script</reference>
 </text>

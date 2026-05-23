@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Gumroad Ops Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routing tree mapping product type, MoR acceptance, cover quality, and affiliate intent to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is the product a digital good (file / license / link) suitable for Gumroad MoR?</root-question>
+
+    <branch when="product_type NOT IN ('file','license','link') OR mor_unacceptable == true">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — use Stripe-direct or invoicing channel"/>
+    </branch>
+    <branch when="any_required_listing_field MISSING">
+      <conclusion ref="r1-six-field-listing" verdict="BLOCK — fill six mandatory fields before publish"/>
+    </branch>
+    <branch when="uses_mor == true AND seller_also_issues_vat_invoice == true">
+      <conclusion ref="r2-mor-not-self-vat" verdict="BLOCK — disable parallel VAT invoice; MoR handles it"/>
+    </branch>
+    <branch when="product_type == 'license' AND license_api_enabled == false">
+      <conclusion ref="r3-license-api-for-software" verdict="BLOCK — wire /v2/licenses/verify"/>
+    </branch>
+    <branch when="affiliate.enabled == true AND (commission_pct &lt; 30 OR commission_pct &gt; 50)">
+      <conclusion ref="r4-affiliate-commission-band" verdict="BLOCK — commission outside [30,50] without rationale"/>
+    </branch>
+    <branch when="cover_width_px &lt; 1280 OR cover_height_px &lt; 720">
+      <conclusion ref="r1-six-field-listing" verdict="BLOCK — cover too small; re-export at ≥1600×900"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — listing ready to publish"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — Applies-If preconditions not satisfied"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="gumroad-happy-path">
+    File product, cover 1600×900, six listing fields filled, uses_mor=true with no double-VAT, affiliate at 40%, all gates green → APPROVE.
+  </example>
+</text>

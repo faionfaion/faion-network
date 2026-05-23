@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Hook Bank Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to bootstrap and operate the hook bank end-to-end. Repeat the weekly inner loop; monthly review is the outer loop.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="snapshot-90-day-history">
+      <input>Per-platform analytics export covering the last 90 days (impressions + replies per post).</input>
+      <action>Export to CSV. Drop posts without impression counts. Keep platform, post_url, impressions_24h, qualified_replies, raw post text.</action>
+      <output>raw-history.csv</output>
+    </step>
+
+    <step n="2" name="compute-platform-medians">
+      <input>raw-history.csv</input>
+      <action>Group by platform. Compute median impressions_24h per platform. Persist to platform_medians map.</action>
+      <output>platform_medians (object) committed to the bank file.</output>
+    </step>
+
+    <step n="3" name="classify-rows-into-buckets">
+      <input>raw-history.csv + platform_medians</input>
+      <action>For each row, compute ratio = impressions_24h / platform_medians[platform]. Assign bucket per r2 thresholds. Tag pattern from the active allowlist.</action>
+      <output>rows array with bucket + pattern populated.</output>
+      <decision-gate>Pattern not in active allowlist? Either re-classify into an existing pattern or trigger r6 add-new path. Never silently invent a pattern.</decision-gate>
+    </step>
+
+    <step n="4" name="cap-patterns-allowlist">
+      <input>rows array</input>
+      <action>Count distinct patterns. If &gt; 15, demote the pattern with the lowest count of SPIKED rows. Update patterns_active list.</action>
+      <output>patterns_active (≤15).</output>
+    </step>
+
+    <step n="5" name="pre-write-remix-loop">
+      <input>Bank file + intent to write a new post on a target platform.</input>
+      <action>Open the SPIKED top-10 rows filtered to that platform. Pick one pattern. Draft the new hook by remixing the pattern with a fresh hook_text. Time-box: 3 minutes.</action>
+      <output>Draft post ready for editing.</output>
+      <decision-gate>If no SPIKED rows for the platform, fall back to AVERAGE rows. If still none, the bank is not mature; skip remix and write fresh, then add the result back into the bank.</decision-gate>
+    </step>
+
+    <step n="6" name="monthly-review-and-promote">
+      <input>Last 30 days of new rows.</input>
+      <action>Compute median impressions per pattern × platform. Promote one rising pattern. Demote one falling. Retire patterns with flop_streak ≥ 3 per r5. Update reviewed_at. Publish the summary in the build log.</action>
+      <output>Bank file v+1 + monthly review note in build log.</output>
+    </step>
+
+  </section>
+</text>

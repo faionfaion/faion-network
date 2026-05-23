@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Lemon Squeezy Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routing tree mapping product type, MoR acceptance, license needs, and affiliate intent to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is the product digital + LS-MoR acceptable + ≥1 variant defined?</root-question>
+
+    <branch when="product_is_enterprise_invoiced == true OR mor_unacceptable == true">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — use Stripe-direct or invoicing channel"/>
+    </branch>
+    <branch when="any_required_store_field MISSING OR variants.length == 0 OR variants.length &gt; 8">
+      <conclusion ref="r1-six-field-store" verdict="BLOCK — fix store/variants count"/>
+    </branch>
+    <branch when="uses_mor == true AND seller_issues_vat_invoice == true">
+      <conclusion ref="r2-mor-not-self-vat" verdict="BLOCK — disable parallel VAT invoice"/>
+    </branch>
+    <branch when="any subscription variant has license_api_enabled == false">
+      <conclusion ref="r3-license-api-for-software" verdict="BLOCK — enable LS License API"/>
+    </branch>
+    <branch when="dunning.sequence_days.length &lt; 3">
+      <conclusion ref="r4-dunning-cadence" verdict="BLOCK — configure 3-email dunning"/>
+    </branch>
+    <branch when="affiliate.enabled == true AND (commission_pct &lt; 30 OR commission_pct &gt; 50)">
+      <conclusion ref="r5-affiliate-commission-band" verdict="BLOCK — commission outside [30,50] without rationale"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — LS store ready"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — Applies-If preconditions not satisfied"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="lemon-squeezy-happy-path">
+    SaaS + EU 35% + LS MoR ok + 3 variants under cap + License API on subs + 3-touch dunning + affiliate 40% → all_gates_green=true → APPROVE.
+  </example>
+</text>

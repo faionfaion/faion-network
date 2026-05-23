@@ -1,57 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Gumroad Ops Playbook Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Gumroad Ops Playbook artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Gumroad Listing Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema draft-07 for a Gumroad listing config plus valid / invalid examples and forbidden patterns.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/gumroad-ops-playbook.json",
+  "type": "object",
+  "required": ["listing", "affiliate", "review"],
+  "properties": {
+    "listing": {
+      "type": "object",
+      "required": ["product_id", "cover_url", "subtitle", "price", "product_type",
+                   "refund_policy", "tags"],
+      "properties": {
+        "product_id": {"type": "string", "minLength": 3},
+        "cover_url": {"type": "string", "format": "uri"},
+        "cover_width_px": {"type": "integer", "minimum": 1280},
+        "cover_height_px": {"type": "integer", "minimum": 720},
+        "subtitle": {"type": "string", "minLength": 10, "maxLength": 280},
+        "price": {
+          "type": "object",
+          "required": ["mode", "amount_usd"],
+          "properties": {
+            "mode": {"type": "string", "enum": ["fixed", "pwyw", "tiers"]},
+            "amount_usd": {"type": "number", "minimum": 0}
+          }
+        },
+        "product_type": {"type": "string", "enum": ["file", "license", "link"]},
+        "refund_policy": {"type": "string", "enum": ["no_refunds", "7_day", "14_day", "30_day"]},
+        "tags": {"type": "array", "minItems": 1, "maxItems": 5,
+                 "items": {"type": "string"}},
+        "uses_mor": {"type": "boolean"},
+        "license_api_enabled": {"type": "boolean"}
+      }
+    },
+    "affiliate": {
+      "type": "object",
+      "required": ["enabled", "commission_pct"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "commission_pct": {"type": "number", "minimum": 0, "maximum": 90},
+        "payout_cadence": {"type": "string", "enum": ["weekly", "monthly"]}
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["reviewed_at", "conversion_rate", "refund_rate"],
+      "properties": {
+        "reviewed_at": {"type": "string", "format": "date"},
+        "conversion_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "refund_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "rank_30d_revenue": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
+]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "listing": {
+    "product_id": "prompt-pack-v3",
+    "cover_url": "https://gumroad.com/u/cover.png",
+    "cover_width_px": 1600,
+    "cover_height_px": 900,
+    "subtitle": "200 copy-paste prompts for solo founders — production-tested, MIT-licensed.",
+    "price": {"mode": "fixed", "amount_usd": 19},
+    "product_type": "file",
+    "refund_policy": "14_day",
+    "tags": ["prompts", "indie", "ai", "templates"],
+    "uses_mor": true,
+    "license_api_enabled": false
+  },
+  "affiliate": {"enabled": true, "commission_pct": 40, "payout_cadence": "monthly"},
+  "review": {"reviewed_at": "2026-05-23", "conversion_rate": 0.038, "refund_rate": 0.012,
+             "rank_30d_revenue": 2}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "listing": {"product_id": "x", "subtitle": "too short", "tags": [], "uses_mor": false},
+  "affiliate": {"enabled": true, "commission_pct": 95},
+  "review": {}
+}
+]]></code>
+    <note>product_id too short, missing cover_url, subtitle too short, tags empty (below minItems 1), missing required listing fields, commission_pct above max 90, review missing required fields.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">listing.uses_mor=true AND seller also issues a separate VAT invoice for the same transaction (double-tax).</pattern>
+      <pattern id="f2">product_type=license AND license_api_enabled=false (key hard-coded in download bundle).</pattern>
+      <pattern id="f3">affiliate.commission_pct outside the [30, 50] indie band without an explicit rationale field.</pattern>
+      <pattern id="f4">cover_width_px &lt; 1280 OR cover_height_px &lt; 720 (Gumroad downscales aggressively).</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Round commission_pct to nearest 5%.</transformation>
+      <transformation>Truncate subtitle at sentence boundary if exceeding 280 chars.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-gumroad-ops-playbook.py">Validator script</reference>
 </text>

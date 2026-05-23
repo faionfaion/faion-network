@@ -3,78 +3,102 @@ slug: in-issue-ad-format-library
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "8572ecc669bda7c9"
-summary: "In Issue Ad Format Library — testable methodology for growth, acquisition, content, GTM. Self-promoting inside one's own newsletter is awkward without conventions. A small library of in-issue ad formats (top banner, soft P.S., mid-issue case, dedicated send) with conversion benchmarks is missing."
-tags: [marketing, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Library of 4 in-issue ad formats (top-banner, soft-PS, mid-issue-case, dedicated-send) with placement rules, CTR + CVR benchmarks, and a max-rotation cadence.
+content_id: "91c13862b03a3d8b"
+complexity: medium
+produces: rubric
+est_tokens: 4400
+tags: [newsletter, in-issue-ad, conversion, founder-self-promo, ctr-cvr]
 ---
-# In Issue Ad Format Library
+# In-Issue Ad Format Library
 
 ## Summary
 
-**One-sentence:** In Issue Ad Format Library — testable methodology for growth, acquisition, content, GTM. Self-promoting inside one's own newsletter is awkward without conventions. A small library of in-issue ad formats (top banner, soft P.S., mid-issue case, dedicated send) with conversion benchmarks is missing.
+**One-sentence:** A library of 4 in-issue ad formats — top-banner, soft P.S., mid-issue case, dedicated send — with placement rules, CTR + CVR benchmarks, and a max-rotation cadence per format.
 
-**One-paragraph:** In Issue Ad Format Library closes a known gap in marketing practice: Self-promoting inside one's own newsletter is awkward without conventions. A small library of in-issue ad formats (top banner, soft P.S., mid-issue case, dedicated send) with conversion benchmarks is missing. The methodology is anchored to the recurring activity 'Newsletter → paid product funnel: convert 1K free readers into 200 customers (role: p2-indie-hacker)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Self-promoting inside your own newsletter is awkward without conventions. This library codifies 4 formats with placement rules and rotation limits: top-banner (above-the-fold tile, max 1×/issue), soft P.S. (≤2 sentences at the foot, ≥3×/4 issues allowed), mid-issue case (a 1-paragraph case study tied to issue topic, max 1×/2 issues), dedicated send (full-issue promo, max 1×/6 issues). Each format ships CTR + CVR benchmarks measured against the founder's own 90-day median so format effectiveness is comparable. Output is the ad-format library + rotation plan + monthly review.
+
+**Ефективно для:**
+
+- Newsletter operators converting free readers into paid customers.
+- Founders with 500-50000 subscribers and a paid product to push.
+- Avoiding "in-bizdev" guilt: structured formats make self-promo a deliberate choice, not creep.
+- Negotiating sponsor placements — the library is the rate-card structure.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Newsletter → paid product funnel: convert 1K free readers into 200 customers (role: p2-indie-hacker)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator runs a newsletter with ≥500 subscribers and ≥4 weeks of issue history.
+- A paid product / waitlist / lead magnet exists to direct traffic to.
+- Operator has open-rate + click-tracking enabled (Substack, ConvertKit, Beehiiv, Buttondown).
+- Operator is willing to rotate formats per the cadence rules (not always banner).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Newsletter is paid-only with no free tier — in-issue ads to paying readers fatigue them.
+- Subscriber count &lt; 500 — sample too small for benchmark math.
+- Operator already runs sponsored ads exclusively — the format library is for own-product promo.
+- No product / waitlist / lead magnet to send traffic to.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| 90-day issue archive with open-rate + CTR per send | CSV | newsletter platform |
+| Per-format CTR + CVR baseline | scalars | computed locally |
+| Active product / waitlist URL | URL | founder |
+| Rotation calendar (next 8 issues) | YAML | founder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[hook-bank-template]] | Soft-PS copy and mid-issue case hooks feed the bank; bank patterns inform new ad copy. |
+| [[icp-fit-scorecard-solo]] | Click-then-convert rates feed back into the ICP scorecard signal. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: 4 named formats, placement constraints, per-format cadence cap, baseline-relative CTR/CVR, max self-promo share 25%, monthly review | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for format library + rotation plan + benchmark block + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: banner-fatigue, dedicated-send over-use, PS-fatigue, no-baseline | 700 |
+| `content/04-procedure.xml` | essential | 6-step procedure: compute baseline → pick formats → place per cadence → measure → rotate → monthly review | 800 |
+| `content/05-examples.xml` | essential | Worked example: 5k-subscriber newsletter with 8-issue rotation plan + observed CTR/CVR | 700 |
+| `content/06-decision-tree.xml` | essential | Tree routing observables → rule id | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `in_issue_ad_format_library_template_fill` | haiku | Template fill, no judgement |
-| `in_issue_ad_format_library_evidence_check` | sonnet | Bounded comparison + judgement |
-| `in_issue_ad_format_library_synthesis` | opus | Cross-input synthesis + final write-up |
+| `baseline_compute` | haiku | Mechanical aggregation. |
+| `format_placement_decision` | sonnet | Bounded judgement on issue topic vs format fit. |
+| `rotation_plan_8_issues` | sonnet | Constraint satisfaction across cadence rules. |
+| `monthly_review` | sonnet | Aggregate and narrate top-performing format. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ad-format-library.yaml` | 4-format library skeleton with cadence caps |
+| `templates/rotation-plan.csv` | 8-issue rotation plan ready to fill |
+| `templates/_smoke-test.json` | Minimum viable library + plan + benchmarks for validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-in-issue-ad-format-library.py` | Validate library + rotation plan against 02-output-contract schema | Pre-publish gate / monthly review |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `Newsletter → paid product funnel: convert 1K free readers into 200 customers (role: p2-indie-hacker)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[hook-bank-template]]
+- [[icp-fit-scorecard-solo]]
+- [[internal-linking-strategy-graph]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps subscriber count, baseline availability, target product, and cadence violations to a rule from `01-core-rules.xml`, telling the agent whether to publish the rotation plan, block on a missing constraint, or skip the library. Walk it on every fresh rotation plan; do not cache outcomes across plans.

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Define sentinel errors in one apperror package, wrap with fmt.Errorf %w, classify with errors.Is/As, and never panic for control flow.
-content_id: "62abd60a22cf38be"
+content_id: "5995c6d54b5c83eb"
 complexity: medium
 produces: code
 est_tokens: 3800

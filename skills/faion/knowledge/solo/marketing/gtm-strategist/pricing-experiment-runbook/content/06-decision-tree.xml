@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Pricing Experiment Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals — subs count, grandfather mechanism, pre-flight, currency coverage, dispute spike — to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the product have ≥30 active subscriptions and a real (non-cosmetic) pricing change?</root-question>
+
+    <branch when="active_subs &lt; 30 OR change_is_cosmetic == true">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — iterate qualitatively first"/>
+    </branch>
+    <branch when="dispute_rate_baseline &gt; 0.5">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — stabilise dispute rate before any price change"/>
+    </branch>
+    <branch when="plan_committed == false">
+      <conclusion ref="r1-pre-commit-experiment-plan" verdict="BLOCK — write the Plan before any Stripe change"/>
+    </branch>
+    <branch when="grandfather_mechanism == 'goodwill' OR old_price_archived == true">
+      <conclusion ref="r2-grandfathering-explicit-and-pinned" verdict="BLOCK — pin to Stripe coupon or separate Price; never delete old Price"/>
+    </branch>
+    <branch when="stripe_preflight_status != 'green' OR preflight_age_days &gt; 7">
+      <conclusion ref="r3-stripe-config-validated-via-script" verdict="BLOCK — pre-flight script must return green within 7 days of start"/>
+    </branch>
+    <branch when="currencies_in_test.length &gt; 1 AND price_per_currency != currencies_in_test.length">
+      <conclusion ref="r4-currency-and-tax-explicit" verdict="BLOCK — one Price per currency"/>
+    </branch>
+    <branch when="end_date_passed AND decision_memo_missing">
+      <conclusion ref="r5-forced-go-no-go-decision-memo" verdict="BLOCK — memo within 48h or auto-revert"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — experiment ready to launch / close"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — Applies-If preconditions not satisfied"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="pricing-experiment-happy-path">
+    312 active subs, dispute_rate 0.2 (under 0.5), Plan committed, grandfather coupon pinned, pre-flight green 4 days before start, single currency USD, decision memo written within 48h of end → all_gates_green=true → APPROVE.
+  </example>
+</text>

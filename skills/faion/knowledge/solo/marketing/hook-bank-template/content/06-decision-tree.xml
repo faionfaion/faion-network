@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Hook Bank Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routing tree mapping observable signals — post volume, baseline availability, pattern count — to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Does the operator post ≥3× per week AND have ≥30 posts with impression data?</root-question>
+
+    <branch when="posts_per_week &lt; 3 OR posts_total &lt; 30">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — sample too small; use a generic swipe file first"/>
+    </branch>
+    <branch when="platform_medians MISSING">
+      <conclusion ref="r2-bucket-against-rolling-median" verdict="BLOCK — compute platform_medians before bucketing"/>
+    </branch>
+    <branch when="row_count_with_missing_fields &gt; 0">
+      <conclusion ref="r1-six-field-schema" verdict="BLOCK — exclude rows missing any of 6 fields"/>
+    </branch>
+    <branch when="patterns_active.length &gt; 15">
+      <conclusion ref="r6-cap-patterns-at-fifteen" verdict="BLOCK — demote weakest pattern to bring count ≤15"/>
+    </branch>
+    <branch when="reviewed_at OLDER THAN 14 days AND rows changed">
+      <conclusion ref="r7-monthly-review-with-promotion" verdict="BLOCK — run review before commit"/>
+    </branch>
+    <branch when="any_pattern flop_streak &gt;= 3">
+      <conclusion ref="r5-retire-after-three-flops" verdict="BLOCK — retire pattern, record reason"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — bank ready for remix loop"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — Applies-If preconditions not satisfied"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="hook-bank-happy-path">
+    Operator posts 5×/week, 47 posts in history, platform_medians computed, all rows have 6 fields, 6 active patterns, reviewed_at today, no flop_streak ≥3 → all_gates_green=true → APPROVE.
+  </example>
+</text>

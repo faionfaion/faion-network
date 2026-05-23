@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Lay out a Go project with cmd/, internal/, pkg/ (only when public), migrations/, and a single Makefile-driven workflow.
-content_id: "50a320b0762ea1de"
+content_id: "451d0efe355951db"
 complexity: medium
 produces: code
 est_tokens: 4000

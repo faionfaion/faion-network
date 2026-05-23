@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Internal Linking Graph Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to crawl, audit, fix, and re-verify an internal-link graph.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="crawl-site">
+      <input>Domain + crawler (Screaming Frog or equivalent).</input>
+      <action>Crawl all indexable pages. Export URL + inbound count + outbound count + anchor-text per link.</action>
+      <output>crawl-export.csv</output>
+    </step>
+
+    <step n="2" name="assign-clusters">
+      <input>crawl-export.csv + content-strategy notes.</input>
+      <action>Assign each URL to one cluster. Mark hub candidates. Clusters with &lt;4 spokes merge or absorb.</action>
+      <output>cluster-assignment.csv</output>
+      <decision-gate>Cluster has &lt;4 spokes after merge → drop the cluster. Rule r2.</decision-gate>
+    </step>
+
+    <step n="3" name="confirm-one-hub-per-cluster">
+      <input>cluster-assignment.csv.</input>
+      <action>Pick one hub per cluster. Re-route other hub candidates to spoke status. Document hub choice rationale.</action>
+      <output>graph-spec.yaml with hub_url per cluster.</output>
+      <decision-gate>Two hubs candidate → block, force pick. Rule r1.</decision-gate>
+    </step>
+
+    <step n="4" name="audit-link-violations">
+      <input>graph-spec.yaml + crawl-export.csv.</input>
+      <action>Compute: orphans (no inbound from cluster), low_inbound_spokes (&lt;2 inbound), exact_match_anchor_targets (anchor_form_count &lt;3), missing_hub_link_spokes (no in-body link to hub). Emit audit.</action>
+      <output>audit block.</output>
+    </step>
+
+    <step n="5" name="emit-fix-diffs">
+      <input>audit block.</input>
+      <action>For each audit row, emit a fix: add-link / change-anchor / fold-into-cluster / de-index. Group by page to minimise edit passes.</action>
+      <output>fix-plan.md with per-page diffs.</output>
+    </step>
+
+    <step n="6" name="re-crawl-and-verify">
+      <input>Site after fixes applied.</input>
+      <action>Re-crawl. Re-run audit. Confirm all 4 audit lists empty. Persist crawl_date.</action>
+      <output>Validator green; ready for sibling [[internal-link-rotation-schedule]].</output>
+      <decision-gate>Audit lists not all empty after fixes → loop to step 5.</decision-gate>
+    </step>
+
+  </section>
+</text>

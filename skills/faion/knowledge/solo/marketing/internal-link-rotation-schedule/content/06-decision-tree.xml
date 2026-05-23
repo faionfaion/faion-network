@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Internal Link Rotation Schedule Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routing tree mapping graph-spec freshness, cluster count, calendar availability, and backlog state to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is a fresh graph spec available AND cluster count in [3,10] AND a 60-min bi-weekly slot reserved?</root-question>
+
+    <branch when="graph_spec_missing == true OR graph_spec_crawl_date OLDER THAN 30 days">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — run [[internal-linking-strategy-graph]] first"/>
+    </branch>
+    <branch when="cluster_count &lt; 3 OR cluster_count &gt; 10">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — fortnightly rotation outside coverage band"/>
+    </branch>
+    <branch when="any audit_log row has duration_minutes &gt; 60">
+      <conclusion ref="r2-sixty-minute-window" verdict="BLOCK — defer overflow; do not extend the slot"/>
+    </branch>
+    <branch when="any deferred_fix row overdue AND status='open'">
+      <conclusion ref="r3-deferred-fix-30-day-sla" verdict="BLOCK — escalate overdue fix into next rotation slot"/>
+    </branch>
+    <branch when="any rotation_calendar slot has status='paused' WITHOUT reason">
+      <conclusion ref="r5-no-skipping" verdict="BLOCK — log reason for the pause"/>
+    </branch>
+    <branch when="rotation_order changed mid-quarter">
+      <conclusion ref="r4-fixed-rotation-order" verdict="BLOCK — revert to start-of-quarter order"/>
+    </branch>
+    <branch when="quarter_closed AND retrospective_missing == true">
+      <conclusion ref="r6-end-of-quarter-retrospective" verdict="BLOCK — write retrospective before next quarter"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — rotation schedule operational"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — Applies-If preconditions not satisfied"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="rotation-happy-path">
+    Graph spec fresh + 6 clusters + bi-weekly slot + audit_log within 60 min + no overdue fixes + retrospective written → APPROVE.
+  </example>
+</text>

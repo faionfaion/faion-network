@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Pricing Experiment Worked Example" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>End-to-end worked example: indie SaaS bumps Solo plan $19→$29 with 12-month grandfather window.</summary>
+
+  <section title="Context">
+    <p>Indie SaaS on Stripe with 312 active Solo subscriptions at $19/mo. Founder wants to test a $29 price for new signups while protecting existing customers for 12 months. Currency: USD only. Tax: EU VAT inclusive.</p>
+  </section>
+
+  <section title="Baseline (Step 1)">
+    <list>
+      <item>MRR baseline: $5928.</item>
+      <item>Trial-to-paid: 17.1%.</item>
+      <item>Refund rate: 1.2% (30-day window).</item>
+      <item>Dispute rate: 0.2%.</item>
+    </list>
+  </section>
+
+  <section title="Plan (Step 2)">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "exp-2026-q2-pricing",
+  "start_date": "2026-06-01",
+  "end_date": "2026-07-30",
+  "duration_days": 60,
+  "variant_old": {"stripe_price_id": "price_old_19"},
+  "variant_new": {"stripe_price_id": "price_new_29"},
+  "audience": "new_signups_only",
+  "exposure_rule": "random 50/50 by signup-id hash mod 2",
+  "success_metric_primary": "trial_to_paid_conversion_pct",
+  "success_metric_threshold": 0.18,
+  "significance_target": "p<0.05",
+  "guardrail_metrics": ["refund_rate", "dispute_rate", "support_ticket_rate"],
+  "grandfathering": {
+    "audience": "all subs active before 2026-06-01",
+    "mechanism": "100% off coupon on price_new_29",
+    "stripe_coupon_id": "grandfather_q2_2026",
+    "window_months": 12
+  },
+  "currencies_in_test": ["usd"],
+  "tax_behavior": "exclusive"
+}
+]]></code>
+  </section>
+
+  <section title="Pre-flight (Step 5)">
+    <p>scripts/stripe-pre-flight.py confirms: price_new_29 exists, price_old_19 active, grandfather_q2_2026 attached to all 312 existing customers, zero orphan subs, no test-mode artefacts. passed_at = 2026-05-28T09:00:00Z (4 days before start). Within the 7-day window.</p>
+  </section>
+
+  <section title="Run + readout (Step 6)">
+    <list>
+      <item>Day 30: trial_to_paid_new = 0.21, trial_to_paid_old = 0.17. Refund_rate steady at 1.1%. Dispute_rate steady at 0.2%. No guardrail breach.</item>
+      <item>Day 45: founder briefly considers extending — termination rule check: significance not yet reached but sample at 78% of plan. Continue, no extension yet.</item>
+      <item>Day 60: trial_to_paid_new = 0.21 (n=140), trial_to_paid_old = 0.17 (n=138). z-test p = 0.043 → significance reached.</item>
+    </list>
+  </section>
+
+  <section title="Decision Memo (Step 7)">
+    <p>decision = adopt_new. metric_readouts captured. qualitative_signals: "no refund spike, 2 dispute tickets (baseline). Support inbox unchanged." next_action: "Move all new signups to price_new_29 on 2026-08-01. Maintain grandfather coupon for 12 months." Customer announcement sent same day: "We rolled out a new Solo plan at $29/mo for new accounts. If you signed up before 2026-06-01 you are on the original $19 price for 12 more months. Thanks for being early."</p>
+  </section>
+
+  <example trace="pricing-experiment-happy-path">
+    312 active subs (≥30) → preconditions met → Plan committed → grandfather coupon pinned → pre-flight green → run with daily guardrails → significance reached at day 60 → Decision Memo within 48h → adopt_new; APPROVE via run-the-checklist.
+  </example>
+</text>

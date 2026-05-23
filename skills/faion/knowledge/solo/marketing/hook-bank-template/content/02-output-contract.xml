@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Hook Bank Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema draft-07 for one hook-bank file plus valid / invalid examples and forbidden patterns. Validator enforces this before the bank is accepted.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/hook-bank-template.json",
+  "type": "object",
+  "required": ["version", "platform_medians", "rows", "patterns_active", "reviewed_at"],
+  "properties": {
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "platform_medians": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 1}
+    },
+    "patterns_active": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 15,
+      "items": {"type": "string", "pattern": "^[a-z][a-z-]*$"}
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["hook_text", "pattern", "platform", "post_url", "impressions_24h", "qualified_replies", "bucket"],
+        "properties": {
+          "hook_text": {"type": "string", "minLength": 5},
+          "pattern": {"type": "string"},
+          "platform": {"type": "string", "enum": ["x", "linkedin", "indiehackers", "threads"]},
+          "post_url": {"type": "string", "format": "uri"},
+          "impressions_24h": {"type": "integer", "minimum": 0},
+          "qualified_replies": {"type": "integer", "minimum": 0},
+          "bucket": {"type": "string", "enum": ["flopped", "average", "spiked"]},
+          "flop_streak": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "reviewed_at": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "version": "1.1.0",
+  "platform_medians": {"x": 1400, "linkedin": 600},
+  "patterns_active": ["before-after", "mistake-confession", "data-drop", "contrarian", "list-promise"],
+  "rows": [
+    {
+      "hook_text": "Shipped a $0 invoice to 312 customers last night. Postmortem.",
+      "pattern": "mistake-confession",
+      "platform": "x",
+      "post_url": "https://x.com/u/status/123",
+      "impressions_24h": 11400,
+      "qualified_replies": 38,
+      "bucket": "spiked",
+      "flop_streak": 0
+    }
+  ],
+  "reviewed_at": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "1",
+  "platform_medians": {},
+  "patterns_active": [],
+  "rows": [
+    {"hook_text": "x", "platform": "tiktok"}
+  ]
+}
+]]></code>
+    <note>version not semver, platform_medians empty, patterns_active empty, hook_text too short, platform not in enum, required fields missing.</note>
+  </example>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">Row tagged by gut feel — bucket value not derivable from impressions_24h vs platform_medians[platform].</pattern>
+      <pattern id="f2">patterns_active exceeds 15 entries.</pattern>
+      <pattern id="f3">Pattern listed in a row but absent from patterns_active.</pattern>
+      <pattern id="f4">Bank file last touched &gt; 14 days ago without a reviewed_at update.</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Round impressions_24h to nearest 100 for display; preserve raw value in the source row.</transformation>
+      <transformation>Sort rows by impressions_24h desc within bucket for readability.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <reference path="scripts/validate-hook-bank-template.py">Validator script</reference>
+</text>

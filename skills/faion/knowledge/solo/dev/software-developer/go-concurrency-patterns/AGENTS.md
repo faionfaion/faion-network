@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Implement safe, leak-free Go concurrency via bounded worker pools, fan-out/fan-in pipelines, and context-cancellation throughout.
-content_id: "07220ddb2d1d598e"
+content_id: "594fd495cbc0da85"
 complexity: medium
 produces: code
 est_tokens: 4000
