@@ -2,72 +2,96 @@
 slug: token-organization
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A three-tier hierarchy for design tokens — primitives (raw values), semantic tokens (role-based aliases), and component tokens (scoped overrides) — combined with a `{category}.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a design-token configuration with three-tier hierarchy (primitives / semantic / component) and a `{category}.{property}.{variant}.{state}` naming convention that makes tokens self-documenting and prevents bloat.
 content_id: "356f4d04990212e3"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [design-tokens, design-systems, naming-convention, hierarchy, theming]
 ---
 # Token Organization: Three-Tier Hierarchy and Naming Convention
 
 ## Summary
 
-**One-sentence:** A three-tier hierarchy for design tokens — primitives (raw values), semantic tokens (role-based aliases), and component tokens (scoped overrides) — combined with a `{category}.
+**One-sentence:** Produces a design-token configuration with three-tier hierarchy (primitives / semantic / component) and a `{category}.{property}.{variant}.{state}` naming convention that makes tokens self-documenting and prevents bloat.
 
-**One-paragraph:** A three-tier hierarchy for design tokens — primitives (raw values), semantic tokens (role-based aliases), and component tokens (scoped overrides) — combined with a `{category}.{property}.{variant}.{state}` naming convention that makes tokens self-documenting and prevents bloat.
+**One-paragraph:** Design-token systems collapse when names are ad-hoc and primitives leak into component code. This methodology enforces a strict three-tier hierarchy — primitives (raw values), semantic tokens (role-based aliases), component tokens (scoped overrides) — combined with a `{category}.{property}.{variant}.{state}` naming convention. Output is a config artefact + lint rules that reject component-layer references to primitives, enforce naming dots, and forbid raw hex/px in semantic or component layers. Output drives Style Dictionary or similar pipelines.
+
+**Ефективно для:**
+
+- Bootstrapping token system before component library scales past ~30 components.
+- Refactoring legacy tokens to a three-tier hierarchy without a full rewrite.
+- Lint rule: ban primitive references from component layer.
+- Cross-platform token export with consistent naming convention.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new design system: establishing hierarchy before writing the first token.
-- Auditing a sprawling token set (500+ tokens) to collapse aliases, kill duplicates, rename raw-value tokens.
-- Onboarding a second platform (mobile after web) where existing names leak platform assumptions.
-- Preparing for theming (light/dark/brand) — the semantic layer is mandatory before mode switching.
+- Component library has ≥30 components or expected to grow there.
+- Multi-platform export targets exist (web + native).
+- Team can adopt new naming convention without breaking shipped UI.
 
 ## Skip If (ANY kills it)
 
-- Single-page marketing site with 8 colors and 3 font sizes — CSS variables in one file suffice.
-- Mid-flight design system rewrite when engineers are blocked — global rename without deprecation destroys velocity.
-- Without buy-in from at least one designer and one engineer — naming conventions abandoned without authority.
+- Single-theme small library — overhead exceeds savings.
+- Pure marketing pages outside the system.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing token list | JSON / CSS variables | design system team |
+| Component inventory | list | FE engineering |
+| Platform targets | list | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[design-tokens-fundamentals]] | upstream conceptual baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: three-tier-required, no-primitive-in-component, naming-convention-dots, no-raw-values-after-primitives, state-suffix-mandatory | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-tokens` | haiku | Mechanical classification. |
+| `rename-codemod` | haiku | Mechanical renaming. |
+| `fill-states` | sonnet | Light judgment on derived values. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tokens-three-tier.json` | Skeleton three-tier token config |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-token-organization.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[semantic-tokens-and-modes]]
+- [[design-tokens-fundamentals]]
+- [[w3c-design-tokens-standard]]
+- [[cross-platform-token-distribution]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by token role and assigns tier + naming pattern. Interactive-state branch enforces state-suffix coverage. Each leaf cites a rule from `01-core-rules.xml`.

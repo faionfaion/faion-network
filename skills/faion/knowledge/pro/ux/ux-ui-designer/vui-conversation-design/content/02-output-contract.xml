@@ -1,22 +1,169 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="vui-conversation-design Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="vui-conversation-design Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact produced by the vui-conversation-design methodology. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/vui-conversation-design.json",
+  "type": "object",
+  "required": [
+    "__faion_header__",
+    "states",
+    "reprompt_cap",
+    "noise_test_conditions"
+  ],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": [
+        "methodology",
+        "version",
+        "produces"
+      ],
+      "properties": {
+        "methodology": {
+          "const": "vui-conversation-design"
+        },
+        "version": {
+          "type": "string"
+        },
+        "produces": {
+          "const": "spec"
+        }
+      }
+    },
+    "states": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "allowed_intents",
+          "voice_script",
+          "screen_prompt",
+          "no_match_handler",
+          "ambiguous_handler"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "allowed_intents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "voice_script": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "screen_prompt": {
+            "type": "string"
+          },
+          "no_match_handler": {
+            "type": "string"
+          },
+          "ambiguous_handler": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "reprompt_cap": {
+      "type": "integer",
+      "const": 3
+    },
+    "noise_test_conditions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "quiet",
+          "ambient",
+          "kitchen",
+          "traffic",
+          "multi-speaker"
+        ]
+      },
+      "minItems": 3
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {
+    "methodology": "vui-conversation-design",
+    "version": "1.1.0",
+    "produces": "spec"
+  },
+  "states": [
+    {
+      "id": "ask-date",
+      "allowed_intents": [
+        "provide-date"
+      ],
+      "voice_script": "Which date works for you?",
+      "screen_prompt": "Select a date below or say one out loud.",
+      "no_match_handler": "reprompt-1: 'I didn't catch that.'",
+      "ambiguous_handler": "ask user to disambiguate"
+    },
+    {
+      "id": "confirm",
+      "allowed_intents": [
+        "confirm",
+        "deny"
+      ],
+      "voice_script": "Book for Tuesday at 3 PM. Confirm?",
+      "screen_prompt": "Confirm booking for Tuesday at 3 PM (Yes / No)",
+      "no_match_handler": "reprompt-1: 'Say yes or cancel.'",
+      "ambiguous_handler": "reprompt: 'Sorry, was that yes or cancel?'"
+    }
+  ],
+  "reprompt_cap": 3,
+  "noise_test_conditions": [
+    "quiet",
+    "ambient",
+    "kitchen"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "states": [
+    {
+      "id": "x",
+      "voice_script": "Please proceed to provide the date for your appointment booking confirmation"
+    }
+  ],
+  "reprompt_cap": 7,
+  "noise_test_conditions": [
+    "quiet"
+  ]
+}
+]]></code>
+    <note>Missing __faion_header__; only 1 state; voice_script &gt;12 words; missing handlers; reprompt_cap != 3; noise_test_conditions &lt;3.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>reprompt_cap != 3.</item>
+      <item>voice_script &gt; 100 chars (~12 words).</item>
+      <item>State without no_match_handler + ambiguous_handler.</item>
+      <item>noise_test_conditions count &lt; 3.</item>
     </list>
   </section>
+
+  <reference path="templates/dialog-spec.json">Skeleton dialog spec</reference>
+  <reference path="scripts/validate-vui-conversation-design.py">Validator script</reference>
 </text>

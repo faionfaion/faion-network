@@ -2,75 +2,98 @@
 slug: voice-ui
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for designing speech-controlled interfaces — voice assistants, app voice commands, IVR systems — by writing sample dialogues first, then defining intents/slots, authoring prompts, and designing a 3-tier error-recovery ladder before any NLU training begins.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a voice-UI specification authoring sample dialogues first, then defining intents/slots, prompts, and a 3-tier error-recovery ladder (rephrase → examples → fallback) before any NLU training begins.
 content_id: "86dd9e9bf58a407b"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [voice-ui, conversational-design, nlu, dialogue-design, accessibility]
 ---
-# Voice UI Design: Dialogue-First Methodology for Voice Assistants and Commands
+# Voice UI Design: Dialogue-First Methodology
 
 ## Summary
 
-**One-sentence:** A methodology for designing speech-controlled interfaces — voice assistants, app voice commands, IVR systems — by writing sample dialogues first, then defining intents/slots, authoring prompts, and designing a 3-tier error-recovery ladder before any NLU training begins.
+**One-sentence:** Produces a voice-UI specification authoring sample dialogues first, then defining intents/slots, prompts, and a 3-tier error-recovery ladder (rephrase → examples → fallback) before any NLU training begins.
 
-**One-paragraph:** A methodology for designing speech-controlled interfaces — voice assistants, app voice commands, IVR systems — by writing sample dialogues first, then defining intents/slots, authoring prompts, and designing a 3-tier error-recovery ladder before any NLU training begins. Voice interfaces fail when copied from visual UI patterns: users do not know what to say, prompts are robotic, errors are dead ends. Writing dialogues before code forces natural language and exposes missing intents early. Error ladders (rephrase → examples → fallback) reduce abandonment; explicit confirmation strategy prevents irreversible actions without user awareness.
+**One-paragraph:** Voice interfaces fail when copied from visual UI patterns: users do not know what to say, prompts are robotic, errors are dead ends. This methodology forces dialogue-first design — write sample conversations before code, derive intents/slots from real wording, ship a 3-tier error-recovery ladder, and make confirmation strategy explicit for irreversible actions. Output is a spec consumed by Alexa Skills Kit / Google Actions / custom LLM voice (Realtime API, Gemini Live, Pipecat).
+
+**Ефективно для:**
+
+- Designing voice assistant, app voice command, або IVR з нуля.
+- Authoring sample dialogues BEFORE NLU/intent training.
+- Designing 3-tier error-recovery ladder для voice prompts.
+- Explicit confirmation strategy для irreversible actions (delete, send, pay).
 
 ## Applies If (ALL must hold)
 
-- Designing a voice assistant, Alexa/Google skill, or IVR flow end-to-end.
-- Adding voice commands to an existing app for hands-free or accessibility use.
-- Migrating a legacy NLU bot (Dialogflow, Lex) to an LLM-powered runtime.
-- Defining acceptance criteria for a voice feature in a spec or design doc.
-- Auditing transcripts of an existing voice product for verbosity or missing error paths.
+- Product ships voice-controlled interactions (assistant, command, IVR).
+- Voice is a primary modality — not just a fallback.
+- Team can iterate on prompts before model training.
 
 ## Skip If (ANY kills it)
 
-- Visual UI work where voice is cosmetic — invest in the core visual flow first.
-- Highly private data entry (financial account numbers, medical detail) without strong auth design.
-- Noisy or shared environments where ASR reliability cannot be guaranteed.
-- Browsing or exploratory tasks — visual lists outperform voice for discovery.
-- Rapid prototype stage before basic ASR integration is confirmed working.
+- Voice as marketing checkbox only — no real intent coverage.
+- Pure dictation tool with no dialogue (use STT methodology).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Use-case description | Markdown | PM |
+| Target platforms | list (alexa / google / custom-llm) | engineering |
+| Sensitive-action list | list | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[vui-conversation-design]] | state-machine vocabulary upstream |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: dialogues-before-code, error-ladder-3-tier, prompt-grade-8-and-short, explicit-confirmation-irreversible, barge-in-allowed | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `author-dialogues` | sonnet | Natural-language drafting. |
+| `extract-intents` | haiku | Mechanical NLU schema. |
+| `write-prompts` | sonnet | Tone + length tuning. |
+| `error-ladder` | sonnet | Escalation design. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/voice-spec.json` | Skeleton voice-spec |
+| `templates/dialogue-template.md` | Dialogue-authoring template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-voice-ui.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[vui-conversation-design]]
+- [[vui-accessibility-inclusivity]]
+- [[vui-privacy-security]]
+- [[vui-testing-best-practices]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by intent reversibility + utterance coverage; enforces confirmation for irreversible actions and 3-tier ladder for the rest. Each leaf cites a rule from `01-core-rules.xml`.

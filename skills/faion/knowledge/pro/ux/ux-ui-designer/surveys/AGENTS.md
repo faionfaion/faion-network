@@ -2,73 +2,97 @@
 slug: surveys
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A research method for collecting structured data from large user populations through standardized questions — covering satisfaction (NPS, CSAT, SUS), task ease (SEQ), and feature preference — to quantify user attitudes and validate qualitative findings at scale.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a quantitative-survey instrument (NPS/CSAT/SUS/SEQ + custom items) with sampling plan, channel mix, fielding window, and analysis plan — validated for question-construction antipatterns before fielding.
 content_id: "55ff0d01c0e32d70"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [research, surveys, quantitative, user-research, metrics]
 ---
 # Surveys and Questionnaires
 
 ## Summary
 
-**One-sentence:** A research method for collecting structured data from large user populations through standardized questions — covering satisfaction (NPS, CSAT, SUS), task ease (SEQ), and feature preference — to quantify user attitudes and validate qualitative findings at scale.
+**One-sentence:** Produces a quantitative-survey instrument (NPS/CSAT/SUS/SEQ + custom items) with sampling plan, channel mix, fielding window, and analysis plan — validated for question-construction antipatterns before fielding.
 
-**One-paragraph:** A research method for collecting structured data from large user populations through standardized questions — covering satisfaction (NPS, CSAT, SUS), task ease (SEQ), and feature preference — to quantify user attitudes and validate qualitative findings at scale.
+**One-paragraph:** Surveys collect structured data from large user populations to quantify attitudes and validate qualitative findings at scale. This methodology emits a survey-instrument config: instrument (NPS / CSAT / SUS / SEQ / custom), sampling target, channel mix, fielding window, and analysis plan. It enforces standard rules — no double-barreled questions, no leading wording, ordinal-scale labels disclosed, response-rate target ≥ a benchmark. Output drives a tool-agnostic config consumed by Typeform / Qualtrics / SurveyMonkey / Google Forms.
+
+**Ефективно для:**
+
+- Validating qualitative research findings at scale (n ≥ 100).
+- Benchmarking product satisfaction (NPS / CSAT / SUS / SEQ) over time.
+- Pre / post launch feature-preference measurement.
+- Multi-channel sampling (email + in-app + intercept) з documented bias-control.
 
 ## Applies If (ALL must hold)
 
-- Quantitative validation of qualitative findings at N≥100.
-- Tracking standard UX metrics over time: NPS, SUS, CSAT, SEQ.
-- Segmenting users (new vs. power, free vs. paid) to measure satisfaction or feature value.
-- Pre/post launch comparison of perceived ease, trust, or feature impact.
+- Research question requires quantification with confidence intervals.
+- Sample size ≥ 100 is achievable within the fielding window.
+- A documented analysis plan can be authored before fielding.
 
 ## Skip If (ANY kills it)
 
-- You do not yet know which questions to ask — run interviews first; an ill-formed survey produces noise.
-- Sample <30 — descriptive statistics are unreliable; use qualitative methods instead.
-- You need behavioral data (clicks, time on task) — analytics or usability tests, not self-report.
-- High-stakes decisions where social-desirability bias dominates (e.g., willingness-to-pay overestimated 2-4x by surveys).
+- n < 30 — qualitative methods produce better signal.
+- Exploratory phase — surveys assume the constructs to measure are known.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Research question | Markdown | researcher |
+| Sample-frame estimate | number | data team |
+| Channel access | list of channels with quotas | marketing / product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | self-contained methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: instrument-mandatory, no-double-barrel, no-leading-wording, ordinal-labels-disclosed, response-rate-target, analysis-plan-pre-registered | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `frame-question` | sonnet | Concise question crafting. |
+| `draft-items` | sonnet | Items + neutrality checks. |
+| `lint-items` | haiku | Mechanical double-barrel + leading detector. |
+| `analysis-plan` | sonnet | Pre-registration. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/survey-config.json` | Skeleton survey-config artefact |
+| `templates/item-bank.csv` | Reusable item bank with neutral wording |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-surveys.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[tree-testing]]
+- [[diary-studies]]
+- [[focus-groups]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by research goal type to instrument + scale + channel; small-n branch routes to qualitative methods; post-hoc analyses are forced into exploratory flag. Each leaf cites a rule from `01-core-rules.xml`.

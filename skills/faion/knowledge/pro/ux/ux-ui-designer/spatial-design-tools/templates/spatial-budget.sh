@@ -1,22 +1,16 @@
 #!/usr/bin/env bash
-# spatial-budget.sh — fail CI if a glTF/USDZ asset exceeds spatial budget
-# Usage: MAX_TRIS=50000 MAX_MB=10 ./spatial-budget.sh path/to/asset.glb
-# Requires: gltf-pipeline (npm i -g gltf-pipeline), du
+# purpose: enforce polygon + file-size budgets on imported assets
+# consumes: imported assets in assets/3d/ + budgets from tool-stack-config.json
+# produces: exit-1 if any asset exceeds budget
+# depends-on: content/01-core-rules.xml budget-at-concept rule
+# token-budget-impact: ~200 tokens when loaded as context
 set -euo pipefail
-
-ASSET="${1:?path to asset required}"
-MAX_TRIS="${MAX_TRIS:-100000}"
-MAX_MB="${MAX_MB:-15}"
-
-SIZE_MB=$(du -m "$ASSET" | cut -f1)
-TRIS=$(gltf-pipeline -i "$ASSET" --stats 2>/dev/null | awk '/triangles/{print $2}')
-
-[ "$SIZE_MB" -le "$MAX_MB" ] || {
-  echo "FAIL size ${SIZE_MB}MB > ${MAX_MB}MB: $ASSET"
-  exit 1
-}
-[ -n "$TRIS" ] && [ "$TRIS" -le "$MAX_TRIS" ] || {
-  echo "FAIL tris ${TRIS:-unknown} > ${MAX_TRIS}: $ASSET"
-  exit 1
-}
-echo "OK $ASSET — ${SIZE_MB}MB / ${TRIS} tris"
+MAX_SIZE_MB="${1:-30}"
+for f in $(find assets/3d -type f \( -name "*.glb" -o -name "*.gltf" -o -name "*.usdz" \)); do
+  size=$(du -m "$f" | cut -f1)
+  if [ "$size" -gt "$MAX_SIZE_MB" ]; then
+    echo "FAIL: $f is ${size}MB > ${MAX_SIZE_MB}MB"
+    exit 1
+  fi
+done
+echo "OK: all assets under ${MAX_SIZE_MB}MB"

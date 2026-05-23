@@ -2,72 +2,96 @@
 slug: vui-accessibility-inclusivity
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for designing voice interfaces that serve diverse user populations: non-native speakers, accented speech, elderly users, and those with motor or visual impairments.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a VUI inclusivity report measuring WER (word-error-rate) fairness across demographic slices (accent, age, gender), enforcing reading-grade-8 prompts, visual transcript alternative, and motor/visual fallbacks.
 content_id: "146aee4a9bbbf639"
+complexity: medium
+produces: report
+est_tokens: 4000
 tags: [vui, accessibility, inclusivity, asr, fairness]
 ---
 # VUI Accessibility and Inclusivity
 
 ## Summary
 
-**One-sentence:** A methodology for designing voice interfaces that serve diverse user populations: non-native speakers, accented speech, elderly users, and those with motor or visual impairments.
+**One-sentence:** Produces a VUI inclusivity report measuring WER (word-error-rate) fairness across demographic slices (accent, age, gender), enforcing reading-grade-8 prompts, visual transcript alternative, and motor/visual fallbacks.
 
-**One-paragraph:** A methodology for designing voice interfaces that serve diverse user populations: non-native speakers, accented speech, elderly users, and those with motor or visual impairments. Apply word-error-rate (WER) fairness evaluation across demographic slices, keep prompt language at reading grade 8 or below, and always provide a visual transcript alternative. Voice is an accessibility modality, not an add-on feature.
+**One-paragraph:** Voice interfaces serve diverse users only when WER is measured per demographic slice (overall accuracy hides 15-30 point subgroup gaps), prompts stay at reading grade 8 or below, every voice interaction has a visual-transcript alternative, and motor/visual impairments are accommodated with non-voice fallbacks. This methodology emits an inclusivity report consumed by QA, with hard thresholds (WER fairness gap ≤10 percentage points, grade level ≤8) and required artefacts.
+
+**Ефективно для:**
+
+- Pre-launch fairness audit для voice product з diverse user population.
+- WER measurement across accent / age / gender slices.
+- Reading-grade-8 prompt audit та simplification.
+- Visual-transcript + non-voice fallback enforcement.
 
 ## Applies If (ALL must hold)
 
-- Building voice agents or IVR for diverse user bases: non-native speakers, elderly users, motor- or visually-impaired users.
-- Auditing an existing voice product for ASR error rate by demographic group.
-- Localizing a voice agent into a new language or regional dialect.
-- Designing voice as the accessibility alternative to a touch UI (kiosk, automotive, hands-busy context).
+- Voice is a primary interaction modality.
+- Audience includes non-native speakers, accented speech, or elderly users.
+- QA can fund per-demographic recording sessions or buy benchmark dataset.
 
 ## Skip If (ANY kills it)
 
-- Single-locale, single-accent, narrow-demographic prototype — full diversity testing can wait until validation.
-- Heavy ambient-noise contexts where ASR fails for everyone — fix the audio pipeline (echo cancel, beamforming) first.
-- Phone-tree IVR with rigid menu prompts — touch-tone fallback is the inclusive design path; accent-handling is secondary.
+- Internal voice prototype with single tester.
+- Pure dictation tool without dialogue.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Demographic slice list | list | research |
+| Test corpus | labeled audio | QA / vendor |
+| Prompt bank | JSON / Markdown | VUI designer |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[voice-ui]] | dialogue + prompt vocabulary upstream |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: wer-per-slice, wer-fairness-gap-cap, prompt-grade-8-cap, visual-transcript-alternative, non-voice-fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `define-slices` | haiku | Mechanical enumeration. |
+| `measure-wer` | sonnet | Per-slice analysis. |
+| `simplify-prompts` | sonnet | Plain-language rewrites. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/inclusivity-report.json` | Skeleton report |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vui-accessibility-inclusivity.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[voice-ui]]
+- [[vui-conversation-design]]
+- [[vui-privacy-security]]
+- [[vui-testing-best-practices]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by audience scope and measurement signal; remediation actions are tied to specific rule violations. Each leaf cites a rule from `01-core-rules.xml`.

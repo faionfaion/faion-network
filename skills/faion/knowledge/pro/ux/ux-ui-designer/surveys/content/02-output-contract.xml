@@ -1,22 +1,248 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="surveys Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="surveys Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact produced by the surveys methodology. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/surveys.json",
+  "type": "object",
+  "required": [
+    "__faion_header__",
+    "research_question",
+    "instrument",
+    "items",
+    "sampling",
+    "analysis_plan"
+  ],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": [
+        "methodology",
+        "version",
+        "produces"
+      ],
+      "properties": {
+        "methodology": {
+          "const": "surveys"
+        },
+        "version": {
+          "type": "string"
+        },
+        "produces": {
+          "const": "config"
+        }
+      }
+    },
+    "research_question": {
+      "type": "string",
+      "minLength": 20
+    },
+    "instrument": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "nps",
+          "csat",
+          "sus",
+          "seq",
+          "custom"
+        ]
+      },
+      "minItems": 1
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "scale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 5
+          },
+          "scale": {
+            "enum": [
+              "nps-0-10",
+              "likert-1-5",
+              "likert-1-7",
+              "binary",
+              "open-text"
+            ]
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "sampling": {
+      "type": "object",
+      "required": [
+        "target_n",
+        "channels",
+        "fielding_window_days",
+        "response_rate_target_pct"
+      ],
+      "properties": {
+        "target_n": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "email",
+              "in-app",
+              "intercept",
+              "panel"
+            ]
+          },
+          "minItems": 1
+        },
+        "fielding_window_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "response_rate_target_pct": {
+          "type": "number",
+          "minimum": 5
+        }
+      }
+    },
+    "analysis_plan": {
+      "type": "object",
+      "required": [
+        "cross_tabs",
+        "significance_test"
+      ],
+      "properties": {
+        "cross_tabs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "weighting": {
+          "type": "string"
+        },
+        "significance_test": {
+          "enum": [
+            "chi2",
+            "t-test",
+            "anova",
+            "none"
+          ]
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {
+    "methodology": "surveys",
+    "version": "1.1.0",
+    "produces": "config"
+  },
+  "research_question": "Did the new onboarding flow improve first-week feature adoption?",
+  "instrument": [
+    "nps",
+    "seq"
+  ],
+  "items": [
+    {
+      "id": "q1",
+      "text": "How likely are you to recommend the product to a colleague?",
+      "scale": "nps-0-10",
+      "labels": [
+        "0=not at all",
+        "10=extremely"
+      ]
+    },
+    {
+      "id": "q2",
+      "text": "How easy was completing the onboarding tutorial?",
+      "scale": "likert-1-5",
+      "labels": [
+        "1=very difficult",
+        "2=difficult",
+        "3=neither",
+        "4=easy",
+        "5=very easy"
+      ]
+    }
+  ],
+  "sampling": {
+    "target_n": 400,
+    "channels": [
+      "in-app",
+      "email"
+    ],
+    "fielding_window_days": 14,
+    "response_rate_target_pct": 25
+  },
+  "analysis_plan": {
+    "cross_tabs": [
+      "plan_tier",
+      "tenure_days"
+    ],
+    "weighting": "tenure-balanced",
+    "significance_test": "t-test"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "research_question": "About product?",
+  "items": [
+    {
+      "id": "q1",
+      "text": "Rate the speed and accuracy",
+      "scale": "likert-1-5"
+    }
+  ],
+  "sampling": {
+    "target_n": 10,
+    "channels": []
+  }
+}
+]]></code>
+    <note>Missing __faion_header__; question too short; double-barreled item; missing labels; target_n &lt; 30; channels empty; missing analysis_plan.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Items containing ' and ' that conflate two attributes.</item>
+      <item>Likert items without `labels` covering every scale point.</item>
+      <item>Sampling target_n &lt; 30.</item>
+      <item>Loaded wording ('amazing', 'awful', 'shouldn't we') in items.</item>
     </list>
   </section>
+
+  <reference path="templates/survey-config.json">Skeleton survey-config artefact</reference>
+  <reference path="templates/item-bank.csv">Reusable item bank with neutral wording</reference>
+  <reference path="scripts/validate-surveys.py">Validator script</reference>
 </text>

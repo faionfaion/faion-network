@@ -2,74 +2,96 @@
 slug: spatial-ui-patterns
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A pattern taxonomy for 3D user interfaces in AR/VR/MR: four panel types (world-locked, head-locked, body-locked, hand-attached), window management conventions, and ergonomic constraints (comfort distance ≥ 1 m, FoV occupancy ≤ 40°, touch targets ≥ 60×60 pt at 1 m).
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a pattern-taxonomy spec for 3D user interfaces in AR/VR/MR: panel-type assignment (world-locked / head-locked / body-locked / hand-attached), comfort distance ≥1 m, FoV occupancy ≤40°, touch targets ≥60×60 pt at 1 m.
 content_id: "74a68d691e50df2e"
+complexity: medium
+produces: spec
+est_tokens: 4100
 tags: [spatial-ui, ar-vr-mr, panel-types, window-management, ergonomics]
 ---
 # Spatial UI Patterns
 
 ## Summary
 
-**One-sentence:** A pattern taxonomy for 3D user interfaces in AR/VR/MR: four panel types (world-locked, head-locked, body-locked, hand-attached), window management conventions, and ergonomic constraints (comfort distance ≥ 1 m, FoV occupancy ≤ 40°, touch targets ≥ 60×60 pt at 1 m).
+**One-sentence:** Produces a pattern-taxonomy spec for 3D user interfaces in AR/VR/MR: panel-type assignment (world-locked / head-locked / body-locked / hand-attached), comfort distance ≥1 m, FoV occupancy ≤40°, touch targets ≥60×60 pt at 1 m.
 
-**One-paragraph:** A pattern taxonomy for 3D user interfaces in AR/VR/MR: four panel types (world-locked, head-locked, body-locked, hand-attached), window management conventions, and ergonomic constraints (comfort distance ≥ 1 m, FoV occupancy ≤ 40°, touch targets ≥ 60×60 pt at 1 m). Default to world-locked for reference content and body-locked for primary UI. Head-locked UI is forbidden in visionOS and discouraged on Quest.
+**One-paragraph:** Spatial UI is a four-panel taxonomy: world-locked (reference content), head-locked (forbidden in visionOS, limited in Quest), body-locked (primary UI), hand-attached (tools). Comfort constraints — distance ≥1 m, FoV occupancy ≤40°, touch targets ≥60×60 pt at 1 m — apply per panel type. This methodology emits a spec mapping each panel to its type, distance, size, and anchoring, validated against the per-platform constraint set. Head-locked UI in production builds is the most-rejected pattern in store reviews.
+
+**Ефективно для:**
+
+- Mapping every panel to one of four types (world-locked / head-locked / body-locked / hand-attached).
+- Enforcing comfort distance ≥1 m і FoV occupancy ≤40° для primary UI.
+- Cross-platform parity: panels work на visionOS і Quest однаково.
+- Pre-store-review audit для panel-type compliance.
 
 ## Applies If (ALL must hold)
 
-- Designing a visionOS, Quest, HoloLens, or Magic Leap app where 2D windowed metaphors are insufficient.
-- Porting an existing 2D app to spatial computing — needs panel-type decisions and window-management rules.
-- Authoring spatial design guidelines for a brand entering XR.
-- Reviewing a third-party XR design for ergonomic, accessibility, and FoV risks.
-- Building HUDs in games or industrial XR (training, telepresence, surgical planning).
+- Designing UI for an HMD app shipping on visionOS, Quest, or HoloLens.
+- Existing UI was ported from mobile/desktop and needs panel-type assignment.
+- Store review flagged head-locked UI in a prior release.
 
 ## Skip If (ANY kills it)
 
-- Pure phone or desktop products — spatial constructs add cognitive overhead.
-- Simple 2D content shown inside a headset's flat-window mode (a Safari tab in visionOS) — standard responsive design rules apply.
-- Prototyping at the storyboard stage where the platform is undecided.
-- Static signage or passive AR overlays without interaction.
+- Passive 360 video player — no UI panels.
+- Pure passthrough overlay with no app UI.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| UI inventory | list of panels | design |
+| Target platforms | list | PM |
+| Use-case content type | enum | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[spatial-ux-fundamentals]] | field-zone definitions are inputs to panel placement |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: panel-type-mandatory, head-locked-forbidden-default, comfort-distance-min-1m, fov-occupancy-cap, touch-target-min-60pt-at-1m | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `assign-types` | haiku | Mechanical taxonomy pick. |
+| `size-and-distance` | haiku | Numeric clamp. |
+| `fov-budgeting` | sonnet | Aggregate reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/panel-spec.json` | Skeleton panel spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-ui-patterns.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[spatial-ux-fundamentals]]
+- [[spatial-interaction-patterns]]
+- [[vr-design-patterns]]
+- [[immersive-design-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by panel role (primary / tool / reference / safety-telemetry) and applies the panel-type rule; FoV-occupancy gate fires when sum exceeds 40%. Each leaf cites a rule from `01-core-rules.xml`.

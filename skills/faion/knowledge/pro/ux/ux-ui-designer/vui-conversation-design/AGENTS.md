@@ -2,74 +2,96 @@
 slug: vui-conversation-design
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design multi-turn voice conversations as state machines with explicit intents, entities, and prompts.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a multi-turn voice-dialog spec modelled as a state machine with explicit intents/entities/prompts, ≤12-word prompts, cap of 3 reprompts, and separate voice + screen scripts validated in realistic noise conditions.
 content_id: "50b47ba24bfb8d6a"
+complexity: medium
+produces: spec
+est_tokens: 4100
 tags: [vui, conversation-design, dialog, voice-agent, intent-routing]
 ---
 # VUI Conversation Design
 
 ## Summary
 
-**One-sentence:** Design multi-turn voice conversations as state machines with explicit intents, entities, and prompts.
+**One-sentence:** Produces a multi-turn voice-dialog spec modelled as a state machine with explicit intents/entities/prompts, ≤12-word prompts, cap of 3 reprompts, and separate voice + screen scripts validated in realistic noise conditions.
 
-**One-paragraph:** Design multi-turn voice conversations as state machines with explicit intents, entities, and prompts. Structure dialog flows for happy paths and edge cases (missing entity, ambiguous input, no match), cap reprompts at 3, and ground every prompt in ≤12 spoken words. Separate voice scripts from screen prompts; test in realistic environments (kitchen noise, traffic).
+**One-paragraph:** Multi-turn voice conversations must be modelled as state machines. Each state has explicit intents, entities, prompts, and reprompt strategy. Reprompts cap at 3 (otherwise abandonment). Prompts stay at ≤12 spoken words. Voice scripts diverge from screen prompts (the same content cannot serve both modalities). Realistic-noise testing (kitchen, traffic, multiple speakers) catches edge cases pure-quiet testing misses. This methodology outputs a spec consumed by Dialogflow / Alexa / custom-LLM dialog engines.
+
+**Ефективно для:**
+
+- Multi-turn voice flow design where same conversation has happy + edge paths.
+- Reprompt strategy для missing-entity / ambiguous-input / no-match.
+- Separate voice-script + screen-prompt authoring.
+- Noise-condition test plan.
 
 ## Applies If (ALL must hold)
 
-- Building Alexa Skills, Google Actions, Siri shortcuts, or custom voice assistants on top of LLMs.
-- Designing IVR replacements with intent + entity routing (banking, support, scheduling).
-- Hands-busy / eyes-busy contexts: cooking, driving, factory floor, surgery, accessibility.
-- Adding a voice channel to an existing chatbot — the dialog model differs significantly from text.
-- LLM-powered conversational agents that need a deterministic dialog skeleton on top of free-form generation.
+- Voice flow has ≥2 turns (i.e., it is a conversation, not a single command).
+- Multiple intents / entities live within the flow.
+- Engineering can consume a state-machine spec.
 
 ## Skip If (ANY kills it)
 
-- Privacy-sensitive flows (passwords, medical results) where overheard speech is unacceptable.
-- High-precision input (URLs, codes, IDs longer than ~6 chars) — voice degrades sharply.
-- Markets with low ambient assistant adoption — discovery and habit formation cost outpaces value.
-- Tasks requiring visual scanning (tables, comparison shopping, long lists).
+- Single-turn command (use voice-ui spec).
+- Pure transcript dictation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Use-case map | Markdown | PM |
+| Intent + entity list | JSON | VUI designer |
+| Noise-test environment access | list | QA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[voice-ui]] | intent + slot vocabulary upstream |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: state-machine-explicit, reprompt-cap-3, prompt-12-word-limit, separate-voice-screen-scripts, noise-test-required, handle-no-match-and-ambiguous | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `model-states` | sonnet | State design with transitions. |
+| `write-voice-scripts` | sonnet | Concise spoken phrasings. |
+| `noise-test` | haiku | Mechanical condition list. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/dialog-spec.json` | Skeleton dialog spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vui-conversation-design.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[voice-ui]]
+- [[vui-iot-integration]]
+- [[vui-testing-best-practices]]
+- [[vui-accessibility-inclusivity]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by turn count + state-machine completeness; enforces reprompt cap + noise-test coverage. Each leaf cites a rule from `01-core-rules.xml`.

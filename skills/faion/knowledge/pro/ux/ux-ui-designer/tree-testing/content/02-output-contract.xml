@@ -1,22 +1,218 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tree-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="tree-testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact produced by the tree-testing methodology. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/tree-testing.json",
+  "type": "object",
+  "required": [
+    "__faion_header__",
+    "tree",
+    "tasks",
+    "sample_plan",
+    "metrics"
+  ],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": [
+        "methodology",
+        "version",
+        "produces"
+      ],
+      "properties": {
+        "methodology": {
+          "const": "tree-testing"
+        },
+        "version": {
+          "type": "string"
+        },
+        "produces": {
+          "const": "config"
+        }
+      }
+    },
+    "tree": {
+      "type": "object",
+      "required": [
+        "nodes",
+        "depth"
+      ],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "prompt",
+          "expected_target",
+          "priority"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "expected_target": {
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          }
+        }
+      }
+    },
+    "sample_plan": {
+      "type": "object",
+      "required": [
+        "n_per_arm",
+        "arms"
+      ],
+      "properties": {
+        "n_per_arm": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "arms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "success_rate",
+          "directness",
+          "first_click",
+          "time"
+        ]
+      },
+      "minItems": 3
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {
+    "methodology": "tree-testing",
+    "version": "1.1.0",
+    "produces": "config"
+  },
+  "tree": {
+    "nodes": [
+      "home",
+      "products",
+      "products/billing",
+      "products/billing/invoice",
+      "support",
+      "docs"
+    ],
+    "depth": 3
+  },
+  "tasks": [
+    {
+      "id": "t1",
+      "prompt": "Where would you go to download last month's invoice?",
+      "expected_target": "products/billing/invoice",
+      "priority": "critical"
+    },
+    {
+      "id": "t2",
+      "prompt": "Where would you go for setup help?",
+      "expected_target": "support",
+      "priority": "high"
+    },
+    {
+      "id": "t3",
+      "prompt": "Where would you go for API docs?",
+      "expected_target": "docs",
+      "priority": "medium"
+    }
+  ],
+  "sample_plan": {
+    "n_per_arm": 50,
+    "arms": [
+      "variant-A"
+    ]
+  },
+  "metrics": [
+    "success_rate",
+    "directness",
+    "first_click"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tree": {
+    "nodes": [
+      "a",
+      "b"
+    ],
+    "depth": 6
+  },
+  "tasks": [],
+  "sample_plan": {
+    "n_per_arm": 12,
+    "arms": []
+  },
+  "metrics": [
+    "success_rate"
+  ]
+}
+]]></code>
+    <note>Missing __faion_header__; tree depth &gt;4; tree nodes &lt;5; tasks empty; n_per_arm &lt;30; metrics list missing directness + first_click.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>tree.depth &gt; 4.</item>
+      <item>tasks count outside 3-8.</item>
+      <item>sample_plan.n_per_arm &lt; 30.</item>
+      <item>metrics list missing `directness`.</item>
     </list>
   </section>
+
+  <reference path="templates/tree-test-config.json">Skeleton tree-test config</reference>
+  <reference path="templates/task-template.md">Task-writing template</reference>
+  <reference path="scripts/validate-tree-testing.py">Validator script</reference>
 </text>

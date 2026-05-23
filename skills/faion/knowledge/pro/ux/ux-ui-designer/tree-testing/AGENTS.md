@@ -2,73 +2,96 @@
 slug: tree-testing
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Tree testing evaluates the findability of topics in a website's hierarchy.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a tree-testing study config that validates a site's information architecture with task-based navigation through a text-only hierarchy — separating IA validation from visual/interaction design.
 content_id: "b3b3361955a312cd"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [tree-testing, information-architecture, ux-research, findability, navigation]
 ---
 # Tree Testing: Validate Information Architecture Before Building
 
 ## Summary
 
-**One-sentence:** Tree testing evaluates the findability of topics in a website's hierarchy.
+**One-sentence:** Produces a tree-testing study config that validates a site's information architecture with task-based navigation through a text-only hierarchy — separating IA validation from visual/interaction design.
 
-**One-paragraph:** Tree testing evaluates the findability of topics in a website's hierarchy. Users are given tasks and navigate a text-only version of the site structure (no design, no content) to find where they would expect the answer. It separates the validation of your information architecture from visual/interaction design, providing data-driven answers to IA debates.
+**One-paragraph:** Tree testing evaluates the findability of topics in a site hierarchy by giving users tasks and navigating a text-only tree (no design, no content). It separates the validation of IA from visual/interaction design and produces data-driven answers (success rate, directness, first-click) for IA debates. This methodology emits a study config: tree dump (≤4 levels), 5-8 tasks ranked by importance, sample plan (≥30 users for stat power), per-task success and directness targets, and analysis plan with first-click + path-trace metrics.
+
+**Ефективно для:**
+
+- Pre-design IA validation — менш дешеві аргументи про навігацію.
+- Comparative IA test (variant A vs B).
+- Post-launch findability audit для existing site.
+- Onboarding-flow nav check без витрат на high-fidelity prototype.
 
 ## Applies If (ALL must hold)
 
-- Validating a draft information architecture after card sorting and before visual design.
-- Comparing two IA candidates (A/B trees) on real user findability data.
-- Diagnosing why search analytics show high "no-result" or zero-click rates on category pages.
-- Re-baselining IA after a major content reorg or merger of two product taxonomies.
+- Site has ≥10 nav nodes; IA decisions are still open.
+- ≥30 participants representative of audience can be recruited.
+- Findings will influence design (not just documented).
 
 ## Skip If (ANY kills it)
 
-- Before any IA exists — start with card sorting.
-- For visual/UX issues unrelated to navigation — usability testing fits better.
-- For workflows with strong cross-linking and search dominance (no hierarchical paths to test).
-- One-page apps and dashboards — too few branches for meaningful tree-test signal.
+- Single-page or pure linear flow — no tree to test.
+- Visual or interaction questions — use prototype testing instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Proposed nav tree | indented list or JSON | IA designer |
+| Task list | Markdown | research |
+| Recruiting plan | panel or list | research ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | self-contained methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: text-only-tree, tasks-ranked-by-importance, sample-size-min-30, metrics-mandatory, depth-cap-4-levels | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `build-tree` | haiku | Mechanical extraction. |
+| `author-tasks` | sonnet | Task wording neutrality. |
+| `analyse-results` | sonnet | Multi-metric synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tree-test-config.json` | Skeleton tree-test config |
+| `templates/task-template.md` | Task-writing template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tree-testing.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[surveys]]
+- [[diary-studies]]
+- [[personas]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by study goal (single vs comparative IA) and enforces depth + metric completeness. Each leaf cites a rule from `01-core-rules.xml`.

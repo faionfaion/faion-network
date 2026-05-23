@@ -1,22 +1,203 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="voice-ui Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="voice-ui Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact produced by the voice-ui methodology. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/voice-ui.json",
+  "type": "object",
+  "required": [
+    "__faion_header__",
+    "platform",
+    "intents",
+    "barge_in"
+  ],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": [
+        "methodology",
+        "version",
+        "produces"
+      ],
+      "properties": {
+        "methodology": {
+          "const": "voice-ui"
+        },
+        "version": {
+          "type": "string"
+        },
+        "produces": {
+          "const": "spec"
+        }
+      }
+    },
+    "platform": {
+      "enum": [
+        "alexa",
+        "google-actions",
+        "siri",
+        "custom-llm",
+        "ivr"
+      ]
+    },
+    "intents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "sample_utterances",
+          "slots",
+          "prompt",
+          "error_ladder"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sample_utterances": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 3
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "error_ladder": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "irreversible": {
+            "type": "boolean"
+          },
+          "confirmation_prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "barge_in": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {
+    "methodology": "voice-ui",
+    "version": "1.1.0",
+    "produces": "spec"
+  },
+  "platform": "custom-llm",
+  "intents": [
+    {
+      "name": "schedule-appointment",
+      "sample_utterances": [
+        "book a meeting Tuesday at 3",
+        "schedule for tomorrow morning",
+        "set up an appointment"
+      ],
+      "slots": [
+        {
+          "name": "datetime",
+          "type": "datetime"
+        }
+      ],
+      "prompt": "When should I schedule it?",
+      "error_ladder": [
+        "I didn't catch the time. Try again?",
+        "You can say something like 'Tuesday at 3 PM'.",
+        "Let me hand off to a human."
+      ],
+      "irreversible": false
+    },
+    {
+      "name": "send-payment",
+      "sample_utterances": [
+        "send $50 to Alice",
+        "pay Bob fifty bucks",
+        "transfer $100 to mom"
+      ],
+      "slots": [
+        {
+          "name": "amount",
+          "type": "currency"
+        },
+        {
+          "name": "recipient",
+          "type": "contact"
+        }
+      ],
+      "prompt": "Send $50 to Alice. Confirm?",
+      "error_ladder": [
+        "Say yes to confirm, or cancel.",
+        "You can say 'yes' or 'cancel'.",
+        "Cancelling. Try again from the start."
+      ],
+      "irreversible": true,
+      "confirmation_prompt": "Yes / Cancel"
+    }
+  ],
+  "barge_in": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "platform": "custom-llm",
+  "intents": [
+    {
+      "name": "pay",
+      "sample_utterances": [
+        "pay"
+      ],
+      "prompt": "I will now proceed to process your payment immediately",
+      "error_ladder": [
+        "didn't catch"
+      ]
+    }
+  ],
+  "barge_in": false
+}
+]]></code>
+    <note>Missing __faion_header__; sample_utterances &lt;3; prompt too long; error_ladder &lt;3; missing irreversible+confirmation; barge_in must be true.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Intent with sample_utterances count &lt; 3.</item>
+      <item>Prompt &gt; 100 chars (~12 spoken words).</item>
+      <item>error_ladder length != 3.</item>
+      <item>Irreversible intent without confirmation_prompt.</item>
+      <item>barge_in == false.</item>
     </list>
   </section>
+
+  <reference path="templates/voice-spec.json">Skeleton voice-spec</reference>
+  <reference path="templates/dialogue-template.md">Dialogue-authoring template</reference>
+  <reference path="scripts/validate-voice-ui.py">Validator script</reference>
 </text>

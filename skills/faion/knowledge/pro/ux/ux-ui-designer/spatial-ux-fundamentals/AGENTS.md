@@ -2,72 +2,98 @@
 slug: spatial-ux-fundamentals
 tier: pro
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Spatial UX organizes content in three physical zones: near field (0–1 m, primary interactions and controls), mid field (1–3 m, content consumption and work surfaces), far field (3 m+, ambient context and navigation aids).
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a spatial-spec mapping every panel and control to one of three field zones — near (0.3-1.0 m), mid (1.0-3.0 m), far (3.0 m+) — with anchoring, occlusion, and sight-line annotations enforced via lint.
 content_id: "845db2e8bdce2a5f"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [spatial-computing, vr, ux-design, ergonomics, hmd]
 ---
 # Spatial UX Fundamentals
 
 ## Summary
 
-**One-sentence:** Spatial UX organizes content in three physical zones: near field (0–1 m, primary interactions and controls), mid field (1–3 m, content consumption and work surfaces), far field (3 m+, ambient context and navigation aids).
+**One-sentence:** Produces a spatial-spec mapping every panel and control to one of three field zones — near (0.3-1.0 m), mid (1.0-3.0 m), far (3.0 m+) — with anchoring, occlusion, and sight-line annotations enforced via lint.
 
-**One-paragraph:** Spatial UX organizes content in three physical zones: near field (0–1 m, primary interactions and controls), mid field (1–3 m, content consumption and work surfaces), far field (3 m+, ambient context and navigation aids). Interactive controls must never be placed in the far field. Use 1.5–2.0 m as default content distance. Provide a recenter affordance. Test seated AND standing — comfortable reach shifts ~15°.
+**One-paragraph:** Spatial UX organises content in three physical zones: near field (0.3-1.0 m, primary interactions and controls), mid field (1.0-3.0 m, content consumption and work surfaces), far field (3.0 m+, ambient context only — no interactive controls). Anchoring modes (head-locked-with-decay, world-locked, hand-attached) and occlusion/sight-line constraints round out the spec. This methodology emits a JSON spatial-spec validated by a lint script that flags elements outside their correct band or interactive controls placed in the far field.
+
+**Ефективно для:**
+
+- Drafting first-pass spatial UX вимог для Vision Pro / Quest / HoloLens apps.
+- Re-mapping 2D mobile/desktop flow до near/mid/far field zones.
+- Спільний spatial vocabulary між PM / engineering / 3D artists.
+- Pre-prototype review для reach + occlusion + sight-line ризиків.
 
 ## Applies If (ALL must hold)
 
-- Drafting first-pass UX requirements for Apple Vision Pro, Meta Quest, or HoloLens apps.
-- Re-mapping a 2D mobile or desktop flow into near/mid/far field zones.
-- Reviewing a spatial layout for reach, occlusion, sight-line, and orientation issues.
-- Establishing shared spatial vocabulary across PM, engineering, and 3D teams.
+- Stationary or seated/standing immersive use is the target.
+- Designing for a head-mounted display (visionOS, Quest, PSVR2, HoloLens).
+- Active interaction with spatial content is part of the experience.
 
 ## Skip If (ANY kills it)
 
-- Phone AR snap-on features (banner overlays) — world-scale and reach constraints don't apply meaningfully.
-- Desktop 3D viewers (CAD, Blender) — different ergonomic constraints than head-mounted spatial.
-- 360-degree video lean-back content — viewer is passive; no reach or occlusion design is needed.
+- Phone AR snap-on banner overlays — world-scale constraints do not apply.
+- Desktop 3D viewers (CAD, Blender) — different ergonomic envelope.
+- Lean-back 360 video — passive viewing has no reach design.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| UI element list | JSON / Markdown | design |
+| Target HMD | enum | PM |
+| Anthropometric edge cases | list | a11y research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | self-contained methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: three-field-zones, no-interactive-in-far-field, default-content-distance, anchor-primary-hand-or-decay, chin-region-forbidden, recenter-affordance-required | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals -> rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `assign-zones` | haiku | Numeric clamp. |
+| `anchor-decisions` | sonnet | Light judgment on primary vs reference. |
+| `lint-spec` | haiku | Mechanical check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spatial-spec.json` | Skeleton spatial spec |
+| `templates/spatial-spec-linter.py` | Lint script for zone + anchor + chin-region violations |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-ux-fundamentals.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
+- [[spatial-ui-patterns]]
+- [[spatial-interaction-patterns]]
+- [[spatial-accessibility]]
+- [[vr-design-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches by element role and enforces zone + anchor rules; recenter-affordance check fires on every spec. Each leaf cites a rule from `01-core-rules.xml`.
