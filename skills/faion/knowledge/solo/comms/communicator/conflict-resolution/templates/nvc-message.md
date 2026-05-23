@@ -1,3 +1,9 @@
+<!-- purpose: NVC 4-line message skeleton with field-level cues -->
+<!-- consumes: Observable facts + feelings -->
+<!-- produces: NVC message -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
+
 Subject: [Topic] — clarifying conversation request
 
 When [specific observable behavior or event, with date or measurable frequency]...

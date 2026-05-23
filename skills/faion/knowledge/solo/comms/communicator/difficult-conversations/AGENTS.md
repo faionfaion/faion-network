@@ -3,72 +3,102 @@ slug: difficult-conversations
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The Crucial Conversations framework structures high-stakes conversations (high stakes + differing opinions + strong emotions) through seven sequential skills: Start with Heart → Learn to Look → Make it Safe → Master My Stories → STATE My Path → Explore Others' Paths → Move to Action.
-content_id: "d05d9bbc4914d195"
-tags: [difficult-conversations, crucial-conversations, state-desc, communication, high-stakes]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a STATE-structured live script or DESC-structured written message for high-stakes conversations, with safety signals and WWWF close.
+content_id: "d266ee2492594966"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [difficult-conversations, crucial-conversations, state, desc, wwwf]
 ---
 # Difficult Conversations
 
 ## Summary
 
-**One-sentence:** The Crucial Conversations framework structures high-stakes conversations (high stakes + differing opinions + strong emotions) through seven sequential skills: Start with Heart → Learn to Look → Make it Safe → Master My Stories → STATE My Path → Explore Others' Paths → Move to Action.
+**One-sentence:** Generates a STATE-structured live script or DESC-structured written message for high-stakes conversations, with safety signals and WWWF close.
 
-**One-paragraph:** The Crucial Conversations framework structures high-stakes conversations (high stakes + differing opinions + strong emotions) through seven sequential skills: Start with Heart → Learn to Look → Make it Safe → Master My Stories → STATE My Path → Explore Others' Paths → Move to Action. The DESC script (Describe + Express + Specify + Consequences) is a shorter format for written boundary-setting. Both require separation of observable facts from interpretations before any message is drafted.
+**One-paragraph:** The Crucial Conversations framework structures high-stakes conversations (high stakes + differing opinions + strong emotions) through seven sequential skills: Start with Heart, Learn to Look, Make it Safe, Master My Stories, STATE My Path, Explore Others' Paths (AMPP), Move to Action (WWWF). The DESC script is the shorter written format. Both require separation of observable facts from interpretations. Output: a STATE opening or DESC message + a preparation checklist + a WWWF tracker.
+
+**Ефективно для:**
+
+- Saying no to a boss when the request crosses a hard line.
+- Boundary-setting Slack message about after-hours pings.
+- Performance issue conversation that needs to stay factual.
+- Co-founder values disagreement on a strategic call.
 
 ## Applies If (ALL must hold)
 
-- Preparing a script for a performance issue conversation separating observable facts from interpretations
-- Drafting a DESC-structured written message to set a boundary (e.g., after-hours messaging, scope creep)
-- Converting a reactive emotional draft into a STATE-structured, fact-based opening
-- Running through the preparation checklist before a high-stakes conversation (saying no to a boss, peer conflict, systemic problem)
+- Stakes are high, opinions differ, emotions are strong.
+- Author has time to prepare (not real-time crisis).
+- Both parties remain in the working relationship after the conversation.
+- Observable facts can be separated from interpretation.
 
 ## Skip If (ANY kills it)
 
-- Active crisis conversations requiring real-time de-escalation — agents cannot adapt to live emotional cues
-- HR formal disciplinary processes where documented language must follow legal requirements
-- Conversations involving significant power asymmetry where organizational political context is required
-- Anonymous feedback or 360-review contexts where protecting identity is the goal
+- Real-time crisis requiring de-escalation now — different protocol.
+- Formal HR disciplinary process — defer to legal language.
+- Anonymous feedback context — script-driven is wrong tool.
+- Power asymmetry where political context dominates — coach with mentor first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Observable facts | dates, quotes, behaviors | author |
+| My story | what I tell myself it means | author |
+| Other party's perspective | what they likely tell themselves | author |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[conflict-resolution]] | neighbouring methodology for ongoing peer conflict |
+| [[active-listening]] | RASA discipline during the live exchange |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `fact-story-separation` | haiku | Mechanical stripping of evaluation. |
+| `draft-state-or-desc` | sonnet | Tone-sensitive composition. |
+| `wwwf-extraction` | haiku | Mechanical extraction of decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/preparation-checklist.md` | Pre-conversation preparation checklist |
+| `templates/wwwf-tracker.md` | WHO/WHAT/WHEN/Follow-up commitment tracker |
+| `templates/prompt-state-script.txt` | Prompt to generate a STATE opening from fact + story |
+| `templates/prompt-desc-script.txt` | Prompt to generate a DESC written boundary message |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-difficult-conversations.py` | Validate difficult-conversations artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
+- [[conflict-resolution]]
+- [[active-listening]]
+- [[feedback]]
+- [[stakeholder-communication]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes by channel (live → STATE, async → DESC) and prep time availability. Without prep time the methodology refuses to apply.

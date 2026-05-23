@@ -1,3 +1,9 @@
+<!-- purpose: Validation write-back email skeleton -->
+<!-- consumes: Validation session output -->
+<!-- produces: Write-back email -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
+
 Subject: Summary — [Meeting Topic] — please confirm
 
 Hi [Name],

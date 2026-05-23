@@ -1,62 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="3Q Testimonial — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `Testimonial` record produced from a 3-question reply.</summary>
+<text id="02-output-contract" title="Solo Testimonial Extraction Script Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`customer` — object `{name, title, company, contact_email, anon_pref}`</item>
-      <item>`engagement_ref` — string (project / order ID for traceability)</item>
-      <item>`hesitation_quote` — verbatim string from Q1 reply</item>
-      <item>`outcome_quote` — verbatim string from Q2 reply with a metric</item>
-      <item>`anti_recommend_quote` — verbatim string from Q3 reply</item>
-      <item>`metric` — object `{value, unit, period}` extracted from Q2 (NULL if no metric)</item>
-      <item>`consent` — enum {granted, denied, ambiguous}</item>
-      <item>`display_variants` — array of 3 `{length: enum {short, mid, full}, body}`</item>
-      <item>`follow_up_due` — ISO date 90 days out (renewal-prompt for case study)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-testimonial.json",
+  "type": "object",
+  "required": [
+    "customer",
+    "hesitation",
+    "outcome",
+    "anti_recommendation",
+    "metric",
+    "consent"
+  ],
+  "properties": {
+    "customer": {
+      "type": "object",
+      "required": [
+        "name",
+        "role",
+        "company"
+      ]
+    },
+    "hesitation": {
+      "type": "string",
+      "minLength": 20
+    },
+    "outcome": {
+      "type": "string",
+      "minLength": 20
+    },
+    "anti_recommendation": {
+      "type": "string",
+      "minLength": 20
+    },
+    "metric": {
+      "type": "string",
+      "pattern": ".*\\d.*"
+    },
+    "consent": {
+      "type": "object",
+      "required": [
+        "quote",
+        "name",
+        "logo"
+      ]
+    },
+    "verbatim_marker": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "customer": {
+    "name": "Maria K.",
+    "role": "Founder",
+    "company": "ShopGrow"
+  },
+  "hesitation": "I worried it would be another tool I'd never set up.",
+  "outcome": "Inventory close went from 4 hours every Monday to 20 minutes.",
+  "anti_recommendation": "Not for solo founders with fewer than 50 SKUs \u2014 the setup payoff isn't there yet.",
+  "metric": "3.5h saved per week (~14h/month).",
+  "consent": {
+    "quote": true,
+    "name": true,
+    "logo": false
+  },
+  "verbatim_marker": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "customer": {
+    "name": "x"
+  },
+  "hesitation": "good"
+}
+]]></code>
+    <note>missing role, company; hesitation too short; no metric, anti_recommendation, consent.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>Any quote field contains tokens injected by the operator or LLM ("amazing", "transformative", "best in class") that are not present in the customer reply.</description>
-      <reason>Violates r3 verbatim preservation and FTC endorsement law.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`consent: granted` without an explicit consent token in the parsed reply.</description>
-      <reason>Violates r4. Operator may not publish.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`metric: null` AND `display_variants` published as conversion-page hero.</description>
-      <reason>Violates r5. Metric-less testimonials are warmth content, not hero content.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`anti_recommend_quote` empty or "n/a" because customer skipped Q3.</description>
-      <reason>If Q3 missing, request follow-up. Do NOT fabricate Q3 from Q1 or Q2 material.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`customer.anon_pref: anonymous` AND `display_variants` show full name.</description>
-      <reason>Privacy violation. Variant generation must respect anon preference.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Allowed transformations">
     <list>
-      <item>Trim filler words ("um", "like", "you know").</item>
-      <item>Fix typos / autocorrect mistakes without changing word choice.</item>
-      <item>Anonymise company name to industry+size if customer requests ("a 25-person SaaS").</item>
-      <item>Compose 3 length variants (short ≤ 80 chars, mid ≤ 200, full ≤ 600).</item>
+      <item>Missing anti_recommendation.</item>
+      <item>metric without a number.</item>
+      <item>consent.quote == false but quote being used downstream.</item>
     </list>
   </section>
 
-  <reference path="templates/testimonial.json">JSON Schema the record validates against.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>3 verbatim quote fields populated.</item>
-      <item>Metric extracted or follow-up scheduled.</item>
-      <item>Consent token present and parsed correctly.</item>
-      <item>Display variants respect length and anonymity prefs.</item>
-      <item>`follow_up_due` set for 90-day refresh.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-testimonial-extraction-script.py">Validator script</reference>
 </text>

@@ -1,3 +1,9 @@
+<!-- purpose: 7-lens SCAMPER worksheet skeleton -->
+<!-- consumes: Subject -->
+<!-- produces: SCAMPER worksheet -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens when loaded -->
+
 # SCAMPER Worksheet: [PRODUCT/SERVICE]
 
 Time: 5-10 minutes per section. Do not evaluate until all seven lenses are complete.

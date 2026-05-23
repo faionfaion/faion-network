@@ -3,74 +3,86 @@ slug: solo-support-sla-template
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "21780d1bc0ca3328"
-summary: Solo-SaaS support SLA tiers (free/paid/enterprise) with reply-time bands and canned-reply templates that protect founder calendar while signalling responsiveness.
-tags: [support, sla, customer-success, solo-saas, templates]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a tiered solo-SaaS support SLA (Community 72h / Paid 24h / Enterprise 4h) with canned-reply templates and an after-hours boundary policy.
+content_id: "5e975f907e716b9e"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [support, sla, solo-saas, canned-replies, burnout-prevention]
 ---
-
 # Solo Support SLA Template
 
 ## Summary
 
-**One-sentence:** Solo-SaaS support SLA tiers (free/paid/enterprise) with reply-time bands and canned-reply templates that protect founder calendar while signalling responsiveness.
+**One-sentence:** Generates a tiered solo-SaaS support SLA (Community 72h / Paid 24h / Enterprise 4h) with canned-reply templates and an after-hours boundary policy.
 
-**One-paragraph:** Enterprise support tooling (Zendesk, Intercom, Help Scout) ships with SLA configuration UI assuming a support team. Solo SaaS founders inherit either "zero SLA" (chaos, churn from feeling unheard) or "I reply in &lt; 1 hour always" (founder burnout, work nights). This methodology defines three default tiers (Community 72h business hours, Paid 24h business hours, Enterprise 4h business hours + Slack channel) with canned-reply skeletons, a tier-routing rule based on customer status, and an explicit "after-hours" boundary. Output: a 1-page SLA page for the website + 4 canned-reply templates + Help Scout/Intercom routing rules.
+**One-paragraph:** Enterprise support tooling assumes a team; solo SaaS founders inherit either chaos ('zero SLA') or burnout ('I reply <1h always'). This methodology emits three default tiers — Community (72h business hours), Paid (24h business hours), Enterprise (4h business hours + Slack) — with canned-reply skeletons, a tier-routing rule keyed to customer status, and an explicit after-hours boundary. Output: a 1-page SLA page, 4 canned-reply templates, and Help-Scout/Intercom routing rules.
+
+**Ефективно для:**
+
+- Solo SaaS founder with ≥20 active users drowning in inbox.
+- Indie hacker scaling from 0 to first paying tier.
+- Founder protecting evenings/weekends without losing trust.
+- Setting expectations on a Pricing page's SLA row.
 
 ## Applies If (ALL must hold)
 
-- operator runs a solo SaaS or solo-led service with ≥ 20 active users
-- support volume ≥ 5 messages/week (below this an SLA is theatre)
-- operator has ≥ 1 inbound channel (email, in-app chat, Discord)
-- operator has a publicly visible "support" page or footer link
+- Operator runs solo SaaS or solo-led service with ≥20 active users.
+- Support volume ≥5 messages/week (below that SLA is theatre).
+- Operator has ≥1 inbound channel (email, in-app chat, Discord).
+- Operator has a publicly visible 'support' page or footer link.
 
 ## Skip If (ANY kills it)
 
-- operator runs a 2-3 person team — use proper helpdesk SLA + on-call rotation
-- product is dev-tool with technical CSAT (e.g. Sentry) — community Slack rules dominate
-- support volume &lt; 5/week — handle ad-hoc; no formal SLA needed
-- operator already burned out — fix burnout first, SLA later
+- Operator runs a 2-3 person team — use a real helpdesk SLA + rotation.
+- Product is dev-tool with technical CSAT (e.g. Sentry) — community Slack rules dominate.
+- Support volume &lt;5/week — handle ad-hoc.
+- Operator already burned out — fix burnout first, SLA later.
 
 ## Prerequisites
 
-- list of all support inbound channels and current response times (real numbers, last 30 days)
-- distinction between tiers (paid plan IDs, free plan IDs)
-- operator's working hours and timezone
-- one prior week of support transcripts (anonymised) for canned-reply tuning
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Channel inventory | all inbound channels + current response times | operator |
+| Tier definitions | free vs paid vs enterprise plan IDs | billing |
+| Working hours | operator timezone + on/off-days | operator |
+| Sample transcripts | 1 week anonymised for canned-reply tuning | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/hr-recruiter/communication-templates` | Shared canned-reply structure |
-| `solo/marketing/conversion-optimizer/solo-lead-qualification-rubric` | Triages support requests that are actually sales inquiries |
-| `solo/pm/project-manager/solo-time-tracking-discipline` | Time budget for support work feeds the rate-floor |
+| [[solo-testimonial-extraction-script]] | downstream — happy ticket → testimonial |
+| [[stakeholder-communication]] | mode-selection for escalations |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: tiering, business-hours boundary, canned-reply discipline, escalation, churn-signal | ~900 |
-| `content/02-output-contract.xml` | essential | `SLAPolicy` schema + canned reply schema | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: tier creep, after-hours leakage, snark, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `tier_classification_from_ticket` | haiku | Lookup against customer table |
-| `canned_reply_draft` | sonnet | Template fill + tone matching |
-| `escalation_decision` | sonnet | Bounded judgment |
-| `policy_drafting` | sonnet | Synthesis from inputs |
+| `tier-classification` | haiku | Lookup against customer table. |
+| `canned-reply-draft` | sonnet | Template fill + tone matching. |
+| `escalation-decision` | sonnet | Bounded judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/sla-policy.md` | Public SLA page |
+| `templates/sla-policy.md` | Public SLA page skeleton |
 | `templates/canned-replies.yaml` | 4 canned reply skeletons |
 | `templates/sla-policy.json` | Machine-readable policy |
 
@@ -78,10 +90,14 @@ tags: [support, sla, customer-success, solo-saas, templates]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/audit-reply-times.py` | Compares actual reply times vs SLA bands | Weekly inbox sweep |
+| `scripts/validate-solo-support-sla-template.py` | Validate solo-support-sla-template artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
-- peer methodologies: `solo-time-tracking-discipline`, `customer-support-workflows`
-- external: [Help Scout — Solo Support Setup](https://www.helpscout.com/solo-founder-support/) · [Patrick McKenzie — On Auto-Replies](https://www.kalzumeus.com/) · [Intercom SLA primer](https://www.intercom.com/help/en/articles/16-set-up-slas)
+- [[solo-testimonial-extraction-script]]
+- [[stakeholder-communication]]
+- [[feedback]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Gates on support volume and team size. Below 5/week or above 1 person the methodology refuses to apply; otherwise 3-tier SLA emitted.

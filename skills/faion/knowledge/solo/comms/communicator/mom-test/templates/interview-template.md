@@ -1,3 +1,9 @@
+<!-- purpose: Pre-filled Mom-Test interview script with question slots -->
+<!-- consumes: HYPOTHESIS, PERSONA -->
+<!-- produces: Interview template -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens when loaded -->
+
 # Customer Discovery Interview
 
 ## Opening (2 min)

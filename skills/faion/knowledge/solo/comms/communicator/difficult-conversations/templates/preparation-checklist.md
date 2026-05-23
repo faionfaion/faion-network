@@ -1,3 +1,9 @@
+<!-- purpose: Pre-conversation preparation checklist -->
+<!-- consumes: Conflict description -->
+<!-- produces: Preparation checklist -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
+
 # Pre-Conversation Preparation
 
 What do I really want?

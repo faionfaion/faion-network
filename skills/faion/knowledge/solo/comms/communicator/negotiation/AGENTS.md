@@ -3,73 +3,100 @@ slug: negotiation
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A framework for interest-based negotiation that replaces positional bargaining with mutual-gain problem solving.
-content_id: "5eff2bd0592eb979"
-tags: [negotiation, persuasion, batna, interest-based, sales]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a negotiation preparation brief: BATNA + ZOPA computation, principled-negotiation interest map, and Cialdini-aligned persuasion levers.
+content_id: "aafaa125e7aa7775"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [negotiation, batna, zopa, cialdini, principled-negotiation]
 ---
 # Negotiation and Persuasion
 
 ## Summary
 
-**One-sentence:** A framework for interest-based negotiation that replaces positional bargaining with mutual-gain problem solving.
+**One-sentence:** Generates a negotiation preparation brief: BATNA + ZOPA computation, principled-negotiation interest map, and Cialdini-aligned persuasion levers.
 
-**One-paragraph:** A framework for interest-based negotiation that replaces positional bargaining with mutual-gain problem solving. Core models: Principled Negotiation (separate people from problem, focus on interests, generate options, use objective criteria), BATNA/ZOPA analysis for leverage calculation, and Cialdini's 6 Principles of Persuasion for copy and influence. Tactical layer covers anchoring, silence, bracketing, the flinch, and the nibble.
+**One-paragraph:** A framework for interest-based negotiation that replaces positional bargaining with mutual-gain problem solving. Core models: Principled Negotiation (Fisher & Ury — separate people from problem, focus on interests, generate options, use objective criteria), BATNA/ZOPA analysis for leverage calculation, Cialdini's 6 Principles for persuasion copy. Tactical layer: anchoring, silence, bracketing, the flinch, the nibble. Output: a structured prep brief that scores leverage before the conversation.
+
+**Ефективно для:**
+
+- Pricing conversation for a contract or salary.
+- Vendor negotiation with multiple terms in play.
+- Investor term-sheet discussion.
+- Cofounder equity / role split.
 
 ## Applies If (ALL must hold)
 
-- Salary or contract negotiations where you need a preparation brief
-- Vendor, scope, or pricing discussions before a meeting
-- Generating counter-argument libraries for price objections
-- Writing persuasion copy (sales pages, pitch decks, outreach emails) using Cialdini principles
-- Post-negotiation retrospectives to identify missed leverage
+- Both parties want the deal (positive ZOPA likely).
+- There is time to prepare (not a flash auction).
+- Multiple terms are negotiable (not single-dimension).
+- Author has decision authority on at least one term.
 
 ## Skip If (ANY kills it)
 
-- Live real-time negotiations — agents prepare briefs; humans conduct the actual negotiation
-- Legally binding contract drafting — agent output requires attorney review before signing
-- Crisis or hostage negotiation scenarios — requires licensed human expertise
-- When walk-away point is not yet defined — output will be generic without that anchor
+- Zero-sum mandatory rejection (regulatory ban) — no negotiation possible.
+- Author has no BATNA — no leverage, plan one first.
+- Counterparty is in crisis — manipulation risk.
+- Decision is purely emotional — different methodology applies.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| BATNA | best alternative to negotiated agreement | author |
+| Counterparty interests | what they want + why | research |
+| Negotiable terms | list of dimensions | author |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[selling-ideas]] | SPIN before negotiation when pain not yet established |
+| [[stakeholder-communication]] | mode selection before the conversation |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `interest-mapping` | sonnet | Judgment on the 'why' for both sides. |
+| `zopa-calc` | haiku | Pure arithmetic. |
+| `lever-selection` | sonnet | Honest tagging requires judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/negotiation-prep.txt` | Negotiation prep brief skeleton |
+| `templates/zopa-calculator.py` | Compute ZOPA from reserves + render summary |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-negotiation.py` | Validate negotiation artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
+- [[selling-ideas]]
+- [[stakeholder-communication]]
+- [[conflict-resolution]]
+- [[feedback]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Gates on BATNA concreteness, ZOPA sign, and presence of objective criteria. Failure at any gate halts or routes to the corresponding repair rule.

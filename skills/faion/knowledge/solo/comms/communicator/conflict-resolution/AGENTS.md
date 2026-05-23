@@ -3,72 +3,101 @@ slug: conflict-resolution
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Conflict resolution uses two complementary frameworks: Thomas-Kilmann's five modes (Competing, Collaborating, Compromising, Avoiding, Accommodating) to select the right strategy for a situation, and Marshall Rosenberg's Nonviolent Communication (NVC) four-step formula (Observation → Feeling → Need → Request) to structure the message.
-content_id: "b194b595828177a4"
-tags: [conflict-resolution, nvc, thomas-kilmann, communication, team-dynamics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Selects a Thomas-Kilmann mode and emits a Nonviolent Communication message (Observation → Feeling → Need → Request) that stays factual and actionable.
+content_id: "8096916c998b59e9"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [conflict-resolution, nvc, thomas-kilmann, communication, boundaries]
 ---
 # Conflict Resolution
 
 ## Summary
 
-**One-sentence:** Conflict resolution uses two complementary frameworks: Thomas-Kilmann's five modes (Competing, Collaborating, Compromising, Avoiding, Accommodating) to select the right strategy for a situation, and Marshall Rosenberg's Nonviolent Communication (NVC) four-step formula (Observation → Feeling → Need → Request) to structure the message.
+**One-sentence:** Selects a Thomas-Kilmann mode and emits a Nonviolent Communication message (Observation → Feeling → Need → Request) that stays factual and actionable.
 
-**One-paragraph:** Conflict resolution uses two complementary frameworks: Thomas-Kilmann's five modes (Competing, Collaborating, Compromising, Avoiding, Accommodating) to select the right strategy for a situation, and Marshall Rosenberg's Nonviolent Communication (NVC) four-step formula (Observation → Feeling → Need → Request) to structure the message. Mode selection determines the approach; NVC ensures the message stays factual and actionable rather than evaluative and inflammatory.
+**One-paragraph:** Conflict resolution combines two frameworks: Thomas-Kilmann's five modes (Competing, Collaborating, Compromising, Avoiding, Accommodating) to select a strategy for a situation, and Marshall Rosenberg's Nonviolent Communication four-step formula (Observation → Feeling → Need → Request) to structure the message. Mode selection determines the approach; NVC ensures the message stays factual and actionable rather than evaluative and inflammatory.
+
+**Ефективно для:**
+
+- Peer-to-peer disagreement that has gone passive-aggressive.
+- Setting a boundary with a recurring scope-creep stakeholder.
+- Co-founder disputes where mode mismatch is killing the partnership.
+- Cross-team friction on a shared deliverable.
 
 ## Applies If (ALL must hold)
 
-- Drafting an NVC-structured message to address a recurring team behavior (late deliveries, skipped reviews, missed SLAs)
-- Selecting a Thomas-Kilmann conflict mode for a specific situation before initiating a conversation
-- Converting an emotionally charged draft message into an observation-based, non-evaluative version
-- Preparing a mediation agenda for a retrospective where two parties have a documented disagreement
+- Disagreement is interpersonal, not purely technical.
+- Both parties remain in the relationship (no termination case).
+- The author has time to prepare the message asynchronously.
+- Observable facts exist (not just feelings).
 
 ## Skip If (ANY kills it)
 
-- Active real-time conflict requiring a live human mediator — written NVC scripts cannot replace live dialogue
-- Legal disputes or HR formal complaints where documented communication must follow legal protocols
-- Anonymous feedback systems where the goal is data aggregation, not dialogue
-- Cross-cultural conflicts where directness norms differ significantly — adjust framework application accordingly
+- Active emergency / safety issue — escalate, do not negotiate.
+- Power-asymmetric disciplinary process — defer to HR / legal protocol.
+- Anonymous feedback channel — different methodology applies.
+- Conflict already escalated to mediator — mediator owns the protocol.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Observable facts | what happened, dates, quotes | author |
+| Stake assessment | high / medium / low importance and time-pressure | author |
+| Other party's likely interest | what they want from this | author |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[active-listening]] | upstream — RASA pass before drafting message |
+| [[difficult-conversations]] | neighbouring methodology for high-stakes script form |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `mode-selection` | sonnet | Light judgment on stakes/relationship. |
+| `observation-strip` | haiku | Mechanical removal of evaluative words. |
+| `draft-nvc` | sonnet | Tone-sensitive composition. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/nvc-message.md` | NVC 4-line message skeleton with field-level cues |
+| `templates/prompt-mode-selection.txt` | Prompt to apply TK matrix to a conflict description |
+| `templates/prompt-nvc-rewrite.txt` | Prompt to rewrite an evaluative draft into observation/feeling/need/request |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-conflict-resolution.py` | Validate conflict-resolution artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
+- [[difficult-conversations]]
+- [[active-listening]]
+- [[feedback]]
+- [[stakeholder-communication]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes by stakes × relationship matrix to one of the five TK modes, then to NVC structuring. Avoiding leaf is the only one that maps to skip-this-methodology.

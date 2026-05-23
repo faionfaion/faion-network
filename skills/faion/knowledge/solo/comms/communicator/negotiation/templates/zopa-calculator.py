@@ -1,3 +1,9 @@
+# purpose: Compute ZOPA from reserves + render summary
+# consumes: my_reserve, their_reserve
+# produces: ZOPA report
+# depends-on: stdlib only
+# token-budget-impact: 0 (runs locally)
+
 def zopa(my_walk_away: float, their_walk_away: float, i_am_buyer: bool = True):
     """
     Compute the Zone of Possible Agreement (ZOPA).

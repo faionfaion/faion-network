@@ -1,3 +1,9 @@
+# purpose: Python classifier: tags utterances as compliment / fact / commitment
+# consumes: list of utterances
+# produces: list of tagged utterances
+# depends-on: stdlib only
+# token-budget-impact: 0 (runs locally)
+
 """
 Keyword-based signal classifier for post-interview note processing.
 Input: list of statement strings from interview notes.

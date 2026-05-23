@@ -1,71 +1,181 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Support SLA — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of `SLAPolicy` and `CannedReply` outputs.</summary>
+<text id="02-output-contract" title="Solo Support SLA Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <section title="SLAPolicy required fields">
-    <list>
-      <item>`tiers` — array of 3 (Community, Paid, Enterprise) with `first_reply_sla_hours`, `business_hours_only: bool`, `channels`</item>
-      <item>`working_window` — object {timezone, days, start, end}</item>
-      <item>`escalation_triggers` — array (≥ 4) of concrete events per r4</item>
-      <item>`escalation_response_sla_hours` — number ≤ 4</item>
-      <item>`out_of_hours_auto_reply` — string ≤ 240 chars</item>
-      <item>`public_sla_url` — string</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-support-sla.json",
+  "type": "object",
+  "required": [
+    "tiers",
+    "business_hours",
+    "canned_replies",
+    "escalation_trigger"
+  ],
+  "properties": {
+    "tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "response_time_h"
+        ],
+        "properties": {
+          "name": {
+            "enum": [
+              "community",
+              "paid",
+              "enterprise"
+            ]
+          },
+          "response_time_h": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 168
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "business_hours": {
+      "type": "object",
+      "required": [
+        "timezone",
+        "days",
+        "start",
+        "end"
+      ],
+      "properties": {
+        "timezone": {
+          "type": "string"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
+      }
+    },
+    "canned_replies": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 4
+    },
+    "escalation_trigger": {
+      "type": "string",
+      "minLength": 10
+    }
+  }
+}
+]]></code>
   </section>
 
-  <section title="CannedReply required fields">
-    <list>
-      <item>`reply_id` — slug</item>
-      <item>`scenario` — string (e.g. "bug report needing diagnostic")</item>
-      <item>`tier` — enum {community, paid, enterprise, all}</item>
-      <item>`body` — string with `{customer_name}`, `{ticket_id}`, `{specific_finding}` slots</item>
-      <item>`tone` — enum {empathetic, neutral, technical}</item>
-      <item>`churn_tag_suggestion` — enum {green, yellow, red}</item>
-      <item>`escalation_check` — boolean — does this scenario need escalation evaluation?</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tiers": [
+    {
+      "name": "community",
+      "response_time_h": 72,
+      "channels": [
+        "email",
+        "discord"
+      ]
+    },
+    {
+      "name": "paid",
+      "response_time_h": 24,
+      "channels": [
+        "email",
+        "in-app"
+      ]
+    },
+    {
+      "name": "enterprise",
+      "response_time_h": 4,
+      "channels": [
+        "email",
+        "in-app",
+        "slack"
+      ]
+    }
+  ],
+  "business_hours": {
+    "timezone": "Europe/Lisbon",
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri"
+    ],
+    "start": "09:00",
+    "end": "18:00"
+  },
+  "canned_replies": [
+    {
+      "key": "ack",
+      "body": "Got it \u2014 I'll reply within SLA."
+    },
+    {
+      "key": "deflect",
+      "body": "This is covered in docs at <URL>."
+    },
+    {
+      "key": "escalate",
+      "body": "Escalating to operator phone."
+    },
+    {
+      "key": "after-hours",
+      "body": "Outside business hours; replying first thing tomorrow."
+    }
+  ],
+  "escalation_trigger": "Paying customer with 0 reply 48h after first message auto-escalates to operator phone."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tiers": [
+    {
+      "name": "premium",
+      "response_time_h": 1
+    }
+  ],
+  "business_hours": {}
+}
+]]></code>
+    <note>tier name outside enum; only 1 tier; business_hours empty.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>SLA hours expressed without `business_hours_only: true` for Community / Paid tiers.</description>
-      <reason>Violates r2. Wall-clock SLA destroys weekend.</reason>
-    </antipattern>
-    <antipattern>
-      <description>More than 3 tiers in `tiers` array.</description>
-      <reason>Violates r1. Sub-tiers collapse into Paid.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`escalation_triggers` contains generic ("urgent ticket") not concrete events.</description>
-      <reason>Violates r4. Generic triggers reactivate the squeaky-wheel problem.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Canned reply body without `{specific_finding}` slot.</description>
-      <reason>Replies without specifics feel robotic and erode trust. Customer must see the operator looked at THEIR ticket.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Canned reply tone `snarky` / `sarcastic` / `defensive`.</description>
-      <reason>Solo brand depends on warmth; bad tone churns paying users.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Allowed transformations">
     <list>
-      <item>Add a 4th tier ONLY for enterprise sub-contracts with named customer; never publish publicly.</item>
-      <item>Tighten Paid SLA to 12h business hours for products with mission-critical workloads.</item>
-      <item>Translate canned replies into customer-language for non-English audiences.</item>
+      <item>More than 3 tiers (creep).</item>
+      <item>business_hours promising 24/7 (start=00:00 end=23:59).</item>
+      <item>Fewer than 4 canned_replies.</item>
     </list>
   </section>
 
-  <reference path="templates/sla-policy.json">Machine-readable policy schema.</reference>
-  <reference path="templates/canned-replies.yaml">Canned reply skeleton schema.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Exactly 3 public tiers.</item>
-      <item>Each tier shows business-hours flag and timezone.</item>
-      <item>Escalation triggers concrete (data loss, security, churn-within-7d, 3+ same break).</item>
-      <item>Out-of-hours auto-reply references the SLA page.</item>
-      <item>Canned reply set covers: bug, billing, feature-request, complaint.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-support-sla-template.py">Validator script</reference>
 </text>

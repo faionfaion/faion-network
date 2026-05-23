@@ -1,3 +1,9 @@
+<!-- purpose: 5W+H matrix worksheet skeleton -->
+<!-- consumes: Topic / initiative -->
+<!-- produces: Starbursting matrix -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200 tokens when loaded -->
+
 # Starbursting Worksheet: [IDEA/CONCEPT]
 
 Generate at least 5 questions per category before answering any of them.
