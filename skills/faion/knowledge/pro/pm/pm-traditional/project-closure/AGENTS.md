@@ -3,71 +3,101 @@ slug: project-closure
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Formal termination process for a project: obtain written deliverable acceptance, release resources, close contracts, capture lessons learned, archive documents, and transition to operations.
-content_id: "c6b3279e0631bb29"
-tags: [project-closure, project-completion, deliverable-acceptance, lessons-learned, handover]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Formal termination process: written deliverable acceptance, resource release, contract closure, lessons captured, documents archived, transition to operations.
+content_id: "978333aaddc1d451"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [project-closure, deliverable-acceptance, lessons-learned, handover, archive]
 ---
 # Project Closure
 
 ## Summary
 
-**One-sentence:** Formal termination process for a project: obtain written deliverable acceptance, release resources, close contracts, capture lessons learned, archive documents, and transition to operations.
+**One-sentence:** Formal termination process: written deliverable acceptance, resource release, contract closure, lessons captured, documents archived, transition to operations.
 
-**One-paragraph:** Formal termination process for a project: obtain written deliverable acceptance, release resources, close contracts, capture lessons learned, archive documents, and transition to operations. Without a closure event, projects fade without official acceptance, resources stay allocated to finished work, and knowledge walks out with the team.
+**One-paragraph:** Formal termination process: written deliverable acceptance, resource release, contract closure, lessons captured, documents archived, transition to operations. The methodology applies in pm-traditional contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-project-closure.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Capital projects with sponsor sign-off requirement.
+- Vendor engagements requiring contract closure + final invoice.
+- Programs handing over to ops / BAU teams.
+- Compliance regimes requiring documented closure artefacts.
 
 ## Applies If (ALL must hold)
 
-- End of any contracted or fixed-bid engagement requiring formal acceptance.
-- Cancelled or descoped projects (closure must capture salvage value and lessons).
-- Phase-gated programs at major milestone transitions (Phase 1 → Phase 2 closure).
-- Internal projects transitioning from build to operate (handover to ops/support).
+- Deliverables exist and are testable against acceptance criteria.
+- Sponsor / customer is available for sign-off.
+- Operations team is ready to receive handover.
 
 ## Skip If (ANY kills it)
 
-- Continuous-flow or product teams — no closure event; only release boundaries.
-- Solo throwaway prototypes — a DONE.md line is enough.
-- Projects still in execution; premature closure loses incomplete deliverables.
+- Project cancelled before delivery (use cancellation playbook instead).
+- Ongoing program without natural end (use continuous review).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Acceptance criteria per deliverable | Markdown/CSV | PM + Sponsor |
+| Lessons-learned capture | Markdown | PM + team |
+| Archive destination | URL / folder | PMO |
+| Handover doc | Markdown | PM + ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lessons-learned]] | closure feeds the lesson repository |
+| [[benefits-realization]] | closure hands off to benefit tracking |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | optional | End-to-end worked example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-acceptance` | sonnet | Judgement: evidence sufficiency per criterion. |
+| `draft-handover` | sonnet | Judgement: what ops needs to operate. |
+| `run-archive` | haiku | Mechanical archive walker + manifest. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/acceptance-form.md` | Acceptance form template: deliverable, criteria, evidence, sign-off |
+| `templates/closeout-archive.sh` | Archive walker: copies artefacts to long-term store with manifest |
+| `templates/closure-checklist.md` | Closure checklist template: acceptance, resources, contracts, lessons, archive, handover |
+| `templates/final-report.md` | Final report template: scope delivered vs baseline, schedule + cost variance, lessons highlights |
+| `templates/handover-doc.md` | Handover doc template: operating procedures, runbooks, support contacts |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-project-closure.py` | Validate the spec artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[lessons-learned]]
+- [[benefits-realization]]
+- [[communications-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+

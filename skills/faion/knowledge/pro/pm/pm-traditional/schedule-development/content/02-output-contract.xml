@@ -1,22 +1,226 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="schedule-development Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Schedule Development Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the activity-list artefact this methodology produces.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/schedule-activity-list.json",
+  "type": "object",
+  "required": [
+    "project",
+    "baseline_date",
+    "last_refreshed",
+    "activities",
+    "buffers"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 3
+    },
+    "baseline_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_refreshed": {
+      "type": "string",
+      "format": "date"
+    },
+    "activities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "wbs_pkg",
+          "predecessors",
+          "estimate",
+          "resource"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^A\\d{2,}$"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Z][a-z]+ "
+          },
+          "wbs_pkg": {
+            "type": "string"
+          },
+          "predecessors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "FS",
+                    "SS",
+                    "FF",
+                    "SF"
+                  ]
+                },
+                "lag_days": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "estimate": {
+            "type": "object",
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "single",
+                  "pert"
+                ]
+              },
+              "single_days": {
+                "type": "number"
+              },
+              "o": {
+                "type": "number"
+              },
+              "m": {
+                "type": "number"
+              },
+              "p": {
+                "type": "number"
+              },
+              "pert_days": {
+                "type": "number"
+              }
+            }
+          },
+          "resource": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "buffers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "size_days"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "project",
+              "feeding"
+            ]
+          },
+          "size_days": {
+            "type": "number",
+            "minimum": 0
+          },
+          "chain": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project": "data-platform-q3",
+  "baseline_date": "2026-04-01",
+  "last_refreshed": "2026-05-22",
+  "activities": [
+    {
+      "id": "A01",
+      "name": "Design data model",
+      "wbs_pkg": "1.2",
+      "predecessors": [],
+      "estimate": {
+        "mode": "pert",
+        "o": 2,
+        "m": 3,
+        "p": 5,
+        "pert_days": 3.2
+      },
+      "resource": "team A"
+    },
+    {
+      "id": "A02",
+      "name": "Implement ingest pipeline",
+      "wbs_pkg": "1.3",
+      "predecessors": [
+        {
+          "id": "A01",
+          "type": "FS"
+        }
+      ],
+      "estimate": {
+        "mode": "pert",
+        "o": 4,
+        "m": 6,
+        "p": 10,
+        "pert_days": 6.3
+      },
+      "resource": "team A"
+    }
+  ],
+  "buffers": [
+    {
+      "id": "PB",
+      "type": "project",
+      "size_days": 4.0,
+      "chain": "critical"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project": "x",
+  "activities": [
+    {
+      "id": "a1",
+      "name": "stuff"
+    }
+  ]
+}
+]]></code>
+    <note>Project name &lt;3 chars; activity id not A\d{2,}; name not verb-led capitalised; missing wbs_pkg/predecessors/estimate/resource; missing baseline_date/buffers.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="single-point-over-5d"><description>single-day estimate on activity &gt; 5 days</description><reason>False precision; misses pessimistic tail.</reason></forbidden-pattern>
+    <forbidden-pattern id="untyped-link"><description>predecessor entry without `type` field</description><reason>Default FS assumed silently.</reason></forbidden-pattern>
+    <forbidden-pattern id="hidden-padding"><description>buffers embedded in activity estimates instead of named</description><reason>Goldratt-style monitoring impossible.</reason></forbidden-pattern>
+    <forbidden-pattern id="stale-schedule"><description>last_refreshed &gt; 14 days from today</description><reason>Schedule misleads team.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-schedule-development.py">Validator script</reference>
 </text>

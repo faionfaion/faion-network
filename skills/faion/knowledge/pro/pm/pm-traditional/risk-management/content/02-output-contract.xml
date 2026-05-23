@@ -1,22 +1,180 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="risk-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Risk Management Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the risk register artefact this methodology produces. Validator enforces required fields + per-row trigger/owner discipline.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/risk-register.json",
+  "type": "object",
+  "required": [
+    "project",
+    "owner",
+    "review_cadence",
+    "last_reviewed",
+    "risks",
+    "contingency_emv_total"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "risks": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "p",
+          "i",
+          "score",
+          "strategy",
+          "owner",
+          "trigger",
+          "source",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R-\\d{3,}$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 8
+          },
+          "p": {
+            "enum": [
+              "VL",
+              "L",
+              "M",
+              "H",
+              "VH"
+            ]
+          },
+          "i": {
+            "enum": [
+              "VL",
+              "L",
+              "M",
+              "H",
+              "VH"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "strategy": {
+            "enum": [
+              "avoid",
+              "transfer",
+              "mitigate",
+              "accept",
+              "exploit",
+              "enhance",
+              "share"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 2
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 6
+          },
+          "source": {
+            "type": "string",
+            "minLength": 4
+          },
+          "status": {
+            "enum": [
+              "active",
+              "closed_materialized",
+              "closed_passed",
+              "merged"
+            ]
+          }
+        }
+      }
+    },
+    "contingency_emv_total": {
+      "type": "number",
+      "minimum": 0
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project": "checkout-redesign-q2",
+  "owner": "PM Iryna",
+  "review_cadence": "weekly",
+  "last_reviewed": "2026-05-22",
+  "risks": [
+    {
+      "id": "R-001",
+      "description": "Key developer leaves mid-project",
+      "p": "M",
+      "i": "H",
+      "score": 0.18,
+      "strategy": "mitigate",
+      "owner": "Tech Lead Petro",
+      "trigger": "resignation notice filed in HRIS",
+      "source": "hr-attrition-table.md row 14",
+      "status": "active"
+    }
+  ],
+  "contingency_emv_total": 9000
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project": "x",
+  "risks": [
+    {
+      "id": "1",
+      "description": "stuff",
+      "p": "M"
+    }
+  ]
+}
+]]></code>
+    <note>Project name &lt;3 chars; owner missing; review_cadence missing; risk row missing trigger/owner/source/status; risk id not R-NNN.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="anonymous-risk"><description>Risk row with empty `owner`</description><reason>Anonymous risks are reviewed by no one.</reason></forbidden-pattern>
+    <forbidden-pattern id="scoreless-pi"><description>Risk row with `p`/`i` but no `source` justification</description><reason>Scores without source converge to Medium and lose value.</reason></forbidden-pattern>
+    <forbidden-pattern id="deleted-history"><description>Closed risk removed from the file</description><reason>Audit trail and lessons-learned pool destroyed.</reason></forbidden-pattern>
+    <forbidden-pattern id="per-risk-reserve"><description>`reserve_usd` field on individual risk rows</description><reason>Finance only funds aggregate contingency.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-risk-management.py">Validator script</reference>
 </text>

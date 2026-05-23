@@ -1,3 +1,9 @@
+# purpose: Vendor scoring script: criterion × weight × bid → normalised score
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """vendor_scoring.py — weighted vendor evaluation with sensitivity check.
 
 Usage:

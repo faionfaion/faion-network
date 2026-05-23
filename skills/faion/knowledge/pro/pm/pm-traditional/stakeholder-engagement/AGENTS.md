@@ -3,73 +3,97 @@ slug: stakeholder-engagement
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Systematic identification, classification, and engagement of everyone who affects or is affected by the project.
-content_id: "87ae9864d47f451a"
-tags: [stakeholders, engagement, power-interest, communication, relationship-management]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identify, classify, and engage every stakeholder via a YAML register grounded in observable evidence, with quadrant-based cadence and tracked current-vs-desired engagement levels.
+content_id: "4e58334885338462"
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [stakeholders, engagement, power-interest, communication, relationship]
 ---
 # Stakeholder Engagement
 
 ## Summary
 
-**One-sentence:** Systematic identification, classification, and engagement of everyone who affects or is affected by the project.
+**One-sentence:** Identify, classify, and engage every stakeholder via a YAML register grounded in observable evidence, with quadrant-based cadence and tracked current-vs-desired engagement levels.
 
-**One-paragraph:** Systematic identification, classification, and engagement of everyone who affects or is affected by the project. The core artifact is a YAML-based stakeholder register (power, interest, attitude with evidence, quadrant, cadence, owner) stored in git so that engagement history is a diff log. Attitude assertions without evidence default to "unknown" — optimistic defaults ("supportive") are a known agent failure mode and a trust risk.
+**One-paragraph:** Stakeholder engagement classifies stakeholders into a power × interest quadrant (manage_closely / keep_satisfied / keep_informed / monitor) and assigns a cadence per quadrant. Each entry records desired vs current engagement level (unaware / resistant / neutral / supportive / leading) plus an evidence citation (minutes, ticket, signed sign-off). The methodology produces a versioned YAML register reviewed weekly with overdue stakeholders flagged automatically.
+
+**Ефективно для:**
+
+- Programmes with sponsor + steering + delivery stakeholder triangle.
+- Cross-vendor work where stakeholders span ownership boundaries.
+- Regulated environments requiring evidence of stakeholder sign-off.
+- Distressed projects where misalignment is a leading cause of slip.
 
 ## Applies If (ALL must hold)
 
-- Project kickoff for any cross-functional initiative with more than 5 named parties.
-- Programs with high political risk: M&A, reorgs, regulated rollouts (HIPAA, SOX, GDPR).
-- Pre-RFP / vendor selection where the buying committee has hidden influencers (security, procurement, FinOps).
-- Multi-stakeholder transformation programs where power and interest shift across phases.
-- Pair with communications-management so cadence in the register is reflected in the comms plan.
+- Programme has sponsor + steering + delivery stakeholder layers.
+- Cross-vendor work needs evidence of engagement per role.
+- Regulated context requires audit-trail of stakeholder sign-offs.
+- Project shows political misalignment symptoms.
 
 ## Skip If (ANY kills it)
 
-- Solo founders or teams under 5 stakeholders — direct conversation beats matrix overhead.
-- One-off internal hotfixes with no business stakeholder change — RACI is sufficient.
-- Crisis/incident response — incident command structure replaces engagement plan during a P0.
-- When stakeholder identification is unsolved — run BA stakeholder-analysis first to populate the register.
+- Solo project with no external stakeholder pressure.
+- Pure-Scrum team with PO carrying all stakeholder weight.
+- One-week spike — engagement ritual cost exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stakeholder list | interview notes / org chart | kickoff |
+| Charter | signed PDF / MD | sponsor |
+| Communication-plan template | MD | comms |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `stakeholder-register` | Static register populated before engagement scheduling. |
+| `stakeholder-engagement-advanced` | Differentiated strategies build on quadrant classification. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — quadrant per stakeholder, evidence per entry, cadence per quadrant, current-vs-desired, overdue flag | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for engagement-register artefact | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: identify → classify → set cadence → engage → review | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping engagement state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-quadrant` | sonnet | Needs judgment on power/interest signals. |
+| `draft-cadence-plan` | haiku | Template fill from quadrant rules. |
+| `synthesise-misalignment-report` | opus | Cross-stakeholder synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/engagement-register.yaml` | YAML register with quadrant + cadence + evidence. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-stakeholder-engagement.py` | Schema-validate engagement register JSON. | Pre-commit + weekly review. |
+| `scripts/engagement-due.py` | Flag stakeholders overdue per quadrant cadence. | Weekly cron. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[stakeholder-register]]
+- [[stakeholder-engagement-advanced]]
+- [[communications-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the stakeholder-engagement input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

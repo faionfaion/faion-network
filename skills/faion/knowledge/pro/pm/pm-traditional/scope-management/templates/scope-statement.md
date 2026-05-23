@@ -1,48 +1,21 @@
-# Project Scope Statement: [Project Name]
+<!-- purpose: Scope statement template (PMBoK) -->
+<!-- consumes: charter + stakeholder requirements -->
+<!-- produces: signed scope baseline -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~500-1500 tokens populated -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Project Manager:** [Name]
+# Scope Statement — <project>
 
-## 1. Project Objectives
-[Measurable goals — e.g., "Reduce quote creation time from 2 hours to 15 minutes by [date]."]
+## In scope
+- <bullet>
 
-## 2. Product Scope Description
-[Detailed description of the product or service to be delivered.]
+## Out of scope (explicit exclusions)
+- <bullet>
 
-## 3. Deliverables
+## Acceptance criteria (testable)
+- AC-001: <criterion>
 
-| ID | Deliverable | Description | Acceptance Criteria |
-|----|-------------|-------------|---------------------|
-| D1 | [Name] | [Description] | [Testable criterion] |
-| D2 | [Name] | [Description] | [Testable criterion] |
-
-## 4. In Scope
-- [Item 1]
-- [Item 2]
-
-## 5. Out of Scope
-- [Explicit exclusion 1 — reason]
-- [Explicit exclusion 2 — reason]
-
-## 6. Constraints
-- Budget: $[X]
-- Timeline: [X months]
-- Resources: [Limits]
-- Technology: [Constraints]
-
-## 7. Assumptions
-- [Assumption 1]
-- [Assumption 2]
-
-## 8. Risks Related to Scope
-- [Risk 1]
-- [Risk 2]
-
-## Approval
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Project Sponsor | | | |
-| Project Manager | | | |
-| Key Stakeholder | | | |
+## Requirements Traceability Matrix
+| Req-ID | Source           | Acceptance test     | Status     |
+|--------|------------------|---------------------|------------|
+| REQ-1  | charter §3       | AC-001              | open       |

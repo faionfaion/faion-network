@@ -1,26 +1,20 @@
-# Risk Register: [Project Name]
+<!-- purpose: Risk register markdown template (PMBoK-aligned, EMV-ready) -->
+<!-- consumes: project charter, WBS, vendor SOWs, historical risk archive -->
+<!-- produces: artefact conforming to content/02-output-contract.xml schema -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~600-1500 tokens when fully populated -->
 
-**Last Updated:** [Date]
-**PM:** [Name]
+# Risk Register — <project name>
 
-| ID | Description | Category | P | I | Score | EMV | Strategy | Response | Owner | Trigger | Status | Last Reviewed |
-|----|-------------|----------|---|---|-------|-----|----------|----------|-------|---------|--------|---------------|
-| R-01 | [Specific risk] | Technical | H | H | Crit | $[X] | Mitigate | [Action] | [Name] | [Observable signal] | Active | [Date] |
-| R-02 | [Specific risk] | Resource | M | H | High | $[X] | Transfer | [Action] | [Name] | [Observable signal] | Active | [Date] |
-| R-03 | [Opportunity] | Market | M | M | Med | +$[X] | Enhance | [Action] | [Name] | [Observable signal] | Active | [Date] |
+> Owner: <name>  •  Review cadence: weekly  •  Last review: YYYY-MM-DD
 
-**P scale:** VL=5%, L=20%, M=40%, H=60%, VH=85%
-**I scale:** VL=$[X], L=$[X], M=$[X], H=$[X], VH=$[X] (set per project)
-**Score:** P×I bucket — Low / Medium / High / Critical
+| ID    | Description                  | Category | P (VL-VH) | I (VL-VH) | Score | Strategy | Owner    | Trigger condition          | Source artefact         | Status  |
+|-------|------------------------------|----------|-----------|-----------|-------|----------|----------|----------------------------|-------------------------|---------|
+| R-001 | Key developer leaves         | people   | M         | H         | 0.18  | mitigate | name     | resignation notice filed   | hr-attrition-table.md   | active  |
+| R-002 | Vendor API breaking change   | vendor   | L         | H         | 0.06  | transfer | name     | vendor changelog cite      | contract-sow-v2.pdf     | active  |
 
-## Top 5 Risks (Status Report View)
+## Closed risks (audit trail)
 
-| Rank | ID | Description | Score | Owner | Action |
-|------|----|-------------|-------|-------|--------|
-| 1 | R-01 | [Description] | Crit | [Name] | [Immediate action] |
-
-## Contingency Reserve
-
-| Source | EMV | Reserve (×1.25 buffer) |
-|--------|-----|------------------------|
-| Sum of active threats | $[X] | $[X] |
+| ID    | Outcome                                          | Closed on   |
+|-------|--------------------------------------------------|-------------|
+| R-000 | passed without triggering                        | YYYY-MM-DD  |

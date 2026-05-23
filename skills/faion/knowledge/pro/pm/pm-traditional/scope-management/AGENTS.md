@@ -3,74 +3,100 @@ slug: scope-management
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Scope management defines, documents, and controls what a project will and will not deliver.
-content_id: "3c7f123565e99e04"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Define, document, and control project scope with a written statement, explicit exclusions, signed baseline, change-control gate, and RTM from source to acceptance.
+content_id: "76b52fc36a22aa4f"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [scope, requirements, change-control, scope-creep, acceptance-criteria]
 ---
 # Scope Management
 
 ## Summary
 
-**One-sentence:** Scope management defines, documents, and controls what a project will and will not deliver.
+**One-sentence:** Define, document, and control project scope with a written statement, explicit exclusions, signed baseline, change-control gate, and RTM from source to acceptance.
 
-**One-paragraph:** Scope management defines, documents, and controls what a project will and will not deliver. It requires a written scope statement with explicit exclusions, a signed scope baseline, and a formal change-control gate — so every addition is evaluated for cost and schedule impact before it enters the project.
+**One-paragraph:** Scope management produces a signed scope baseline with an explicit out-of-scope list and a Requirements Traceability Matrix from source (charter, stakeholder elicitation) to acceptance test. A formal change-control gate evaluates every new request for cost and schedule impact before it enters the project. Acceptance criteria are testable, not business-prose. Scope creep is the leading cause of overrun; baseline + change-control discipline turns it from drift into a decision.
+
+**Ефективно для:**
+
+- Fixed-price / fixed-scope contracts where creep damages margin.
+- Regulated programmes where scope is part of compliance evidence.
+- Multi-vendor programmes where vendor scope must compose.
+- Strategic transformations (ERP, CRM, cloud migration) needing scope-WBS-validation chain.
 
 ## Applies If (ALL must hold)
 
-- Fixed-price or fixed-scope contracts where scope creep damages margin.
-- Regulated programs (medical, finance, government) where scope is part of compliance evidence.
-- Multi-vendor programs where contracted scope per vendor must compose into one deliverable.
-- Strategic transformations (ERP, CRM, cloud migration) needing formal scope statement + WBS + validated deliverables.
-- Projects showing scope creep symptoms: repeated re-baselining, "while you're in there" requests, confused acceptance criteria.
+- Fixed-price or fixed-scope contract anchors the work.
+- Regulated compliance evidence requires written scope.
+- Multi-vendor scope must compose into one deliverable.
+- Project shows scope creep symptoms (repeated re-baselining, ambiguous acceptance).
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF startups iterating on hypotheses — strict scope control kills learning.
-- Internal R&D or discovery sprints — locking scope before learning is anti-pattern.
-- Pure agile teams with continuous discovery — backlog refinement replaces scope statements.
-- One-person side projects — scope statement is overhead.
-- When the root problem is unclear requirements or absent stakeholders; fix those first.
+- Pre-PMF startup iterating on hypotheses — strict scope kills learning.
+- Internal R&D / discovery sprints.
+- Pure-agile team with continuous discovery + backlog refinement.
+- One-person side project — scope statement is overhead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Charter | Markdown / signed PDF | sponsor |
+| Stakeholder requirements | elicitation notes | BA |
+| Change-control board membership | RACI | governance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `stakeholder-register` | Names sponsors authorised to sign baseline. |
+| `wbs-creation` | Decomposes the signed scope into deliverable packages. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — explicit exclusions, testable AC, signed baseline, RTM, change-control gate | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for scope-statement artefact + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns — vague AC, missing exclusions, no signed baseline, abandoned RTM | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: elicit → write → sign → baseline → control | 800 |
+| `content/05-examples.xml` | optional | Worked scope statement snippet | 600 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping scope state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `write-exclusions` | sonnet | Needs domain judgment; haiku generates generic exclusions. |
+| `rtm-build` | haiku | Mechanical mapping source → acceptance test. |
+| `change-impact-analysis` | opus | Cross-cutting impact across cost, schedule, quality. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/scope-statement.md` | Scope statement skeleton with exclusions + AC + RTM. |
+| `templates/requirements-doc.md` | Numbered requirements with source + acceptance tests. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-scope-management.py` | Schema-validate scope-statement JSON. | Pre-commit + pre-baseline. |
+| `scripts/rtm_coverage.py` | Check every requirement has an acceptance test and every AC has a requirement. | Weekly + pre-release. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[wbs-creation]]
+- [[stakeholder-register]]
+- [[risk-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the scope-management input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

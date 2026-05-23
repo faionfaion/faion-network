@@ -1,3 +1,9 @@
+<!-- purpose: Statement of Work template with scope, deliverables, acceptance, payment schedule -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Statement of Work: [Project/Service Name]
 
 **Version:** 1.0

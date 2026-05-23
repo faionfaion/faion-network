@@ -1,44 +1,14 @@
-# Meeting Prep: [Stakeholder Name] — [Date]
+<!-- purpose: Meeting prep template (per-stakeholder) -->
+<!-- consumes: engagement plan + recent signals -->
+<!-- produces: agenda + asks + risk notes -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~400-800 tokens -->
 
-**Purpose:** [Why this meeting]
-**Desired outcome:** [Specific outcome — decision, input, commitment, level advance]
-**Current engagement level:** [U/R/N/S/L]
-**Target level after this meeting:** [U/R/N/S/L]
+# Meeting Prep — <stakeholder> — <date>
 
-## Their Perspective
-
-**Stated concerns:** [Documented verbatim from prior conversations]
-**Motivations:** [What they want from this project]
-**Prior positions:** [Stance on relevant recent decisions]
-
-## Our Objectives
-
-**Primary:** [Main goal for this meeting]
-**Secondary:** [Additional goal if primary is achieved]
-
-## Key Messages
-
-1. [Message tailored to their motivation]
-2. [Message addressing their key concern]
-3. [Message demonstrating benefit to them specifically]
-
-## Anticipated Objections
-
-| Objection | Response |
-|-----------|----------|
-| [Likely objection 1] | [Planned response] |
-| [Likely objection 2] | [Planned response] |
-
-## What We Need From Them
-
-- [Specific request 1 — decision / input / commitment / resource]
-
----
-
-## Post-Meeting Assessment
-
-**Outcome:** [What actually happened]
-**Level change:** [Better / Same / Worse] — [evidence]
-**Action items:** [Follow-up with owner and date]
-**Next interaction:** [Date and purpose]
-**New concerns raised:** [Document verbatim]
+- Goal of meeting: <one sentence>
+- Asks (numbered, decision-shaped):
+  1. <ask>
+- Signals since last meeting: <bullets>
+- Risks to surface: <bullets>
+- Follow-ups owed from last meeting: <bullets>

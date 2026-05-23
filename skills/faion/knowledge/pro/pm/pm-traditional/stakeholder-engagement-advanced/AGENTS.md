@@ -3,72 +3,97 @@ slug: stakeholder-engagement-advanced
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Stakeholder lists without engagement strategies produce transactional relationships where PMs reach out only when they need something.
-content_id: "195f259a2e5fb06e"
-tags: [stakeholder-management, engagement, change-management, pmi, relationship-management]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Differentiate engagement strategy per stakeholder by current vs desired level, attaching measurable behavioural indicators and tracking week-over-week deltas.
+content_id: "2e053b505b30b5a5"
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [stakeholder-management, engagement, change-management, pmi]
 ---
-# Advanced Stakeholder Engagement
+# Stakeholder Engagement Advanced
 
 ## Summary
 
-**One-sentence:** Stakeholder lists without engagement strategies produce transactional relationships where PMs reach out only when they need something.
+**One-sentence:** Differentiate engagement strategy per stakeholder by current vs desired level, attaching measurable behavioural indicators and tracking week-over-week deltas.
 
-**One-paragraph:** Stakeholder lists without engagement strategies produce transactional relationships where PMs reach out only when they need something. Resistant stakeholders left unaddressed become project blockers at the worst moments. Supporters who are not actively maintained regress to Neutral. Engagement is a continuous activity, not a kickoff artifact. Advanced stakeholder engagement moves beyond the register to develop and execute differentiated strategies for each stakeholder based on their current engagement level (Unaware / Resistant / Neutral / Supportive / Leading), their motivations, and behavioral signals.
+**One-paragraph:** Builds on `stakeholder-engagement`: each entry in the register gains an explicit strategy section, measurable behavioural indicators (baseline + target + evidence source), and a diff cycle that surfaces engagement-level changes between cycles. Used in transformations where moving stakeholders from `resistant` to `supportive` is itself a milestone with measurable signals.
+
+**Ефективно для:**
+
+- Transformations where moving stakeholders to supportive is a milestone.
+- Programmes with resistant high-power stakeholders needing structured plans.
+- Distressed-project rescue where engagement is the leading lever.
+- Multi-org work needing behavioural-indicator measurement.
 
 ## Applies If (ALL must hold)
 
-- Cross-functional or cross-org programs with more than ten stakeholders and material political risk.
-- Change initiatives (transformations, M&A integration, ERP rollouts) where adoption hinges on advocacy.
-- Regulated programs where named approvers must be tracked through engagement levels.
-- Long-running programs (more than six months) where attitudes drift and require monitoring.
+- Programme has at least one stakeholder at resistant or neutral level.
+- Engagement movement is itself part of success criteria.
+- Programme has bandwidth for per-stakeholder strategy work.
+- Engagement diff cycle is run between weekly status reviews.
 
 ## Skip If (ANY kills it)
 
-- Small co-located teams where daily standups and lunch already provide the engagement.
-- Pure-internal tools with a single sponsor where overhead exceeds benefit.
-- One-off launches with fewer than four stakeholders.
-- Crisis recovery where speed dominates relationship calibration.
+- Simple delivery where keep-informed monthly is enough.
+- Stakeholder set is small and already supportive.
+- No behavioural indicators are observable.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| stakeholder-engagement register | YAML / JSON | stakeholder-engagement |
+| Behavioural signal catalogue | doc | comms |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `stakeholder-engagement` | Provides the base register + cadence. |
+| `communications-management` | Channels and templates for engagement actions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — strategy per stakeholder, measurable indicators, current-vs-desired delta, weekly diff, escalation thresholds | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for engagement plan + indicators | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: assess delta → choose strategy → set indicators → execute → diff | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `delta-analysis` | sonnet | Cross-stakeholder pattern reasoning. |
+| `indicator-design` | opus | Designing measurable behavioural indicators is high-leverage. |
+| `weekly-diff` | haiku | Mechanical diff. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/engagement-plan.md` | Per-stakeholder plan with strategy + indicators. |
+| `templates/meeting-prep.md` | Per-meeting prep template with asks + signals. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-stakeholder-engagement-advanced.py` | Schema-validate engagement plan JSON. | Pre-commit + before review. |
+| `scripts/engagement_diff.py` | Diff prior vs current register; surface NEW/CHANGED/CLOSED. | Weekly diff cycle. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[stakeholder-engagement]]
+- [[stakeholder-register]]
+- [[communications-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the stakeholder-engagement-advanced input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

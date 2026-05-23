@@ -3,73 +3,94 @@ slug: project-integration
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The PM as integrator ensures that decisions in scope, schedule, cost, quality, risk, resources, communications, and procurement are consistent and mutually reinforcing.
-content_id: "e52338361d3020d7"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PM as integrator: ensures decisions in scope/schedule/cost/quality/risk/resources/comms/procurement are consistent and mutually reinforcing via charter, baseline, status RAG.
+content_id: "a218532eba3cbe31"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [project-integration, change-control, status-reporting, project-charter, baseline-management]
 ---
 # Project Integration Management
 
 ## Summary
 
-**One-sentence:** The PM as integrator ensures that decisions in scope, schedule, cost, quality, risk, resources, communications, and procurement are consistent and mutually reinforcing.
+**One-sentence:** PM as integrator: ensures decisions in scope/schedule/cost/quality/risk/resources/comms/procurement are consistent and mutually reinforcing via charter, baseline, status RAG.
 
-**One-paragraph:** The PM as integrator ensures that decisions in scope, schedule, cost, quality, risk, resources, communications, and procurement are consistent and mutually reinforcing. All component plans live as typed YAML/JSON artifacts in git; status RAG is computed from measurable variance thresholds, never from opinion; and every baseline change goes through a documented change-control PR. Agents propose; sponsors approve baseline changes.
+**One-paragraph:** PM as integrator: ensures decisions in scope/schedule/cost/quality/risk/resources/comms/procurement are consistent and mutually reinforcing via charter, baseline, status RAG. The methodology applies in pm-traditional contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-project-integration.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Programs with ≥4 knowledge areas in scope.
+- Multi-vendor programs needing integrator authority.
+- Projects where charter is the contract between Sponsor and PM.
+- Status reporting that rolls up area-level signal to portfolio.
 
 ## Applies If (ALL must hold)
 
-- Multi-team / multi-vendor programs where decisions in one area routinely affect another
-- Regulated programs where the Project Charter is a contractual artifact requiring version control
-- Hybrid agile+waterfall environments with component plans in different tools needing a single source of truth
-- Portfolio PMO reporting where dozens of projects feed the same status rollup
-- Integrated Change Control when a change request affects more than one baseline
+- Project charter is authored or being authored.
+- Each knowledge area has a baseline.
+- Status cadence is agreed with Sponsor.
 
 ## Skip If (ANY kills it)
 
-- Solo or duo teams — overhead exceeds value; a one-page README and a kanban board cover integration
-- Pure agile single-team with one product backlog — Scrum already integrates work; bolting on PMBoK integration creates conflict
-- Pre-charter exploratory spikes — formalising integration too early kills learning
-- Portfolios where project owners refuse to share artifacts in a common format — fix governance first
+- Single-area project (e.g., pure dev sprint).
+- Pre-charter discovery phase.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Project charter | Markdown | Sponsor + PM |
+| Per-area baselines | scope/schedule/cost/quality/risk/resources/comms/procurement | area leads |
+| Status cadence | weekly/biweekly | Sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[change-control]] | integration tracks baseline integrity via change control |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-charter` | sonnet | Judgement on charter scope + authority. |
+| `integrate-baselines` | sonnet | Cross-area consistency check. |
+| `roll-up-rag` | haiku | Mechanical RAG roll-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/status-rag.py` | Status RAG roll-up script: per-area signal → overall RAG |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-project-integration.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[change-control]]
+- [[seven-performance-domains]]
+- [[communications-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+
