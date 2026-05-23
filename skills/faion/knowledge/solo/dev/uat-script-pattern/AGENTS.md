@@ -3,78 +3,94 @@ slug: uat-script-pattern
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "8198df9471d531ae"
-summary: "Uat Script Pattern: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Major release QA cycle: regression + smoke + UAT'."
-tags: [uat-script-pattern, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a repeatable UAT script — acceptance criteria → numbered steps → expected results → sign-off log — replacing ad-hoc Google Docs at release time.
+content_id: "798c00d2654b5440"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: ["uat", "qa", "release", "acceptance-criteria", "sign-off"]
 ---
-# Uat Script Pattern
+# UAT Script Pattern
 
 ## Summary
 
-**One-sentence:** Uat Script Pattern: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Major release QA cycle: regression + smoke + UAT'.
+**One-sentence:** Generates a repeatable UAT script — acceptance criteria → numbered steps → expected results → sign-off log — replacing ad-hoc Google Docs at release time.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-qa-engineer/Major release QA cycle: regression + smoke + UAT': UAT scripts often regress to ad-hoc Google Docs; need a repeatable script template tied to acceptance criteria + sign-off log. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a uat script pattern artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Generates a repeatable UAT script — acceptance criteria → numbered steps → expected results → sign-off log — replacing ad-hoc Google Docs at release time.
+
+**Ефективно для:**
+
+- Solo team running a major release QA cycle (regression + smoke + UAT).
+- Pre-launch UAT against staging where stakeholders sign off.
+- Release where regressions must be traceable to test steps.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-qa-engineer/Major release QA cycle: regression + smoke + UAT' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Release has ≥3 acceptance criteria.
+- UAT will be performed by ≥1 named tester before sign-off.
+- Sign-off is required (not auto-merge).
+- Test results will be stored for ≥90 days.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working uat script pattern artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Continuous-deploy environment with full auto-coverage — UAT overhead exceeds value.
+- Greenfield prototype with no users.
+- Bug-fix release with one-line scope — smoke test only.
 
 ## Prerequisites
 
-- recent context for the 'role-qa-engineer/Major release QA cycle: regression + smoke + UAT' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| AC list | yaml | spec.md acceptance-criteria block |
+| Tester names | list | team roster |
+| Staging URL | url | deploy environment |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/dev` | parent domain group — provides operating context for Uat Script Pattern |
+| qa-test-pyramid-vs-trophy-decision | UAT lives at the e2e tier; its budget comes from the pyramid decision. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-ac-to-step-traceability, r2-numbered-steps, r3-expected-result-per-step, r4-named-tester, r5-sign-off-log | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the UAT Script Pattern artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: ad-hoc-doc, acceptance-criteria-drift, no-sign-off-record | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-uat-script-pattern` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-uat-script-pattern` | sonnet | Bounded structural check against the output contract. |
+| `review-uat-script-pattern` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/uat-script-pattern.json` | JSON schema for the Uat Script Pattern output contract |
-| `templates/uat-script-pattern.md` | Markdown skeleton with the required fields |
+| `templates/uat-script-pattern.json` | JSON skeleton matching the output contract. |
+| `templates/uat-script-pattern.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-uat-script-pattern.py` | Enforce Uat Script Pattern output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-uat-script-pattern.py` | Validate UAT Script Pattern output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-qa-engineer/Major release QA cycle: regression + smoke + UAT`
-- solo/dev/role-qa-engineer
+- [[qa-test-pyramid-vs-trophy-decision]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

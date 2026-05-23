@@ -1,49 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AC Mapping Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of ac-mapping.yaml (or the equivalent table in the PR description).</summary>
-
-  <output-contract>
-    <required>
-      <field name="story.id" type="string" notes="Jira / Linear / GitHub issue ref"/>
-      <field name="story.url" type="url"/>
-      <field name="acceptance_criteria" type="list_of_object" min="1"/>
-      <field name="acceptance_criteria[].ac_id" type="string" notes="e.g. AC-1"/>
-      <field name="acceptance_criteria[].description" type="paragraph"/>
-      <field name="acceptance_criteria[].tests" type="list_of_object" min="1"/>
-      <field name="acceptance_criteria[].tests[].file_path" type="path"/>
-      <field name="acceptance_criteria[].tests[].test_name" type="string"/>
-      <field name="acceptance_criteria[].tests[].asserted_behavior" type="paragraph" min_words="6" max_words="30"/>
-      <field name="acceptance_criteria[].tests[].assertion_class" type="enum" values="state|output|side_effect|negative"/>
-      <field name="orphan_tests" type="list_of_object" notes="tests in the diff not mapped to any AC"/>
-      <field name="orphan_acs" type="list_of_ac_id" notes="MUST be empty before merge"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">orphan_acs non-empty (any AC without at least one mapped test)</pattern>
-      <pattern id="f2">asserted_behavior contains a token from the structural-only list (was_called, no_exception, status_200_alone, line_reached)</pattern>
-      <pattern id="f3">assertion_class missing OR set to a value not in the closed list</pattern>
-      <pattern id="f4">mapping added in a separate commit after PR review feedback (timestamp of yaml later than first review request)</pattern>
-      <pattern id="f5">test referenced in mapping does not exist in the diff or in main</pattern>
-      <pattern id="f6">asserted_behavior shorter than 6 words (label, not a behavior description)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Merge two assertions on the same AC into one entry when they test contiguous behavior (creation + persistence).</transformation>
-      <transformation>Auto-populate the initial mapping from the linked story using extract-acs.py; engineer fills the asserted_behavior fields.</transformation>
-      <transformation>When the test file path moves during refactor, the mapping file is updated in the same PR.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ac-mapping.yaml"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="AC Mapping Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the ac-mapping artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-ac-to-assertion-mapping.json",
+  "type": "object",
+  "required": [
+    "story",
+    "acceptance_criteria",
+    "orphan_tests",
+    "orphan_acs",
+    "mapping_committed_at"
+  ],
+  "properties": {
+    "story": {
+      "type": "object",
+      "required": ["id", "url"],
+      "properties": {
+        "id": {"type": "string"},
+        "url": {"type": "string"}
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["ac_id", "description", "tests"],
+        "properties": {
+          "ac_id": {"type": "string"},
+          "description": {"type": "string"},
+          "tests": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["file_path", "test_name", "asserted_behavior", "assertion_class"],
+              "properties": {
+                "file_path": {"type": "string"},
+                "test_name": {"type": "string"},
+                "asserted_behavior": {"type": "string", "minLength": 20},
+                "assertion_class": {
+                  "type": "string",
+                  "enum": ["state", "output", "side_effect", "negative"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "orphan_tests": {"type": "array"},
+    "orphan_acs": {"type": "array", "maxItems": 0},
+    "mapping_committed_at": {"type": "string"}
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "story": {"id": "STORY-42", "url": "https://issues.example.com/STORY-42"},
+  "acceptance_criteria": [
+    {
+      "ac_id": "AC-1",
+      "description": "user can submit valid signup form",
+      "tests": [
+        {
+          "file_path": "tests/signup.spec.ts",
+          "test_name": "submits valid form and persists user",
+          "asserted_behavior": "response status 201 AND db.users row exists with expected email",
+          "assertion_class": "state"
+        }
+      ]
+    }
+  ],
+  "orphan_tests": [],
+  "orphan_acs": [],
+  "mapping_committed_at": "2026-05-23T10:00:00Z"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "story": {"id": "STORY-42"},
+  "acceptance_criteria": [
+    {
+      "ac_id": "AC-1",
+      "description": "user can submit form",
+      "tests": [
+        {
+          "file_path": "tests/signup.spec.ts",
+          "test_name": "calls createUser",
+          "asserted_behavior": "spy called",
+          "assertion_class": "called"
+        }
+      ]
+    }
+  ],
+  "orphan_acs": ["AC-2"]
+}
+    ]]></code>
+    <note>story.url missing; assertion_class not in enum; asserted_behavior too short (structural); orphan_acs non-empty; mapping_committed_at missing.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Every AC has at least one mapped test</item>
-      <item>No orphan tests in the diff</item>
-      <item>Each asserted_behavior describes a state, output, side-effect, or negative assertion</item>
-      <item>No structural-only assertion classes</item>
-      <item>Mapping committed at PR open, not retrofitted after review</item>
-      <item>Reviewer walked the map and confirmed each line</item>
+      <pattern id="orphan-acs-non-empty">Any AC without at least one mapped test in `tests`.</pattern>
+      <pattern id="structural-only-behavior">asserted_behavior matches structural tokens like "was called", "no exception", "status 200" alone.</pattern>
+      <pattern id="assertion-class-out-of-enum">assertion_class set to a value outside the closed list state|output|side_effect|negative.</pattern>
+      <pattern id="mapping-retrofitted">mapping_committed_at later than the first reviewer-request timestamp on the PR.</pattern>
+      <pattern id="missing-test-in-diff">tests[].file_path or test_name not found in the diff or in main.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-qa-ac-to-assertion-mapping.py">Validator script (see scripts/).</reference>
 </text>

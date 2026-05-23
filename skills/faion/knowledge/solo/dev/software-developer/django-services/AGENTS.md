@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Isolate Django business logic into a services/ module of plain Python functions so views, admins, and tasks share one tested core.
-content_id: "67f1bcbec14acb19"
+content_id: "bb7cc5c7b8064900"
 complexity: medium
 produces: code
 est_tokens: 4000

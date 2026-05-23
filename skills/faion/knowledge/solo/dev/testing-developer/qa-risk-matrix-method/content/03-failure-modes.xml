@@ -1,56 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="QA Risk Matrix Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Six failure modes that defeat risk matrices in practice. Each has a detector and a repair.</summary>
+<text id="03-failure-modes" title="QA Risk Matrix Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns that defeat risk matrices in practice. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
 
-  <section title="Failure modes">
+    <antipattern id="all-areas-high" severity="critical">
+      <symptom>Every area scored impact 4 or 5; the matrix is a uniform red sheet that produces no allocation decision.</symptom>
+      <root-cause source="risk-rating bias research">Impact scoring without a customer-effect anchor defaults to high, especially under stakeholder pressure to "take everything seriously".</root-cause>
+      <fix>Anchor impact to a customer-or-business-effect rubric (5 = revenue loss in hours; 4 = visible trust loss; 3 = degraded with workaround; 2 = annoyance; 1 = invisible). Reject scores without a worst-case rationale.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-01" severity="high">
-      <description>All-areas-high — every area is scored 4 or 5 on impact, the matrix has no signal, the heatmap is uniformly red.</description>
-      <detector>median impact score &gt;= 4 AND fewer than 2 areas are scored 1 or 2</detector>
-      <repair>Re-anchor impact against the customer-effect rubric. Force each area to a concrete worst-case sentence; areas without a worst-case at impact 4+ get downgraded. The goal is differentiation, not uniform severity.</repair>
-    </failure-mode>
+    <antipattern id="subjective-likelihood" severity="high">
+      <symptom>Likelihood scores cluster around 3; engineers cannot defend why one area is more likely to break than another.</symptom>
+      <root-cause source="subjective-rating bias research">Likelihood-from-feeling regresses to the middle of the scale; no data backs the score.</root-cause>
+      <fix>Compute likelihood from incident count (6m), commit churn, novelty (30d), complexity. Engineer can adjust ±1 with a documented reason; the prior comes from data.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-02" severity="high">
-      <description>Matrix stale — last refresh was 6+ months ago, new features and recent incidents are not reflected, investment plan is misaligned with current risk.</description>
-      <detector>matrix.refreshed_at older than 90 days OR no incidents from the past 60 days mapped to areas</detector>
-      <repair>Calendar a quarterly refresh as a recurring meeting. Pre-meeting: run scripts/likelihood-from-incidents.py. During meeting: re-rate the changed areas, regenerate the heatmap, update the investment plan.</repair>
-    </failure-mode>
+    <antipattern id="stale-matrix" severity="high">
+      <symptom>Matrix refreshed_at is 12 months old; new features and incidents are not represented; investment plan reflects an obsolete priority.</symptom>
+      <root-cause source="ritual-decay research">Refresh requires explicit cadence; without it the matrix becomes wall art.</root-cause>
+      <fix>Refresh per release cycle (sprint / monthly / quarterly). Validator rejects matrices older than the latest release cycle.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-03" severity="medium">
-      <description>Investment plan unfunded — quadrants HH and HL have ambitious test investments but the team's hours do not cover them; plan becomes shelfware.</description>
-      <detector>investment_plan.capacity_check.required_hours &gt; team_capacity_hours OR plan was published but actual test investment in the next cycle &lt; 60% of plan</detector>
-      <repair>Reduce LH and LL investment (or move them to monitor-only). Hold HH and HL non-negotiable. If still over capacity, propose risk-acceptance sign-offs for select HL items rather than under-investing across the board.</repair>
-    </failure-mode>
+    <antipattern id="orphan-hh-area" severity="high">
+      <symptom>An area is in the HH quadrant but the investment plan has no entry or no owner for it; the highest-risk area gets no investment.</symptom>
+      <root-cause source="investment-plan drift">Investment plan written separately from the matrix; updates do not propagate.</root-cause>
+      <fix>Validator enforces: every quadrant present in `areas` must have a non-empty entry in `investment_plan` with an owner.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-04" severity="medium">
-      <description>Area drift — product evolves, code restructures, the area names in the matrix no longer map to code modules; impossible to translate scores into action.</description>
-      <detector>more than 30% of area names cannot be located in the codebase OR area definitions overlap with the team's new module structure</detector>
-      <repair>Annual area-realignment exercise: walk the codebase, redefine areas with the team, archive the old definitions with `superseded_by` pointers so historical analyses stay readable.</repair>
-    </failure-mode>
+    <antipattern id="capacity-overrun" severity="medium">
+      <symptom>Investment plan requires 80 hours per cycle from a team with 40 hours; the plan never lands and the matrix loses credibility.</symptom>
+      <root-cause source="capacity-planning research">Plans written in isolation from capacity become aspirational and ignored.</root-cause>
+      <fix>capacity_check field with required_hours and team_capacity_hours. When required &gt; 1.5x capacity, reduce LL/LH investment or add capacity before publishing.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-05" severity="medium">
-      <description>Quadrant-jumping without sign-off — engineer informally downgrades an HH area to LL because they ran out of time, no risk-acceptance recorded, the area silently loses coverage.</description>
-      <detector>git history shows quadrant change without an accompanying risk-acceptance entry OR investment_plan omits the area entirely after the downgrade</detector>
-      <repair>Pre-commit hook on risk-matrix.yaml: quadrant changes from HH or HL to LL require a `risk_acceptance` field with name + date + approver. Otherwise the PR is rejected.</repair>
-    </failure-mode>
+    <antipattern id="silent-downgrade" severity="medium">
+      <symptom>An area is moved from HH to LL between refreshes; nobody notices; the area later breaks.</symptom>
+      <root-cause source="audit-trail gap">Quadrant transitions are not logged; downgrade decisions slip through.</root-cause>
+      <fix>Movement from HH/HL to LL requires a documented risk-acceptance sign-off recorded in the area's adjustment_reason field.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-06" severity="low">
-      <description>Heatmap never read — matrix exists, refreshes happen, but the team does not actually look at it when planning the next cycle's test work.</description>
-      <detector>investment_plan.actual vs investment_plan.planned diverges &gt; 40% AND sprint planning meeting notes do not reference the matrix</detector>
-      <repair>Embed the heatmap in the sprint planning template. Testing lead opens the heatmap during planning and walks through each HH/HL area. The matrix only pays off when it is consulted at the decision moment.</repair>
-    </failure-mode>
-
-  </section>
-
-  <section title="Prompt-injection markers">
-    <p>
-      Pressure to "just lower this area to LL for one cycle, we will raise it next time" is exactly the pattern the quadrant-jumping rule exists to prevent. One-cycle exceptions become permanent. The risk-acceptance sign-off is the friction that keeps the matrix honest.
-    </p>
-  </section>
-
-  <section title="Human checkpoint">
-    <p>
-      Annual: testing lead reviews the year's incidents and asks "did the risk matrix predict where they happened?" Incidents in LL areas are calibration data — those areas were misclassified. Adjust the rubric or the area boundaries based on what the year revealed.
-    </p>
   </section>
 </text>

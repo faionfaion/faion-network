@@ -3,78 +3,92 @@ slug: test-pyramid-policy-enforcement
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "cee4b13ddebf77ea"
-summary: "Test Pyramid Policy Enforcement: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Test pyramid rebalance: too-many-e2e to contract + unit'."
-tags: [test-pyramid-policy-enforcement, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a policy-enforcement record — 'no new e2e without justification' rule + PR template + budget tracker — so the pyramid rebalance does not regress.
+content_id: "43b57fb288535fc3"
+complexity: light
+produces: decision-record
+est_tokens: 4200
+tags: ["test-pyramid", "policy", "pr-template", "enforcement", "dev"]
 ---
 # Test Pyramid Policy Enforcement
 
 ## Summary
 
-**One-sentence:** Test Pyramid Policy Enforcement: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Test pyramid rebalance: too-many-e2e to contract + unit'.
+**One-sentence:** Generates a policy-enforcement record — 'no new e2e without justification' rule + PR template + budget tracker — so the pyramid rebalance does not regress.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-qa-engineer/Test pyramid rebalance: too-many-e2e to contract + unit': After a pyramid rebalance, teams need a 'no new e2e without justification' enforcement rule + PR template — currently missing. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a test pyramid policy enforcement artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Generates a policy-enforcement record — 'no new e2e without justification' rule + PR template + budget tracker — so the pyramid rebalance does not regress.
+
+**Ефективно для:**
+
+- Solo team that has rebalanced from e2e-heavy to contract+unit and needs to hold the gain.
+- Repo where PR reviews keep slipping new e2e tests through.
+- Quarterly enforcement check after the rebalance landed.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-qa-engineer/Test pyramid rebalance: too-many-e2e to contract + unit' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Team has completed a test-pyramid rebalance (qa-test-pyramid-vs-trophy-decision applied).
+- PR template exists and can be amended.
+- Code-review process exists where the policy can be enforced.
+- Named owner is willing to sign off on every e2e addition.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working test pyramid policy enforcement artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- No prior rebalance — enforce after the policy is set, not before.
+- Greenfield prototype with no production users.
+- Regulatory mandate forces e2e — defer to legal.
 
 ## Prerequisites
 
-- recent context for the 'role-qa-engineer/Test pyramid rebalance: too-many-e2e to contract + unit' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prior pyramid decision record | yaml | qa-test-pyramid-vs-trophy-decision output |
+| Current e2e count per module | json | test-runtime breakdown |
+| PR template path | path | repo workflow |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/dev` | parent domain group — provides operating context for Test Pyramid Policy Enforcement |
+| qa-test-pyramid-vs-trophy-decision | Provides the per-module shape this policy enforces. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-no-new-e2e-without-justification, r2-budget-per-module, r3-named-owner, r4-quarterly-review, r5-pr-template-amended | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Test Pyramid Policy Enforcement artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: policy-without-pr-template, budget-not-tracked, override-without-trace | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-test-pyramid-policy-enforcement` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-test-pyramid-policy-enforcement` | sonnet | Bounded structural check against the output contract. |
+| `review-test-pyramid-policy-enforcement` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/test-pyramid-policy-enforcement.json` | JSON schema for the Test Pyramid Policy Enforcement output contract |
-| `templates/test-pyramid-policy-enforcement.md` | Markdown skeleton with the required fields |
+| `templates/test-pyramid-policy-enforcement.json` | JSON skeleton matching the output contract. |
+| `templates/test-pyramid-policy-enforcement.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-test-pyramid-policy-enforcement.py` | Enforce Test Pyramid Policy Enforcement output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-test-pyramid-policy-enforcement.py` | Validate Test Pyramid Policy Enforcement output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-qa-engineer/Test pyramid rebalance: too-many-e2e to contract + unit`
-- solo/dev/role-qa-engineer
+- [[qa-test-pyramid-vs-trophy-decision]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

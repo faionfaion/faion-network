@@ -1,52 +1,127 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Exploratory Charter Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the charter, the observation log, and the debrief.</summary>
-
-  <output-contract>
-    <required>
-      <field name="charter.session_id" type="string" notes="incremental id per feature or per team"/>
-      <field name="charter.date" format="YYYY-MM-DD"/>
-      <field name="charter.explorer" type="string"/>
-      <field name="charter.mission" type="paragraph" min_words="10" max_words="40"/>
-      <field name="charter.target" type="string" notes="URL path, API endpoint, CLI command, or feature id"/>
-      <field name="charter.time_box_minutes" type="enum" values="60|75|90|120"/>
-      <field name="charter.focus_areas" type="list_of_string" min="3" max="5"/>
-      <field name="charter.heuristics" type="list_of_string" min="1"/>
-      <field name="observation_log" type="list_of_object" min="5" notes="timestamp + kind (idea / observation / question / bug) + text"/>
-      <field name="debrief.key_findings" type="list_of_string" min="3" max="5"/>
-      <field name="debrief.bugs_filed" type="list_of_object" notes="bug id + severity + brief"/>
-      <field name="debrief.follow_up_questions" type="list_of_string"/>
-      <field name="debrief.debt_items" type="list_of_string" notes="test gaps to file as separate tickets"/>
-      <field name="debrief.actual_time_minutes" type="integer"/>
-      <field name="debrief.published_at" format="ISO8601"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">charter.mission shorter than 10 words OR contains more than one independent objective</pattern>
-      <pattern id="f2">observation_log entries timestamps outside the time_box window (logs written before/after session)</pattern>
-      <pattern id="f3">debrief.published_at more than 24 hours after the session end</pattern>
-      <pattern id="f4">charter.focus_areas list contains more than 5 entries (scope creep)</pattern>
-      <pattern id="f5">observation_log includes a pre-written checklist of test cases (scripted, not exploratory)</pattern>
-      <pattern id="f6">debrief.key_findings is just the bug list with no themes or patterns</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Reduce time_box to 60 minutes for low-complexity features; never exceed 120 in a single session.</transformation>
-      <transformation>Pair-explore (two people, one session) when the explorer is biased; both names go on the charter.</transformation>
-      <transformation>Re-charter mid-session if a major blocker (build broken) prevents progress; old charter is archived with reason.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/charter.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Exploratory Charter Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the charter + observation log + debrief artefact this methodology produces. The validator script enforces required keys and per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-exploratory-charter-template.json",
+  "type": "object",
+  "required": ["charter", "observation_log", "debrief"],
+  "properties": {
+    "charter": {
+      "type": "object",
+      "required": ["session_id", "date", "explorer", "mission", "target", "time_box_minutes", "focus_areas", "heuristics"],
+      "properties": {
+        "session_id": {"type": "string"},
+        "date": {"type": "string"},
+        "explorer": {"type": "string"},
+        "mission": {"type": "string", "minLength": 20},
+        "target": {"type": "string"},
+        "time_box_minutes": {"type": "integer", "enum": [60, 75, 90, 120]},
+        "focus_areas": {"type": "array", "minItems": 3, "maxItems": 5, "items": {"type": "string"}},
+        "heuristics": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "observation_log": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "kind", "text"],
+        "properties": {
+          "timestamp": {"type": "string"},
+          "kind": {"type": "string", "enum": ["idea", "observation", "question", "bug"]},
+          "text": {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "debrief": {
+      "type": "object",
+      "required": ["key_findings", "bugs_filed", "follow_up_questions", "debt_items", "actual_time_minutes", "published_at"],
+      "properties": {
+        "key_findings": {"type": "array", "minItems": 3, "maxItems": 5, "items": {"type": "string"}},
+        "bugs_filed": {"type": "array", "items": {"type": "object", "required": ["id", "severity", "brief"], "properties": {"id": {"type": "string"}, "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]}, "brief": {"type": "string"}}}},
+        "follow_up_questions": {"type": "array", "items": {"type": "string"}},
+        "debt_items": {"type": "array", "items": {"type": "string"}},
+        "actual_time_minutes": {"type": "integer", "minimum": 1, "maximum": 120},
+        "published_at": {"type": "string"}
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "charter": {
+    "session_id": "ES-014",
+    "date": "2026-05-23",
+    "explorer": "Ruslan",
+    "mission": "Explore the new email-onboarding flow to discover failure modes in internationalisation, timezone handling, and email rendering.",
+    "target": "/onboarding/email/*",
+    "time_box_minutes": 75,
+    "focus_areas": ["i18n input", "timezone display", "email provider rendering"],
+    "heuristics": ["input variety", "SFDPOT"]
+  },
+  "observation_log": [
+    {"timestamp": "14:23", "kind": "idea", "text": "try unicode emoji in name field"},
+    {"timestamp": "14:24", "kind": "observation", "text": "ZWJ emoji accepted but rendered as raw bytes in welcome email"},
+    {"timestamp": "14:26", "kind": "bug", "text": "filed #2118: ZWJ emoji not rendered"},
+    {"timestamp": "14:27", "kind": "question", "text": "does this affect support tickets too?"},
+    {"timestamp": "14:30", "kind": "idea", "text": "API path bypasses UI sanitiser"}
+  ],
+  "debrief": {
+    "key_findings": [
+      "i18n bugs cluster in email-rendering layer, not input layer",
+      "API sanitiser is weaker than UI sanitiser",
+      "Timezone display is correct but datetime format inconsistent"
+    ],
+    "bugs_filed": [{"id": "BUG-2118", "severity": "medium", "brief": "ZWJ emoji not rendered"}],
+    "follow_up_questions": ["does support-ticket rendering share the email pipeline?"],
+    "debt_items": ["add API sanitiser regression test"],
+    "actual_time_minutes": 72,
+    "published_at": "2026-05-23T16:00:00Z"
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "charter": {
+    "session_id": "ES-015",
+    "date": "2026-05-23",
+    "explorer": "Anna",
+    "mission": "explore",
+    "target": "/feature/*",
+    "time_box_minutes": 45,
+    "focus_areas": ["a", "b"],
+    "heuristics": []
+  },
+  "observation_log": [],
+  "debrief": {
+    "key_findings": ["bug 1", "bug 2", "bug 3"],
+    "bugs_filed": [],
+    "follow_up_questions": [],
+    "debt_items": [],
+    "actual_time_minutes": 30,
+    "published_at": "2026-05-25T18:00:00Z"
+  }
+}
+    ]]></code>
+    <note>mission too short; time_box not in enum; focus_areas only 2; heuristics empty; observation_log empty; debrief.published_at later than 24h after session.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>One mission, pre-committed</item>
-      <item>Time-box set to 60 / 75 / 90 / 120 — no other values</item>
-      <item>3-5 focus areas, no more</item>
-      <item>Continuous observation log with timestamps</item>
-      <item>Debrief published within 24h</item>
-      <item>Key findings include themes, not just a bug list</item>
+      <pattern id="mission-too-short">charter.mission shorter than 20 characters OR with multiple independent objectives.</pattern>
+      <pattern id="time-box-non-canonical">charter.time_box_minutes outside the closed set {60, 75, 90, 120}.</pattern>
+      <pattern id="empty-log">observation_log empty or fewer than 5 entries (the session did not log continuously).</pattern>
+      <pattern id="late-debrief">debrief.published_at later than 24 hours after charter.date end-of-session.</pattern>
+      <pattern id="bug-list-as-findings">debrief.key_findings is just the bug list with no themes or patterns.</pattern>
+      <pattern id="scope-creep">charter.focus_areas list contains more than 5 entries.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-qa-exploratory-charter-template.py">Validator script (see scripts/).</reference>
 </text>

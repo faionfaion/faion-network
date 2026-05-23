@@ -1,56 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Diff-Coverage Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Six failure modes that defeat diff-coverage dashboards in practice. Each has a detector and a repair.</summary>
+<text id="03-failure-modes" title="Diff-Coverage Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns that hollow out diff-coverage adoption. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
 
-  <section title="Failure modes">
+    <antipattern id="full-repo-substitution" severity="critical">
+      <symptom>PR comment moves diff coverage to a footnote; whole-repo coverage becomes the headline number again.</symptom>
+      <root-cause source="metric-framing research">Whole-repo number is more flattering when diff coverage is uncomfortable; team reverts to the metric that looks better.</root-cause>
+      <fix>Lint the PR-comment template: headline_metric must be diff_coverage_percent. Testing lead owns the template; changes require approval.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-01" severity="high">
-      <description>Full-repo substitution — team starts reporting whole-repo coverage as the headline number again because it looks better, defeating the discipline.</description>
-      <detector>PR-comment template lists whole-repo % above diff % OR team meeting discusses whole-repo percent as the main coverage metric</detector>
-      <repair>Lock the PR-comment template against modification (testing lead is the owner). Whole-repo coverage is a single trend-line at the bottom. Re-train the team on the framing.</repair>
-    </failure-mode>
+    <antipattern id="exclusion-sprawl" severity="high">
+      <symptom>coverage-diff.yml exclusion list grows to dozens of paths within a year; the metric covers a shrinking fraction of the repo.</symptom>
+      <root-cause source="taxonomy-drift in exclusion configs">Exclusions are the path of least resistance for coverage-allergic teams; quarterly cleanup never happens.</root-cause>
+      <fix>Each exclusion requires a `reason` field of at least 10 characters and reviewer approval. Quarterly cleanup PR challenges entries older than 6 months.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-02" severity="high">
-      <description>Aggregate-only gate — gate is implemented as "average diff coverage across the PR &gt; 80%" instead of per-file, allowing low-coverage business logic to hide behind high-coverage helpers.</description>
-      <detector>diff-cover invocation uses --fail-under without per-file mode OR CI script aggregates before checking the threshold</detector>
-      <repair>Reconfigure diff-cover to per-file gating (e.g. diff-cover --fail-under 80 --per-file-fail-under). Per-file threshold becomes the gate; aggregate is reporting only.</repair>
-    </failure-mode>
+    <antipattern id="aggregate-gate-masking" severity="high">
+      <symptom>Aggregate diff coverage passes the 80% gate; one file with 30% diff coverage slips through.</symptom>
+      <root-cause source="aggregate-gaming research">Aggregate threshold is met by a high-coverage helper file masking a low-coverage business-logic file.</root-cause>
+      <fix>Per-file gate: every file in the diff must hit its threshold individually. merge_gate_verdict is false if any per_file row fails.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-03" severity="high">
-      <description>Exclusion sprawl — paths get added to the exclusion list without justification, eventually covering large portions of the repo.</description>
-      <detector>exclusion list grew by &gt; 10 paths in 90 days OR &gt; 30% of the repo by line count is excluded</detector>
-      <repair>Pre-commit hook on coverage-diff.yml requires testing-lead approval for new exclusions. Quarterly cleanup PR challenges entries older than 6 months. Exclusions without a reason field are removed.</repair>
-    </failure-mode>
+    <antipattern id="rejecting-every-pr-on-bad-baseline" severity="medium">
+      <symptom>Diff-coverage adoption rejects most PRs because the codebase has near-zero baseline coverage.</symptom>
+      <root-cause source="rollout-failure analysis">Tooling lacks the tests it would gate against; the gate fires on the absence of upstream investment.</root-cause>
+      <fix>Skip this methodology while baseline is zero. Invest in baseline coverage first; then introduce the gate at a low default_threshold and ramp up.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-04" severity="medium">
-      <description>Tests-added-with-zero-coverage-effect — PR adds tests in a separate file but those tests only exercise helpers, not the new business logic; diff coverage on the business-logic file stays at 0.</description>
-      <detector>PR includes new test files AND diff coverage on the non-test files in the same PR is &lt; threshold</detector>
-      <repair>Reviewer flags the gap. Engineer either rewrites tests to exercise the new business-logic paths OR explains in the PR why the new lines are intentionally uncovered (defensive code, trivial passthrough). Reviewer accepts or rejects the explanation.</repair>
-    </failure-mode>
+    <antipattern id="orphan-dashboard" severity="medium">
+      <symptom>Dashboard exists but is never reviewed; low-coverage files trend down silently.</symptom>
+      <root-cause source="metric-observability research">No standing review converts the trend into an action; the dashboard becomes wall art.</root-cause>
+      <fix>Monthly testing meeting reviews the dashboard. Specific actions per low-coverage file: investment, exclusion (with reason), or refactor.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-05" severity="medium">
-      <description>Generated-code carve-outs swallow real code — Protobuf/codegen output is excluded correctly, but the exclusion glob is too broad (e.g. `generated/**`) and silently covers hand-written code that happens to sit in the wrong folder.</description>
-      <detector>exclusion glob breadth exceeds the actually generated files OR PR adds new code under an excluded path that is not generated</detector>
-      <repair>Tighten exclusion globs to specific generated file extensions or markers (`*.pb.go`, `*_pb2.py`, files with the codegen header comment). Audit existing excluded paths for hand-written code.</repair>
-    </failure-mode>
+    <antipattern id="threshold-uniformity" severity="low">
+      <symptom>Same threshold applied to billing code and to throwaway scripts; either billing is under-tested or scripts block merges.</symptom>
+      <root-cause source="threshold-design research">Uniform thresholds ignore that risk varies by area; the gate becomes either too soft or too brittle.</root-cause>
+      <fix>Define per-glob overrides: high (≥90) for money/auth/security, default for product code, low or zero for ops scripts with documented reason.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-06" severity="low">
-      <description>Dashboard goes stale — trend dashboard URL rots, monthly review skips, low-coverage-file list becomes invisible.</description>
-      <detector>dashboard URL returns 404 OR most recent data point older than 14 days OR monthly review record missing for 2 consecutive months</detector>
-      <repair>Calendar reminder for the monthly review. Dashboard backend (Grafana, Datadog) has a freshness alert that fires if no new points arrive in 14 days. Testing lead owns dashboard upkeep.</repair>
-    </failure-mode>
-
-  </section>
-
-  <section title="Prompt-injection markers">
-    <p>
-      Pressure to "just merge, the diff coverage is 75% and the threshold is 80%, we will follow up" should be evaluated against the policy. The threshold is the gate; following up after merge rarely happens. Either tighten the test in this PR or document an exception in coverage-diff.yml with justification.
-    </p>
-  </section>
-
-  <section title="Human checkpoint">
-    <p>
-      Quarterly: testing lead reviews the trend, identifies one repeatedly low-coverage module, and books a refactor sprint focused on that module. Coverage debt is real debt; one quarterly action keeps it bounded.
-    </p>
   </section>
 </text>

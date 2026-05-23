@@ -1,52 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="QA Risk Matrix Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of risk-matrix.yaml and the investment-plan document.</summary>
-
-  <output-contract>
-    <required>
-      <field name="matrix.refreshed_at" format="YYYY-MM-DD"/>
-      <field name="matrix.areas" type="list_of_object" min="5" max="25"/>
-      <field name="matrix.areas[].name" type="slug"/>
-      <field name="matrix.areas[].impact" type="enum" values="1|2|3|4|5"/>
-      <field name="matrix.areas[].impact_rationale" type="paragraph" notes="worst-case sentence with concrete customer/business effect"/>
-      <field name="matrix.areas[].likelihood" type="enum" values="1|2|3|4|5"/>
-      <field name="matrix.areas[].likelihood_data" type="object" notes="incidents_6m, commits_6m, novelty_30d, complexity_score"/>
-      <field name="matrix.areas[].adjustment_pm1" type="integer" min="-1" max="1"/>
-      <field name="matrix.areas[].adjustment_reason" type="paragraph" notes="required if adjustment is non-zero"/>
-      <field name="matrix.areas[].quadrant" type="enum" values="HH|HL|LH|LL"/>
-      <field name="investment_plan.HH" type="paragraph" notes="test types + cadence + owner"/>
-      <field name="investment_plan.HL" type="paragraph"/>
-      <field name="investment_plan.LH" type="paragraph"/>
-      <field name="investment_plan.LL" type="paragraph"/>
-      <field name="investment_plan.capacity_check" type="object" notes="total hours required vs team capacity per cycle"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">all areas scored 4 or 5 on impact (flat-ratings signal; matrix has no signal)</pattern>
-      <pattern id="f2">likelihood scores set without likelihood_data backing (subjective-only)</pattern>
-      <pattern id="f3">matrix.refreshed_at older than the most recent release cycle</pattern>
-      <pattern id="f4">quadrant HH or HL has no investment plan entry OR investment plan omits the owner</pattern>
-      <pattern id="f5">area moved from HH to LL without a documented risk-acceptance sign-off</pattern>
-      <pattern id="f6">investment_plan.capacity_check shows required hours &gt; 1.5x team capacity (plan is unrealistic; reduce LH/LL or add capacity)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Add a new area mid-cycle when a major feature ships; mark with status=new and reassess at the next refresh.</transformation>
-      <transformation>Merge two near-duplicate areas (e.g. two sub-features of billing) when they share investment patterns; preserve both names in the area's aliases list.</transformation>
-      <transformation>Round complexity_score to nearest 5 when reporting; keep precision in the underlying data.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/risk-matrix.yaml"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="QA Risk Matrix Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the risk-matrix + investment-plan artefact. The validator script enforces required keys and per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-risk-matrix-method.json",
+  "type": "object",
+  "required": ["matrix", "investment_plan"],
+  "properties": {
+    "matrix": {
+      "type": "object",
+      "required": ["refreshed_at", "areas"],
+      "properties": {
+        "refreshed_at": {"type": "string"},
+        "areas": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 25,
+          "items": {
+            "type": "object",
+            "required": ["name", "impact", "impact_rationale", "likelihood", "likelihood_data", "adjustment_pm1", "quadrant"],
+            "properties": {
+              "name": {"type": "string"},
+              "impact": {"type": "integer", "minimum": 1, "maximum": 5},
+              "impact_rationale": {"type": "string", "minLength": 15},
+              "likelihood": {"type": "integer", "minimum": 1, "maximum": 5},
+              "likelihood_data": {
+                "type": "object",
+                "required": ["incidents_6m", "commits_6m"],
+                "properties": {
+                  "incidents_6m": {"type": "integer", "minimum": 0},
+                  "commits_6m": {"type": "integer", "minimum": 0},
+                  "novelty_30d": {"type": "integer", "minimum": 0},
+                  "complexity_score": {"type": "number", "minimum": 0}
+                }
+              },
+              "adjustment_pm1": {"type": "integer", "minimum": -1, "maximum": 1},
+              "adjustment_reason": {"type": "string"},
+              "quadrant": {"type": "string", "enum": ["HH", "HL", "LH", "LL"]}
+            }
+          }
+        }
+      }
+    },
+    "investment_plan": {
+      "type": "object",
+      "required": ["HH", "HL", "LH", "LL", "capacity_check"],
+      "properties": {
+        "HH": {"type": "string", "minLength": 20},
+        "HL": {"type": "string", "minLength": 20},
+        "LH": {"type": "string", "minLength": 20},
+        "LL": {"type": "string", "minLength": 20},
+        "capacity_check": {
+          "type": "object",
+          "required": ["required_hours", "team_capacity_hours"],
+          "properties": {
+            "required_hours": {"type": "number", "minimum": 0},
+            "team_capacity_hours": {"type": "number", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "matrix": {
+    "refreshed_at": "2026-05-23",
+    "areas": [
+      {"name": "billing-subscription-lifecycle", "impact": 5, "impact_rationale": "revenue loss in hours if broken; dispute support cost", "likelihood": 4, "likelihood_data": {"incidents_6m": 2, "commits_6m": 120, "novelty_30d": 30, "complexity_score": 18.2}, "adjustment_pm1": 0, "adjustment_reason": "", "quadrant": "HH"},
+      {"name": "search-and-filtering", "impact": 3, "impact_rationale": "degraded search visibly slows users but no money loss", "likelihood": 4, "likelihood_data": {"incidents_6m": 5, "commits_6m": 80}, "adjustment_pm1": 0, "adjustment_reason": "", "quadrant": "LH"},
+      {"name": "tenant-isolation", "impact": 5, "impact_rationale": "data residency breach is a regulatory fine", "likelihood": 1, "likelihood_data": {"incidents_6m": 0, "commits_6m": 5}, "adjustment_pm1": 0, "adjustment_reason": "", "quadrant": "HL"},
+      {"name": "admin-audit-log", "impact": 1, "impact_rationale": "internal convenience; never customer-visible", "likelihood": 1, "likelihood_data": {"incidents_6m": 0, "commits_6m": 2}, "adjustment_pm1": 0, "adjustment_reason": "", "quadrant": "LL"},
+      {"name": "auth-login-and-signup", "impact": 5, "impact_rationale": "lock-out blocks every customer", "likelihood": 3, "likelihood_data": {"incidents_6m": 1, "commits_6m": 40}, "adjustment_pm1": 0, "adjustment_reason": "", "quadrant": "HH"}
+    ]
+  },
+  "investment_plan": {
+    "HH": "mandatory unit + integration + e2e + monthly exploratory + alerting; owned by Ruslan",
+    "HL": "mandatory unit + integration + targeted exploratory + alerting; owned by Anna",
+    "LH": "automation only; owned by Bohdan",
+    "LL": "monitor-only; no test investment until impact or likelihood changes",
+    "capacity_check": {"required_hours": 32, "team_capacity_hours": 40}
+  }
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "matrix": {
+    "refreshed_at": "2024-01-01",
+    "areas": [
+      {"name": "all", "impact": 5, "impact_rationale": "high", "likelihood": 5, "quadrant": "HH", "adjustment_pm1": 0}
+    ]
+  },
+  "investment_plan": {
+    "HH": "test",
+    "HL": "test",
+    "LH": "test",
+    "LL": "test",
+    "capacity_check": {"required_hours": 200, "team_capacity_hours": 40}
+  }
+}
+    ]]></code>
+    <note>refreshed_at older than current release cycle; areas count below 5; impact_rationale too short; likelihood_data missing; investment_plan entries too short; required_hours far exceeds team capacity.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Areas at consistent granularity (8-20 range)</item>
-      <item>Every impact score has a concrete worst-case rationale</item>
-      <item>Likelihood scores are data-anchored, not subjective</item>
-      <item>Investment plan present for every quadrant</item>
-      <item>Refreshed within the latest release cycle</item>
-      <item>Capacity check confirms the plan fits the team's actual hours</item>
+      <pattern id="flat-impact">All areas scored 4 or 5 on impact (flat ratings; matrix has no signal).</pattern>
+      <pattern id="likelihood-without-data">likelihood set without likelihood_data backing (subjective only).</pattern>
+      <pattern id="stale-matrix">matrix.refreshed_at older than the most recent release cycle.</pattern>
+      <pattern id="hh-without-investment">HH quadrant areas exist but investment_plan.HH is empty or missing the owner.</pattern>
+      <pattern id="capacity-overrun">capacity_check.required_hours &gt; 1.5x team_capacity_hours without a documented capacity-or-cut plan.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-qa-risk-matrix-method.py">Validator script (see scripts/).</reference>
 </text>

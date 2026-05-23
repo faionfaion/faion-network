@@ -3,72 +3,94 @@ slug: docker-compose
 tier: solo
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Docker Compose patterns for CI/CD pipelines: compose.
-content_id: "c73dda5c7f775d91"
-tags: [docker, compose, ci, github-actions, integration-testing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a CI-only Docker Compose override — no port bindings, health-check waits, teardown discipline — so integration test stacks run reliably under CI runners.
+content_id: "8d3de55aa8886ad1"
+complexity: medium
+produces: config
+est_tokens: 4600
+tags: ["docker", "compose", "ci", "github-actions", "integration-testing"]
 ---
 # Docker Compose (CI/CD)
 
 ## Summary
 
-**One-sentence:** Docker Compose patterns for CI/CD pipelines: compose.
+**One-sentence:** Generates a CI-only Docker Compose override — no port bindings, health-check waits, teardown discipline — so integration test stacks run reliably under CI runners.
 
-**One-paragraph:** Docker Compose patterns for CI/CD pipelines: compose.ci.yaml override that removes port bindings, sets generous start_period for slow CI runners, uses docker compose up -d --wait to block until all health checks pass, and always tears down with docker compose down -v --remove-orphans in an if: always() cleanup step. CI secrets come from environment variables, not .env files.
+**One-paragraph:** Generates a CI-only Docker Compose override — no port bindings, health-check waits, teardown discipline — so integration test stacks run reliably under CI runners.
+
+**Ефективно для:**
+
+- Solo team running integration tests in CI against real DB + cache.
+- Pipeline that builds + tests stack before pushing image.
+- CI runner with limited resources where teardown discipline matters.
 
 ## Applies If (ALL must hold)
 
-- Spinning up integration test stacks in CI (app + DB + dependencies)
-- Building application images in CI with docker compose build before pushing to registry
-- Running database migrations and smoke tests against a freshly composed stack
-- Parameterizing compose files with override files for local dev vs CI vs production configurations
+- Integration test stack spins up in CI (≥2 services).
+- CI runner is single-host (GitHub Actions / GitLab CI / Drone).
+- Tests need a fresh stack per run.
+- Secrets come from CI env vars (not .env files).
 
 ## Skip If (ANY kills it)
 
-- Production deployments where zero-downtime is required — use Kubernetes rolling updates
-- Multi-host deployments in CI — use Kubernetes test clusters or Testcontainers
-- Pipelines needing only a single container — docker run in the pipeline is simpler
-- Teams with Kubernetes already in production — align CI with prod using helm/kubectl
+- Production zero-downtime — use Kubernetes rolling updates.
+- Multi-host CI — use test clusters or Testcontainers.
+- Single-container pipeline — docker run is simpler.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| compose.yaml | yaml | primary compose file |
+| compose.ci.yaml | yaml | CI override (this methodology produces it) |
+| Service health-check definitions | yaml | per-service healthcheck blocks |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| docker-compose-devops | Base infra compose patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-no-host-ports-in-ci, r2-wait-for-healthy, r3-teardown-always, r4-secrets-from-env, r5-named-owner | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Docker Compose (CI/CD) artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: flaky-port-conflicts, orphan-volumes, secrets-in-cache | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-docker-compose` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-docker-compose` | sonnet | Bounded structural check against the output contract. |
+| `review-docker-compose` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/docker-compose.json` | JSON skeleton matching the output contract. |
+| `templates/docker-compose.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-compose.py` | Validate Docker Compose (CI/CD) output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/infra/cicd-engineer/`
+- [[docker-compose-devops]]
+- [[docker-compose-infrastructure]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

@@ -1,55 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Pyramid vs Trophy Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Five testable rules that translate the 5-question diagnostic into a defensible per-module test-shape decision.</summary>
+<text id="01-core-rules" title="Test Pyramid vs Testing Trophy: Per-Module Decision Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Test Pyramid vs Testing Trophy: Per-Module Decision methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-decision-per-module-not-per-team" testable="true" depth="essential">
-      <statement>The pyramid-vs-trophy decision is taken PER MODULE, not per team or per repo. Different modules in the same repo can have different shapes. The decision is recorded in test-strategy.yaml keyed by module name.</statement>
-      <rationale source="empirical analysis of mixed-shape suites; module-coupling research">A pure-logic module (e.g. tax-calculation library) deserves pyramid (cheap unit tests catch real bugs). An orchestration module (e.g. checkout workflow) deserves trophy (integration tests catch wiring bugs that unit tests miss). Forcing one shape across both produces simultaneously brittle and shallow suites.</rationale>
+    <rule id="r1-five-question-diagnostic" testable="true" depth="essential">
+      <statement>Decision MUST answer all 5 questions: stack-shape, change-frequency, integration-risk, runtime-budget, ac-grain. Skipping any question = invalid record.</statement>
+      <rationale source="Pyramid/trophy debate (Cohn 2009 + Dodds 2018)">Decision MUST answer all 5 questions: stack-shape, change-frequency, integration-risk, runtime-budget, ac-grain. Skipping any question = invalid record.</rationale>
     </rule>
 
-    <rule id="r2-diagnostic-five-questions" testable="true" depth="essential">
-      <statement>For each module, answer 5 questions: (1) % of code that is pure logic vs orchestration (0-100); (2) commits per month (data from git); (3) % of incidents in this module that were integration-related (data from incident log); (4) current unit-test runtime in seconds; (5) ACs predominantly at unit level (single function behavior) or workflow level (multi-step user flow). Answers map to pyramid / trophy / hybrid via the lookup table.</statement>
-      <rationale source="testing-shape-decision research; observed module-level patterns">A single-question heuristic over-fits. Five questions diagnose the module's character. The lookup table below makes the mapping reproducible across engineers.</rationale>
-      <example type="good" title="Decision lookup table">
-        <code lang="markdown"><![CDATA[
-question 1 (pure logic %) >= 60%   AND  question 5 (ACs unit-level)  →  PYRAMID
-question 1 < 30%                   AND  question 5 (ACs workflow)    →  TROPHY
-question 3 (integration incidents) > 50%                              →  TROPHY
-question 4 (unit runtime) > 300s   AND  question 2 (commits) > 30/mo →  TROPHY or HYBRID
-all other combinations                                                →  HYBRID (case by case)
-        ]]></code>
-      </example>
+    <rule id="r2-per-module-not-global" testable="true" depth="essential">
+      <statement>Decision is recorded PER MODULE. Repos with mixed workloads MUST NOT pick a single global shape.</statement>
+      <rationale source="Solo-team test-strategy practice">Decision is recorded PER MODULE. Repos with mixed workloads MUST NOT pick a single global shape.</rationale>
     </rule>
 
-    <rule id="r3-shape-defines-investment-not-veto" testable="true" depth="essential">
-      <statement>The chosen shape sets the dominant investment but does NOT veto the others. Pyramid module still has some integration tests; trophy module still has some unit tests. The shape is the proportion, not the exclusion. Forbidden: a module with zero of any test type unless explicitly justified.</statement>
-      <rationale source="testing-shape evolution research; observed failures of strict shape mandates">Strict shape mandates produce blind spots ("we are pyramid, we do not write integration tests"). The shape is the default; exceptions exist for specific tests that need to live in the non-default tier.</rationale>
+    <rule id="r3-runtime-budget-named" testable="true" depth="essential">
+      <statement>Each module record names current unit + integration + e2e runtimes in seconds. Without baseline numbers, rebalance cannot be measured.</statement>
+      <rationale source="CI throughput discipline">Each module record names current unit + integration + e2e runtimes in seconds. Without baseline numbers, rebalance cannot be measured.</rationale>
     </rule>
 
-    <rule id="r4-runtime-budget-per-shape" testable="true" depth="essential">
-      <statement>Each shape has a runtime budget for PR-time CI: pyramid module = under 60 seconds of unit + 0-60 seconds of integration; trophy module = under 120 seconds of integration + 0-60 seconds of unit. Modules over budget either re-balance (move some tests to nightly), parallelise, or trim. Hard cap: 8 minutes total PR-time test runtime across all modules.</statement>
-      <rationale source="developer-productivity research; CI feedback-loop research">PR-time runtime is the single biggest predictor of whether developers actually run tests locally. An 8-minute cap is the empirical sweet spot — beyond it, developers start merging without running tests, and the suite becomes decorative.</rationale>
+    <rule id="r4-named-owner" testable="true" depth="essential">
+      <statement>Each record names a single owner accountable for the module&apos;s test shape. &apos;team&apos; / &apos;we&apos; / &apos;&apos; are forbidden.</statement>
+      <rationale source="RACI">Each record names a single owner accountable for the module&apos;s test shape. &apos;team&apos; / &apos;we&apos; / &apos;&apos; are forbidden.</rationale>
     </rule>
 
-    <rule id="r5-quarterly-reassessment" testable="true" depth="essential">
-      <statement>Per-module decisions are reassessed every quarter. Triggers for an out-of-cycle reassessment: a major architecture change (orchestration extracted to a separate service), an incident that the current shape missed, runtime budget breached for 2 consecutive months. Decisions are mutable; the discipline is to keep them current.</statement>
-      <rationale source="test-strategy maintenance research; common stale-decision patterns">Test shape decisions made at module birth become wrong as the module evolves. A pure-logic library that becomes an integration hub needs a different shape. The quarterly reassessment ritual keeps decisions current.</rationale>
+    <rule id="r5-quarterly-review" testable="true" depth="essential">
+      <statement>Each record carries a next_review_date ≤90d from last_reviewed. Stale decisions auto-flag for review.</statement>
+      <rationale source="F-066 review-cadence rule">Each record carries a next_review_date ≤90d from last_reviewed. Stale decisions auto-flag for review.</rationale>
     </rule>
 
-  </section>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
 
-  <section title="Shape archetypes">
-    <list>
-      <item>Pyramid (Cohn 2009) — many unit tests, fewer integration, very few e2e. Best for pure-logic modules, libraries, calculation engines</item>
-      <item>Testing Trophy (Dodds 2018) — heavy integration tests, some unit, light e2e, static analysis at the base. Best for UI components, workflow orchestrators, service-to-service composition</item>
-      <item>Hybrid — explicit mix per module; the most common real-world shape but only defensible if the per-module diagnostic supports it</item>
-    </list>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-qa-test-pyramid-vs-trophy-decision.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

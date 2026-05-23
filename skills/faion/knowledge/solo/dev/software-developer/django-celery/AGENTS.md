@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Integrate Celery into Django with explicit task names, idempotency, retry policy, time limits, and DLQ for every async task.
-content_id: "f08c7e65f5c4fc81"
+content_id: "95141121f63650a1"
 complexity: medium
 produces: code
 est_tokens: 4200

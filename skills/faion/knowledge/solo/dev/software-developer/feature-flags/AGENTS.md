@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Gate incomplete or experimental code behind runtime flags so deploy is decoupled from release, with explicit ownership and a documented lifecycle.
-content_id: "ead1a6734770941d"
+content_id: "27146dfdb4e5606d"
 complexity: medium
 produces: code
 est_tokens: 4000

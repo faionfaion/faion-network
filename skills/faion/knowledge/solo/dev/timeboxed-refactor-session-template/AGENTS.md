@@ -3,78 +3,92 @@ slug: timeboxed-refactor-session-template
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3a03eef1e3666d18"
-summary: "Timeboxed Refactor Session Template: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Two-hour refactor block on one module'."
-tags: [timeboxed-refactor-session-template, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a 2-hour refactor session checklist — scope, exit criteria, abort triggers, commit cadence — so refactor blocks ship a measurable change without scope creep.
+content_id: "f44a608e495c38af"
+complexity: light
+produces: checklist
+est_tokens: 4200
+tags: ["refactor", "timebox", "session-template", "dev", "solo"]
 ---
 # Timeboxed Refactor Session Template
 
 ## Summary
 
-**One-sentence:** Timeboxed Refactor Session Template: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Two-hour refactor block on one module'.
+**One-sentence:** Generates a 2-hour refactor session checklist — scope, exit criteria, abort triggers, commit cadence — so refactor blocks ship a measurable change without scope creep.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-software-developer/Two-hour refactor block on one module': Refactoring-patterns exists as catalog; missing the 'two-hour session contract' template that prevents scope creep — the actual daily-cadence need. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a timeboxed refactor session template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Generates a 2-hour refactor session checklist — scope, exit criteria, abort triggers, commit cadence — so refactor blocks ship a measurable change without scope creep.
+
+**Ефективно для:**
+
+- Solo developer running a daily/weekly 2-hour refactor block.
+- Pairing slot for refactoring with explicit timebox.
+- Pre-refactor planning where scope creep is the primary risk.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-developer/Two-hour refactor block on one module' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Refactor target module is named in advance.
+- Block duration is fixed (default 2h).
+- Test suite exists and runs in <5 minutes.
+- Git workflow allows commits during the block.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working timeboxed refactor session template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Refactor needs >2 weeks — use a refactor epic, not this template.
+- Test suite missing — add tests first.
+- Greenfield prototype with no shipped users — refactor freely without ceremony.
 
 ## Prerequisites
 
-- recent context for the 'role-software-developer/Two-hour refactor block on one module' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Module path | string | git path to module |
+| Refactor goal | string | ≤140 chars one-sentence goal |
+| Test runtime | seconds | current test-suite runtime |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/dev` | parent domain group — provides operating context for Timeboxed Refactor Session Template |
+| weekly-branch-hygiene-checklist | Session commit/rebase discipline. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-named-goal, r2-fixed-timebox, r3-abort-triggers, r4-commit-cadence, r5-exit-criteria | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Timeboxed Refactor Session Template artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: scope-creep, no-commits, vague-exit | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-timeboxed-refactor-session-template` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-timeboxed-refactor-session-template` | sonnet | Bounded structural check against the output contract. |
+| `review-timeboxed-refactor-session-template` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/timeboxed-refactor-session-template.json` | JSON schema for the Timeboxed Refactor Session Template output contract |
-| `templates/timeboxed-refactor-session-template.md` | Markdown skeleton with the required fields |
+| `templates/timeboxed-refactor-session-template.json` | JSON skeleton matching the output contract. |
+| `templates/timeboxed-refactor-session-template.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-timeboxed-refactor-session-template.py` | Enforce Timeboxed Refactor Session Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-timeboxed-refactor-session-template.py` | Validate Timeboxed Refactor Session Template output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-software-developer/Two-hour refactor block on one module`
-- solo/dev/role-software-developer
+- [[weekly-branch-hygiene-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

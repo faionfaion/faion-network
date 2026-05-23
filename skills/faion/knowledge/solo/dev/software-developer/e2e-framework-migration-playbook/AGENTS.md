@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Execute a 4-wave 3-month framework or language migration (PoC, parallel build, cutover, decommission) with explicit entry/exit gates per wave.
-content_id: "3233fcb6e6b8b2a5"
+content_id: "f16ec07305273b67"
 complexity: deep
 produces: playbook-step
 est_tokens: 4800
@@ -83,7 +83,7 @@ tags: [dev, migration, refactor, strangler, branch-by-abstraction, cypress, play
 
 | File | Purpose |
 |------|---------|
-| none | This methodology ships no template files. |
+| `templates/wave-record.json` | Wave exit-gate record skeleton matching the 02-output-contract schema; copy per wave (1..4) and fill before submitting to the validator. |
 
 ## Scripts
 

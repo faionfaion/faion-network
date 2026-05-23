@@ -1,90 +1,100 @@
 ---
 slug: sentry-alert-routing-for-solos
 tier: solo
-group: devops-engineer
+group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "8619c2ea25720d83"
-summary: Solo-operator pattern for routing Sentry + Plausible + transactional-email + uptime alerts through filters, digests, and quiet-hours so a single human gets paged only for real, actionable, on-call incidents.
-tags: [sentry, alerting, solo, plausible, uptime, quiet-hours, on-call]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a solo-alerting.yaml config — Sentry + Plausible + email-bounce + uptime → filter → digest → quiet-hours → single channel — so one human is paged only for actionable incidents.
+content_id: "c934828712347611"
+complexity: medium
+produces: config
+est_tokens: 4600
+tags: ["sentry", "alerting", "solo", "plausible", "uptime", "quiet-hours", "on-call"]
 ---
-
 # Sentry Alert Routing for Solos
 
 ## Summary
 
-**One-sentence:** Filter + digest + quiet-hours pattern for solo operators to route Sentry, Plausible, transactional-email bounces, and uptime alerts so one human is paged only for real, actionable, on-call incidents.
+**One-sentence:** Generates a solo-alerting.yaml config — Sentry + Plausible + email-bounce + uptime → filter → digest → quiet-hours → single channel — so one human is paged only for actionable incidents.
 
-**One-paragraph:** Generic alerting methodology assumes a multi-person on-call rotation that can absorb noise; a solo operator cannot. The dominant solo failure is alarm fatigue: 200 Sentry events/day, three Plausible threshold alerts, two email-bounce notifications, one uptime flap — the operator silences the channel and misses the one event that matters. This methodology pins solo-scale routing: rule-based filters at the source (Sentry filter rules, Plausible cooldown), batching into digests (hourly low-priority, daily summary), quiet-hours with hard escalation cut-off (no Sentry pages 22:00-08:00 unless ≥100 events/min OR uptime down ≥10min), and a single named pager channel (one Telegram chat, one email inbox, one SMS path). Mechanism: rule-based source-side filtering → digest aggregation → quiet-hours gate → single delivery channel. Primary output: a `solo-alerting.yaml` config + per-source rule sets.
+**One-paragraph:** Generates a solo-alerting.yaml config — Sentry + Plausible + email-bounce + uptime → filter → digest → quiet-hours → single channel — so one human is paged only for actionable incidents.
+
+**Ефективно для:**
+
+- Solo operator running prod without an on-call rotation.
+- Founder drowning in Sentry noise during weekdays.
+- Quiet-hours discipline so weekends are protected.
+- Single pager channel (Telegram / email / SMS).
 
 ## Applies If (ALL must hold)
 
-- single operator running production (no on-call rotation)
-- production system has Sentry / Plausible / transactional email / uptime monitor (all four typical)
-- the operator has the ability to set rules in each tool's UI / API
-- the operator has at least one explicit channel they read (Telegram, email, SMS)
+- Single operator running production (no on-call rotation).
+- Production system has Sentry / Plausible / transactional email / uptime monitor (all four typical).
+- Operator has the ability to set rules in each tool's UI / API.
+- Operator has at least one explicit channel they read.
 
 ## Skip If (ANY kills it)
 
-- multi-person on-call rotation — use standard PagerDuty / Opsgenie methodology
-- no uptime monitor configured — install one first (UptimeRobot, Better Stack, Pingdom — even the free tier suffices)
-- regulated business with mandatory immediate alerting on any error — use compliance methodology, not this one
-- no Sentry / Plausible / mail bounce — the routing pattern still applies, adapt the source filters
+- Multi-person on-call rotation — use PagerDuty / Opsgenie methodology.
+- No uptime monitor configured — install one first.
+- Regulated business with mandatory immediate alerting on any error — use compliance methodology.
+- No Sentry / Plausible / mail bounce — adapt the source filters.
 
 ## Prerequisites
 
-- Sentry project (or equivalent: Rollbar, Bugsnag, Honeybadger)
-- Plausible Analytics (or equivalent: Fathom, Simple Analytics)
-- Uptime monitor (UptimeRobot or Better Stack)
-- One pager channel (Telegram bot, email inbox, or SMS endpoint)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Sentry project DSN | url | Sentry org |
+| Plausible site id | string | Plausible dashboard |
+| Uptime monitor | url | UptimeRobot / Better Stack |
+| Pager channel | url|email | Telegram chat id or email |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/infra/devops-engineer/docker-compose` | Production deployment context |
-| `pro/infra/devops-engineer/slo-burn-rate-review-protocol` | Higher-tier counterpart for multi-operator setups |
-| `solo/pm/project-manager/solo-launch-day-runbook` | Launch-day complements daily alerting |
+| docker-compose-devops | Production deployment context. |
+| solo-deploy-checklist | Launch-day complements daily alerting. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: source-side filtering first, digest by default, quiet-hours hard cut, single pager channel, escalation matrix | ~1100 |
-| `content/02-output-contract.xml` | essential | solo-alerting.yaml schema, per-source rule taxonomy, channel config | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: alarm fatigue, missed real alert, quiet-hours blind spot, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-source-side-filtering-first, r2-digest-by-default, r3-quiet-hours-hard-cut, r4-single-pager-channel, r5-named-owner | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Sentry Alert Routing for Solos artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: alarm-fatigue, missed-real-alert, quiet-hours-blind-spot | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `sentry_rule_generator` | sonnet | Generate filter expressions from operator's described patterns |
-| `digest_summary_drafter` | sonnet | Produce hourly/daily readable digest from raw events |
-| `quiet_hours_evaluator` | n/a | Pure deterministic clock check |
-| `escalation_decider` | sonnet | Decide whether to break quiet hours based on severity vector |
+| `draft-sentry-alert-routing-for-solos` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-sentry-alert-routing-for-solos` | sonnet | Bounded structural check against the output contract. |
+| `review-sentry-alert-routing-for-solos` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/solo-alerting.schema.yaml` | Schema for the config |
-| `templates/sentry-filter-rules.md` | Common Sentry filter patterns |
-| `templates/digest-format.md` | Hourly + daily digest format |
-| `templates/quiet-hours-matrix.md` | Per-source quiet-hours rules |
+| `templates/sentry-alert-routing-for-solos.json` | JSON skeleton matching the output contract. |
+| `templates/sentry-alert-routing-for-solos.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/apply-rules.py` | Push filter rules to Sentry / Plausible via API; idempotent | After editing solo-alerting.yaml |
-| `scripts/build-digest.py` | Pull last N hours from each source, render digest, send to channel | Cron hourly (low-prio) and daily (full) |
-| `scripts/escalation-gate.py` | Evaluate whether to break quiet hours given event severity | Triggered by Sentry webhook |
+| `scripts/validate-sentry-alert-routing-for-solos.py` | Validate Sentry Alert Routing for Solos output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/infra/devops-engineer/`
-- peer methodologies: `docker-compose`, `slo-burn-rate-review-protocol`, `solo-launch-day-runbook`
-- external: [Sentry alert rules docs](https://docs.sentry.io/product/alerts/) · [Better Stack on-call playbook](https://betterstack.com/community) · [Plausible API](https://plausible.io/docs/stats-api)
+- [[docker-compose-devops]]
+- [[solo-deploy-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

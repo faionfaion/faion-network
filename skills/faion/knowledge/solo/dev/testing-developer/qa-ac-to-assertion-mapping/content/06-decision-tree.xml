@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AC-to-Assertion Mapping Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable inputs onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="story-has-acs">Does the linked story contain explicit acceptance criteria AND does the PR review process gate merges?</root-question>
+    <branch when="story_has_acs == false OR pr_review_gated == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; fix the upstream artefact first"/>
+    </branch>
+    <branch when="story_has_acs == true AND pr_review_gated == true">
+      <question id="mapping-present">Is the ac-mapping artefact present in the PR at PR-open time?</question>
+      <branch when="mapping_present == false">
+        <conclusion ref="r4-mapping-at-pr-open-not-after" verdict="block; require mapping at PR open"/>
+      </branch>
+      <branch when="mapping_present == true">
+        <question id="assertion-class">Are all `asserted_behavior` entries classified as state|output|side_effect|negative AND not structural?</question>
+        <branch when="assertion_class == structural_or_missing">
+          <conclusion ref="r2-behavior-not-structural-assertions" verdict="block; rewrite as behaviour assertion"/>
+        </branch>
+        <branch when="assertion_class == behavior">
+          <question id="orphan-coverage">orphan_acs == [] AND every test in the diff is mapped?</question>
+          <branch when="orphan_acs != []">
+            <conclusion ref="r3-one-ac-many-tests-allowed" verdict="block; map every AC"/>
+          </branch>
+          <branch when="orphan_acs == []">
+            <conclusion ref="r5-reviewer-walks-the-map" verdict="reviewer walks the map; merge when clean"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+  <example trace="story_has_acs=true -> pr_review_gated=true -> mapping_present=true -> assertion_class=behavior -> orphan_acs=[] -> r5-reviewer-walks-the-map.">Worked path from root question to the merge-gate conclusion.</example>
+</text>

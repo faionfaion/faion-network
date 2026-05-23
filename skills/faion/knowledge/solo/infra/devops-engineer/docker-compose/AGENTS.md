@@ -3,73 +3,96 @@ slug: docker-compose
 tier: solo
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Docker Compose V2 (`docker compose`) declaratively defines multi-container applications in YAML.
-content_id: "c73dda5c7f775d91"
-tags: [docker, compose, containers, orchestration, devops]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Docker Compose V2 stack — healthchecks on every depends_on target, named volumes, 127.0.0.1 port bindings to bypass UFW, no legacy version: field.
+content_id: "8d3de55aa8886ad1"
+complexity: medium
+produces: config
+est_tokens: 4600
+tags: ["docker", "compose", "containers", "orchestration", "devops"]
 ---
-# Docker Compose
+# Docker Compose (DevOps)
 
 ## Summary
 
-**One-sentence:** Docker Compose V2 (`docker compose`) declaratively defines multi-container applications in YAML.
+**One-sentence:** Generates a Docker Compose V2 stack — healthchecks on every depends_on target, named volumes, 127.0.0.1 port bindings to bypass UFW, no legacy version: field.
 
-**One-paragraph:** Docker Compose V2 (`docker compose`) declaratively defines multi-container applications in YAML. Every service that is a `depends_on` target must define a `healthcheck`; without it the condition `service_healthy` provides no runtime ordering guarantee. Use named volumes for persistent data, bind port `127.0.0.1:PORT:PORT` to avoid Docker bypassing UFW, and omit the legacy `version:` field.
+**One-paragraph:** Generates a Docker Compose V2 stack — healthchecks on every depends_on target, named volumes, 127.0.0.1 port bindings to bypass UFW, no legacy version: field.
+
+**Ефективно для:**
+
+- Solo team running a local dev stack (app + db + cache + broker).
+- Single-host staging or small prod (≤10 services).
+- Prototyping microservice topology before Kubernetes.
 
 ## Applies If (ALL must hold)
 
-- Local development stacks with multiple services (db + cache + broker)
-- Integration testing against real service dependencies
-- Single-host staging or small production deployments (up to ~10 services)
-- Running infrastructure services (PostgreSQL, Redis, RabbitMQ) alongside systemd application services
-- Prototyping microservice topology before committing to Kubernetes
+- Stack has ≥2 services with depends_on relationships.
+- Host is a single VPS (no orchestrator).
+- UFW or another host firewall is active.
+- Persistent data exists (database, queues, blob).
 
 ## Skip If (ANY kills it)
 
-- Multi-host production at scale — use Kubernetes or Docker Swarm
-- Rolling-update zero-downtime deployments — Compose restarts containers, it does not roll them
-- When the team already has Helm/K8s manifests — adding Compose creates dual maintenance burden
-- Enterprise secrets management — Compose secrets are limited to files; use Vault or AWS Secrets Manager
+- Multi-host production at scale — use Kubernetes or Docker Swarm.
+- Rolling-update zero-downtime — Compose restarts, does not roll.
+- Helm/K8s manifests already exist — dual maintenance burden.
+- Enterprise secrets — Compose secrets limited; use Vault.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service inventory | list | service list with images + roles |
+| Host firewall config | yaml | ufw status |
+| Persistent data paths | yaml | volume names per service |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| server-init-bootstrap | Hardened host baseline. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-no-version-field, r2-healthcheck-on-depended, r3-port-bind-localhost, r4-named-volumes, r5-restart-policy | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Docker Compose (DevOps) artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: ufw-bypass, missing-healthcheck, data-loss-on-reset | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-docker-compose` | opus | High-stakes synthesis — sets the artefact baseline. |
+| `validate-docker-compose` | sonnet | Bounded structural check against the output contract. |
+| `review-docker-compose` | sonnet | Per-section critique against rules + failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/docker-compose.json` | JSON skeleton matching the output contract. |
+| `templates/docker-compose.md` | Markdown skeleton with required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-compose.py` | Validate Docker Compose (DevOps) output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/infra/devops-engineer/`
+- [[docker-compose-cicd]]
+- [[docker-compose-infrastructure]]
+- [[server-init-bootstrap]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

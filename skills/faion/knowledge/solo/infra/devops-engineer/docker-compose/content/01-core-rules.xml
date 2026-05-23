@@ -1,51 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="docker-compose Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for docker-compose. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Docker Compose (DevOps) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Docker Compose (DevOps) methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Omit the top-level `version:` field. Modern Compose V2 ignores it; it causes version-mismatch rejections with older tooling.</statement>
-      <rationale source="v1-source">The Compose spec no longer requires a version field. Including it creates confusion and can block valid files in some older CI tools.</rationale>
+
+    <rule id="r1-no-version-field" testable="true" depth="essential">
+      <statement>compose.yaml MUST NOT contain &apos;version:&apos; field. Compose V2 ignores it; older guides include it but it is legacy.</statement>
+      <rationale source="Compose V2 docs">compose.yaml MUST NOT contain &apos;version:&apos; field. Compose V2 ignores it; older guides include it but it is legacy.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Set `container_name` explicitly on every service so log queries and exec commands use a stable name.</statement>
-      <rationale source="v1-source">Without a fixed name, Compose generates names from project + service + index, which changes across recreations.</rationale>
+
+    <rule id="r2-healthcheck-on-depended" testable="true" depth="essential">
+      <statement>Every service named as depends_on target MUST define a healthcheck. Without it &apos;condition: service_healthy&apos; provides no ordering.</statement>
+      <rationale source="Compose docs">Every service named as depends_on target MUST define a healthcheck. Without it &apos;condition: service_healthy&apos; provides no ordering.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Set `restart: unless-stopped` (staging) or `restart: always` (production) on every long-running service.</statement>
-      <rationale source="v1-source">Without a restart policy, a crashed container stays down until manually restarted.</rationale>
+
+    <rule id="r3-port-bind-localhost" testable="true" depth="essential">
+      <statement>Externally-exposed ports bind to 127.0.0.1:PORT:PORT, not 0.0.0.0. Docker bypasses UFW by default.</statement>
+      <rationale source="Docker + UFW interaction">Externally-exposed ports bind to 127.0.0.1:PORT:PORT, not 0.0.0.0. Docker bypasses UFW by default.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Define a `healthcheck` on every service that is referenced by another service's `depends_on` with `condition: service_healthy`. If healthcheck is absent, the condition is silently ignored and the dependent starts immediately.</statement>
-      <rationale source="v1-source">Race conditions on startup (app tries to connect to DB before it is ready) are the leading cause of intermittent Compose failures.</rationale>
+
+    <rule id="r4-named-volumes" testable="true" depth="essential">
+      <statement>Persistent data uses named volumes, not bind mounts. Bind mounts couple to host paths.</statement>
+      <rationale source="Compose volumes docs">Persistent data uses named volumes, not bind mounts. Bind mounts couple to host paths.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Bind exposed ports to `127.0.0.1:HOST_PORT:CONTAINER_PORT` for services that must not be publicly reachable. Docker rewrites iptables directly and bypasses UFW.</statement>
-      <rationale source="v1-source">A port bound to `0.0.0.0` is reachable from the internet regardless of UFW rules, because Docker inserts ACCEPT rules before UFW's DROP rules.</rationale>
+
+    <rule id="r5-restart-policy" testable="true" depth="essential">
+      <statement>Long-running services MUST set restart: unless-stopped. Default &apos;no&apos; loses services after host reboot.</statement>
+      <rationale source="Operations practice">Long-running services MUST set restart: unless-stopped. Default &apos;no&apos; loses services after host reboot.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Mark backend networks as `internal: true` so containers on that network cannot reach the internet directly.</statement>
-      <rationale source="v1-source">Limits blast radius of a compromised container — it cannot exfiltrate data or download payloads.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use named volumes for all persistent data in production. Bind mounts are only for config files (`:ro`) or development source sync.</statement>
-      <rationale source="v1-source">Named volumes are managed by Docker, survive container recreation, and have better performance on Linux than bind mounts on macOS/Windows.</rationale>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-docker-compose.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Set `deploy.resources.limits.memory` and `.cpus` on every service. Without limits a runaway container can OOM-kill the host.</statement>
-      <rationale source="v1-source">Docker on Linux applies cgroup limits only when they are declared; no limit means unbounded resource use.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Configure log rotation on every service: `driver: json-file` with `max-size: "10m"` and `max-file: "3"`. Without rotation, container logs fill the disk indefinitely.</statement>
-      <rationale source="v1-source">The default json-file driver writes unbounded logs to `/var/lib/docker/containers/`.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Store all secrets in `.env` (gitignored). Commit only `.env.example` with placeholder values. Never put plaintext secrets in the compose file's `environment:` block.</statement>
-      <rationale source="v1-source">`docker compose config` and `docker inspect` expose `environment:` values in plain text.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Use profiles (`profiles: [dev]`) for optional services (adminer, mailhog, monitoring) so `docker compose up -d` starts only the production set.</statement>
-      <rationale source="v1-source">Eliminates the need for separate compose files for dev vs prod optional services.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

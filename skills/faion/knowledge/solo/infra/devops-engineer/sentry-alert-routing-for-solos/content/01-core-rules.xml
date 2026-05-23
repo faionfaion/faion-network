@@ -1,83 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Solo Alert Routing — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules that keep one human's attention reliable. If alarm fatigue sets in, the entire system is worse than no alerting.</summary>
+<text id="01-core-rules" title="Sentry Alert Routing for Solos Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Sentry Alert Routing for Solos methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
     <rule id="r1-source-side-filtering-first" testable="true" depth="essential">
-      <statement>Noise reduction happens at the SOURCE (Sentry filter rules, Plausible cooldown, mail-bounce thresholds), not downstream. A rule that lets 100 events through and then filters in the digest layer is forbidden.</statement>
-      <rationale source="alerting-pipeline best practice; Google SRE Workbook">Downstream filtering still costs the source's quota, still records in logs, still consumes the operator's brain when scrolling. Source filtering eliminates the noise before it enters the pipeline at all.</rationale>
+      <statement>Filters live in Sentry/Plausible UI BEFORE the digest stage. Pulling everything and filtering in code wastes API quota.</statement>
+      <rationale source="Sentry alert-rules docs">Filters live in Sentry/Plausible UI BEFORE the digest stage. Pulling everything and filtering in code wastes API quota.</rationale>
     </rule>
 
     <rule id="r2-digest-by-default" testable="true" depth="essential">
-      <statement>Default delivery is hourly digest, not per-event. Only specific high-severity classes (uptime down, payment 5xx burst, security event) bypass digest. New event types start in digest until proven worth waking the operator for.</statement>
-      <rationale source="cognitive load research; field experience with solo operators">A solo operator can absorb ~5 interruptions/day before quality drops. Digest collapses 50 events into one readable summary; per-event delivery saturates attention by 10am.</rationale>
+      <statement>Low-priority events are batched into hourly + daily digests. Per-event pages are reserved for severity ≥ high.</statement>
+      <rationale source="Solo on-call practice">Low-priority events are batched into hourly + daily digests. Per-event pages are reserved for severity ≥ high.</rationale>
     </rule>
 
     <rule id="r3-quiet-hours-hard-cut" testable="true" depth="essential">
-      <statement>Quiet hours (22:00-08:00 operator local time, weekends configurable) HARD-cut all alert delivery except a small allow-list (uptime down ≥10min, error-rate spike ≥100/min, security event). Marketing-soft alerts (Plausible traffic anomaly) NEVER break quiet hours.</statement>
-      <rationale source="Stanford sleep research; sustainable-pace agile principle">A woken operator is impaired for the following workday and tends to over-react. The hard cut is the difference between solo operation being sustainable and burning out within 6 months. The allow-list captures only true-business-impact events.</rationale>
+      <statement>Quiet hours (default 22:00-08:00 operator-local) BLOCK all paging UNLESS event matches the escalation matrix (≥100 events/min OR uptime down ≥10min).</statement>
+      <rationale source="Sleep + on-call research">Quiet hours (default 22:00-08:00 operator-local) BLOCK all paging UNLESS event matches the escalation matrix (≥100 events/min OR uptime down ≥10min).</rationale>
     </rule>
 
     <rule id="r4-single-pager-channel" testable="true" depth="essential">
-      <statement>There is exactly ONE high-priority channel the operator commits to monitor (a named Telegram chat, a specific email folder, or an SMS number). All high-severity alerts route there. Splitting across channels is forbidden.</statement>
-      <rationale source="HCI attention research; field experience">Two channels mean checking both; three means checking none reliably. The single-channel rule forces honest prioritisation: only events worth interrupting that channel pass the gate.</rationale>
+      <statement>Exactly ONE channel receives pages. Multi-channel paging trains the operator to ignore all of them.</statement>
+      <rationale source="Notification-fatigue practice">Exactly ONE channel receives pages. Multi-channel paging trains the operator to ignore all of them.</rationale>
     </rule>
 
-    <rule id="r5-escalation-matrix" testable="true" depth="essential">
-      <statement>Every alert has a defined severity (S1 down, S2 degraded, S3 anomaly, S4 informational) AND a delivery rule per severity. Severity is set at the source; the digest pipeline does not invent severity.</statement>
-      <rationale source="standard incident-severity practice; auditability">Without explicit severity, the operator re-evaluates every incoming alert. With severity, the pipeline routes deterministically and the operator's energy goes to response, not triage.</rationale>
+    <rule id="r5-named-owner" testable="true" depth="essential">
+      <statement>Config names the single operator. &apos;team&apos; / &apos;we&apos; / &apos;&apos; forbidden.</statement>
+      <rationale source="RACI for solo teams">Config names the single operator. &apos;team&apos; / &apos;we&apos; / &apos;&apos; forbidden.</rationale>
     </rule>
 
-  </section>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
 
-  <section title="Default severity-to-delivery matrix">
-    <code lang="text"><![CDATA[
-S1 (production down, payment 5xx burst, security incident, data loss risk):
-   immediate page to single channel, breaks quiet hours, retry every 10 min
-   until acknowledged.
-
-S2 (degraded perf, error-rate spike on non-critical path, expired cert in 7 days):
-   immediate notification during work hours (08:00-22:00), digest only at night.
-
-S3 (Plausible anomaly, new error pattern, mail bounce uptick, slow query):
-   hourly digest only. Never wakes the operator.
-
-S4 (info, deploy success, weekly reports):
-   daily 09:00 digest.
-    ]]></code>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Quiet-hours hard cut in action">
-      <code lang="text"><![CDATA[
-03:14 — Sentry detects 8 errors/min on the export endpoint. Severity tagged S3.
-03:14 — Pipeline checks quiet hours: 22:00-08:00 → S3 routed to next 09:00 digest only.
-03:14 — Pipeline checks allow-list: S3 not on the list → does not break quiet hours.
-03:18 — Uptime monitor reports faion.net down. Severity tagged S1.
-03:18 — Pipeline checks allow-list: S1 down on list → pages operator immediately.
-Outcome: operator wakes once for the real incident; the export errors are
-investigated calmly at 09:30 with coffee.
-      ]]></code>
-      <note>r1-r5 all in play; the operator's sleep is preserved AND the real incident is caught.</note>
-    </example>
-
-    <example type="bad" title="The pager-for-everything anti-pattern">
-      <code lang="text"><![CDATA[
-Sentry: per-event email on every error.
-Plausible: per-threshold email on every anomaly.
-Uptime: SMS on every flap (5 false alerts/day from flaky network).
-Outcome: operator turns off all notifications by month 2; misses the
-real Sentry data-loss event at month 3.
-      ]]></code>
-      <note>r1 (no source filtering), r2 (no digest), r3 (no quiet hours), r4 (multi-channel mess), r5 (no severity). The system is worse than no alerting.</note>
-    </example>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-sentry-alert-routing-for-solos.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

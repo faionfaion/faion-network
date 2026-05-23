@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Author primitive → semantic → component design tokens as one JSON source of truth that emits per-platform outputs via Style Dictionary.
-content_id: "7f16a0941dce99d3"
+content_id: "87cddbe88274cee4"
 complexity: medium
 produces: spec
 est_tokens: 4500
