@@ -1,3 +1,9 @@
+<!-- purpose: Monthly feedback-log skeleton with theme rows + citations. -->
+<!-- consumes: input from methodology -->
+<!-- produces: artefact for downstream agent -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
 ## Feedback Log: [Product]
 
 ### Recent Feedback

@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+"""
+purpose: Compute decision-velocity per category; emits JSON.
+consumes: input from methodology
+produces: artefact for downstream agent
+depends-on: content/02-output-contract.xml
+token-budget-impact: 0 (executes locally)
+"""
+
 """
 pm_learning_velocity.py — score a PM's learning velocity from their decision log.
 Inputs:

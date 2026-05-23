@@ -1,70 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Annual ↔ Quarterly OKR Stitch Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the cascade file shape, the quarterly stitch-review log, and the audit-output contract.</summary>
-
-  <section title="Cascade file required fields">
-    <list>
-      <item><code>bet_id</code> (string, unique slug)</item>
-      <item><code>title</code> (string)</item>
-      <item><code>horizon</code> (string, e.g. 2026-Q1..Q4)</item>
-      <item><code>objectives</code> (array; each with obj_id, text, quarter_krs)</item>
-      <item><code>objectives[].quarter_krs</code> (object: Q1..Q4 → array of KR objects)</item>
-      <item><code>objectives[].quarter_krs[].kr</code> (string)</item>
-      <item><code>objectives[].quarter_krs[].bet_id</code> (back-reference, required)</item>
-      <item><code>retire_decisions</code> (array; per-quarter retire entries with rationale and approver)</item>
-    </list>
-    <reference path="templates/bet-to-okr-cascade.yaml">Authoritative cascade template.</reference>
+<text id="02-output-contract" title="Annual Roadmap vs Quarterly OKR Stitch Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/annual-roadmap-vs-quarterly-okr-stitch.json",
+  "title": "Annual Roadmap vs Quarterly OKR Stitch",
+  "type": "object",
+  "required": [
+    "stitch_id",
+    "owner",
+    "last_touched",
+    "annual_bets",
+    "quarterly_okrs",
+    "traceability_matrix",
+    "off_pace_flags",
+    "review_cadence"
+  ],
+  "properties": {
+    "stitch_id": {},
+    "owner": {},
+    "last_touched": {},
+    "annual_bets": {},
+    "quarterly_okrs": {},
+    "traceability_matrix": {},
+    "off_pace_flags": {},
+    "review_cadence": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
-
-  <section title="Quarterly stitch-review log fields">
-    <list>
-      <item><code>quarter</code></item>
-      <item><code>review_date_utc</code></item>
-      <item><code>reviewed_bets</code> (array of bet_id)</item>
-      <item><code>orphan_krs_found</code> (array; each with KR text and disposition: tagged_internal / dropped / new_bet_opened)</item>
-      <item><code>retired_bets</code> (array)</item>
-      <item><code>extended_bets</code> (array)</item>
-      <item><code>signoff</code>: {pm_name, head_of_product_name, signed_at_utc}</item>
-    </list>
-    <reference path="templates/quarter-review.md">Markdown template for the review log.</reference>
-  </section>
-
-  <section title="Coupling-audit output">
-    <list>
-      <item><code>total_krs</code> (integer)</item>
-      <item><code>krs_with_bet_id</code> (integer)</item>
-      <item><code>orphan_krs</code> (array)</item>
-      <item><code>nonexistent_bet_references</code> (array; KRs referencing a bet_id not in any cascade file)</item>
-      <item><code>verdict</code>: enum {clean, dirty}</item>
-    </list>
-  </section>
-
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "stitch_id": "stitch-acme-2026",
+  "owner": "cpo@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "annual_bets": [
+    {
+      "id": "b-1",
+      "name": "Win mid-market",
+      "metric": "5 mid-market logos",
+      "owner": "head-sales@acme.io"
+    }
+  ],
+  "quarterly_okrs": [
+    {
+      "id": "o-1",
+      "quarter": "Q2-2026",
+      "objective": "Land 2 mid-market logos",
+      "krs": [
+        {
+          "id": "kr-1",
+          "name": "2 signed contracts",
+          "target": 2,
+          "current": 1,
+          "owner": "ae@acme.io"
+        }
+      ]
+    }
+  ],
+  "traceability_matrix": [
+    {
+      "bet_id": "b-1",
+      "okr_id": "o-1",
+      "evidence": "OKR doc Q2-2026"
+    }
+  ],
+  "off_pace_flags": [
+    {
+      "bet_id": "b-1",
+      "status": "on-pace",
+      "evidence": "BI dashboard 2026-05-22"
+    }
+  ],
+  "review_cadence": "monthly stitch review",
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "stitch_id": "x",
+  "annual_bets": [],
+  "traceability_matrix": []
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `annual-roadmap-vs-quarterly-okr-stitch`. Validator rejects with explicit violation list.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>Cascade file with an objective lacking quarter_krs for any of Q1..Q4 (an objective skipping a quarter without explicit retire).</description>
-      <reason>r4 violation. Skipping a quarter requires explicit retirement OR extension, not silent gap.</reason>
-    </antipattern>
-    <antipattern>
-      <description>KR with bet_id pointing to a bet that does not exist in any cascade file.</description>
-      <reason>Dangling reference; equivalent to orphan.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Cascade file has &gt; 3 KRs in a single quarter for a single objective.</description>
-      <reason>r5 violation. Cap is 3 KRs per bet-objective-quarter.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Stitch-review log missing signoff for a planning meeting that took place.</description>
-      <reason>r3 violation. Review must be recorded and signed.</reason>
-    </antipattern>
+    <pattern>annual_bet without owner</pattern>
+    <pattern>OKR without traceability entry</pattern>
+    <pattern>off_pace status not in {on-pace, lagging, off-pace}</pattern>
+    <pattern>review_cadence empty</pattern>
+    <pattern>traceability entry missing evidence</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
   </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every bet has a unique bet_id.</item>
-      <item>Every KR for the active quarter has a bet_id.</item>
-      <item>Coupling-audit clean before the planning meeting commits OKRs.</item>
-      <item>Retire decisions recorded with rationale.</item>
-      <item>Quarter review log committed to the planning repo.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-annual-roadmap-vs-quarterly-okr-stitch.py">Validator script</reference>
 </text>

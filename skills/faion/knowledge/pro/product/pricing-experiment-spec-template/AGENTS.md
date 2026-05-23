@@ -3,82 +3,99 @@ slug: pricing-experiment-spec-template
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9602d0bd0e8e360b"
-summary: Pricing Experiment Spec Template — pinned template for the product manager: fixed shape + named owner + evidence anchors + outcome review, so pricing experiment, hypothesis to result stops being folklore and starts being a reviewable operating tool.
-tags: [product, pro, template, pricing, experiment, spec]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pinned spec template (hypothesis -> result) for pricing experiments with owner, evidence anchors, and ship/abort gates; output is a per-experiment spec instance.
+content_id: "99ef6f544a720fe3"
+complexity: medium
+produces: spec
+est_tokens: 5200
+tags: [product, pro, spec, pricing, template]
 ---
 # Pricing Experiment Spec Template
 
 ## Summary
 
-**One-sentence:** Pricing Experiment Spec Template — pinned template for the product manager: fixed shape + named owner + evidence anchors + outcome review, so pricing experiment, hypothesis to result stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned spec template (hypothesis -> result) for pricing experiments with owner, evidence anchors, and ship/abort gates; output is a per-experiment spec instance.
 
-**One-paragraph:** In product management, the product manager runs pricing experiment, hypothesis to result on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. pricing-research is qualitative + research-side; nothing covers the experiment-spec artefact (cells, sample size, analysis plan, rollback). `pricing-experiment-spec-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the product manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Pinned spec template (hypothesis -> result) for pricing experiments with owner, evidence anchors, and ship/abort gates; output is a per-experiment spec instance. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Standardise pricing experiment write-ups so results are comparable quarter to quarter.
+- Pre-launch gate: every pricing experiment must produce this spec before traffic split.
+- Post-mortem: per-experiment spec is the source of truth for what was tested vs concluded.
+- Investor / board memo: pin pricing test discipline with structured spec history.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-product-manager/Pricing experiment, hypothesis to result`
-- the product manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Pricing experiment design (see pricing-experiment-design) already validated.
+- Stripe / billing instrumented to attribute revenue to variant cohort.
+- Named pricing owner exists and signs off pre-launch.
+- Post-experiment review meeting scheduled within 7 days of test end.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Pricing experiment design not yet validated — apply design methodology first.
+- Billing cannot attribute revenue to variant — instrumentation gap.
+- No named pricing owner — assign before drafting spec.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the product manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pricing experiment design | approved design spec id | PM + pricing |
+| Billing attribution layer | variant_id -> customer_id mapping live | eng |
+| Power analysis | expected effect + MDE + target n | data |
+| Review meeting calendar | post-test review with attendees | calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-pricing-experiment-spec-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-pricing-experiment-spec-template.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- Parent: `pro/product/AGENTS.md`
+- [[pricing-experiment-design]]
+- [[post-launch-72h-watch-runbook]]
+- [[north-star-metric-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

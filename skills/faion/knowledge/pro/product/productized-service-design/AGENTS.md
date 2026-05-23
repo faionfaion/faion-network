@@ -3,82 +3,99 @@ slug: productized-service-design
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6f5dcaab608c187a"
-summary: Productized Service Design — pinned method for the micro-agency founder: fixed shape + named owner + evidence anchors + outcome review, so productize one service from custom to fixed stops being folklore and starts being a reviewable operating tool.
-tags: [product, pro, method, productized, service, design]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Designs the full productized-service offer (SOP, deliverables, pricing model, guarantees, refund policy, escalation); output is a service design spec ready for launch.
+content_id: "53f7bb40e1e06ddf"
+complexity: deep
+produces: spec
+est_tokens: 5800
+tags: [product, pro, spec, productized-service, design]
 ---
 # Productized Service Design
 
 ## Summary
 
-**One-sentence:** Productized Service Design — pinned method for the micro-agency founder: fixed shape + named owner + evidence anchors + outcome review, so productize one service from custom to fixed stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Designs the full productized-service offer (SOP, deliverables, pricing model, guarantees, refund policy, escalation); output is a service design spec ready for launch.
 
-**One-paragraph:** In product management, the micro-agency founder runs productize one service from custom to fixed on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. The corpus has product-planning/portfolio-strategy and competitive-positioning, but no methodology for converting a custom services engagement into a fixed-scope, fixed-price product. This is the single most leveraged move a micro-agency can make to break the time-for-money ceiling. Current product-planning content assumes a SaaS product, not a service-as-product. `productized-service-design` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the micro-agency founder starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Designs the full productized-service offer (SOP, deliverables, pricing model, guarantees, refund policy, escalation); output is a service design spec ready for launch. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Canvas (see productized-service-canvas) approved — next step is full design.
+- Pre-launch readiness: lock SOP, deliverables, guarantees, refund policy before first sale.
+- Scale-up: hire-and-onboard signal — design spec is what a new delivery hire reads day-1.
+- Audit existing productized offer: identify gaps in SOP / guarantees / escalation.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p5-micro-agency-founder/Productize one service from custom to fixed`
-- the micro-agency founder owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Productized canvas already validated for this offer.
+- ≥3 prior engagements delivered the same outcome.
+- Pricing model decided (fixed / retainer / milestone).
+- Founder available to draft SOP + guarantees with named ops owner.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Canvas not validated — apply productized-service-canvas first.
+- No prior outcome delivered — design is hypothetical.
+- Pricing model undecided — block until decided.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the micro-agency founder.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Approved canvas | canvas spec id | PM / founder |
+| Delivery cost data | labor + tools cost per engagement | ops |
+| Refund policy draft | 1 paragraph + edge cases | legal |
+| Escalation matrix | trigger -> escalator -> action | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-productized-service-design` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-productized-service-design.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- Parent: `pro/product/AGENTS.md`
+- [[productized-service-canvas]]
+- [[productized-service-launch]]
+- [[owner-handover-sop-kit]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

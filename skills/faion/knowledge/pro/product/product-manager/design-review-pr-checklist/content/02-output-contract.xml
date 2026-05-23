@@ -1,47 +1,142 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Design Review PR Checklist — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the design-QA record shape. Designer reviewer or supporting agent must satisfy this contract before approving the PR.</summary>
+<text id="02-output-contract" title="Design Review PR Checklist Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the checklist artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="pr_id" format="repo_pr_number_or_url"/>
-      <field name="reviewer" format="single_named_designer_or_design_engineer"/>
-      <field name="review_duration_min" type="integer"/>
-      <field name="handoff_package_link" format="link_to_design_to_dev_handoff_bundle"/>
-      <field name="per_item_results" required_keys="tokens,components,states,motion,accessibility,content_rules,breakpoints,images,dark_mode,cross_browser"
-             value_type="enum: pass | needs-changes | n/a-with-reason"/>
-      <field name="evidence_per_item" required_keys="link_to_diff_or_screenshot_or_script_output"/>
-      <field name="deltas_flagged_back" type="array" required_keys="item,description,designer_response_required"/>
-      <field name="decision" format="enum: approve | changes-needed | needs-handoff-update"/>
-    </required>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/design-review-pr-checklist.json",
+  "type": "object",
+  "required": [
+    "pr_id",
+    "reviewer",
+    "per_item_results",
+    "evidence_per_item",
+    "decision"
+  ],
+  "properties": {
+    "pr_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_duration_min": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "handoff_package_link": {
+      "type": "string",
+      "format": "uri"
+    },
+    "per_item_results": {
+      "type": "object",
+      "required": [
+        "tokens",
+        "components",
+        "states",
+        "motion",
+        "accessibility",
+        "content_rules",
+        "breakpoints",
+        "images",
+        "dark_mode",
+        "cross_browser"
+      ],
+      "additionalProperties": {
+        "enum": [
+          "pass",
+          "needs-changes",
+          "n/a-with-reason"
+        ]
+      }
+    },
+    "evidence_per_item": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "deltas_flagged_back": {
+      "type": "array"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "changes-needed",
+        "needs-handoff-update"
+      ]
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">reviewer is an engineer with no design / design-engineering background</pattern>
-      <pattern id="f2">per_item_results = pass without evidence_per_item entry</pattern>
-      <pattern id="f3">deltas_flagged_back is empty when implementation deviates from handoff (silent acceptance per r5)</pattern>
-      <pattern id="f4">decision=approve with any per_item_results=needs-changes</pattern>
-      <pattern id="f5">checklist items extended beyond the 10 (style cleanup, test coverage, etc.) — out of scope per r4</pattern>
-      <pattern id="f6">review_duration_min &lt; 5 with PR touching &gt; 200 UI lines AND decision=approve (rubber-stamp)</pattern>
-      <pattern id="f7">handoff_package_link missing or stale (pointing to pre-PR handoff that no longer matches the implementation scope)</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "pr_id": "acme/web#1421",
+  "reviewer": "jane.s",
+  "review_duration_min": 13,
+  "per_item_results": {
+    "tokens": "pass",
+    "components": "pass",
+    "states": "pass",
+    "motion": "pass",
+    "accessibility": "pass",
+    "content_rules": "pass",
+    "breakpoints": "pass",
+    "images": "pass",
+    "dark_mode": "pass",
+    "cross_browser": "pass"
+  },
+  "evidence_per_item": {
+    "tokens": "ok",
+    "components": "ok",
+    "states": "ok",
+    "motion": "ok",
+    "accessibility": "ok",
+    "content_rules": "ok",
+    "breakpoints": "ok",
+    "images": "ok",
+    "dark_mode": "ok",
+    "cross_browser": "ok"
+  },
+  "decision": "approve"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Mark items "n/a-with-reason" when truly inapplicable (e.g., dark_mode when product has no dark theme).</transformation>
-      <transformation>Reuse evidence from automated scripts (scan-pr-for-raw-values.py, axe-core output) instead of manual screenshots.</transformation>
-      <transformation>Batch a follow-up "handoff update" task into a single design-system PR when multiple PRs surface the same delta.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pr_id": "acme/web#1422",
+  "reviewer": "alex.k",
+  "review_duration_min": 1,
+  "per_item_results": {
+    "tokens": "pass"
+  },
+  "evidence_per_item": {},
+  "decision": "approve"
+}
+]]></code>
+    <note>per_item_results missing 9 keys; evidence_per_item empty; decision=approve with no per-item coverage (rubber-stamp).</note>
+  </example>
 
-    <schema-reference path="templates/design-qa-record.json"/>
-  </output-contract>
-
-  <section title="Self-check (run before submitting design-QA approval)">
+  <section title="Forbidden patterns">
     <list>
-      <item>Reviewer is a designer / design-engineer (r2)</item>
-      <item>All 10 items have status pass / needs-changes / n/a-with-reason (r1)</item>
-      <item>Every pass has evidence_per_item populated (r3)</item>
-      <item>Deviations from handoff are listed in deltas_flagged_back (r5)</item>
-      <item>Decision matches per-item status (no approve with open needs-changes) (f4)</item>
-      <item>Output validates against templates/design-qa-record.json</item>
+      <item>per_item_results missing any of the 10 required keys (incomplete coverage).</item>
+      <item>any per_item_results value = pass without a corresponding evidence_per_item entry.</item>
+      <item>decision = approve while any per_item_results value = needs-changes.</item>
+      <item>review_duration_min &lt; 5 on a UI PR with &gt; 200 lines AND decision = approve (rubber-stamp).</item>
+      <item>checklist items beyond the 10 (style cleanup, test coverage) — out of lane.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-design-review-pr-checklist.py">Validator script enforcing this schema</reference>
 </text>

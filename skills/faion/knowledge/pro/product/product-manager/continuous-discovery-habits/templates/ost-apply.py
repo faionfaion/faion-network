@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 """
+purpose: Apply a tree-diff (JSON-patch / YAML-diff) to the current OST file.
+consumes: input from methodology
+produces: artefact for downstream agent
+depends-on: content/02-output-contract.xml
+token-budget-impact: 0 (executes locally)
+"""
+
+#!/usr/bin/env python3
+"""
 ost-apply.py — apply OST diffs emitted by agents.
 Usage: python ost-apply.py <ost.yaml> <diff.yaml>
 The diff format is the schema defined in ost.yaml under 'diffs:'.

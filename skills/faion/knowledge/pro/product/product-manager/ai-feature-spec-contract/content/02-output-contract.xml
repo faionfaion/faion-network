@@ -1,33 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Feature Spec Contract Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Feature Spec Contract deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="feature_id" format="stable_id" />
-      <field name="gate_name" type="string" />
-      <field name="pre_registered_criteria" type="list" min="3" />
-      <field name="evidence_per_criterion" type="object" />
-      <field name="kill_criteria" type="list" min="1" />
-      <field name="rollback_artifacts" type="list" />
-      <field name="crossfunctional_signoffs" type="list" />
-    </required>
-    <forbidden>
-      <pattern id="f1">criterion added at gate review (not pre-registered)</pattern>
-      <pattern id="f2">no rollback_artifacts</pattern>
-      <pattern id="f3">signoffs collected after the gate</pattern>
-      <pattern id="f4">kill_criteria empty</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Re-baseline criterion only with explicit version stamp.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Criteria pre-registered</item>
-      <item>Evidence per criterion</item>
-      <item>Rollback tested</item>
-      <item>Signoffs in hand</item>
-    </list>
+<text id="02-output-contract" title="AI Feature Spec Contract Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys and forbidden patterns.</summary>
+  <section title="Schema">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-feature-spec-contract.json",
+  "title": "AI Feature Spec Contract",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "owner",
+    "last_touched",
+    "brief",
+    "eval_rubric",
+    "thresholds",
+    "risk_register",
+    "rollout_plan",
+    "kill_switch"
+  ],
+  "properties": {
+    "spec_id": {},
+    "owner": {},
+    "last_touched": {},
+    "brief": {},
+    "eval_rubric": {},
+    "thresholds": {},
+    "risk_register": {},
+    "rollout_plan": {},
+    "kill_switch": {}
+  },
+  "additionalProperties": true
+}]]></code>
+    </schema>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[{
+  "spec_id": "ai-spec-summarize-2026q2",
+  "owner": "pm@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "brief": {
+    "customer": "support agent",
+    "outcome": "ticket summary < 60s",
+    "risk": "wrong summary loses customer trust",
+    "evidence": "research memo 2026-05"
+  },
+  "eval_rubric": {
+    "name": "summary-quality-v1",
+    "function": "rubric_v1.score(out, ref)",
+    "evidence": "research repo eval/summary"
+  },
+  "thresholds": {
+    "primary": {
+      "metric": "human_rated_correctness",
+      "value": 0.85
+    }
+  },
+  "risk_register": [
+    {
+      "id": "r-1",
+      "risk": "hallucinated names",
+      "mitigation": "redact-then-summarize pipeline",
+      "owner": "safety@acme.io",
+      "evidence": "redact spec 2026-05"
+    }
+  ],
+  "rollout_plan": {
+    "steps": [
+      "internal-only 1 week",
+      "5% canary 1 week",
+      "ramp to 100%"
+    ],
+    "owner": "eng@acme.io",
+    "tested_on": "2026-05-22"
+  },
+  "kill_switch": {
+    "flag": "feature_summarize_v1",
+    "owner": "eng@acme.io",
+    "evidence": "feature-flag service config"
+  },
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[{
+  "spec_id": "x",
+  "eval_rubric": {},
+  "kill_switch": {}
+}]]></code>
+    <note>Missing required fields; violates schema constraints for `ai-feature-spec-contract`. Validator rejects with explicit violation list.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern>kill_switch missing flag or owner</pattern>
+    <pattern>eval_rubric without function reference</pattern>
+    <pattern>thresholds primary metric value outside [0,1]</pattern>
+    <pattern>rollout_plan without tested_on date</pattern>
+    <pattern>risk without named mitigation owner</pattern>
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+  </section>
+  <reference path="scripts/validate-ai-feature-spec-contract.py">Validator script</reference>
 </text>

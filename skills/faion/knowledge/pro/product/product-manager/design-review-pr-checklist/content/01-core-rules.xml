@@ -1,100 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Design Review PR Checklist — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules for running design-QA at PR time so design adherence is verified before merge, not discovered post-release.</summary>
+<text id="01-core-rules" title="Design Review PR Checklist Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>A PR-time design-QA checklist (10 items across token usage, component reuse, motion compliance, accessibility, content rules, breakpoint coverage) that gates whether the implementation matches the design handoff.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-ten-item-checklist" testable="true" depth="essential">
-      <statement>Every UI-touching PR MUST be checked against all 10 items: (1) Tokens used (no raw values), (2) Components reused (no duplicates of system components), (3) States implemented (per handoff: default / hover / focus / active / disabled / loading / error / empty), (4) Motion compliant (duration / easing from system, prefers-reduced-motion honored), (5) Accessibility intact (focus order, ARIA, contrast), (6) Content rules honored (max-length, truncation, i18n), (7) Breakpoints covered (mobile / tablet / desktop), (8) Image handling (responsive, alt text), (9) Dark-mode parity (if theme is supported), (10) Cross-browser smoke check (Chrome, Safari, Firefox at minimum).</statement>
-      <rationale source="Material Design QA Checklist, Polaris adoption metrics">10-item checklist comes from empirical post-release defect analysis. Each item maps to a specific failure mode that ships when not checked. The set is intentionally small enough to fit in a 15-min PR review.</rationale>
+    <rule id="ten-item-checklist" testable="true" depth="essential">
+      <statement>Every UI-touching PR MUST be checked against all 10 items: tokens, components, states (default/hover/focus/active/disabled/loading/error/empty), motion (prefers-reduced-motion), a11y (focus order, ARIA, contrast), content rules, breakpoints, image handling, dark-mode parity, cross-browser smoke.</statement>
+      <rationale source="Material Design QA Checklist; Polaris adoption metrics">10 items map empirically to post-release defect modes; the set fits a 15-min PR review.</rationale>
     </rule>
-
-    <rule id="r2-designer-reviewer-required" testable="true" depth="essential">
-      <statement>A named designer or design-engineer MUST be a required PR reviewer for UI-touching PRs. Generic dev peer review does not satisfy design adherence — devs systematically under-detect design drift. Required-reviewer enforcement is via PR-platform rules, not goodwill.</statement>
-      <rationale source="Atlassian Design QA practice, Polaris case studies">PRs without designer review show 2-3x higher post-release design-bug rate. Required-reviewer rules are the cheapest enforcement; voluntary "ping me if needed" loops fail because the dev doesn't know what they didn't check.</rationale>
+    <rule id="designer-reviewer-required" testable="true" depth="essential">
+      <statement>A named designer or design-engineer MUST be a required PR reviewer for UI-touching PRs. Generic dev peer review does not satisfy design adherence.</statement>
+      <rationale source="Atlassian Design QA practice; Polaris case studies">PRs without designer review show 2-3x higher post-release design-bug rate.</rationale>
     </rule>
-
-    <rule id="r3-evidence-per-item" testable="true" depth="essential">
-      <statement>Each item check MUST include evidence: link to specific lines in the PR diff, screenshot or recording from local-build, or output of a script (e.g., scripts/scan-pr-for-raw-values.py). Pass-without-evidence is forbidden; the reviewer must have actually checked, not skim-approved.</statement>
-      <rationale source="Code-review research, Microsoft empirical review studies">Skim-review at PR time produces same defect-find rate as no-review on architectural / design items. Evidence-per-item forces the actual look.</rationale>
+    <rule id="evidence-per-item" testable="true" depth="essential">
+      <statement>Each item check MUST include evidence: PR diff link, screenshot/recording, or script output. Pass-without-evidence is forbidden.</statement>
+      <rationale source="Microsoft empirical code-review studies">Skim-review at PR time has same defect-find rate as no-review on design items; evidence forces actual look.</rationale>
     </rule>
-
-    <rule id="r4-no-style-cleanup-creep" testable="true" depth="essential">
-      <statement>The design-QA checklist STAYS in its lane: design-system adherence, accessibility, content rules. It does NOT cover generic code style (formatting, naming), test coverage, business-logic correctness — those belong to peer review and to QA. Mixing scopes both bloats the review and dilutes focus on actual design issues.</statement>
-      <rationale source="Code-review effectiveness research, Google Eng Practices">Reviews that try to cover everything cover nothing well. Splitting the review into clear lanes (peer style, architect, design, QA) lets each lane achieve high quality in 10-15 min.</rationale>
+    <rule id="no-style-cleanup-creep" testable="true" depth="essential">
+      <statement>The checklist STAYS in its lane: design-system adherence, accessibility, content rules. It does NOT cover generic code style, test coverage, or business-logic correctness.</statement>
+      <rationale source="Google Eng Practices — review effectiveness">Reviews trying to cover everything cover nothing well.</rationale>
     </rule>
-
-    <rule id="r5-handoff-deltas-flagged-back" testable="true" depth="essential">
-      <statement>When the implementation deliberately deviates from the handoff (e.g., dev chose a different component because the specified one had an unforeseen limitation), the design-QA record MUST flag the delta back to the designer. The designer either (a) accepts the delta with rationale (adds to design system as known pattern), or (b) rejects and requests rework. Silent acceptance is forbidden — feedback must return to the design surface.</statement>
-      <rationale source="Design-system maintenance research, Spotify "design system as a product" practice">Silent deviations decay the design system: variants accumulate in code that the design system doesn't know about. Forcing the feedback loop catches the deviation early — either the system gets a documented new variant or the code gets reverted.</rationale>
+    <rule id="handoff-deltas-flagged-back" testable="true" depth="essential">
+      <statement>Implementation deviation from the handoff MUST be flagged back to the designer for accept-or-rework; silent acceptance is forbidden.</statement>
+      <rationale source="Design-system maintenance research">Silent deviations decay the design system; explicit feedback either updates the system or reverts the code.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Canonical example">
-
-    <example type="good" title="Design-QA pass with one delta flagged back">
-      <code lang="text"><![CDATA[
-PR #1421: "Implement subscription comparison page"
-Reviewer: jane.s (designer)
-Duration: 13 min
-
-1. Tokens used:            PASS  (scripts/scan-pr-for-raw-values.py
-                                  clean; manual check confirms)
-2. Components reused:      PASS  (uses ds/PricingCard;
-                                  no new variants)
-3. States implemented:     NEEDS CHANGES — Loading state for
-                           "Buy now" button not implemented
-                           (handoff specified spinner; ticket #1421
-                           commit f3a missing)
-4. Motion compliant:       PASS  (200ms ease-out; prefers-reduced-motion
-                                  honored — verified in record.mp4)
-5. Accessibility intact:   PASS  (axe-core report attached)
-6. Content rules honored:  PASS  (longest DE locale tested)
-7. Breakpoints covered:    PASS  (320 / 768 / 1280 screenshots in PR)
-8. Image handling:         PASS  (img srcset, alt text from spec)
-9. Dark mode parity:       PASS  (token-based, automatic)
-10. Cross-browser:         PASS  (Chrome 124, Safari 17.4,
-                                  Firefox 124 — manual smoke)
-
-Delta flagged back to designer:
-  Handoff specified ds/Button-Pricing, but dev used ds/Button-Pricing-XL
-  (didn't exist when handoff was written; was added last week).
-  Delta acceptable; updating handoff package to reference Button-Pricing-XL.
-
-Decision: changes-needed (item 3 only). Re-review after loading state
-fix.
-      ]]></code>
-      <note>Illustrates r1-r5: full 10-item coverage, evidence per item, designer-as-reviewer, delta flagged back not silently accepted.</note>
-    </example>
-
-    <example type="bad" title="Rubber-stamp design review">
-      <code lang="text"><![CDATA[
-PR #1422: 1,400 lines of UI changes
-Reviewer: alex.k (engineer, not designer; assigned because designer "on leave")
-Duration: 90 sec
-Comment: "lgtm visually"
-
-Post-merge findings 2 weeks later:
-- 12 raw #hex values in committed CSS
-- 3 duplicated copies of the design-system PricingCard component
-  (slight visual differences across them)
-- Loading state missing on 4 buttons
-- Mobile breakpoint broken
-- Dark mode not tested at all
-
-Repair: enforce r1-r3. Designer-as-required-reviewer cannot be
-substituted by an engineer "for speed". If designer is genuinely
-unavailable, the PR waits OR a design-engineer (cross-trained)
-runs the check.
-      ]]></code>
-      <note>Illustrates r2, r3 violations — substituting designer review with engineer skim creates the exact post-release defects the methodology prevents.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If applicability conditions fail (any Skip-If trigger holds — no design system; single-person dev-and-designer team; prototype/spike PR marked experimental; project phase explicitly out-of-scope), the agent MUST skip this methodology and route to the named alternative or to the methodology fallback.</statement>
+      <rationale source="Internal — F-066 routing convention">Mis-applying a methodology outside its preconditions degrades output quality and pollutes downstream artefacts; the explicit skip-rule keeps the routing tree honest.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

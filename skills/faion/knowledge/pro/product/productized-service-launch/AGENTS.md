@@ -3,82 +3,98 @@ slug: productized-service-launch
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c1faf23bc04ad10f"
-summary: Productized Service Launch — pinned method for the technical freelancer: fixed shape + named owner + evidence anchors + outcome review, so productize a recurring engagement into a fixed-scope offer stops being folklore and starts being a reviewable operating tool.
-tags: [product, pro, method, productized, service, launch]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pins the launch playbook for a productized service (pricing page, outbound list, beta cohort, payment link, ship gates); output is a launch playbook spec with metrics targets.
+content_id: "86189551baa0cfac"
+complexity: medium
+produces: playbook-step
+est_tokens: 5400
+tags: [product, pro, playbook-step, productized-service, launch]
 ---
 # Productized Service Launch
 
 ## Summary
 
-**One-sentence:** Productized Service Launch — pinned method for the technical freelancer: fixed shape + named owner + evidence anchors + outcome review, so productize a recurring engagement into a fixed-scope offer stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pins the launch playbook for a productized service (pricing page, outbound list, beta cohort, payment link, ship gates); output is a launch playbook spec with metrics targets.
 
-**One-paragraph:** In product management, the technical freelancer runs productize a recurring engagement into a fixed-scope offer on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. All product/product-manager content treats SaaS. There's no playbook for launching a service-as-a-product (named offer, flat price, intake form, SOP). This is the dominant solo monetization shape in 2026 and we have zero coverage. `productized-service-launch` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the technical freelancer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Pins the launch playbook for a productized service (pricing page, outbound list, beta cohort, payment link, ship gates); output is a launch playbook spec with metrics targets. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Design (see productized-service-design) is approved — ready to launch.
+- First-paying-customer milestone: lock launch steps so timing is deliberate, not drift.
+- Repeat launch of new productized offer: re-use playbook with deltas.
+- Pre-launch dress rehearsal: walk every step before public traffic.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer`
-- the technical freelancer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Design spec approved (see productized-service-design).
+- Pricing page draft + payment link exist.
+- Outbound list (≥30 named prospects) ready.
+- Beta cohort (≥3 prospects) committed to first batch.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Design spec not approved — block until approved.
+- Outbound list < 30 prospects — launch will starve.
+- Beta cohort < 3 — feedback signal will be noise.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the technical freelancer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Approved design spec | design spec id | PM / founder |
+| Pricing page draft | URL or staged page | marketing |
+| Outbound list | ≥30 named prospects with email | sales / founder |
+| Beta cohort commitment | ≥3 prospects + start date | sales |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-productized-service-launch` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-productized-service-launch.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- Parent: `pro/product/AGENTS.md`
+- [[productized-service-design]]
+- [[productized-service-canvas]]
+- [[post-launch-72h-watch-runbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

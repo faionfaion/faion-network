@@ -3,79 +3,101 @@ slug: experimentation-at-scale
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Run 100+ experiments/year with statistical rigor.
-content_id: "4e204465f81afa3d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Hypothesis-driven A/B experimentation program (>=100 experiments/year) with pre-registered metrics, guardrails, statistical rigor, and an agent-assisted triage -> readout -> archive loop.
+content_id: "8ecb400004cb3c8b"
+complexity: deep
+produces: spec
+est_tokens: 6700
 tags: [experimentation, a-b-testing, hypothesis-driven, data-driven-decisions, product-metrics]
 ---
 # Experimentation at Scale
 
 ## Summary
 
-**One-sentence:** Run 100+ experiments/year with statistical rigor.
+**One-sentence:** Hypothesis-driven A/B experimentation program (>=100 experiments/year) with pre-registered metrics, guardrails, statistical rigor, and an agent-assisted triage -> readout -> archive loop.
 
-**One-paragraph:** Run 100+ experiments/year with statistical rigor. Pre-register hypotheses, behavioral predictions, guardrail metrics, and decision rules to prevent HiPPO override and build org learning.
+**One-paragraph:** Mature experimentation discipline: every experiment ships with a pre-registered hypothesis (primary metric, secondary, guardrails, MDE, stop conditions); SRM check is mandatory before readout; readouts end in binary ship/kill/iterate; an agent triages proposals and dedups against historic experiments. Output: experiment-doc YAML + readout markdown + archive record.
+
+**Ефективно для:**
+
+- Високотрафіковий продукт із MDE detectable у <=4 тижні.
+- Quarterly planning, де roadmap-bets потребують experimental triage.
+- Pricing/packaging зміни, що вимагають quantified lift перед commit.
+- Stakeholder dispute resolution через pre-registered metric, а не політику.
 
 ## Applies If (ALL must hold)
 
-- A roadmap bet is reversible, has a clear behavioral prediction, and can be measured within 4 weeks at current traffic.
-- Quarterly planning when roadmap candidates outnumber conviction — turn opinions into a ranked experiment slate.
-- After discovery rounds where 2–4 candidate solutions exist for one opportunity — experiment to pick, not to launch.
-- A guardrail-only "do-no-harm" rollout: PM wants to ship a refactor or migration and needs proof it didn't regress conversion/retention.
-- A pricing or packaging change where finance wants quantified lift before commit (with legal sign-off on bait-pricing rules).
-- Stakeholder disputes (design vs. eng vs. growth) where pre-registering a metric and accepting the verdict is faster than politics.
-- Planning org experimentation infrastructure: choosing tooling (GrowthBook vs. Statsig vs. Eppo), governance, and statistical standards.
-- Onboarding a new PM into an experiment-mature org — agentized hypothesis review tightens the loop fast.
+- Product has stable instrumentation + bucketing infrastructure (GrowthBook / Statsig / Eppo / in-house).
+- Roadmap bet is reversible and has a clear behavioural prediction measurable within 4 weeks at current traffic.
+- Quarterly planning where roadmap candidates outnumber conviction — turn opinions into a ranked experiment slate.
+- Pricing or packaging change where finance wants quantified lift before commit.
+- Stakeholder disputes (design vs eng vs growth) where pre-registering a metric is faster than politics.
 
 ## Skip If (ANY kills it)
 
-- Strategic, irreversible bets (rebrand, repositioning, contract terms) — A/B will under-power on the metrics that matter and over-emphasize short-term proxies. Use evidence triangulation instead.
-- Pre-PMF (less than 1k WAU): the PM should be doing problem interviews, not optimizing CTAs. A null result here means "no signal," not "no effect."
-- Innovation-tier features where the audience needs greater than 30 days to learn the new behavior — novelty/primacy will dominate the readout.
-- Internal tooling, B2B with fewer than 50 accounts, or one-off launches (regulatory, marketing event). Use cohort/case-study analysis.
-- When the PM cannot articulate a falsifiable behavioral prediction with a numeric MDE — that is a discovery gap, not an experiment gap. Run a fake-door, prototype test, or interview round first.
-- Surfaces under compliance review (HIPAA, PCI, KYC) where any variant requires legal sign-off — gating loop is slower than the agentic experiment author; default to risk-controlled rollout, not A/B.
-- When success can only be measured greater than 1 quarter out (LTV, retention beyond available holdout) — switch to switchback or holdout-cohort analysis with explicit stakeholder agreement.
+- Low-traffic product where MDE detection is infeasible in 4 weeks — use qualitative methods.
+- Irreversible high-risk change (security, M&A, brand re-positioning) — experiment is the wrong instrument.
+- Legal / compliance blocks variant exposure (bait pricing, regulated UI).
+- Team lacks a real analytics platform — instrument first, then experiment.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tracking plan | YAML/JSON under version control | product-analytics methodology |
+| Experimentation platform | GrowthBook / Statsig / Eppo / in-house | platform team |
+| Hypothesis backlog | list of {hypothesis, primary, secondary, guardrails, MDE} | PM |
+| Decision-rights map | table | stakeholder-management output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[product-analytics]] | Provides the tracking plan + bucketing the experiments consume. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + skip-this-methodology: pre-registration, guardrails, MDE, SRM, binary readout, triage | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for experiment doc + readout | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: peeking, primary-swap, SRM-ignored, zombie-hold | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: triage -> author -> launch -> readout -> archive | 800 |
+| `content/05-examples.xml` | medium | Worked end-to-end experiment + readout | 800 |
+| `content/06-decision-tree.xml` | essential | Routing on traffic, reversibility, MDE feasibility | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `idea-triage` | haiku | Bulk dedup + ev/effort ranking. |
+| `hypothesis-author` | sonnet | Structured authoring of primary/guardrails/MDE. |
+| `post-experiment-readout` | opus | Cross-segment Simpson's-paradox detection + decision synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/hypothesis-doc.yaml` | Experiment hypothesis YAML skeleton with primary/secondary/guardrails/MDE. |
+| `templates/triage-idea.py` | Triage script: rank ideas by ev/effort, dedup against historic experiments. |
+| `templates/readout.md` | Readout markdown skeleton with SRM check, primary result, decision. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-experimentation-at-scale.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- [[product-analytics]]
+- [[release-planning]]
+- [[product-led-growth]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

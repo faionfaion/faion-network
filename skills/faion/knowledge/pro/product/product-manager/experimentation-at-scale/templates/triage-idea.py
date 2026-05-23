@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+"""
+purpose: Triage script: rank ideas by ev/effort, dedup against historic experiments.
+consumes: input from methodology
+produces: artefact for downstream agent
+depends-on: content/02-output-contract.xml
+token-budget-impact: 0 (executes locally)
+"""
+
 """
 triage-idea.py — score an idea's testability and route to experiment tier.
 Input:  JSON via stdin: {reversible, min_traffic_ok, behavioral_prediction, notes}

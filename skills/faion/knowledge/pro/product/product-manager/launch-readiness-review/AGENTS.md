@@ -3,86 +3,103 @@ slug: launch-readiness-review
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "85fd712c1280235d"
-summary: A cross-functional pre-launch readiness review covering 8 gates (security, performance, observability, runbooks, on-call, legal, support enablement, comms tree) that turns implicit launch knowledge into a hard go/no-go decision.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cross-functional 8-gate pre-launch readiness review (security, performance, observability, runbooks, on-call, legal, support enablement, comms tree) producing a hard go/no-go decision with remediation list.
+content_id: "cea9f67900a1b881"
+complexity: deep
+produces: report
+est_tokens: 6700
 tags: [launch, readiness, sre, runbook, cross-functional]
 ---
-
 # Launch Readiness Review
 
 ## Summary
 
-**One-sentence:** A cross-functional pre-launch readiness review covering 8 gates (security, performance, observability, runbooks, on-call, legal, support enablement, comms tree) that turns implicit launch knowledge into a hard go/no-go decision.
+**One-sentence:** Cross-functional 8-gate pre-launch readiness review (security, performance, observability, runbooks, on-call, legal, support enablement, comms tree) producing a hard go/no-go decision with remediation list.
 
-**One-paragraph:** Product-launch methodology covers go-to-market; SRE-launch covers reliability; legal handles ToS — but no single methodology assembles all of them into one review before a P6 product-team ships. The result: legal forgotten, runbooks missing, on-call rotation undefined, comms tree out-of-date. This methodology defines 8 gates, each with explicit pass criteria and an owner. Output: `LaunchReadiness` JSON with per-gate status + go/no-go decision + remediation list. Built on Google SRE Production Readiness Review (PRR), AWS Well-Architected, and Marty Cagan launch-readiness essays.
+**One-paragraph:** Eight gates with named owners, hard criteria, sequential T-7/T-3/T-1 readiness snapshots, and blocker veto. Output: LaunchReadiness JSON with per-gate status + go/no-go + open blockers + remediation owners. Built on Google SRE PRR + AWS Well-Architected + Cagan launch essays.
+
+**Ефективно для:**
+
+- Net-new продукт або service launch для зовнішніх клієнтів.
+- Cross-functional команда >=3 з PM/eng/sec/support/legal.
+- Launch window 4-12 тижнів наперед.
+- Audit-вимоги (SOC2, ISO, HIPAA) із обов'язковими pre-launch sign-offs.
 
 ## Applies If (ALL must hold)
 
-- net-new product or service launch (not a bugfix release)
-- launch will hit external customers (not internal beta)
-- team size ≥ 3 (cross-functional gates are realistic)
-- launch date within next 4-12 weeks
+- Net-new product or service launch (not a bugfix release).
+- Launch will hit external customers (not internal beta).
+- Team size >=3 with cross-functional gates realistic.
+- Launch date within next 4-12 weeks.
 
 ## Skip If (ANY kills it)
 
-- shipping a hotfix or minor feature — overhead exceeds value
-- internal-only launch (no external customers) — only security + observability gates apply
-- solo SaaS — use the lighter `solo` launch checklist
-- launch already shipped — this is pre-launch; for post-mortem use launch-retro methodology
+- Shipping a hotfix or minor feature — overhead exceeds value.
+- Internal-only launch — only security + observability gates apply.
+- Solo SaaS — use the lighter solo launch checklist.
+- Launch already shipped — use launch-retro methodology instead.
 
 ## Prerequisites
 
-- launch date set (not "soon")
-- product owner + tech lead + 1 stakeholder per gate identified
-- service-level objectives (SLOs) drafted
-- ToS / Privacy Policy reviewed by counsel (or affirmative skip with reason)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Launch date | ISO date | PM |
+| Gate owner roster | table {gate, owner, backup} | PM / org chart |
+| SLO targets | YAML | SRE / engineering |
+| Legal review | ToS / Privacy decision | counsel |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/sre-production-readiness` | Google SRE PRR source for security / performance / observability gates |
-| `pro/comms/communicator/launch-comms-tree` | Provides the comms-tree gate's structure |
-| `pro/infra/devops-engineer/us-uk-eu-compliance-matrix` | Legal gate consumes its matrix output |
+| [[release-planning]] | Provides the release calendar this review snaps to. |
+| [[stakeholder-management]] | Names gate owners + escalation path. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 8-gate coverage, named owners, hard criteria, sign-off discipline, blocker veto | ~1000 |
-| `content/02-output-contract.xml` | essential | `LaunchReadiness` schema with per-gate fields | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: rubber-stamp, missing owner, partial sign-off | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: 8-gate coverage, named owner, hard criterion, blocker veto, T-7/T-3/T-1 snapshots | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for LaunchReadiness report | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: rubber-stamp, missing owner, partial sign-off, late-binding criteria, single snapshot | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: identify gates -> assign owners -> evaluate -> snapshot -> decide | 900 |
+| `content/05-examples.xml` | medium | Worked review producing go-with-conditions decision | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on launch type + team size + window | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `gate_owner_identification` | haiku | Lookup against org chart |
-| `criterion_evaluation` | sonnet | Bounded judgment per gate |
-| `blocker_diff_assembly` | sonnet | Cross-gate aggregation |
-| `go_no_go_synthesis` | opus | Final cross-team decision needs careful reasoning |
+| `gate-owner-identification` | haiku | Lookup against org chart. |
+| `criterion-evaluation` | sonnet | Bounded judgment per gate. |
+| `go-no-go-synthesis` | opus | Cross-team decision needs careful reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/launch-readiness.json` | Output schema |
-| `templates/gate-criteria.yaml` | Pass criteria per gate |
-| `templates/comms-tree.md` | Comms tree template |
+| `templates/launch-readiness.json` | JSON skeleton for the LaunchReadiness report. |
+| `templates/gate-criteria.yaml` | Hard criteria per gate (latency p95, runbook URLs, ToS sign-off, etc.). |
+| `templates/comms-tree.md` | Customer + internal comms tree template. |
+| `templates/run-readiness.py` | Pulls gate status from owners; assembles snapshot. |
+| `templates/runbook-presence-check.py` | Verifies runbook URLs return 200 OK. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/run-readiness.py` | Pulls gate status from owners; assembles report | T-7d, T-3d, T-1d |
-| `scripts/runbook-presence-check.py` | Verifies runbook URLs return 200 OK | Pre-launch |
+| `scripts/validate-launch-readiness-review.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodologies: `launch-comms-tree`, `sre-production-readiness`, `us-uk-eu-compliance-matrix`
-- external: [Google SRE Book — Production Readiness Review](https://sre.google/sre-book/evolving-sre-engagement-model/) · [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/) · [Marty Cagan — Inspired](https://svpg.com/) · [Lenny Rachitsky — Launch checklists](https://www.lennyspodcast.com/)
+- [[release-planning]]
+- [[stakeholder-management]]
+- [[product-explainability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.

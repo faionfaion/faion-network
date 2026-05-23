@@ -1,22 +1,185 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="continuous-discovery-habits Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Continuous Discovery Habits Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the playbook-step artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/continuous-discovery-habits.json",
+  "type": "object",
+  "required": [
+    "tree_version",
+    "outcome",
+    "opportunities",
+    "weekly_readout"
+  ],
+  "properties": {
+    "tree_version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-Q[1-4]\\\\.[0-9]+$"
+    },
+    "outcome": {
+      "type": "object",
+      "required": [
+        "id",
+        "movability_check_passed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "movability_check_passed": {
+          "const": true
+        }
+      }
+    },
+    "opportunities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "shape",
+          "quotes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "shape": {
+            "enum": [
+              "problem",
+              "unmet-need",
+              "pain"
+            ]
+          },
+          "quotes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "participant_id",
+                "interview_date",
+                "verbatim"
+              ],
+              "properties": {
+                "participant_id": {
+                  "type": "string"
+                },
+                "interview_date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "verbatim": {
+                  "type": "string",
+                  "minLength": 10
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "weekly_readout": {
+      "type": "object",
+      "required": [
+        "week",
+        "interviews",
+        "tree_diff"
+      ],
+      "properties": {
+        "week": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-W[0-9]{2}$"
+        },
+        "interviews": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tree_diff": {
+          "type": "array"
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tree_version": "2026-Q2.4",
+  "outcome": {
+    "id": "activation-rate-improved",
+    "movability_check_passed": true
+  },
+  "opportunities": [
+    {
+      "id": "op-onboarding-friction",
+      "shape": "pain",
+      "quotes": [
+        {
+          "participant_id": "U_3471",
+          "interview_date": "2026-05-19",
+          "verbatim": "I had to scroll through six tabs before I figured out where to click create."
+        }
+      ]
+    }
+  ],
+  "weekly_readout": {
+    "week": "2026-W21",
+    "interviews": 2,
+    "tree_diff": [
+      {
+        "op": "add",
+        "path": "/opportunities/0",
+        "value": "op-onboarding-friction"
+      }
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tree_version": "draft",
+  "outcome": {
+    "id": "growth",
+    "movability_check_passed": false
+  },
+  "opportunities": [
+    {
+      "id": "build-onboarding",
+      "shape": "problem",
+      "quotes": []
+    }
+  ],
+  "weekly_readout": {
+    "week": "2026-21",
+    "interviews": 0,
+    "tree_diff": []
+  }
+}
+]]></code>
+    <note>tree_version pattern mismatch; outcome.movability_check_passed false; opportunity id is solution-shaped; quotes empty; week pattern mismatch; interviews must be &gt;= 1.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>opportunity id phrased as 'build X' / 'add X' (solution-shaped).</item>
+      <item>opportunity.quotes empty.</item>
+      <item>weekly_readout.interviews &lt; 1 (skipped the weekly cadence).</item>
+      <item>tree containing two outcomes (one-outcome-per-tree rule).</item>
+      <item>quote without participant_id or interview_date.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-continuous-discovery-habits.py">Validator script enforcing this schema</reference>
 </text>

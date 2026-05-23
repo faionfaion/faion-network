@@ -1,22 +1,157 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="feedback-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Feedback Management Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/feedback-management.json",
+  "type": "object",
+  "required": [
+    "item_id",
+    "source",
+    "date",
+    "user_id",
+    "verbatim",
+    "classification"
+  ],
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "enum": [
+        "support",
+        "nps",
+        "app-store",
+        "in-app",
+        "sales",
+        "social"
+      ]
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "user_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "segment": {
+      "type": "string"
+    },
+    "plan_tier": {
+      "type": "string"
+    },
+    "verbatim": {
+      "type": "string",
+      "minLength": 10
+    },
+    "classification": {
+      "type": "object",
+      "required": [
+        "taxonomy_path"
+      ],
+      "properties": {
+        "taxonomy_path": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]+(/[a-z][a-z0-9-]+){0,2}$"
+        }
+      }
+    },
+    "weight": {
+      "type": "object",
+      "required": [
+        "segment_arr",
+        "retention_risk",
+        "frequency"
+      ],
+      "properties": {
+        "segment_arr": {
+          "type": "number"
+        },
+        "retention_risk": {
+          "type": "number"
+        },
+        "frequency": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "disposition": {
+      "enum": [
+        "will-do",
+        "under-consideration",
+        "wont-do",
+        "pending"
+      ]
+    },
+    "close_loop_sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "item_id": "fb-2026-05-001",
+  "source": "support",
+  "date": "2026-05-19",
+  "user_id": "U_3471",
+  "segment": "smb",
+  "plan_tier": "pro",
+  "verbatim": "When I export the report it always crashes if more than 1000 rows.",
+  "classification": {
+    "taxonomy_path": "performance/export/large-dataset"
+  },
+  "weight": {
+    "segment_arr": 12000.0,
+    "retention_risk": 0.62,
+    "frequency": 17
+  },
+  "disposition": "will-do",
+  "close_loop_sent_at": "2026-05-22T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "item_id": "fb1",
+  "source": "wechat",
+  "date": "May 19",
+  "user_id": "",
+  "verbatim": "bug",
+  "classification": {
+    "taxonomy_path": "Performance/Bug"
+  },
+  "disposition": "maybe"
+}
+]]></code>
+    <note>source not in enum; date not ISO; user_id empty; verbatim too short; taxonomy_path uppercase + invalid pattern; disposition not in enum.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>source value outside the enum (untracked channel).</item>
+      <item>classification.taxonomy_path with mixed case or &gt;3 path segments (taxonomy drift).</item>
+      <item>weight ranking based only on frequency (vote-only).</item>
+      <item>disposition='will-do' or 'under-consideration' with close_loop_sent_at=null after 14 days.</item>
+      <item>feedback item without verbatim (paraphrase-only).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-feedback-management.py">Validator script enforcing this schema</reference>
 </text>

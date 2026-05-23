@@ -1,70 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Launch Readiness — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules for the 8-gate readiness review, owner discipline, and the go/no-go threshold.</summary>
+<text id="01-core-rules" title="Launch Readiness Review Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Cross-functional 8-gate pre-launch readiness review (security, performance, observability, runbooks, on-call, legal, support enablement, comms tree) producing a hard go/no-go decision with remediation list.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-eight-gates" testable="true">
-      <statement>The review evaluates EXACTLY 8 gates: SECURITY, PERFORMANCE, OBSERVABILITY, RUNBOOKS, ON-CALL-ROTATION, LEGAL, SUPPORT-ENABLEMENT, COMMS-TREE. Skipping a gate (e.g. "we don't need on-call") forces explicit risk acceptance + sign-off; gates cannot be silently omitted.</statement>
-      <rationale source="Google SRE PRR + AWS Well-Architected + observed launch-failure post-mortems">These 8 gates cover 90% of post-launch surprises across 5 years of public post-mortems (Heroku, Cloudflare, Linear, Notion). Reducing gates without explicit risk acceptance reproduces the historical failure modes.</rationale>
+    <rule id="eight-gate-coverage" testable="true" depth="essential">
+      <statement>Review MUST evaluate all eight gates: security, performance, observability, runbooks, on-call, legal, support enablement, comms tree. Partial reviews are forbidden.</statement>
+      <rationale source="Google SRE PRR; AWS Well-Architected">Each gate maps to a known launch-failure mode; skipping any preserves the failure.</rationale>
     </rule>
-
-    <rule id="r2-named-owners" testable="true">
-      <statement>Each gate MUST have ONE named owner (single human, not "team"). Owner is responsible for the pass/fail signal AND for fixing any blocker. Multiple-owner gates devolve into "everyone thought someone else was doing it".</statement>
-      <rationale source="DACI / RACI accountability research + post-mortem root-cause analysis">Diffuse ownership is the leading cause of unaddressed launch risks. Naming a single human eliminates the "I thought you were on it" failure.</rationale>
+    <rule id="named-gate-owner" testable="true" depth="essential">
+      <statement>Each gate MUST have one named owner from the responsible function (not the PM by default). Owners sign the gate; un-owned gates fail the review.</statement>
+      <rationale source="PMI / Spotify launch operations playbooks">Diffuse ownership produces hand-waved sign-offs; one named owner per gate is auditable.</rationale>
     </rule>
-
-    <rule id="r3-hard-criteria" testable="true">
-      <statement>Each gate has HARD pass criteria — measurable, binary outcomes. Examples: SECURITY → "SAST + dependency audit clean OR documented exceptions"; OBSERVABILITY → "p50/p95/p99 dashboard live AND alerting configured at SLO violation"; RUNBOOKS → "≥ 1 runbook per top-3 incident scenario URL returns 200". Vague criteria ("we have docs") are rejected.</statement>
-      <rationale source="Google SRE PRR rubric + outage post-mortems">Soft criteria let teams self-rubber-stamp. Hard binary criteria force confrontation with reality (e.g. "is the runbook URL actually live?").</rationale>
+    <rule id="hard-criterion-per-gate" testable="true" depth="essential">
+      <statement>Each gate MUST evaluate against a hard written criterion (e.g., 'p95 latency &lt; 250ms under expected load', 'runbook URL returns 200'). Qualitative 'feels ready' verdicts are forbidden.</statement>
+      <rationale source="Google SRE checklists">Subjective sign-offs rubber-stamp easily; hard criteria force the actual check.</rationale>
     </rule>
-
-    <rule id="r4-signoff-discipline" testable="true">
-      <statement>Owners sign off WITHIN the review tool with timestamp and explicit `signed_by`. Verbal "yes we're good" or Slack thumbs-up are NOT sign-offs. Sign-off &lt; 48h before launch is fresh; older sign-offs MUST be re-confirmed.</statement>
-      <rationale source="Audit / compliance trail discipline (SOC-2, ISO 27001)">Verbal sign-offs evaporate under post-mortem scrutiny. Time-stamped sign-off in the tool of record is the only durable artifact.</rationale>
+    <rule id="blocker-veto" testable="true" depth="essential">
+      <statement>Any gate marked FAIL by its owner is a launch-blocker — no exec override without an explicit risk-acceptance memo on file. Yellow gates require remediation deadlines before launch.</statement>
+      <rationale source="Lenny Rachitsky launch checklists">Without veto teeth, the readiness review becomes a ritual; weighting gates by veto power preserves the discipline.</rationale>
     </rule>
-
-    <rule id="r5-blocker-veto" testable="true">
-      <statement>Any single gate with `status: blocker` vetoes the launch regardless of other gates' green status. The PM may NOT "compensate" for a blocker by stronger sign-off on other gates. Blockers route to a remediation plan with new launch-date estimate.</statement>
-      <rationale source="Toyota andon cord production line + Etsy's "blameless post-mortem" research">Any-one-can-stop-the-line is the only discipline that respects real risk. Compensation logic ("we're solid everywhere else") is post-hoc rationalisation.</rationale>
+    <rule id="snapshots-t-minus-7-3-1" testable="true" depth="essential">
+      <statement>Run readiness snapshots at T-7d, T-3d, T-1d. Each snapshot records gate status + open blockers. Drop-off between snapshots is the early-warning signal.</statement>
+      <rationale source="Marty Cagan launch-readiness essays">Single-point readiness reviews mask late slippage; sequential snapshots surface drift in time to act.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Gate criteria highlights">
-
-    <example type="good" title="OBSERVABILITY gate pass criteria">
-      <code lang="text"><![CDATA[
-Gate: OBSERVABILITY
-Owner: jane.doe@acme.com (SRE lead)
-Criteria (ALL must hold):
-  ✅ p50/p95/p99 latency dashboard live URL: ...
-  ✅ Error-rate alert configured at 1% violation 5min sustained
-  ✅ SLO defined: 99.9% successful requests, 200ms p95
-  ✅ Cardinality budget defined for new metrics
-  ✅ Trace sampling enabled at 1% prod / 100% staging
-Status: PASS  (signed_by: jane.doe, 2026-05-19 14:30 UTC)
-      ]]></code>
-      <note>r3 + r4: hard criteria, timestamped sign-off.</note>
-    </example>
-
-    <example type="bad" title="Vague gate (r3 violation)">
-      <code lang="text"><![CDATA[
-Gate: RUNBOOKS
-Owner: "DevOps team"  (r2 violation — not a named human)
-Criteria: "We have docs in Notion"
-Status: PASS  (signed: "looks good!" in #launch slack)
-
-Post-launch incident: page-on-call has no runbook URL.
-Runbook in Notion is 6 months old, references retired infra.
-      ]]></code>
-      <note>r2 + r3 + r4 all violated. Vague pass = guaranteed surprise.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If applicability conditions fail (any Skip-If trigger holds — hotfix/minor release; internal beta; solo SaaS with lighter checklist; launch already shipped (use launch-retro)), the agent MUST skip this methodology and route to the named alternative or to the methodology fallback.</statement>
+      <rationale source="Internal — F-066 routing convention">Mis-applying a methodology outside its preconditions degrades output quality and pollutes downstream artefacts; the explicit skip-rule keeps the routing tree honest.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

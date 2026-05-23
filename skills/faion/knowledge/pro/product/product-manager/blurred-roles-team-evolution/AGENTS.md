@@ -3,73 +3,99 @@ slug: blurred-roles-team-evolution
 tier: pro
 group: product
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Modern product teams operate as overlapping Venn diagrams rather than relay-race handoffs.
-content_id: "40ca56c96192a663"
-tags: [team-structure, pm-skills, cross-functional, ai-era, role-evolution]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Diagnoses a product team's role overlap (PM/eng/design/data/AI) as a Venn diagram with ownership gaps and duplications; output is a team-evolution report with hire/restructure recommendations.
+content_id: "1d8b4083f2347f46"
+complexity: medium
+produces: report
+est_tokens: 5400
+tags: [pm, pro, report, team, roles, scale-up]
 ---
 # Blurred Roles and Team Evolution
 
 ## Summary
 
-**One-sentence:** Modern product teams operate as overlapping Venn diagrams rather than relay-race handoffs.
+**One-sentence:** Diagnoses a product team's role overlap (PM/eng/design/data/AI) as a Venn diagram with ownership gaps and duplications; output is a team-evolution report with hire/restructure recommendations.
 
-**One-paragraph:** Modern product teams operate as overlapping Venn diagrams rather than relay-race handoffs. PMs are expected to speak design fluently, understand data deeply, know how AI models work, and have a credible view on distribution and pricing. Each PM-vs-X overlap zone (PM/design, PM/growth, PM/engineer, PM/data) must have exactly one human DRI; agents fill the zone, the PM converges decisions.
+**One-paragraph:** Diagnoses a product team's role overlap (PM/eng/design/data/AI) as a Venn diagram with ownership gaps and duplications; output is a team-evolution report with hire/restructure recommendations. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Post-Series-A scale-up: who owns what when PM, eng-lead, and design-lead overlap.
+- AI-era role drift: PM doing prompt engineering, eng doing user research — diagnose drift.
+- Hiring plan input: report says 'no one owns X' or 'two people duplicate Y'.
+- Quarterly team review: track ownership gaps over time.
 
 ## Applies If (ALL must hold)
 
-- Redefining the PM job description in an AI-augmented team where subagents handle research, prototyping, and copy PMs used to broker.
-- Inverting the PM:Engineer ratio when engineers ship via AI coding tools.
-- Drafting hiring scorecards for AI-era PMs: SQL fluency, eval authoring, design literacy.
-- Resolving PM-vs-X identity collisions that surface when each role gains agent leverage.
-- Quarterly audit of current PM responsibilities vs. the Venn target.
+- Team has ≥4 people with overlapping responsibilities.
+- Role drift symptoms observed (missed handoffs, duplicated work, orphaned decisions).
+- Leadership has authority to restructure or hire.
+- Team is willing to be candid in interviews / surveys.
 
 ## Skip If (ANY kills it)
 
-- Solopreneur/founder team — you are the Venn; use product-operations variant instead.
-- Regulated product surfaces (HIPAA, SOX, PCI) where PM/QA/compliance separation is auditable.
-- Performance reviews or leveling — the Venn model is an operating-model lens, not a competency rubric.
-- Teams under heavy delivery pressure mid-sprint — role restructuring is a quiet-quarter activity.
+- Team < 4 — every role gap is obvious without methodology.
+- Leadership cannot restructure — diagnosis without action is theatre.
+- Team will not be candid — diagnosis will be noise.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Org chart | roles + reports-to | HR |
+| Responsibility map | Notion / RACI doc | PM ops |
+| Interview transcripts | 1:1 anonymised notes | team |
+| Recent decision log | last 30 days of product decisions + decider | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-blurred-roles-and-team-evolution` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-blurred-roles-team-evolution.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
+- Parent: `pro/product/AGENTS.md`
+- [[competitive-positioning]]
+- [[ai-feature-spec-contract]]
+- [[annual-roadmap-vs-quarterly-okr-stitch]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

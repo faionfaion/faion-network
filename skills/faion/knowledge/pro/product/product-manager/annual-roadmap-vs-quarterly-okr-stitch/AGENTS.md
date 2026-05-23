@@ -3,84 +3,99 @@ slug: annual-roadmap-vs-quarterly-okr-stitch
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "249f9cedbd952ef9"
-summary: An explicit stitching methodology that decomposes annual product bets into quarterly OKR cascades so the year's bet and the quarter's KRs stay coupled across all four quarters.
-tags: [product, roadmap, okr, planning, quarterly, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Stitches an annual roadmap into a quarterly OKR cascade so the year's bet and the quarter's KRs stay coupled; output is a stitch spec with traceability matrix.
+content_id: "6cd301d7a7290c61"
+complexity: deep
+produces: spec
+est_tokens: 5800
+tags: [pm, pro, spec, roadmap, okr, planning]
 ---
-# Annual Roadmap → Quarterly OKR Stitch
+# Annual Roadmap vs Quarterly OKR Stitch
 
 ## Summary
 
-**One-sentence:** An explicit stitching methodology that turns each annual product bet into a four-quarter OKR cascade with documented bet → objective → key-result lineage, preventing the common "Q3 OKRs don't reference the annual bet" drift.
+**One-sentence:** Stitches an annual roadmap into a quarterly OKR cascade so the year's bet and the quarter's KRs stay coupled; output is a stitch spec with traceability matrix.
 
-**One-paragraph:** Annual product strategy and quarterly OKRs are usually planned in different rooms with different vocabularies; by Q3 the OKRs are about whatever crisis recurred, and the annual bet exists only in the strategy doc. This methodology defines the stitch: for each annual bet, the PM authors a `bet-to-okr-cascade.yaml` that lists 1-3 objectives spanning the year, 4 quarter-keyed KR sets that each carry the bet's identifier, and a per-quarter validation step that confirms the new quarter's OKRs still trace to the annual bet. Output: a per-quarter stitching review in the planning meeting where missing links are surfaced and either fixed or the bet is explicitly retired with rationale.
+**One-paragraph:** Stitches an annual roadmap into a quarterly OKR cascade so the year's bet and the quarter's KRs stay coupled; output is a stitch spec with traceability matrix. The methodology pins the artefact shape, anchors every non-trivial field to evidence, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Annual planning that historically drifts from quarterly OKRs by Q3.
+- Post-Series-A scale-up where roadmap and OKRs are owned by different leads.
+- Investor / board memo: pin one traceability matrix from annual bets to quarterly KRs.
+- Quarterly re-plan: which annual bets are on-pace, lagging, off-pace.
 
 ## Applies If (ALL must hold)
 
-- Organisation does annual strategy AND quarterly OKR planning.
-- A product manager owns the bet-to-OKR linkage at least at the team level.
-- Annual bets are documented (strategy doc, board memo, roadmap file).
-- Quarterly OKR review is a recurring meeting (not skipped).
+- Annual roadmap exists with ≥3 named bets.
+- Quarterly OKR process is in place.
+- Named owner per annual bet + per OKR.
+- Traceability matrix can be drafted in a single doc.
 
 ## Skip If (ANY kills it)
 
-- Organisation does only quarterly OKRs (no annual bets) — different methodology.
-- Organisation does only annual planning (no quarterlies) — overhead exceeds the win.
-- Annual bets are confidential / unwritten — stitch impossible without a written bet.
-- Team is in mid-strategy shift (acquisition, pivot) — defer until shape settles.
+- No annual roadmap defined yet — apply roadmap design methodology first.
+- No quarterly OKR process — apply okr-design methodology first.
+- Roadmap and OKRs deliberately decoupled by leadership choice — respect.
 
 ## Prerequisites
 
-- Annual bets enumerated in a roadmap doc or `annual-bets.yaml`.
-- A quarterly OKR template (own / borrowed from `okr-fundamentals`).
-- A quarterly planning meeting on the calendar.
-- A small group (PM + lead + design or eng peer) that can co-author the cascade.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Annual roadmap | list of annual bets with success metric | leadership |
+| Quarterly OKR list | current quarter OKRs + KRs | PMs |
+| Owner roster | bet -> owner + OKR -> owner | org chart |
+| Traceability matrix template | blank matrix to fill | PM ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager/okr-fundamentals` (or equivalent) | OKR canonical shape; stitch sits on top. |
-| `pro/product/product-manager/annual-product-strategy-refresh` | Annual bets emerge from this; stitch consumes them. |
-| `pro/product/product-manager/quarter-planning-okr-cascade` | Quarterly planning ritual; stitch is a co-input. |
+| `pro/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: bet has a bet_id, every KR has a bet_id reference, quarterly stitch review, explicit retire-vs-extend, KR count cap | ~1100 |
-| `content/02-output-contract.xml` | essential | bet-to-okr-cascade schema, quarterly review log shape | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: orphan KRs, vanity KRs, bet-amnesia | ~1000 |
+| `content/01-core-rules.xml` | essential | ≥6 testable rules with rationale + source incl. `skip-this-methodology` | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | reference | Full worked example end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `bet-decompose-to-objectives` | opus | Cross-input synthesis from the annual strategy doc |
-| `quarter-kr-draft` | sonnet | Bounded judgement: which KRs advance the bet this quarter |
-| `coupling-audit` | sonnet | Per-KR check: does the KR reference the bet_id with rationale |
-| `retire-vs-extend-decision` | opus | Cross-quarter synthesis; high-stakes call |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-annual-roadmap-vs-quarterly-okr-stitch` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/bet-to-okr-cascade.yaml` | Per-bet annual cascade across 4 quarters |
-| `templates/quarter-review.md` | Markdown template for the quarterly stitch review |
+| `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
+| `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/coupling-audit.py` | Read OKR list; assert every KR has a bet_id and the bet exists | Pre-quarterly planning |
-| `scripts/cascade-render.py` | Emit a one-page roadmap-to-OKR visualisation | Quarterly all-hands |
+| `scripts/validate-annual-roadmap-vs-quarterly-okr-stitch.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodologies: `okr-fundamentals`, `annual-product-strategy-refresh`, `quarter-planning-okr-cascade`
-- external: [Measure What Matters (Doerr)](https://www.whatmatters.com/) · [Christina Wodtke "Radical Focus"](https://eleganthack.com/) · [Lenny Rachitsky on OKRs](https://www.lennysnewsletter.com/)
+- Parent: `pro/product/AGENTS.md`
+- [[north-star-vs-okr-confidence-calibration]]
+- [[kpi-tree-construction]]
+- [[ai-feature-spec-contract]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

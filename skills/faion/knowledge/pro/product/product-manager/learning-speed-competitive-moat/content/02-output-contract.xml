@@ -1,22 +1,187 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="learning-speed-competitive-moat Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Learning Speed as Competitive Moat Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the report artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/learning-speed-competitive-moat.json",
+  "type": "object",
+  "required": [
+    "audit_period",
+    "beliefs",
+    "decision_velocity",
+    "loss_attribution"
+  ],
+  "properties": {
+    "audit_period": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-Q[1-4]$"
+    },
+    "beliefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "statement",
+          "confidence",
+          "last_update",
+          "evidence_type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 15
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "last_update": {
+            "type": "string",
+            "format": "date"
+          },
+          "evidence_type": {
+            "enum": [
+              "interview",
+              "experiment",
+              "metric",
+              "literature",
+              "intuition"
+            ]
+          },
+          "stale_flag": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "decision_velocity": {
+      "type": "object",
+      "required": [
+        "p0_avg_days",
+        "p1_avg_days",
+        "p2_avg_days",
+        "decisions_this_quarter"
+      ],
+      "properties": {
+        "p0_avg_days": {
+          "type": "number"
+        },
+        "p1_avg_days": {
+          "type": "number"
+        },
+        "p2_avg_days": {
+          "type": "number"
+        },
+        "decisions_this_quarter": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "loss_attribution": {
+      "type": "object",
+      "required": [
+        "losses_total",
+        "by_cause"
+      ],
+      "properties": {
+        "losses_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_cause": {
+          "type": "object"
+        }
+      }
+    },
+    "kill_criteria_present": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "audit_period": "2026-Q2",
+  "beliefs": [
+    {
+      "id": "b-mid-market-msp",
+      "statement": "Mid-market MSPs will pay for usage-based tier.",
+      "confidence": 0.55,
+      "last_update": "2026-04-12",
+      "evidence_type": "interview",
+      "stale_flag": false
+    }
+  ],
+  "decision_velocity": {
+    "p0_avg_days": 8.2,
+    "p1_avg_days": 2.1,
+    "p2_avg_days": 0.3,
+    "decisions_this_quarter": 47
+  },
+  "loss_attribution": {
+    "losses_total": 6,
+    "by_cause": {
+      "shipped-sooner": 3,
+      "wrong-belief": 2,
+      "better-evidence": 1
+    }
+  },
+  "kill_criteria_present": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "audit_period": "2026",
+  "beliefs": [
+    {
+      "id": "b1",
+      "statement": "vibes",
+      "confidence": 1.5,
+      "last_update": "soon",
+      "evidence_type": "guess"
+    }
+  ],
+  "decision_velocity": {
+    "p0_avg_days": -1,
+    "p1_avg_days": 0,
+    "p2_avg_days": 0,
+    "decisions_this_quarter": -5
+  },
+  "loss_attribution": {
+    "losses_total": -1,
+    "by_cause": {}
+  }
+}
+]]></code>
+    <note>audit_period pattern wrong; belief statement too short; confidence out of [0,1]; last_update not date; evidence_type not in enum; decision_velocity negatives.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>belief without last_update or evidence_type (untraceable).</item>
+      <item>confidence outside [0, 1].</item>
+      <item>audit_period not YYYY-QX (drift across quarters).</item>
+      <item>kill_criteria_present=false on bets older than 30 days (sunk-cost risk).</item>
+      <item>loss_attribution.losses_total &gt; 0 with empty by_cause (lost data).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-learning-speed-competitive-moat.py">Validator script enforcing this schema</reference>
 </text>

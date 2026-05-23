@@ -1,22 +1,183 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="experimentation-at-scale Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Experimentation at Scale Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, with valid and invalid examples plus forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/experimentation-at-scale.json",
+  "type": "object",
+  "required": [
+    "experiment_id",
+    "hypothesis",
+    "primary_metric",
+    "guardrails",
+    "mde",
+    "decision"
+  ],
+  "properties": {
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "hypothesis": {
+      "type": "string",
+      "minLength": 20
+    },
+    "primary_metric": {
+      "type": "object",
+      "required": [
+        "name",
+        "delta_direction"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "delta_direction": {
+          "enum": [
+            "increase",
+            "decrease"
+          ]
+        }
+      }
+    },
+    "secondary_metrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "guardrails": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "floor"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "floor": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mde": {
+      "type": "object",
+      "required": [
+        "effect_size",
+        "sample_size",
+        "runtime_days"
+      ],
+      "properties": {
+        "effect_size": {
+          "type": "string"
+        },
+        "sample_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runtime_days": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "srm_passed": {
+      "type": "boolean"
+    },
+    "decision": {
+      "enum": [
+        "ship",
+        "kill",
+        "iterate",
+        "pending"
+      ]
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "checkout-v2-button-color",
+  "hypothesis": "Changing the checkout button to high-contrast blue increases successful checkout conversion by lowering visual scanning effort.",
+  "primary_metric": {
+    "name": "checkout_conversion_rate",
+    "delta_direction": "increase"
+  },
+  "secondary_metrics": [
+    "time_to_checkout",
+    "cart_abandonment"
+  ],
+  "guardrails": [
+    {
+      "name": "p95_latency_ms",
+      "floor": "<=250"
+    },
+    {
+      "name": "error_rate",
+      "floor": "<=0.005"
+    },
+    {
+      "name": "revenue_per_user",
+      "floor": ">=baseline"
+    }
+  ],
+  "mde": {
+    "effect_size": "+2pp",
+    "sample_size": 24000,
+    "runtime_days": 14
+  },
+  "srm_passed": true,
+  "decision": "ship"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "EXP1",
+  "hypothesis": "stuff",
+  "primary_metric": {
+    "name": "x"
+  },
+  "guardrails": [
+    {
+      "name": "latency",
+      "floor": "<=250"
+    }
+  ],
+  "mde": {
+    "effect_size": "?",
+    "sample_size": 0,
+    "runtime_days": 0
+  },
+  "decision": "hold"
+}
+]]></code>
+    <note>experiment_id not kebab; hypothesis too short; primary_metric.delta_direction missing; guardrails &lt;3; mde sample_size=0; decision 'hold' not allowed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>guardrails array shorter than 3.</item>
+      <item>decision = 'hold' or absent — every readout must be ship/kill/iterate.</item>
+      <item>primary metric swapped after launch (post-hoc).</item>
+      <item>srm_passed = false yet decision != 'kill' (must debug bucketing first).</item>
+      <item>experiment_id duplicating an active or archived experiment with the same hypothesis (deduplication failed).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-experimentation-at-scale.py">Validator script enforcing this schema</reference>
 </text>
