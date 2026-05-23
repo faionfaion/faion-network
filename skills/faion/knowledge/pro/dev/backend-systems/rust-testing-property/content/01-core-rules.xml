@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-testing-property Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-testing-property. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="rust-testing-property Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the rust-testing-property methodology. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Any Rust crate containing parsers, codecs, serialization, or pure mathematical functions MUST have at least one proptest! block covering the primary invariant (e.g., decode(encode(x)) == x, sorted output is monotone, result is in [0, 1]).</statement>
-      <rationale source="v1-source">Hand-written tables cover the happy path and the author's mental model of edge cases. proptest covers the cases the author did not think of, which are exactly the cases that produce production bugs.</rationale>
+      <statement>Rust crates containing parsers, codecs, serialization, or pure math MUST have at least one proptest! block covering the primary invariant.</statement>
+      <rationale source="v1-source">Hand-written tables cover the author&apos;s mental model; proptest catches the cases the author did not think of.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Record and commit failing proptest seeds. When a CI run fails, extract the PROPTEST_SEED from the output and add it as a regression test: proptest::test_runner::Config { failure_persistence: Some(Box::new(FileFailurePersistence::WithSource("regression"))) }. Do not discard seeds.</statement>
-      <rationale source="v1-source">A seed that reproduced a bug is a regression test for free. Discarding it means the same bug can reappear undetected.</rationale>
+      <statement>Record and commit failing proptest seeds. Configure FailurePersistence::WithSource(&quot;regression&quot;) so seeds are checked into git.</statement>
+      <rationale source="v1-source">A seed that reproduced a bug is a regression test for free.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Never use assert_eq! to compare f64 values in tests. Use approx::assert_relative_eq!(a, b, epsilon = 1e-9) or approx::assert_abs_diff_eq!. This applies to both example-based and property-based tests.</statement>
-      <rationale source="v1-source">assert_eq! on f64 fails when floating-point arithmetic produces representation differences (e.g., 0.1 + 0.2 != 0.3). approx comparisons express the actual tolerance requirement.</rationale>
+      <statement>Never use assert_eq! to compare f64 values. Use approx::assert_relative_eq! or assert_abs_diff_eq!.</statement>
+      <rationale source="v1-source">assert_eq! on f64 fails on representation differences like 0.1 + 0.2 != 0.3.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Cap cases at 256-1024 per property in CI to keep wall-clock cost bounded.</statement>
+      <rationale source="v1-source">Unbounded cases inflate CI minutes without proportional coverage gain.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use prop_assert!/prop_assert_eq! inside proptest! blocks. Bare assert! produces opaque panic messages without the shrunk counterexample.</statement>
+      <rationale source="v1-source">proptest macros annotate the failing input on shrink output.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>
+      <rationale source="Skip-rule guard">Prevents duplicate work and wrong-tool application.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,67 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-http-handlers Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-http-handlers as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Placing Json&lt;T&gt; before State or Path parameters.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Does not fail at compile time (just extractor ordering) but produces confusing behavior when State is added later and causes trait bound errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Putting a raw DbPool or Config struct directly in AppState without Arc.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Forces a full clone of potentially large structs per request. Use Arc&lt;DbPool&gt; and Arc&lt;Config&gt; instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding 'a lifetime parameters to handler signatures to "fix" &amp;str params.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lifetime params do not satisfy Axum's Into&lt;Router&gt; bound. The correct fix is to use String (owned) or 'static &amp;str constants.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Placing sqlx::query! without DATABASE_URL or .sqlx/ offline files in CI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>sqlx queries are verified at compile time; CI builds without DATABASE_URL set will fail. Use SQLX_OFFLINE=true and check in .sqlx/.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using std::sync::Mutex inside async handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Holding a std::sync::MutexGuard across .await deadlocks the Tokio runtime. Use tokio::sync::Mutex or prefer message-passing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>unwrap() and expect() in prod paths because they look harmless to LLMs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Block via clippy -D unwrap_used; panics crash the Tokio task.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>&amp;str as a handler param doesn't compile (no 'static lifetime); agent's first fix is often wrong ('a lifetime).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force String; the agent's lifetime fix won't satisfy Axum's Handler trait.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Extractor order errors produce confusing trait-bound messages; agent loops on compile errors.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hint that body extractors must come last.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>sqlx::query! requires DATABASE_URL at compile time or .sqlx/ offline files. Agents miss the offline step in CI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use SQLX_OFFLINE=true and check in .sqlx/.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>tracing::info! without target = overflows logs in hot paths.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require sampling for high-QPS endpoints.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Async + std::sync::Mutex creates deadlocks. Agents reach for sync::Mutex in async code.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use tokio::sync::Mutex (or RwLock) only when needed; prefer message-passing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Any new dep in Cargo.toml, unsafe block, or tokio::spawn with unbounded lifetime needs approval.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Compile times and runtime correctness regress quickly; human-in-loop checkpoint required.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Rust HTTP Handlers (Axum) Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real rust-http-handlers deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="raw-string-bodies" severity="medium">
+      <symptom>Handler signature takes / returns String; JSON shape drifts silently; no compile-time check.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author skipped typed DTOs for 'quick endpoint'.</root-cause>
+      <fix>Typed DTOs with serde + validator; raw strings allowed only on debug routes.</fix>
+    </antipattern>
+    <antipattern id="client-instantiated-inside-handler" severity="high">
+      <symptom>HTTP client built fresh inside every handler; connection pool never reused; latency explodes.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author treated client as a local variable.</root-cause>
+      <fix>Store clients in AppState; share via Arc.</fix>
+    </antipattern>
+    <antipattern id="internal-error-leaks-to-public" severity="high">
+      <symptom>500 response body contains SQL error / stack trace / internal IDs.</symptom>
+      <root-cause source="v1-source + faion-net curation">AppError IntoResponse passes display() directly to the body.</root-cause>
+      <fix>Scrub public message; full detail stays in tracing fields with correlation id.</fix>
+    </antipattern>
+    <antipattern id="missing-tracing-instrument" severity="medium">
+      <symptom>Tail latency triage requires manually correlating logs by timestamp.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author skipped #[tracing::instrument].</root-cause>
+      <fix>Add instrument(skip(state)) to every handler; emit span fields for request id + entity id.</fix>
+    </antipattern>
   </section>
 </text>

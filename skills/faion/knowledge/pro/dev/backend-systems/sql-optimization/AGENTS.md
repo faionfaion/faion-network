@@ -3,74 +3,97 @@ slug: sql-optimization
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: SQL optimization is the practice of analyzing and improving database queries to reduce execution time, minimize resource consumption, and improve application responsiveness.
-content_id: "6379d7bf056266f9"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a SQL optimization report (EXPLAIN ANALYZE evidence, index recommendations, query rewrites, before/after timings) for the top resource-consuming queries.
+content_id: "bc0f39220cdb0558"
+complexity: medium
+produces: report
+est_tokens: 5200
 tags: [sql, database, performance, query-optimization, indexing]
 ---
 # SQL Optimization
 
 ## Summary
 
-**One-sentence:** SQL optimization is the practice of analyzing and improving database queries to reduce execution time, minimize resource consumption, and improve application responsiveness.
+**One-sentence:** Produces a SQL optimization report (EXPLAIN ANALYZE evidence, index recommendations, query rewrites, before/after timings) for the top resource-consuming queries.
 
-**One-paragraph:** SQL optimization is the practice of analyzing and improving database queries to reduce execution time, minimize resource consumption, and improve application responsiveness. Measure with EXPLAIN ANALYZE before optimizing. Optimize the right queries: frequent ones and those consuming most database resources. Remember that indexes are not free: they speed reads but slow writes. Always filter data early, join smartly, and fetch only needed columns. Consider the full picture: query optimization, connection pooling, caching, and materialized views.
+**One-paragraph:** SQL optimization improves database queries by measuring with EXPLAIN ANALYZE first, optimizing high-impact queries (frequent or resource-heavy), respecting index trade-offs (reads vs writes), and reducing data movement (filter early, fetch only needed columns). Connection pooling, caching, and materialized views complete the picture.
+
+**Ефективно для:**
+
+- Slow query alerts — EXPLAIN ANALYZE замість здогадок.
+- Високочастотні запити (10K/день) важливіші за нічний batch.
+- Composite + covering + partial індекси під реальні фільтри.
+- Connection pooling + streaming для memory-bounded read paths.
 
 ## Applies If (ALL must hold)
 
 - Slow query complaints from users or monitoring alerts.
-- Database CPU or I/O consistently high, indicating resource bottleneck.
-- Application response times degrading under load, especially under high concurrency.
-- Before deploying new features with complex or unknown performance characteristics.
-- Regular performance audits and maintenance as data grows.
+- Database CPU or I/O consistently high (resource bottleneck).
+- Application response times degrade under load.
+- Before deploying features with unknown perf characteristics.
 
 ## Skip If (ANY kills it)
 
-- Premature optimization before establishing actual bottleneck with profiling.
-- Over-optimizing rarely-run queries; effort should focus on high-traffic paths.
-- Over-indexing (more indexes = slower writes without proportional read speedup).
-- Replacing simple working queries with complex optimizations without benchmarking trade-offs.
-- Caching strategy that defeats database optimizations (e.g., caching and stale reads).
+- Premature optimization before profiling shows the actual bottleneck.
+- Over-indexing without a measured read-vs-write trade-off.
+- Replacing simple working queries with complex rewrites without a benchmark.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Query + production-sized dataset | SQL + schema | service / staging DB |
+| EXPLAIN ANALYZE output | text/JSON | psql / MySQL CLI |
+| Slow query log threshold | ms value | ops decision |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[database-design]] | Schema shape (PK, FK, normalization) is the precondition for index choices |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/05-examples.xml` | medium | One fully-worked example matching the output schema | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `collect-explain-analyze` | haiku | Mechanical capture of EXPLAIN (ANALYZE, BUFFERS) output. |
+| `propose-indexes-and-rewrites` | sonnet | Per-query judgment on composite/covering/partial indexes. |
+| `synthesize-report` | sonnet | Compose the before/after report. |
+| `validate-output` | haiku | Schema check via the validator script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/sql-optimization-report.md` | Markdown skeleton for the optimization report (per-query before/after). |
+| `templates/sql-optimization-report.json` | JSON skeleton matching the output contract. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-sql-optimization.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[database-design]]
+- [[caching-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree picks between adding an index, rewriting the query, or escalating to caching / materialized view based on plan + workload characteristics.

@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rust-tokio-async Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="rust-tokio-async Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rust-tokio-async.json",
+  "type": "object",
+  "required": [
+    "pattern",
+    "concurrency_bound",
+    "all_io_timed_out",
+    "no_lock_across_await"
+  ],
+  "properties": {
+    "pattern": {
+      "enum": [
+        "try_join",
+        "spawn_blocking",
+        "buffer_unordered_semaphore",
+        "join_set",
+        "select"
+      ]
+    },
+    "concurrency_bound": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "all_io_timed_out": {
+      "const": true
+    },
+    "no_lock_across_await": {
+      "const": true
+    },
+    "uses_join_set_for_dynamic": {
+      "type": "boolean"
+    },
+    "select_branches_documented": {
+      "type": "boolean"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "pattern": "buffer_unordered_semaphore",
+  "concurrency_bound": 16,
+  "all_io_timed_out": true,
+  "no_lock_across_await": true,
+  "uses_join_set_for_dynamic": true,
+  "select_branches_documented": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pattern": "try_join",
+  "concurrency_bound": 10000,
+  "all_io_timed_out": false,
+  "no_lock_across_await": false,
+  "uses_join_set_for_dynamic": false,
+  "select_branches_documented": false
+}
+]]></code>
+    <note>try_join over 10000 futures (use buffer_unordered); missing timeouts; lock across .await.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">try_join! over a Vec/iterator with unknown or large N.</forbidden>
+    <forbidden id="f2">I/O call without tokio::time::timeout.</forbidden>
+    <forbidden id="f3">std::sync::MutexGuard alive across an .await point.</forbidden>
+    <forbidden id="f4">Vec&lt;JoinHandle&lt;T&gt;&gt; instead of JoinSet for dynamic task groups.</forbidden>
+    <forbidden id="f5">spawn_blocking awaited with .await? (missing the second ? for join error).</forbidden>
+  </section>
+
+  <reference path="scripts/validate-rust-tokio-async.py">Validator script.</reference>
 </text>

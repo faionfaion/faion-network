@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: scaffold model+db+service+handler+route stubs for a new entity
+# consumes: entity name (arg 1)
+# produces: 5 stub Rust files
+# depends-on: scripts/validate-rust-project-structure.py
+# token-budget-impact: ~150 tokens
 # new_module.sh <name>
 # Creates stub files for a new domain entity across routes/handlers/services/db/models.
 # Usage: ./scripts/new_module.sh products

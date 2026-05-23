@@ -1,42 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-ownership Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-ownership as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Keeping an immutable reference live while attempting a mutable borrow of the same value.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The compiler rejects this to prevent data races. Restructure so the shared borrow ends before the mutable one begins.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using Rc or RefCell in async code that is sent to tokio::spawn.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Rc and RefCell are not Send/Sync. tokio::spawn requires 'static + Send. The compile error is a correct diagnosis: redesign ownership with Arc.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Multiple overlapping borrow_mut() calls on the same RefCell across await points.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>borrow_mut() panics at runtime if already borrowed. Unlike compile-time borrow errors, these surface only under specific execution paths in production.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>A struct field that borrows from another field of the same struct (self-referential).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Not expressible in safe Rust without Pin + unsafe or crates like ouroboros. Agents write these confidently and produce "cannot borrow as mutable" or "borrowed value does not live long enough" errors. Redesign to hold owned data or use indices instead of references.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Capturing a reference to a local variable inside tokio::spawn(async move { ... &amp;ref ... }).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>tokio::spawn requires 'static. Local references are not 'static. The "fix" of adding 'static to the type is wrong — use Arc::clone to share ownership instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Adding .clone() to silence a borrow-checker error without understanding the lifetime conflict.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Gratuitous clones double allocation, hide architectural problems, and mask bugs that the borrow checker was correctly diagnosing. Force agents to articulate the lifetime conflict before applying any clone.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Adding 'static bounds to structs, function parameters, or generics "to make it compile".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>'static means the type must live for the entire program. Adding it to an API parameter forces every caller to provide a leaked or globally-static value. Use Arc instead.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Rust Ownership Model Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real rust-ownership deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="clone-to-silence-borrow-checker" severity="medium">
+      <symptom>.clone() on String / Vec sprinkled to make the code compile; profiler shows hot allocation.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author cloned to silence the borrow checker rather than fix the design.</root-cause>
+      <fix>Lift the value into a longer-lived scope or borrow; document required clones.</fix>
+    </antipattern>
+    <antipattern id="rc-refcell-across-spawn" severity="high">
+      <symptom>Rc&lt;RefCell&lt;State&gt;&gt; moved into tokio::spawn; compile error or runtime panic.</symptom>
+      <root-cause source="v1-source + faion-net curation">Rc/RefCell are !Send + !Sync; cannot cross threads.</root-cause>
+      <fix>Switch to Arc&lt;Mutex&lt;T&gt;&gt; or Arc&lt;RwLock&lt;T&gt;&gt;.</fix>
+    </antipattern>
+    <antipattern id="elided-lifetime-on-returned-ref" severity="medium">
+      <symptom>fn x(&amp;self) -&gt; &amp;T; consumers fight lifetime errors at call sites.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author relied on elision for non-trivial signatures.</root-cause>
+      <fix>Make lifetimes explicit when returning references; document the relationship.</fix>
+    </antipattern>
   </section>
 </text>

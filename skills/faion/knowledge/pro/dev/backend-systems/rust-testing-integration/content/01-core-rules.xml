@@ -1,23 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-testing-integration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-testing-integration. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="rust-testing-integration Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the rust-testing-integration methodology. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Use tower::ServiceExt::oneshot to drive Axum routers in integration tests. Never bind a real TCP listener on a fixed port (e.g., 127.0.0.1:8080) for HTTP integration tests. If a real listener is needed, bind to :0 and discover the assigned port with local_addr().</statement>
-      <rationale source="v1-source">Hardcoded ports cause CI failures when tests run in parallel — two tests bind the same address and one panics. oneshot drives the router in-process with no socket allocation.</rationale>
+      <statement>Use tower::ServiceExt::oneshot to drive Axum routers in-process; never bind a real listener on a fixed port.</statement>
+      <rationale source="v1-source">Hardcoded ports cause parallel-test port collisions; oneshot drives the router without any socket allocation.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Use testcontainers-rs for any integration test that requires a real database. Never point integration tests at a shared dev or staging database. Provide per-test schema isolation (CREATE SCHEMA test_&lt;uuid&gt; + DROP after) when sharing a container across a test suite.</statement>
-      <rationale source="v1-source">Integration tests that share a real Postgres container without isolation fail in CI in random order because one test's INSERT is visible to another's SELECT. Per-test schema or transaction rollback prevents state leak.</rationale>
+      <statement>Use testcontainers-rs for any integration test needing a real database. Per-test schema (CREATE SCHEMA test_&lt;uuid&gt;) or per-test transaction rollback isolates state.</statement>
+      <rationale source="v1-source">Shared containers without isolation fail in random CI order — one test&apos;s INSERT becomes another&apos;s SELECT.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Run database migrations (sqlx migrate run or diesel migration run) inside the integration test setup before any assertions. Tests MUST NOT assume migrations are pre-applied in the container.</statement>
-      <rationale source="v1-source">A freshly-started Postgres container has no schema. Tests that skip migration setup produce confusing "relation does not exist" errors that are hard to diagnose in CI.</rationale>
+      <statement>Run migrations (sqlx migrate run / diesel migration run) inside test setup before any assertions.</statement>
+      <rationale source="v1-source">Freshly-started containers have no schema; skipping migrations gives confusing &apos;relation does not exist&apos; errors.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Use insta for snapshot tests of complex structured output (HTML, large JSON, AST). Do not hand-write multi-line assert_eq! strings for outputs longer than ~10 lines.</statement>
-      <rationale source="v1-source">Hand-written expected strings break on every whitespace or ordering change, producing noisy diffs. insta stores the expected value in a .snap file that git tracks and reviews cleanly.</rationale>
+      <statement>Use insta for snapshot tests of structured output longer than ~10 lines. Do not hand-write multi-line assert_eq! strings.</statement>
+      <rationale source="v1-source">Hand-written expected strings break on whitespace/ordering changes; insta stores .snap files git tracks cleanly.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Specify #[tokio::test(flavor = &quot;multi_thread&quot;, worker_threads = 2)] for integration tests that spawn tasks or hit HTTP handlers.</statement>
+      <rationale source="v1-source">Default current_thread masks Send/Sync bugs that appear only under multi-thread runtimes.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>
+      <rationale source="Skip-rule guard">Prevents duplicate work and wrong-tool application.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

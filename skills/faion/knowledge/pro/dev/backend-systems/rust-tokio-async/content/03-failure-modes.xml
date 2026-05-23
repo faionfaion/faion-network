@@ -1,32 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-tokio-async Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-tokio-async as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="rust-tokio-async Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the rust-tokio-async methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Wrapping sqlx::PgPool or reqwest::Client in Mutex&lt;T&gt;.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both types are already Send + Sync (they use internal Arc-wrapped pools). Adding a Mutex serializes all access, defeating the pool's purpose.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>tokio::spawn with a closure that captures &amp;Database or any non-'static reference.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>tokio::spawn requires Send + 'static. Agents fix this by adding Arc::new everywhere; review for over-Arc'd state that should be owned or passed by value.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>futures::executor::block_on inside an async function.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Blocks the Tokio executor thread, starving all other tasks on that thread. Strictly forbidden inside async code. Use .await instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Ignoring JoinHandle errors: let _ = handle.await;</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>JoinHandle returns Result with JoinError on panic. Discarding it swallows panics silently. Use .await?? or explicitly match the JoinError.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Mixing async-std::task::spawn and tokio::spawn in the same project.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Different runtimes; futures from one cannot be awaited by the other. Pin Tokio as the single runtime in the system prompt.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-try-join-large-n" severity="high">
+      <symptom>Service calls try_join! over 10K items; runtime allocates 10K tasks and OOMs the pod.</symptom>
+      <root-cause source="v1-source">try_join! has no concurrency bound.</root-cause>
+      <fix>Switch to stream::iter(...).buffer_unordered(N) with N tied to backend pool size.</fix>
+    </antipattern>
+
+    <antipattern id="fm-cpu-blocks-runtime" severity="high">
+      <symptom>Argon2 hashing inside an async handler stalls all other requests on the same worker.</symptom>
+      <root-cause source="v1-source">CPU work not offloaded.</root-cause>
+      <fix>Wrap in tokio::task::spawn_blocking(move || argon2::hash(...)).</fix>
+    </antipattern>
+
+    <antipattern id="fm-missing-timeout" severity="high">
+      <symptom>External HTTP call hangs forever; the worker pool exhausts.</symptom>
+      <root-cause source="v1-source">No timeout on the call.</root-cause>
+      <fix>Wrap with tokio::time::timeout(Duration::from_secs(5), client.get(...).send()).await??.</fix>
+    </antipattern>
+
+    <antipattern id="fm-mutex-across-await" severity="high">
+      <symptom>let g = mutex.lock(); some_io.await; deadlocks on multi_thread runtime.</symptom>
+      <root-cause source="v1-source">std::sync::Mutex held across .await.</root-cause>
+      <fix>Narrow the critical section to before .await, or use tokio::sync::Mutex.</fix>
+    </antipattern>
+
+    <antipattern id="fm-select-cancel-loss" severity="medium">
+      <symptom>select! between an HTTP read and shutdown drops the read mid-buffer.</symptom>
+      <root-cause source="v1-source">Read future is not cancellation-safe.</root-cause>
+      <fix>Document the unsafe branch + structure as a loop with biased select, OR move the read into a JoinSet.</fix>
+    </antipattern>
+
   </section>
 </text>

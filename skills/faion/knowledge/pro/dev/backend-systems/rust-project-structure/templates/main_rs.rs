@@ -1,3 +1,8 @@
+// purpose: main.rs ≤80 lines — config + state + router + serve
+// consumes: AppState + router
+// produces: bound HTTP server
+// depends-on: scripts/validate-rust-project-structure.py
+// token-budget-impact: ~250 tokens
 // src/main.rs — ≤80 lines: config, state, router composition, serve.
 use std::sync::Arc;
 

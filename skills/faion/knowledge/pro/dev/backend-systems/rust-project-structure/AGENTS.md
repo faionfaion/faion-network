@@ -3,73 +3,97 @@ slug: rust-project-structure
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Directory layout for Rust HTTP services: src/{config,error,routes,handlers,services,models,db,middleware}/ with a single AppState struct holding Arc-wrapped resources, main.
-content_id: "acc7a79fdc60282d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: src/{config,error,routes,handlers,services,models,db,middleware}/ layout with AppState behind Arc; main.rs ≤80 lines; new modules added via scaffold script.
+content_id: "6287ed8724b364e1"
+complexity: medium
+produces: code
+est_tokens: 4400
 tags: [rust, axum, actix, project-structure, modules]
 ---
 # Rust Project Structure (Axum/Actix)
 
 ## Summary
 
-**One-sentence:** Directory layout for Rust HTTP services: src/{config,error,routes,handlers,services,models,db,middleware}/ with a single AppState struct holding Arc-wrapped resources, main.
+**One-sentence:** src/{config,error,routes,handlers,services,models,db,middleware}/ layout with AppState behind Arc; main.rs ≤80 lines; new modules added via scaffold script.
 
-**One-paragraph:** Directory layout for Rust HTTP services: src/{config,error,routes,handlers,services,models,db,middleware}/ with a single AppState struct holding Arc-wrapped resources, main.rs kept under ~80 lines, and migrations in migrations/. Promotes to a Cargo workspace when a second binary or shared-types crate is needed.
+**One-paragraph:** Directory layout for Rust HTTP services: src/{config,error,routes,handlers,services,models,db,middleware}/ with a single AppState struct holding Arc-wrapped resources, main.rs limited to ~80 lines (config + state + router + serve), and a new-module scaffold that creates the model + db + service + handler + route stub for a new entity. Output is the Cargo project skeleton + scaffold script.
+
+**Ефективно для:**
+
+- Greenfield Rust service onboarding.
+- Standardising layout across multiple Rust services in one organisation.
+- Adding a new entity quickly with the scaffold script.
+- Keeping main.rs slim so the wiring stays readable.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new Rust web service with a production layout from day one.
-- Splitting a single-file main.rs into modules once it exceeds ~500 lines.
-- Creating a Cargo workspace for a service that will gain multiple crates.
-- Adding a new feature area and choosing between binary, lib, or workspace member.
-- Standardizing layout across a fleet of Rust services.
+- Rust HTTP service (Axum or Actix-web).
+- Team owns more than one Rust service and wants a common shape.
+- Service has multiple resources / entities (orders, users, products).
+- Layout is allowed to be slightly larger than 'one file' for clarity.
 
 ## Skip If (ANY kills it)
 
-- One-off scripts or proc-macros — keep flat in src/main.rs.
-- Embedded/no_std projects — layout assumes async/Tokio.
-- WASM-only crates — wasm-bindgen dominates the layout.
-- Pure FFI shims — build.rs and bindgen dominate.
+- Tiny CLI / one-off script — flat layout wins.
+- Library crate exposing a single trait — module-by-feature is simpler.
+- Embedded / no_std code.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Crate name | string | team |
+| Resource list | yaml / md | team |
+| Cargo.toml dependencies | list | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-modules` | sonnet | Module choice needs judgement when adding new layers. |
+| `draft-main` | sonnet | main.rs wiring benefits from sonnet. |
+| `validate-output` | haiku | Schema check is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/main_rs.rs` | main.rs ≤80 lines: config + state + router + serve |
+| `templates/new_module.sh` | Scaffold model+db+service+handler+route stubs for a new entity |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-project-structure.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- Parent: `pro/dev/backend-systems/`
+- [[rust-backend]]
+- [[rust-http-handlers]]
+- [[rust-error-handling]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

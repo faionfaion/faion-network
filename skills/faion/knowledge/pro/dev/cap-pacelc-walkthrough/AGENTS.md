@@ -3,77 +3,96 @@ slug: cap-pacelc-walkthrough
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cap Pacelc Walkthrough: codified engineering practice that turns the recurring 'role-software-architect/Microservice extraction safety gate' decision into a repeatable, auditable artefact.
-content_id: "669ac136ea8ac715"
-tags: [cap-pacelc-walkthrough, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a CAP/PACELC decision record for a specific microservice-extraction or datastore choice, naming AP vs CP under partition and the EL vs EC trade-off otherwise.
+content_id: "1dd7301460de00c0"
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [cap-theorem, pacelc, distributed-systems, decision-record, pro]
 ---
-# Cap Pacelc Walkthrough
+# CAP / PACELC Walkthrough
 
 ## Summary
 
-**One-sentence:** Cap Pacelc Walkthrough: codified engineering practice that turns the recurring 'role-software-architect/Microservice extraction safety gate' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a CAP/PACELC decision record for a specific microservice-extraction or datastore choice, naming AP vs CP under partition and the EL vs EC trade-off otherwise.
 
-**One-paragraph:** Cap Pacelc Walkthrough addresses the gap identified by the role-software-architect/Microservice extraction safety gate playbook: distributed-patterns exists but never walks the architect through CAP vs PACELC for their specific split. Needed when extracting state across services or picking AP vs CP datastore. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** When extracting state across services or picking AP vs CP datastores, this methodology walks the architect through CAP (under partition: pick Availability OR Consistency) and PACELC (Else: Latency vs Consistency) for the specific split. Output: a versioned decision record naming the chosen mode, the rationale citing measured RPO/RTO + read/write workload, and a single accountable owner.
+
+**Ефективно для:**
+
+- Microservice extraction — який бік CAP кожен сервіс обирає.
+- Datastore selection — AP (Dynamo, Cassandra) чи CP (Spanner, etcd).
+- PACELC: latency-vs-consistency коли мережа здорова — теж рішення.
+- Versioned ADR з owner — потрібен для post-mortem traceability.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-architect/Microservice extraction safety gate OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Task is an instance of role-software-architect/Microservice extraction safety gate OR closely-adjacent.
+- Operator has Prerequisites available before starting.
+- Output will be consumed by a downstream agent or human reviewer.
+- Tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Team already maintains a working ADR for this split.
+- Greenfield prototype with no production users.
+- Regulatory context overrides any in-methodology guidance.
 
 ## Prerequisites
 
-- recent context for the role-software-architect/Microservice extraction safety gate task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| RPO/RTO targets | policy doc | service owner |
+| Read/write workload split | metrics | observability |
+| Network partition exposure | infra map | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[microservices-design]] | Service-boundary doc that justifies the split being analysed |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-split judgment on AP vs CP and EL vs EC. |
+| `review-for-compliance` | opus | Cross-service synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cap-pacelc-walkthrough.json` | JSON schema for the Cap Pacelc Walkthrough output contract |
-| `templates/cap-pacelc-walkthrough.md` | Markdown skeleton with the required fields |
+| `templates/cap-pacelc-walkthrough.json` | JSON skeleton matching the output contract. |
+| `templates/cap-pacelc-walkthrough.md` | Markdown skeleton naming both axes. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-cap-pacelc-walkthrough.py` | Enforce Cap Pacelc Walkthrough output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-cap-pacelc-walkthrough.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
+| `scripts/validate-cap-pacelc-walkthrough.py` | Validator script. | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-architect/Microservice extraction safety gate`
+- [[microservices-design]]
+- [[choreography-vs-orchestration-decision]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree separates the two CAP/PACELC axes and routes the decision to AP vs CP first, then EL vs EC; both must be named.

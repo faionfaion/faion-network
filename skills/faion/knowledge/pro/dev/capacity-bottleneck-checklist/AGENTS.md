@@ -3,77 +3,96 @@ slug: capacity-bottleneck-checklist
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Capacity Bottleneck Checklist: codified engineering practice that turns the recurring 'role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event)' decision into a repeatable, auditable artefact.
-content_id: "712f4bcda3b2b6ff"
-tags: [capacity-bottleneck-checklist, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a versioned capacity-bottleneck checklist that names DB connections, queue throughput, gateway TLS, autoscale lag chokepoints plus a 20% headroom floor and a single owner.
+content_id: "f2909c0a4b4be76d"
+complexity: medium
+produces: checklist
+est_tokens: 4300
+tags: [capacity, bottleneck, checklist, dev, pro]
 ---
 # Capacity Bottleneck Checklist
 
 ## Summary
 
-**One-sentence:** Capacity Bottleneck Checklist: codified engineering practice that turns the recurring 'role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event)' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a versioned capacity-bottleneck checklist that names DB connections, queue throughput, gateway TLS, autoscale lag chokepoints plus a 20% headroom floor and a single owner.
 
-**One-paragraph:** Capacity Bottleneck Checklist addresses the gap identified by the role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event) playbook: Capacity model lives or dies on whether you found the chokepoint (DB connections, queue throughput, gateway TLS, autoscale lag). A checklist is missing in the corpus. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Capacity Bottleneck Checklist takes a pre-launch or scale-event input and emits a versioned, owner-named checklist enumerating the candidate chokepoints (DB connections, queue throughput, gateway TLS, autoscale lag, hot keys, fan-out limits), the measured current headroom, and the gating decision. The 20% spare-capacity floor is non-negotiable; below it, the artefact escalates before commit.
+
+**Ефективно для:**
+
+- Pre-launch або scale event — фіксований owner, не "команда".
+- Чек-лист bottleneck'ів (DB pool, TLS gateway, queue, autoscale lag).
+- Headroom floor ≥20% — інакше escalate, не committee debate.
+- Versioned + last_reviewed артефакт для traceability.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Task is an instance of role-software-architect/Capacity + cost-modelling exercise OR closely-adjacent variant.
+- Operator has Prerequisites artefacts available before starting.
+- Output will be consumed by a downstream agent or human reviewer.
+- Tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- The team already maintains a working capacity artefact — replace, do not duplicate.
+- Greenfield prototype with no production users.
+- Regulatory context overrides any in-methodology guidance (defer to legal).
 
 ## Prerequisites
 
-- recent context for the role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent capacity context (last 30 days) | metrics dump | observability |
+| Write-access to decision log | repo / wiki | team |
+| Named owner candidate | handle/email/role | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[software-developer]] | Parent role context — provides the operating frame for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-headroom-floor | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment on bottlenecks and headroom. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/capacity-bottleneck-checklist.json` | JSON schema for the Capacity Bottleneck Checklist output contract |
-| `templates/capacity-bottleneck-checklist.md` | Markdown skeleton with the required fields |
+| `templates/capacity-bottleneck-checklist.json` | JSON skeleton matching the output contract. |
+| `templates/capacity-bottleneck-checklist.md` | Markdown skeleton naming the checklist sections. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-capacity-bottleneck-checklist.py` | Enforce Capacity Bottleneck Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-capacity-bottleneck-checklist.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
+| `scripts/validate-capacity-bottleneck-checklist.py` | Validator script reused as the canonical name across docs. | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-architect/Capacity + cost-modelling exercise (pre-launch or scale-event)`
+- [[cap-pacelc-walkthrough]]
+- [[ci-prod-readiness-gates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree gates the workflow on headroom and ownership; below the 20% floor escalates, missing owner blocks output.

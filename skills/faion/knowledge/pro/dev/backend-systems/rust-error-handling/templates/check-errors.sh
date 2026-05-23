@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI script: fail PR if forbidden error-handling patterns appear
+# consumes: Cargo project
+# produces: exit code + clippy report
+# depends-on: scripts/validate-rust-error-handling.py
+# token-budget-impact: ~120 tokens
 # CI script: fail PR if forbidden error-handling patterns appear.
 # Usage: bash scripts/check-errors.sh
 set -euo pipefail

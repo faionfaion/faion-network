@@ -3,73 +3,95 @@ slug: rust-error-handling
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use thiserror for library/crate-level typed error enums and anyhow at application binary boundaries.
-content_id: "e2d0ade4aa96a99e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: thiserror at crate level + anyhow at binary boundaries; one AppError per service; ? wraps via From; no unwrap/expect in non-test code.
+content_id: "ac0d1a20dce3dafe"
+complexity: medium
+produces: code
+est_tokens: 4300
 tags: [rust, error-handling, result-type, async]
 ---
 # Rust Error Handling
 
 ## Summary
 
-**One-sentence:** Use thiserror for library/crate-level typed error enums and anyhow at application binary boundaries.
+**One-sentence:** thiserror at crate level + anyhow at binary boundaries; one AppError per service; ? wraps via From; no unwrap/expect in non-test code.
 
-**One-paragraph:** Use thiserror for library/crate-level typed error enums and anyhow at application binary boundaries. Never use Box<dyn Error> in public function signatures. Wrap errors with ? propagation; add .context() at layer boundaries, not on every ?. Map domain errors to HTTP responses via impl IntoResponse for AppError at the handler layer only.
+**One-paragraph:** Use thiserror for library/crate-level typed error enums and anyhow at application binary boundaries. Service code defines one AppError per crate; every fallible function returns Result<T, E>; ? propagates via thiserror From conversions; unwrap/expect are banned outside tests and main glue. Output is a check-errors.sh CI script plus the AppError module.
+
+**Ефективно для:**
+
+- Standardising error types across a Rust service in one AppError enum.
+- Replacing scattered Result<T, Box<dyn Error>> with typed errors at crate boundaries.
+- Wiring anyhow at the binary boundary while keeping libraries cleanly typed.
+- Adding a clippy-based CI gate that blocks unwrap/expect in non-test code.
 
 ## Applies If (ALL must hold)
 
-- New Rust crate or service exposing typed, programmatic errors.
-- Refactoring unwrap()/expect() heavy paths into Result<T, E> with ? propagation.
-- Designing an error enum a library crate callers will match on.
-- Mapping domain errors to HTTP responses in Axum/Actix handlers.
-- Wiring tracing + anyhow::Context for production observability.
+- Rust crate or service authoring fallible APIs.
+- Team is willing to ban unwrap/expect in production paths.
+- CI can run cargo clippy with custom denies.
+- Project mixes library crates + binary crate.
 
 ## Skip If (ANY kills it)
 
-- Throwaway scripts, build.rs, or tests where unwrap() carries clear intent.
-- Invariant-violation paths where panic! is correct (programmer bugs).
-- FFI boundaries returning C error codes — convert at the boundary, not via anyhow::Error.
-- Single-binary CLI with fn main() -> anyhow::Result<()> — no custom enum needed.
+- Tiny CLI scripts where anyhow + bubble-up is enough end to end.
+- Experimental code intentionally panicking on invariants.
+- Embedded / no_std where thiserror and anyhow do not apply unchanged.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Crate / binary layout | Cargo.toml | team |
+| Domain error list | md | team — every observable failure |
+| CI runner | GitHub Actions / GitLab CI | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/backend-systems/rust-backend/AGENTS.md` | AppError lives in the service layout |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-app-error` | sonnet | Enum variant choices need judgement. |
+| `write-check-errors-script` | sonnet | CI script benefits from sonnet. |
+| `validate-output` | haiku | Schema check is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/check-errors.sh` | CI script: fail PR if forbidden error patterns appear |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-error-handling.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- Parent: `pro/dev/backend-systems/`
+- [[rust-backend]]
+- [[rust-http-handlers]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

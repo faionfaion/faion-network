@@ -1,22 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rust-testing-unit Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="rust-testing-unit Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rust-testing-unit.json",
+  "type": "object",
+  "required": [
+    "test_module_path",
+    "is_colocated_cfg_test",
+    "tokio_flavor",
+    "uses_expect_messages"
+  ],
+  "properties": {
+    "test_module_path": {
+      "type": "string",
+      "pattern": "\\.rs$"
+    },
+    "is_colocated_cfg_test": {
+      "type": "boolean"
+    },
+    "tokio_flavor": {
+      "enum": [
+        "current_thread",
+        "multi_thread"
+      ]
+    },
+    "uses_expect_messages": {
+      "const": true
+    },
+    "mocks_only_traits": {
+      "const": true
+    },
+    "uses_virtual_time": {
+      "type": "boolean"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "test_module_path": "src/service/user.rs",
+  "is_colocated_cfg_test": true,
+  "tokio_flavor": "current_thread",
+  "uses_expect_messages": true,
+  "mocks_only_traits": true,
+  "uses_virtual_time": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "test_module_path": "tests/inline_test.rs",
+  "is_colocated_cfg_test": false,
+  "tokio_flavor": "none",
+  "uses_expect_messages": false,
+  "mocks_only_traits": false,
+  "uses_virtual_time": false
+}
+]]></code>
+    <note>No tokio flavor declared; uses unwrap() instead of expect; mocks a concrete struct.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">unwrap() inside a #[test] without a clear context.</forbidden>
+    <forbidden id="f2">Default tokio runtime flavor (#[tokio::test] without the flavor argument).</forbidden>
+    <forbidden id="f3">std::thread::sleep or real tokio::time::sleep used to coordinate test timing.</forbidden>
+    <forbidden id="f4">mockall::mock! invocations against concrete (non-trait) types.</forbidden>
+  </section>
+
+  <reference path="scripts/validate-rust-testing-unit.py">Validator script.</reference>
 </text>

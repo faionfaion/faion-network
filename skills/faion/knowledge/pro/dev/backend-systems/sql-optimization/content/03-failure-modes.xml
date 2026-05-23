@@ -1,57 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="sql-optimization Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for sql-optimization as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="sql-optimization Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the sql-optimization methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Trusting EXPLAIN estimates without running ANALYZE on production-sized data.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Estimates can be wrong by orders of magnitude if table statistics are stale or data distribution differs from estimate.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding indexes speculatively "in case they help" without profiling queries.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unused indexes slow writes and consume disk space without benefit. Every index adds cost to inserts, updates, deletes. Add indexes only for queries that are actually slow.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>SELECT * instead of selecting specific columns.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fetches unnecessary columns, increases network bandwidth, may prevent index-only scans. Always specify needed columns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>N+1 queries: one query returns rows, then a loop runs individual queries for each row.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Causes many network round-trips and transaction overhead. Use JOIN with GROUP BY or batch loading instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Missing WHERE clause on UPDATE or DELETE operations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Updates or deletes the entire table. Always include WHERE to limit scope. Consider soft deletes or archiving instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Implicit type conversion in WHERE clause causes index bypass.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>WHERE varchar_col = 123 converts 123 to string, preventing index use. Use correct types in queries and applications.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>LIKE '%pattern%' for substring search on large tables.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Full-text search is needed. LIKE with leading wildcard cannot use index and scans the entire table.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Using DISTINCT as a band-aid for JOIN problems.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DISTINCT hides the real problem: wrong join or missing WHERE. Fix the join instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>ORDER BY RAND() to shuffle results on large tables.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Extremely slow; RAND() must be evaluated for every row and the result set must be sorted. Use OFFSET/LIMIT with a random starting point instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Not using prepared statements or parameterized queries.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Security risk (SQL injection) and performance issue (query plan not cached). Always parameterize.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-no-measure" severity="high">
+      <symptom>Engineer adds 5 indexes &apos;to be safe&apos; without an EXPLAIN baseline; write latency triples.</symptom>
+      <root-cause source="v1-source">No measurement.</root-cause>
+      <fix>Drop unjustified indexes; gate every CREATE INDEX on an EXPLAIN ANALYZE diff.</fix>
+    </antipattern>
+
+    <antipattern id="fm-wrong-target" severity="high">
+      <symptom>Team optimizes a nightly batch query (10s once a day) instead of the 100ms-x-10K/day path that dominates p95.</symptom>
+      <root-cause source="v1-source">Wrong target.</root-cause>
+      <fix>Use slow-query log + pg_stat_statements to rank by total_time = mean_time * calls; optimize top-N.</fix>
+    </antipattern>
+
+    <antipattern id="fm-select-star-leak" severity="medium">
+      <symptom>Optimized query still SELECT *; covering index never kicks in.</symptom>
+      <root-cause source="v1-source">Author copied legacy query.</root-cause>
+      <fix>Replace SELECT * with explicit column list aligned to the covering index.</fix>
+    </antipattern>
+
+    <antipattern id="fm-stale-stats" severity="medium">
+      <symptom>Bulk load of 10M rows; optimizer keeps old stats; new query uses a seqscan instead of the new index.</symptom>
+      <root-cause source="v1-source">Stats not refreshed.</root-cause>
+      <fix>Run ANALYZE table_name after the bulk load; verify with EXPLAIN.</fix>
+    </antipattern>
+
   </section>
 </text>

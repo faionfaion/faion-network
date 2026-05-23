@@ -1,0 +1,36 @@
+# purpose: GitHub Actions workflow: nextest + llvm-cov + miri jobs.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml (rust-testing-ci-toolchain)
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small (template is loaded only when an artefact is being authored)
+name: Test
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.78,cargo-llvm-cov@0.6.11
+      - run: cargo nextest run --workspace --profile ci
+      - run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+
+  miri:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'has-unsafe')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - run: cargo +nightly miri test

@@ -1,22 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rust-testing-ci-toolchain Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="rust-testing-ci-toolchain Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rust-testing-ci-toolchain.json",
+  "type": "object",
+  "required": [
+    "nextest_config_path",
+    "ci_workflow_path",
+    "tools_pinned",
+    "cache_keys",
+    "miri_gated"
+  ],
+  "properties": {
+    "nextest_config_path": {
+      "type": "string",
+      "pattern": "nextest\\.toml$"
+    },
+    "ci_workflow_path": {
+      "type": "string",
+      "pattern": "^\\.github/workflows/.*\\.ya?ml$"
+    },
+    "tools_pinned": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "enum": [
+              "cargo-nextest",
+              "cargo-llvm-cov",
+              "cargo-miri"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "minItems": 2
+    },
+    "cache_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "miri_gated": {
+      "type": "boolean"
+    },
+    "coverage_hard_gate": {
+      "const": false
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "nextest_config_path": ".config/nextest.toml",
+  "ci_workflow_path": ".github/workflows/test.yml",
+  "tools_pinned": [
+    {
+      "name": "cargo-nextest",
+      "version": "0.9.78"
+    },
+    {
+      "name": "cargo-llvm-cov",
+      "version": "0.6.11"
+    }
+  ],
+  "cache_keys": [
+    "v2-cargo-${{ hashFiles('Cargo.lock') }}"
+  ],
+  "miri_gated": true,
+  "coverage_hard_gate": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "nextest_config_path": "nextest.toml",
+  "ci_workflow_path": "test.yml",
+  "tools_pinned": [],
+  "cache_keys": [],
+  "miri_gated": false,
+  "coverage_hard_gate": true
+}
+]]></code>
+    <note>ci_workflow_path not under .github/workflows/; tools_pinned empty; coverage_hard_gate enabled.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">Floating @latest tool versions in CI install action.</forbidden>
+    <forbidden id="f2">cargo test as the primary CI command instead of cargo nextest.</forbidden>
+    <forbidden id="f3">Hard coverage percentage gate that blocks merge.</forbidden>
+    <forbidden id="f4">Miri job blocking the main test job instead of running in parallel.</forbidden>
+  </section>
+
+  <reference path="scripts/validate-rust-testing-ci-toolchain.py">Validator script.</reference>
 </text>

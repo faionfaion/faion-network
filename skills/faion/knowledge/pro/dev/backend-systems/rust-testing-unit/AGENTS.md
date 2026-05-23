@@ -3,72 +3,95 @@ slug: rust-testing-unit
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Unit tests in Rust live inside a #[cfg(test)] mod tests block colocated with the production code.
-content_id: "e96208b2ffda8e23"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces Rust unit tests in #[cfg(test)] mod tests blocks with mockall trait mocks, explicit tokio runtime flavor, virtual-time control, and descriptive expect() messages.
+content_id: "4060ffb623381803"
+complexity: medium
+produces: code
+est_tokens: 4300
 tags: [rust, testing, mockall, unit-test, tokio]
 ---
 # Rust Unit Testing with mockall and tokio::test
 
 ## Summary
 
-**One-sentence:** Unit tests in Rust live inside a #[cfg(test)] mod tests block colocated with the production code.
+**One-sentence:** Produces Rust unit tests in #[cfg(test)] mod tests blocks with mockall trait mocks, explicit tokio runtime flavor, virtual-time control, and descriptive expect() messages.
 
-**One-paragraph:** Unit tests in Rust live inside a #[cfg(test)] mod tests block colocated with the production code. Trait dependencies are mocked with mockall::mock!; async tests use #[tokio::test] with an explicit runtime flavor. Black-box tests go to the tests/ directory at crate root. Never mix the two.
+**One-paragraph:** Unit tests live in #[cfg(test)] mod tests colocated with production code. Trait dependencies are mocked with mockall::mock!; async tests declare flavor explicitly. Virtual time (tokio::time::pause) replaces sleeps. Assertions use expect("descriptive message") for traceability. Black-box tests against the public API go to tests/ at the crate root; never mix placements.
+
+**Ефективно для:**
+
+- Швидкий feedback на pure logic + trait mock через `mockall`.
+- Async код під `tokio::test` із керованим часом (`tokio::time::pause`).
+- Тест трейту, не плоского struct (mock-ing concrete `chrono` — антипатерн).
+- Doctest публічних API + `cargo test --doc`.
 
 ## Applies If (ALL must hold)
 
-- Rust services using Axum/Actix/Tonic where you need fast feedback with mockall mocks.
-- Async-heavy code (tokio runtime) where the test harness must use #[tokio::test] with controlled time (tokio::time::pause) to avoid wall-clock dependence.
-- Any service method that depends on a trait (database, HTTP client, clock) that can be mocked cheaply.
-- Library crates where doc-tests, and cargo test --doc, should run on every PR.
+- Rust service module needing fast feedback with mockall mocks.
+- Async code where tests must control time deterministically.
+- Service method depends on a trait that can be mocked cheaply.
+- Library crate where doc-tests should run on every PR.
 
 ## Skip If (ANY kills it)
 
-- Trivial scripts where assert! inside main() is enough — the harness costs more than the test.
-- Code where mocks dominate signal — if every dep is mocked, the test asserts the mock setup, not behavior. Prefer integration tests with real components.
-- Pure serde round-trips where proptest is the right tool, not hand-written #[test]s.
-- Cross-compile targets where running tests on the host does not reflect the target. Use cross + Docker, or skip and rely on CI.
+- Trivial scripts where assert! in main() is enough.
+- Code where mocks dominate signal — prefer integration tests with real components.
+- Pure serde round-trips — use proptest.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Production module file | Rust source | service repo |
+| mockall dev-dep | Cargo dep | Cargo.toml |
+| tokio with macros + time | Cargo dep | Cargo.toml |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[rust-testing-ci-toolchain]] | CI must run cargo nextest to actually execute the tests authored here |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-test-module` | sonnet | #[cfg(test)] mod tests skeleton with super::*. |
+| `write-mock` | sonnet | mockall::mock! invocation + expectations. |
+| `validate-output` | haiku | Schema check via the validator script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/unit_test_module.rs` | Rust #[cfg(test)] mod tests skeleton with mockall + explicit tokio flavor. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-testing-unit.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[rust-testing-integration]]
+- [[rust-testing-property]]
+- [[rust-testing-ci-toolchain]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree decides colocated vs tests/-dir placement, trait-mock vs real-impl, runtime flavor, and time strategy based on what the SUT touches.

@@ -3,72 +3,95 @@ slug: rust-testing-property
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Property-based tests with proptest (or quickcheck) generate hundreds of random inputs and verify that a function satisfies an invariant for all of them — finding edge cases that hand-written example tables miss.
-content_id: "0406fdca0d9e6e71"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces property-based tests in Rust using proptest with persisted regression seeds, approx assertions for floats, and bounded `cases` to keep CI minutes predictable.
+content_id: "ba9e43f07d9680ae"
+complexity: medium
+produces: code
+est_tokens: 4300
 tags: [rust, property-testing, proptest, quickcheck, invariants]
 ---
 # Property-Based Testing in Rust with proptest
 
 ## Summary
 
-**One-sentence:** Property-based tests with proptest (or quickcheck) generate hundreds of random inputs and verify that a function satisfies an invariant for all of them — finding edge cases that hand-written example tables miss.
+**One-sentence:** Produces property-based tests in Rust using proptest with persisted regression seeds, approx assertions for floats, and bounded `cases` to keep CI minutes predictable.
 
-**One-paragraph:** Property-based tests with proptest (or quickcheck) generate hundreds of random inputs and verify that a function satisfies an invariant for all of them — finding edge cases that hand-written example tables miss. Failing inputs are automatically shrunk to a minimal reproducer; the seed is recorded so failures can be replayed locally.
+**One-paragraph:** proptest generates hundreds of random inputs and verifies an invariant for all of them — catching edge cases hand-written tables miss. Failing inputs shrink to a minimal reproducer; seeds persist in a regression file (checked into git). Float comparisons use approx; bare assert! is replaced with prop_assert! inside proptest! blocks so failure messages contain the shrunk counterexample.
+
+**Ефективно для:**
+
+- Парсери, кодеки, серіалізація — `decode(encode(x)) == x` за один блок `proptest!`.
+- Замінити велику параметризовану табличку на один інваріант.
+- Чисті математичні функції з властивостями (sort stability, монотонність).
+- Регресія через persisted seed file у git.
 
 ## Applies If (ALL must hold)
 
-- Pure functions with invariants: parsers, codecs, math utilities, serialization round-trips.
-- Any function where the output must satisfy a property for all valid inputs (encode/decode identity, sort stability, non-negative result).
-- Code where the input space is large or irregular and hand-written tables are brittle.
-- Replacing large hand-written parameterized test tables with a single proptest! block.
+- Pure function with an invariant: parser, codec, serializer, math utility.
+- Output must satisfy a property for all valid inputs (encode/decode identity, sort stability).
+- Input space is large or irregular and hand-written tables miss edge cases.
+- Replacing a long parameterized test table with a single proptest! block.
 
 ## Skip If (ANY kills it)
 
-- Tests that require precise control over a single specific input — use a regular #[test] example.
-- Integration tests involving I/O or databases — proptest's generation model does not compose well with async I/O setup/teardown.
-- Benchmarks — use criterion; proptest's overhead per iteration is not suitable for perf measurement.
-- Hot-path benchmarks where assert_eq! on f64 is the pattern — use approx::assert_relative_eq! regardless of test type.
+- Test needs precise control over a single input — use a regular #[test].
+- Test involves I/O — proptest does not compose well with async setup/teardown.
+- Benchmarks — overhead per iteration is unsuited to perf measurement.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pure function with declared invariant | Rust fn | service code |
+| proptest dev-dep | Cargo dep | Cargo.toml |
+| approx dev-dep (for floats) | Cargo dep | Cargo.toml |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[rust-testing-unit]] | Property tests live in the same #[cfg(test)] mod blocks as unit tests |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `identify-invariant` | sonnet | Derive the property from the function's contract. |
+| `write-proptest-block` | sonnet | proptest! with strategy and prop_assert!. |
+| `validate-output` | haiku | Schema check via the validator script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/proptest_block.rs` | Rust proptest! skeleton with persisted-regression config + approx for floats. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-testing-property.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[rust-testing-unit]]
+- [[rust-testing-integration]]
+- [[rust-testing-ci-toolchain]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree decides when proptest is the right tool (pure + invariant) vs unit tests with mocks vs integration with testcontainers.

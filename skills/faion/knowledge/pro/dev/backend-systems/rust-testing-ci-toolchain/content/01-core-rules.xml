@@ -1,27 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-testing-ci-toolchain Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-testing-ci-toolchain. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="rust-testing-ci-toolchain Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the rust-testing-ci-toolchain methodology. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Use cargo nextest run in CI instead of cargo test. Configure .config/nextest.toml with fail-fast = false, retries = 1 on the ci profile, and a slow-timeout to catch hangs. Never use cargo test in the main CI job for a project that has integration tests.</statement>
-      <rationale source="v1-source">cargo test runs tests sequentially within a binary and has no per-test timeout. A single hanging test blocks the entire suite silently. nextest runs each test in its own process with a configurable timeout, emits JUnit XML, and parallelizes across all available cores.</rationale>
+      <statement>Use cargo nextest run in CI instead of cargo test. Configure .config/nextest.toml with fail-fast = false, retries = 1 on the ci profile, and a slow-timeout to catch hangs.</statement>
+      <rationale source="v1-source">cargo test runs tests sequentially within a binary with no per-test timeout. A single hanging test blocks the suite silently.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Upload cargo llvm-cov --lcov output to Codecov or Coveralls on every PR. Do not enforce a coverage percentage gate in CI — coverage is a signal for reviewers, not a binary pass/fail. A drop in coverage on a PR is a conversation item, not a block.</statement>
-      <rationale source="v1-source">Hard coverage gates incentivize writing trivial tests that inflate coverage without testing behavior. Soft signals (uploaded diff coverage) keep reviewers informed without gamification.</rationale>
+      <statement>Upload cargo llvm-cov --lcov output to Codecov or Coveralls on every PR. Do not enforce a coverage percentage gate in CI.</statement>
+      <rationale source="v1-source">Hard coverage gates incentivize trivial tests; soft signals keep reviewers informed without gamification.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Run cargo +nightly miri test on every PR for crates that contain unsafe blocks or FFI. Gate miri on its own CI job (it is slow); do not block the main test job on it.</statement>
-      <rationale source="v1-source">Miri catches undefined behavior — wrong pointer offsets, uninitialized reads, data races in unsafe Send/Sync — that the Rust compiler cannot detect at compile time. These bugs are silent in release builds and manifest as memory corruption in production.</rationale>
+      <statement>Run cargo +nightly miri test on every PR for crates that contain unsafe or FFI. Gate miri on its own CI job (it is slow); do not block the main test job on it.</statement>
+      <rationale source="v1-source">Miri catches UB the borrow checker cannot — pointer offsets, uninitialized reads, data races in unsafe Send/Sync.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Pin cargo nextest, cargo llvm-cov, and cargo miri versions in CI using taiki-e/install-action and manage updates via Renovate. Never use @latest or a floating version in CI tool installs.</statement>
-      <rationale source="v1-source">Floating @latest versions can break CI silently when a new release changes behavior or output format. Pinned versions + Renovate gives reproducible CI with automated upgrade PRs.</rationale>
+      <statement>Pin cargo nextest, cargo llvm-cov, and cargo miri versions via taiki-e/install-action and manage updates with Renovate. Never use @latest in CI tool installs.</statement>
+      <rationale source="v1-source">Floating @latest breaks CI silently when a new release changes behavior or output.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Configure a CI build cache for ~/.cargo/registry, ~/.cargo/git, and target/ keyed on the rust toolchain version and Cargo.lock hash. Rebuild on Cargo.lock change; otherwise restore from cache. This applies to both cargo test and cargo nextest runs.</statement>
-      <rationale source="v1-source">Slow link times inflate CI minutes. On a medium Rust service, a cold build of test binaries can take 3-5 minutes. With a warm cache, incremental rebuilds take 20-30 seconds.</rationale>
+      <statement>Configure a CI build cache for ~/.cargo/registry, ~/.cargo/git, and target/ keyed on toolchain + Cargo.lock hash.</statement>
+      <rationale source="v1-source">Cold builds of test binaries cost 3-5 min; warm cache cuts to 20-30 sec.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when the suite is trivially small or covered by an existing CI pipeline that already enforces r1-r5.</statement>
+      <rationale source="Skip-rule guard">Prevents duplicate work when the project does not need this methodology.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

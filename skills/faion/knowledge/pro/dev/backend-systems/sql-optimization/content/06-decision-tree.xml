@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="sql-optimization Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+      <root-question id="q-root">Did EXPLAIN ANALYZE confirm a measurable bottleneck on this query?</root-question>
+      <branch when="explain_analyze_run == false">
+        <conclusion ref="r1" verdict="STOP — capture EXPLAIN ANALYZE first"/>
+      </branch>
+      <branch when="explain_analyze_run == true">
+        <question id="q-next">plan_uses_seqscan == true?</question>
+        <branch when="plan_uses_seqscan == true">
+          <question id="q-next">filter_columns_indexable == true?</question>
+          <branch when="filter_columns_indexable == true">
+            <conclusion ref="r5" verdict="add composite index aligned to predicate order"/>
+          </branch>
+          <branch when="filter_columns_indexable == false">
+            <conclusion ref="r6" verdict="consider partial or covering index; otherwise escalate to caching"/>
+          </branch>
+        </branch>
+        <branch when="plan_uses_seqscan == false">
+          <question id="q-next">writes_dominant == true?</question>
+          <branch when="writes_dominant == true">
+            <conclusion ref="r3" verdict="audit existing indexes; drop unused"/>
+          </branch>
+          <branch when="writes_dominant == false">
+            <conclusion ref="r4" verdict="rewrite query: explicit columns, filter early"/>
+          </branch>
+        </branch>
+      </branch>
+  </decision-tree>
+</text>

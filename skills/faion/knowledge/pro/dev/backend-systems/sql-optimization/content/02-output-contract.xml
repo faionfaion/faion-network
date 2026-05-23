@@ -1,22 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="sql-optimization Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="sql-optimization Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sql-optimization.json",
+  "type": "object",
+  "required": [
+    "report_id",
+    "queries",
+    "explain_analyze_present",
+    "index_changes"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "before_ms",
+          "after_ms"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "before_ms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "after_ms": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "explain_analyze_present": {
+      "const": true
+    },
+    "index_changes": {
+      "type": "object",
+      "required": [
+        "added",
+        "dropped"
+      ],
+      "properties": {
+        "added": {
+          "type": "array"
+        },
+        "dropped": {
+          "type": "array"
+        }
+      }
+    },
+    "net_p95_improvement_pct": {
+      "type": "number"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "sql-opt-2026-05-23",
+  "queries": [
+    {
+      "name": "orders_by_user",
+      "before_ms": 1280.0,
+      "after_ms": 42.5
+    }
+  ],
+  "explain_analyze_present": true,
+  "index_changes": {
+    "added": [
+      "idx_orders_user_created"
+    ],
+    "dropped": []
+  },
+  "net_p95_improvement_pct": 96.7
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "x",
+  "queries": [],
+  "explain_analyze_present": false,
+  "index_changes": {},
+  "net_p95_improvement_pct": 0
+}
+]]></code>
+    <note>report_id too short; queries empty; explain_analyze_present false; index_changes missing added/dropped.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">Adding an index without an EXPLAIN ANALYZE artefact justifying it.</forbidden>
+    <forbidden id="f2">SELECT * in the optimized query when a column list would suffice.</forbidden>
+    <forbidden id="f3">Hardcoded percentage improvements without before/after numbers.</forbidden>
+    <forbidden id="f4">Coverage-only metric without query-frequency context.</forbidden>
+  </section>
+
+  <reference path="scripts/validate-sql-optimization.py">Validator script.</reference>
 </text>

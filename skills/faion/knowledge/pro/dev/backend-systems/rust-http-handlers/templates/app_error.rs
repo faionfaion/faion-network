@@ -1,3 +1,8 @@
+// purpose: Axum AppError + IntoResponse with scrubbed public messages
+// consumes: domain Result<_, AppError>
+// produces: HTTP response
+// depends-on: scripts/validate-rust-http-handlers.py
+// token-budget-impact: ~250 tokens
 // src/error.rs
 // Axum AppError: thiserror enum + IntoResponse with public message scrubbing.
 use axum::{

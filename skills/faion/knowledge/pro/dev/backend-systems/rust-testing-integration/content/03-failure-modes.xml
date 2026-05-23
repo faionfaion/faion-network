@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-testing-integration Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-testing-integration as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="rust-testing-integration Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the rust-testing-integration methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Integration tests sharing a Postgres container without truncation or transaction-rollback between tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tests fail in CI in random order because INSERT from one test is visible to another's SELECT or constraint check. Isolation must be explicit: per-test schema, per-test container, or BEGIN ... ROLLBACK wrapping.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Binding a real TCP listener on a hardcoded port (e.g., 127.0.0.1:8080) in integration tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Parallel test runs (cargo nextest) assign multiple tests to the same port and one panics with "address already in use". Use oneshot or bind to :0.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-port-collision" severity="high">
+      <symptom>Parallel integration tests bind 127.0.0.1:8080 and one fails with EADDRINUSE.</symptom>
+      <root-cause source="v1-source">Author used a real listener instead of oneshot.</root-cause>
+      <fix>Replace bind/await with app.oneshot(request).await — drives the router in-process.</fix>
+    </antipattern>
+
+    <antipattern id="fm-shared-db-state" severity="high">
+      <symptom>Test A inserts a user; test B asserts count is 0 and fails non-deterministically.</symptom>
+      <root-cause source="v1-source">No per-test isolation.</root-cause>
+      <fix>Add a fixture that CREATE SCHEMA test_&lt;uuid&gt;, runs migrations, and DROPs on teardown.</fix>
+    </antipattern>
+
+    <antipattern id="fm-skipped-migrations" severity="medium">
+      <symptom>Postgres container starts empty; test panics with &apos;relation users does not exist&apos;.</symptom>
+      <root-cause source="v1-source">Test setup called pool but never ran migrations.</root-cause>
+      <fix>Add sqlx::migrate!(./migrations).run(&amp;pool).await? inside the fixture.</fix>
+    </antipattern>
+
+    <antipattern id="fm-noisy-string-assert" severity="low">
+      <symptom>Adding a JSON field forces 50 tests to update hand-written expected strings.</symptom>
+      <root-cause source="v1-source">Author chose assert_eq! over snapshot.</root-cause>
+      <fix>Replace with insta::assert_json_snapshot!; review the .snap file in the PR.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,71 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="sql-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for sql-optimization. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="sql-optimization Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>9 testable rules grounding the sql-optimization methodology. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Measure before optimizing. Use EXPLAIN ANALYZE to understand actual query performance, not guesses. Identify which plans are slow (full table scans, bitmap scans, sorts), not just which queries take long.</statement>
-      <rationale source="v1-source">Without measurement, optimization efforts target the wrong queries. EXPLAIN ANALYZE shows actual buffers used, rows scanned, and bottlenecks.</rationale>
+      <statement>Measure before optimizing. Use EXPLAIN ANALYZE (with BUFFERS) to understand actual plans, not guesses.</statement>
+      <rationale source="v1-source">Without measurement, optimization targets the wrong queries.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Optimize the right queries. Focus on frequent queries and those consuming most database resources (CPU, I/O), not just slow ones. A query that runs 10K times a day, taking 100ms, is more important than a nightly batch query taking 10 seconds.</statement>
-      <rationale source="v1-source">Database resources are finite. Optimize for total impact, not individual query time.</rationale>
+      <statement>Optimize the right queries. Focus on frequent + resource-heavy queries, not just slow ones.</statement>
+      <rationale source="v1-source">Total impact beats individual query time.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Indexes are not free. They speed reads but slow writes. Before adding an index, estimate write cost (slower inserts, updates, deletes) and read benefit. Don't add indexes speculatively.</statement>
-      <rationale source="v1-source">Over-indexing degrades write performance without guaranteed read benefit. Every index is a bet.</rationale>
+      <statement>Indexes are not free. Estimate write cost vs read benefit before adding one.</statement>
+      <rationale source="v1-source">Over-indexing degrades writes without guaranteed read gain.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Reduce data movement. Filter early (WHERE clause on largest table first), join smart (avoid Cartesian products), fetch only needed columns (not SELECT *).</statement>
-      <rationale source="v1-source">Moving data between tables and across network is expensive. Keeping dataset small at each stage is usually more effective than optimizing individual operations.</rationale>
+      <statement>Reduce data movement. Filter early (WHERE on largest table first), avoid Cartesian products, fetch only needed columns.</statement>
+      <rationale source="v1-source">Moving data between tables and across the network is the dominant cost.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Consider the full picture. Query optimization alone is incomplete. Connection pooling prevents query stalls from connection overhead. Caching prevents queries altogether. Materialized views pre-compute expensive aggregations. All are parts of the strategy.</statement>
-      <rationale source="v1-source">Micro-optimizing queries without macro-level strategy is inefficient. Sometimes adding cache is faster than optimizing a query.</rationale>
+      <statement>For composite indexes, order columns by selectivity (most selective first) for equality; put equality columns BEFORE range columns.</statement>
+      <rationale source="v1-source">Optimizer can use the index for all conditions only if order matches the predicate shape.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Use EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT). ANALYZE runs the query and shows actual row counts. BUFFERS shows cache hits and disk I/O. TEXT format is readable; JSON is parseable by tools.</statement>
-      <rationale source="v1-source">ANALYZE is more accurate than EXPLAIN estimate alone. Estimates can be wildly wrong; actual execution data drives good decisions. BUFFERS reveals cache efficiency.</rationale>
+      <statement>Use covering indexes (INCLUDE clause) to make index-only scans possible.</statement>
+      <rationale source="v1-source">Without INCLUDE, the index scan must look up the table to fetch non-indexed columns.</rationale>
     </rule>
     <rule id="r7" testable="true" depth="essential">
-      <statement>For WHERE clauses with multiple equality conditions, create a composite index matching the query: CREATE INDEX idx ON table(col1, col2) for queries on col1 AND col2. Order columns by selectivity: most selective first in equality conditions.</statement>
-      <rationale source="v1-source">Database optimizer can use the index for all conditions if they match the index order. If conditions are in wrong order, optimizer may use index for only the first, then scan for the rest.</rationale>
+      <statement>Update statistics (ANALYZE / ANALYZE TABLE) after bulk loads or schema changes; stale stats produce bad plans.</statement>
+      <rationale source="v1-source">Optimizer relies on cardinality estimates.</rationale>
     </rule>
     <rule id="r8" testable="true" depth="essential">
-      <statement>For range queries (greater-than, less-than), put equality columns before range columns in the index: CREATE INDEX idx ON table(user_id, created_at) for WHERE user_id = ? AND created_at &gt; ?</statement>
-      <rationale source="v1-source">Optimizer can use the equality part to narrow the range, then scan the range column. If range column comes first, the entire range is scanned then filtered by user_id.</rationale>
+      <statement>Use connection pooling with pre-ping + recycle; stream large result sets rather than loading into memory.</statement>
+      <rationale source="v1-source">Connection-setup overhead and OOM on full result loads are the most common ops failure modes.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use covering indexes (INCLUDE clause) to avoid table lookups: CREATE INDEX idx ON table(col1, col2) INCLUDE (col3, col4) for queries selecting all four columns.</statement>
-      <rationale source="v1-source">Without INCLUDE, the index scan must look up the table to fetch non-indexed columns. Covering index makes index-only scan possible, eliminating a table access.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use partial indexes for common filters: CREATE INDEX idx ON table(created_at) WHERE status = 'pending' for queries filtering on status = 'pending'.</statement>
-      <rationale source="v1-source">Partial index is smaller and faster to scan if only a fraction of rows match the filter. Saves space when most rows don't match the filter.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Use connection pooling with reasonable pool size (20-50 depending on workload). Set pool_pre_ping=True to verify connections before use. Set pool_recycle to recycle stale connections periodically.</statement>
-      <rationale source="v1-source">Creating a new database connection is expensive (TCP handshake, authentication, initialization). Reusing pooled connections is much faster. Pre-ping catches dropped connections early.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Use server-side cursors or result streaming for large result sets instead of loading all rows into memory.</statement>
-      <rationale source="v1-source">Large result sets that don't fit in memory can cause OOM. Streaming allows processing results in batches.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Monitor slow queries regularly using database logs or slow query log. Set a threshold (e.g., &gt;100ms) and review queries exceeding it. Use monitoring tools to track query frequency and total time spent in each query.</statement>
-      <rationale source="v1-source">Queries change over time as data grows. A query fast on small data becomes slow on large data. Regular monitoring catches regressions early.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Update table statistics (ANALYZE in PostgreSQL, ANALYZE TABLE in MySQL) after bulk loads or significant schema changes. Stale statistics cause optimizer to make bad decisions.</statement>
-      <rationale source="v1-source">Optimizer relies on cardinality estimates. Stale stats can cause the optimizer to choose a bad plan, especially after bulk data changes.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Index maintenance: drop unused indexes (dead weight on writes), rebuild fragmented indexes if they slow down, review index columns for selectivity.</statement>
-      <rationale source="v1-source">Unused indexes slow writes without benefit. Fragmented indexes degrade performance. Periodic maintenance keeps the system healthy.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Test query changes on production-sized data before deployment. A query fast on test data may be slow on production data with different distribution.</statement>
-      <rationale source="v1-source">Test data is often too small to reveal performance issues. Always validate on realistic data sizes.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>
+      <rationale source="Skip-rule guard">Prevents duplicate work and wrong-tool application.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

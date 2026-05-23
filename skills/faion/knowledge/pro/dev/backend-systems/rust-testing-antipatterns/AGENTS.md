@@ -3,70 +3,95 @@ slug: rust-testing-antipatterns
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A review checklist and anti-pattern catalogue for Rust test suites, focusing on the failure modes that AI agents introduce most frequently: Utc::now() in assertion paths, sleep-driven async waits, shared global state, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse.
-content_id: "672d3afd401eb954"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Review checklist catching Utc::now() in assertions, sleep-driven async waits, shared global state, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse.
+content_id: "4fce5ac9486a812a"
+complexity: medium
+produces: checklist
+est_tokens: 4300
 tags: [rust, testing, antipatterns, agent-gotchas, code-review]
 ---
 # Rust Testing Anti-Patterns and Agent Gotchas
 
 ## Summary
 
-**One-sentence:** A review checklist and anti-pattern catalogue for Rust test suites, focusing on the failure modes that AI agents introduce most frequently: Utc::now() in assertion paths, sleep-driven async waits, shared global state, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse.
+**One-sentence:** Review checklist catching Utc::now() in assertions, sleep-driven async waits, shared global state, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse.
 
-**One-paragraph:** A review checklist and anti-pattern catalogue for Rust test suites, focusing on the failure modes that AI agents introduce most frequently: Utc::now() in assertion paths, sleep-driven async waits, shared global state, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse.
+**One-paragraph:** A review checklist and anti-pattern catalogue for Rust test suites, focusing on the failure modes AI agents introduce most frequently: Utc::now() in assertion paths, sleep-driven async waits, shared global state via static mut, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse. Output is a per-PR review checklist + clippy denies + a CI gate flagging the common patterns.
+
+**Ефективно для:**
+
+- PR reviews on test code authored by AI agents.
+- Tightening CI to deny known flaky patterns (sleep+now in assertions).
+- Auditing existing test suites for shared global state breakage.
+- Replacing tokio::time::sleep with tokio::time::pause in unit tests.
 
 ## Applies If (ALL must hold)
 
-- Reviewing any Rust test PR authored or modified by an AI agent.
-- Running the anti-pattern lint script (rust-test-lint.sh) in pre-commit or CI.
-- During test suite audits on codebases that have grown without a formal testing standard.
-- When onboarding a new agent that will generate tests for a Rust codebase.
+- Rust crate has ≥1 integration test using tokio runtime.
+- Agents author or modify test files in the repo.
+- Test suite has recent flakes attributed to timing or shared state.
+- Team can enforce clippy denies in CI.
 
 ## Skip If (ANY kills it)
 
-- Non-test production code — these checks are scoped to #[test] and tests/ paths only.
-- Benchmark modules under benches/ — the rules around sleep and Utc::now do not apply there.
+- Test suite is tiny (<10 tests) and not under active development.
+- All tests are pure value-in-value-out; no async, no shared state.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent CI flake report | md / log | ops |
+| Test file inventory | list | team |
+| CI runner | config | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/backend-systems/rust-error-handling/AGENTS.md` | shared AppError pattern affects test setup |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `review-pr-tests` | sonnet | Pattern matching against test code needs judgement. |
+| `rewrite-sleeps-to-pause` | sonnet | Rewriting async timing benefits from sonnet. |
+| `validate-output` | haiku | Schema check is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/review-checklist.md` | Per-PR test review checklist |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-testing-antipatterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- Parent: `pro/dev/backend-systems/`
+- [[rust-backend]]
+- [[rust-error-handling]]
+- [[rust-http-handlers]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

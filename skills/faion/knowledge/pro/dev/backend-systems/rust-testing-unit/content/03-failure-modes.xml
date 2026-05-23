@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-testing-unit Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-testing-unit as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="rust-testing-unit Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Failure modes observed when applying the rust-testing-unit methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Two #[tokio::test]s sharing a lazy_static mock state — passing locally, failing under cargo test -- --test-threads=N.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tests run in parallel by default. Shared mutable global state (lazy_static, once_cell) produces order-dependent failures. Force per-test setup via a fixture struct or local variable.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Mixing #[tokio::test] with #[test] on async blocks compiled under different runtime flavors (current_thread vs multi_thread) in the same test binary.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Flakes under contention because the runtime scheduler interleaves tasks across the two flavors unpredictably in the same process.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Defining a one-method trait just to get mockall to mock a free function.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A function-pointer field or generic parameter is cleaner. Trait gymnastics multiply compile time and produce confusing mock! macro error messages.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-mock-concrete" severity="high">
+      <symptom>Author tries to mock chrono::DateTime; mockall fails to compile or produces a useless mock.</symptom>
+      <root-cause source="v1-source">mockall is for traits, not concrete types.</root-cause>
+      <fix>Wrap the concrete type behind a trait (Clock); mock the trait.</fix>
+    </antipattern>
+
+    <antipattern id="fm-default-flavor" severity="high">
+      <symptom>Test calls spawn_blocking; passes locally; fails in CI on a multi-thread runtime.</symptom>
+      <root-cause source="v1-source">Author let #[tokio::test] default the flavor.</root-cause>
+      <fix>Add flavor = &quot;multi_thread&quot;, worker_threads = 2.</fix>
+    </antipattern>
+
+    <antipattern id="fm-sleep-flake" severity="medium">
+      <symptom>Test uses tokio::time::sleep(50ms) to wait for a background task; flakes in CI.</symptom>
+      <root-cause source="v1-source">Real sleeps are wall-clock-dependent.</root-cause>
+      <fix>Replace with tokio::time::pause + advance, or wait on a oneshot channel.</fix>
+    </antipattern>
+
+    <antipattern id="fm-private-doctest" severity="low">
+      <symptom>Doc example on pub(crate) fn silently does not run; coverage shows 100%.</symptom>
+      <root-cause source="v1-source">cargo test --doc only runs doctests on pub items.</root-cause>
+      <fix>Promote to a #[test], or make the function pub if a doctest is the right home.</fix>
+    </antipattern>
+
   </section>
 </text>

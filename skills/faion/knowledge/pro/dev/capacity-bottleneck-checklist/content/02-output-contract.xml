@@ -1,39 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Capacity Bottleneck Checklist Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Capacity Bottleneck Checklist output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="capacity-bottleneck-checklist Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the checklist artefact this methodology produces, with valid and invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/capacity-bottleneck-checklist.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/capacity-bottleneck-checklist.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/capacity-bottleneck-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "headroom_pct",
+    "bottlenecks"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^(?!team$|we$|us$|engineering$|the (team|squad|group)$).+",
+      "minLength": 2
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 10
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "headroom_pct": {
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 100
+    },
+    "bottlenecks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "cap-2026-05-23",
+  "owner": "@ruslan",
+  "decision": "raise pgbouncer pool from 80 to 200; provision +2 web replicas",
+  "rationale": "db pool saturation observed at 95% during last load test (load-test-2026-05-22.html); web CPU p95 at 78%; both inputs cited inline",
+  "inputs_used": [
+    "observability/load-test-2026-05-22.html",
+    "observability/web-cpu-p95.json"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "headroom_pct": 22,
+  "bottlenecks": [
+    "db_pool",
+    "web_cpu"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "decision": "tbd",
+  "rationale": "obviously",
+  "inputs_used": [],
+  "version": "v1",
+  "last_reviewed": "soon",
+  "headroom_pct": 5,
+  "bottlenecks": []
+}
+]]></code>
+    <note>owner=&apos;team&apos; (r3); decision too short; rationale empty/defensive; inputs_used empty; version not semver; headroom below 20%.</note>
+  </example>
+
+  <section title="Forbidden">
+    <forbidden id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / engineering / empty.</forbidden>
+    <forbidden id="f2">rationale that does not cite any input by name.</forbidden>
+    <forbidden id="f3">inputs_used empty AND decision is not &apos;no-op&apos;.</forbidden>
+    <forbidden id="f4">duplicate artefact_id within the same store.</forbidden>
+  </section>
+
+  <reference path="scripts/validate-capacity-bottleneck-checklist.py">Validator script.</reference>
 </text>

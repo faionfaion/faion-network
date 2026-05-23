@@ -1,3 +1,8 @@
+// purpose: Axum CRUD handler skeleton (list/get/create/update/delete)
+// consumes: typed DTOs + Arc<AppState>
+// produces: HTTP response
+// depends-on: scripts/validate-rust-http-handlers.py
+// token-budget-impact: ~300 tokens
 // src/handlers/users.rs
 // CRUD handler set for Axum: list, get, create, update, delete.
 use axum::{

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: surface gratuitous .clone() calls in a Rust crate for review
+# consumes: Cargo project
+# produces: clippy report
+# depends-on: scripts/validate-rust-ownership.py
+# token-budget-impact: ~120 tokens
 # Surface gratuitous clone() calls in a crate for review.
 # Usage: bash scripts/audit-clones.sh
 set -euo pipefail
