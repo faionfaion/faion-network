@@ -1,33 +1,143 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Feature Trust Metrics Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Feature Trust Metrics deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="feature_id" format="stable_id" />
-      <field name="gate_name" type="string" />
-      <field name="pre_registered_criteria" type="list" min="3" />
-      <field name="evidence_per_criterion" type="object" />
-      <field name="kill_criteria" type="list" min="1" />
-      <field name="rollback_artifacts" type="list" />
-      <field name="crossfunctional_signoffs" type="list" />
-    </required>
-    <forbidden>
-      <pattern id="f1">criterion added at gate review (not pre-registered)</pattern>
-      <pattern id="f2">no rollback_artifacts</pattern>
-      <pattern id="f3">signoffs collected after the gate</pattern>
-      <pattern id="f4">kill_criteria empty</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Re-baseline criterion only with explicit version stamp.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Criteria pre-registered</item>
-      <item>Evidence per criterion</item>
-      <item>Rollback tested</item>
-      <item>Signoffs in hand</item>
-    </list>
+<text id="02-output-contract" title="AI-Feature Trust Metrics for Market Research Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the rubric artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-feature-trust-metrics.json",
+  "type": "object",
+  "required": [
+    "feature_id",
+    "dimensions",
+    "segments",
+    "baseline_date"
+  ],
+  "properties": {
+    "feature_id": {
+      "type": "string"
+    },
+    "dimensions": {
+      "type": "object",
+      "required": [
+        "perceived_accuracy",
+        "transparency",
+        "recovery",
+        "fairness"
+      ],
+      "properties": {
+        "perceived_accuracy": {
+          "type": "object",
+          "required": [
+            "signal_event",
+            "survey_item"
+          ],
+          "properties": {
+            "signal_event": {
+              "type": "string"
+            },
+            "survey_item": {
+              "type": "string"
+            }
+          }
+        },
+        "transparency": {
+          "type": "object",
+          "required": [
+            "signal_event",
+            "survey_item"
+          ]
+        },
+        "recovery": {
+          "type": "object",
+          "required": [
+            "signal_event",
+            "survey_item"
+          ]
+        },
+        "fairness": {
+          "type": "object",
+          "required": [
+            "signal_event",
+            "survey_item",
+            "segment_cuts"
+          ],
+          "properties": {
+            "segment_cuts": {
+              "type": "array",
+              "minItems": 2
+            }
+          }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 2
+    },
+    "baseline_date": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feature_id": "summarize-thread",
+  "dimensions": {
+    "perceived_accuracy": {
+      "signal_event": "thumbs_up",
+      "survey_item": "I trusted the summary"
+    },
+    "transparency": {
+      "signal_event": "citation_hover",
+      "survey_item": "I understood where the answer came from"
+    },
+    "recovery": {
+      "signal_event": "regen_rate",
+      "survey_item": "Fixing wrong output was easy"
+    },
+    "fairness": {
+      "signal_event": "thumbs_up",
+      "survey_item": "Quality felt consistent for me",
+      "segment_cuts": [
+        "language",
+        "plan_tier"
+      ]
+    }
+  },
+  "segments": [
+    "en",
+    "uk"
+  ],
+  "baseline_date": "2026-05-01"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feature_id": "x",
+  "dimensions": {
+    "perceived_accuracy": {}
+  }
+}
+]]></code>
+    <note>Missing transparency/recovery/fairness; missing signal_event/survey_item; segments &lt; 2; no baseline_date.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">dimensions missing any of the four</pattern>
+    <pattern id="f2">fairness without segment_cuts &gt;= 2</pattern>
+    <pattern id="f3">segments with fewer than 2 entries</pattern>
+    <pattern id="f4">baseline_date in the future</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-ai-feature-trust-metrics.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

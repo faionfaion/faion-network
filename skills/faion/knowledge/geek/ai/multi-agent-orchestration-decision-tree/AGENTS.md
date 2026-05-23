@@ -2,70 +2,93 @@
 slug: multi-agent-orchestration-decision-tree
 tier: geek
 group: ai
-domain: ai-core
+domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: When single-agent + tools beats multi-agent, when hierarchical beats collaborative, when handoff-id-payload beats stream-json — the decision framework six 'multi-agent-*' entries lack.
-content_id: "d82ec4a9394a3f98"
-tags: [multi-agent-orchestration-decision-tree, ai, geek]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a multi-agent orchestration decision record — topology pick, hand-off protocol, judge-actor justification, measurable rollback trigger.
+content_id: "6dddd42743b0bfd8"
+complexity: light
+produces: decision-record
+est_tokens: 2400
+tags: [multi-agent, orchestration, topology, hand-off, judge-actor, rollback]
 ---
-
 # Multi-Agent Orchestration Decision Tree
 
 ## Summary
 
-**One-sentence:** When single-agent + tools beats multi-agent, when hierarchical beats collaborative, when handoff-id-payload beats stream-json — the decision framework six 'multi-agent-*' entries lack.
+**One-sentence:** Produces a multi-agent orchestration decision record — topology pick, hand-off protocol, judge-actor justification, measurable rollback trigger.
 
-**One-paragraph:** multi-agent-basics/-collaborative/-conversational/-hierarchical/-production-bus/-design-patterns exist but P7 lacks the decision framework. Six methodologies, no chooser. Output: decision table + chosen pattern + revisit triggers.
+**One-paragraph:** Multi-agent systems are popular and almost always wrong by default. This methodology produces a typed decision record naming: the topology (single+tools / hierarchical / collaborative / conversational), the hand-off protocol (task_id + scoped context + success criteria + escalation), whether a judge-actor split is empirically justified (quality_lift_pp ≥ 2 at acceptable cost_multiplier), and a rollback trigger (latency, cost, quality vs single-agent baseline). Without this, teams ship multi-agent for "separation of concerns" and pay 30-100% extra latency for no measurable quality lift.
+
+**Ефективно для:** ML-engineer, що дебатує "agent vs orchestrator" і хоче явну, ревьюваємо decision з measurable rollback — а не фанбойство.
 
 ## Applies If (ALL must hold)
 
-- agent system with ≥2 specialized components OR planning need
-- team considering multi-agent architecture
-- eval set or production data to test against
+- Considering splitting a single-agent + tools setup into multiple agents.
+- A current baseline (single-agent + tools) exists or can be reconstructed.
+- An eval that can measure quality lift at the relevant task is available.
+- A named owner can run the periodic re-evaluation.
 
 ## Skip If (ANY kills it)
 
-- single-task agent with no orchestration need
-- purely sequential pipeline with no agent autonomy
-- research with no production constraint
+- Single-task workflow with no hand-off — multi-agent adds overhead for zero gain.
+- Prototype where neither quality nor cost has been measured yet — build single-agent first.
+- Regulatory / compliance overrides force a specific topology.
 
 ## Prerequisites
 
-- list of sub-tasks the system must handle
-- eval set ≥30 representative cases
-- infrastructure budget (multi-agent costs more)
+| Input artifact | Format | Source |
+|---|---|---|
+| Current single-agent baseline (latency, cost, quality) | report | observability |
+| Eval suite measuring task quality | JSONL | eval repo |
+| List of distinct subtasks | doc | architecture |
+| Cost-multiplier budget for multi-agent | YAML | finops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/multi-agent-basics` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/multi-agent-collaborative` | peer methodology — produces inputs or consumes outputs |
+|---|---|
+| `geek/ai/ml-engineer/multi-agent-design-patterns` | Provides topology vocabulary. |
+| `geek/ai/ml-engineer/multi-agent-systems` | Production patterns reference. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: single-agent default, topology fit, hand-off protocol, judge-actor justified, rollback trigger. | ~900 |
+| `content/02-output-contract.xml` | essential | Schema for the orchestration decision record. | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: split-for-separation, chat-history hand-off, cargo-cult judge, no rollback, no rebaseline. | ~900 |
+| `content/06-decision-tree.xml` | essential | Routes from baseline + subtask count + measured quality lift. | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+|---|---|---|
+| `draft-topology-pick` | sonnet | Pattern matching against the four topologies. |
+| `decide-judge-actor-roi` | opus | Cost vs quality reasoning. |
+| `audit-rollback-trigger` | haiku | Schema-presence check. |
+
+## Templates
+
+| File | Purpose |
+|---|---|
+| `templates/orchestration-decision.json` | JSON schema for the output. |
+| `templates/orchestration-decision.md` | Markdown skeleton with required fields. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|---|---|---|
+| `scripts/validate-multi-agent-orchestration-decision-tree.py` | Enforce contract: topology valid, hand-off protocol fields present, judge-actor measured, rollback trigger present. | After subagent return. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/multi-agent-basics`
-- peer methodology: `geek/ai/multi-agent-collaborative`
-- peer methodology: `geek/ai/multi-agent-hierarchical`
-- external: https://www.anthropic.com/research/building-effective-agents; https://arxiv.org/abs/2308.08155 (AutoGen)
+- [[ai-agent-patterns]]
+- [[multi-agent-design-patterns]]
+- [[agents-react-pattern]]
+
+## Decision tree
+
+The tree at `content/06-decision-tree.xml` triages: is single-agent + tools the baseline? → measure quality lift at the proposed multi-agent topology → adopt only if lift_pp ≥ 2 AND cost_multiplier within budget. Walk it before refactoring a working single-agent into a multi-agent debate club.

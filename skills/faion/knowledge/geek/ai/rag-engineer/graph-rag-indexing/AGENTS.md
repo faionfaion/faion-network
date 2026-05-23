@@ -3,74 +3,96 @@ slug: graph-rag-indexing
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Standard vector RAG retrieves chunks by semantic similarity and fails on global questions, entity relationships, and multi-hop reasoning.
-content_id: "bfa4359d64814741"
-tags: [graph-rag, knowledge-graph, entity-extraction, community-detection, neo4j]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Builds the GraphRAG entity-and-relationship graph + community summaries from a document corpus, with deterministic chunking, entity dedup, and resumable batch processing.
+content_id: "0ba7aad1a1f7dc47"
+complexity: deep
+produces: code
+est_tokens: 4300
+tags: [graph-rag, indexing, knowledge-graph, community-detection, llm]
 ---
-# Graph RAG Indexing: Entity Extraction, Graph Construction, and Hierarchical Summarization
+# Graph RAG Indexing Pipeline
 
 ## Summary
 
-**One-sentence:** Standard vector RAG retrieves chunks by semantic similarity and fails on global questions, entity relationships, and multi-hop reasoning.
+**One-sentence:** Builds the GraphRAG entity-and-relationship graph + community summaries from a document corpus, with deterministic chunking, entity dedup, and resumable batch processing.
 
-**One-paragraph:** Standard vector RAG retrieves chunks by semantic similarity and fails on global questions, entity relationships, and multi-hop reasoning. Graph RAG fixes this by building a knowledge graph from documents — entities become nodes, relationships become edges — then running community detection and hierarchical summarization so global queries can be answered from pre-computed summaries instead of brute-force chunk retrieval.
+**One-paragraph:** Builds the GraphRAG entity-and-relationship graph + community summaries from a document corpus, with deterministic chunking, entity dedup, and resumable batch processing. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Будуєш GraphRAG-індекс над корпусом > 10k документів і потрібен resumable pipeline.
+- Перевикористання entity-extraction між запусками — entity dedup + canonicalization.
+- Community summaries для multi-hop запитів (Leiden clustering + LLM-summary per cluster).
+- Контроль вартості: GPT-4 extract + GPT-3.5 summarize замість усього на топ-моделі.
 
 ## Applies If (ALL must hold)
 
-- Corpus-wide thematic summarization: "What are the main topics across all 10,000 documents?"
-- Entity relationship questions that a single chunk cannot answer (org charts, citation networks, drug interactions).
-- Domain corpora with dense cross-references: legal case law, medical literature, research paper networks.
-- Multi-hop reasoning required: "How are entity A and entity B connected through intermediaries?"
-- Existing vector RAG answers global questions with low confidence or hallucinated relationships.
+- Корпус > 10k документів з пов'язаними сутностями (people, orgs, products).
+- Multi-hop запити вимагають traversal зв'язків, а не лише semantic similarity.
+- Бюджет на одноразовий індекс + інкрементальне доповнення.
 
 ## Skip If (ANY kills it)
 
-- Corpora where questions are local and chunk-answerable — vector RAG is 10-100x cheaper and faster.
-- Corpora with fewer than 1,000 documents — graph overhead exceeds quality gain.
-- Real-time indexing required — entity/relationship extraction costs one LLM call per chunk and takes seconds each.
-- No graph database or networkx/Neo4j infra in deployment — infrastructure cost is non-trivial.
-- Team has no graph query skills (Cypher) — maintainability cost is high.
+- Plain semantic similarity достатня (single-hop QA).
+- Корпус < 1k документів — графовий overhead не окупається.
+- Документи без іменованих сутностей (raw logs, metrics).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| document corpus | JSONL or directory of .md/.txt | ingestion source |
+| entity schema | YAML list of allowed entity types | domain expert |
+| LLM API key | env var | secrets manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[chunking-basics]] | deterministic chunking with stable chunk_ids |
+| [[embedding-model-selection]] | embedding model locked before indexing |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 7-step procedure (input/action/output/decision-gate) | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/graphrag_index.py` | Runnable GraphRAG indexing pipeline skeleton |
+| `templates/index-manifest.json` | Manifest matching the schema, written at end of indexing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-graph-rag-indexing.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[graph-rag-production]]
+- [[graph-rag-retrieval]]
+- [[rag-implementation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Does this corpus need traversal beyond single-hop semantic similarity?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

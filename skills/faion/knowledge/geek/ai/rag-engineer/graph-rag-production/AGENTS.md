@@ -3,71 +3,96 @@ slug: graph-rag-production
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Moving Graph RAG to production requires selecting the right graph database backend (Neo4j for scale, FalkorDB for speed, Kuzu for embedded), deciding between LlamaIndex KnowledgeGraphIndex and Microsoft graphrag CLI, managing indexing costs ($4-20/million tokens), and handling the known failure modes that affect agents operating on live graph indexes.
-content_id: "e27da99be3678b99"
-tags: [graph-rag, production, llamaindex, neo4j, microsoft-graphrag]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Production-ready GraphRAG deployment: query routing (GLOBAL/LOCAL/COMMUNITY), caching layer, incremental updates, observability, and cost guardrails.
+content_id: "b511f9b80d776584"
+complexity: deep
+produces: config
+est_tokens: 4300
+tags: [graph-rag, production, deployment, observability, cost-control]
 ---
-# Graph RAG Production: LlamaIndex, Graph Databases, and Deployment Gotchas
+# Graph RAG in Production
 
 ## Summary
 
-**One-sentence:** Moving Graph RAG to production requires selecting the right graph database backend (Neo4j for scale, FalkorDB for speed, Kuzu for embedded), deciding between LlamaIndex KnowledgeGraphIndex and Microsoft graphrag CLI, managing indexing costs ($4-20/million tokens), and handling the known failure modes that affect agents operating on live graph indexes.
+**One-sentence:** Production-ready GraphRAG deployment: query routing (GLOBAL/LOCAL/COMMUNITY), caching layer, incremental updates, observability, and cost guardrails.
 
-**One-paragraph:** Moving Graph RAG to production requires selecting the right graph database backend (Neo4j for scale, FalkorDB for speed, Kuzu for embedded), deciding between LlamaIndex KnowledgeGraphIndex and Microsoft graphrag CLI, managing indexing costs ($4-20/million tokens), and handling the known failure modes that affect agents operating on live graph indexes.
+**One-paragraph:** Production-ready GraphRAG deployment: query routing (GLOBAL/LOCAL/COMMUNITY), caching layer, incremental updates, observability, and cost guardrails. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Виходиш з POC у production: query routing + cache + cost caps.
+- Inкрементальні оновлення графа без full re-index (delta ingestion).
+- Observability: per-query type latency, cost, hit-rate by community.
+- Cost guardrails: $/1k queries cap + circuit breaker на community summarization.
 
 ## Applies If (ALL must hold)
 
-- Graph RAG indexing and retrieval are working in development (NetworkX) and the corpus exceeds memory capacity or requires concurrent access.
-- Choosing between LlamaIndex KnowledgeGraphIndex and Microsoft graphrag CLI for the production pipeline.
-- Selecting a graph database backend for a new deployment environment.
-- Debugging agent failures involving graph traversal errors, stale summaries, or community ID instability.
+- GraphRAG index уже побудовано (див. graph-rag-indexing).
+- Production traffic ≥ 1k queries/day з SLO < 5s p95.
+- Бюджетні обмеження вимагають per-query cost tracking.
 
 ## Skip If (ANY kills it)
 
-- Still in exploration phase — use NetworkX in-memory until the approach is validated on a sample corpus.
-- Corpus fits in memory and is accessed by a single process — NetworkX is simpler and faster.
-- No budget for Neo4j or managed graph DB — evaluate Kuzu (embedded, zero server cost) first.
+- POC або демо без SLO — production-патерни overkill.
+- Read-only static index без оновлень — incremental gear не потрібен.
+- < 100 queries/day — cache + routing payoff нульовий.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| graphrag index | directory with chunks/entities/graph/summaries | graph-rag-indexing output |
+| traffic profile | JSON {qps, query_types[]} | product metrics |
+| cost budget | USD/day cap | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[graph-rag-indexing]] | index manifest committed and versioned |
+| [[graph-rag-retrieval]] | retrieval contract finalized |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/graphrag-production.yaml` | Service config matching schema |
+| `templates/router.py` | Ingress query router scaffold |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-graph-rag-production.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[graph-rag-indexing]]
+- [[graph-rag-retrieval]]
+- [[rag-eval-production-monitoring]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Is the GraphRAG service handling live production traffic with SLO + cost constraints?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

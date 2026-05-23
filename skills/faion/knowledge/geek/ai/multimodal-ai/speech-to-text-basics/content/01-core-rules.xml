@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="speech-to-text-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for speech-to-text-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Speech-to-Text Basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules for production Whisper-based transcription.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="openai-whisper-docs-2026">Pin language= explicitly (BCP-47 or 2-letter). Auto-detect adds ~200ms and misclassifies similar languages (UK↔RU, SR↔HR).</statement>
+      <rationale>Wrong language → transliterated nonsense or full mis-translation.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="openai-whisper-docs-2026">Use response_format="verbose_json" + timestamp_granularities=["segment"] for production transcripts.</statement>
+      <rationale>Plain-text response loses segment boundaries needed for downstream alignment / search.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="openai-whisper-docs-2026">Accept only Whisper-supported formats: MP3, MP4, MPEG, MPGA, M4A, WAV, WEBM. Reject FLAC and OGG at the edge.</statement>
+      <rationale>Sending unsupported formats fails late in the pipeline; rejecting at ingest fails fast.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="openai-whisper-docs-2026">Pre-split files larger than 25 MB with pydub (or ffmpeg) on silence boundaries. Concatenate transcripts in order.</statement>
+      <rationale>25 MB is a hard API cap; splitting on silence avoids cutting words mid-sentence.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="finops-discipline">Above ~10000 audio hours/month, switch to local faster-whisper on GPU. The API price curve breaks above that point.</statement>
+      <rationale>API at $0.006/min is cheap but adds up at scale; local faster-whisper amortises hardware.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="openai-whisper-docs-2026">Whisper is batch-only. Sub-300ms streaming requires Deepgram / AssemblyAI / Azure Realtime.</statement>
+      <rationale>Building "streaming with Whisper" by hand stitches end-of-segment results and never beats native streaming.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire Whisper transcription per procedure.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Real-time streaming OR unsupported format OR very noisy audio → skip.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

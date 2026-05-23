@@ -1,15 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="graph-rag-indexing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for graph-rag-indexing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Graph RAG Indexing Pipeline Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the graph-rag-indexing methodology. Each rule pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Run entity extraction with temperature=0 and response_format=json_object. Deduplicate entities by normalized name (lowercase, strip punctuation) before inserting into the graph. Cap at 15 entities and 20 relationships per chunk to prevent noise from dense passages.</statement>
-      <rationale source="v1-source">LLM extraction at nonzero temperature introduces variant spellings ("OpenAI" vs "openai") that create duplicate nodes. Without a cap, dense academic or legal text generates hundreds of low-signal entities per chunk that degrade community quality.</rationale>
+
+    <rule id="deterministic-chunk-ids" testable="true" depth="essential">
+      <statement>Chunk ids MUST be deterministic (sha1 of doc_id + chunk_index + content_hash), not random UUIDs.</statement>
+      <rationale source="Microsoft GraphRAG ingestion docs 2026">Resumable pipelines require idempotent re-runs; UUIDs break dedup on retry.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Only summarize communities with 5 or more nodes. Do not use community IDs as persistent identifiers across re-index runs — use a content hash of the sorted node set instead, because Louvain output order is non-deterministic.</statement>
-      <rationale source="v1-source">Singleton and 2-3 node communities produce summaries with no semantic breadth ("this community contains entity X and entity Y"). Non-deterministic community IDs break any system that caches summaries by ID after a re-index.</rationale>
+    <rule id="entity-canonicalization-before-graph" testable="true" depth="essential">
+      <statement>Run entity canonicalization (case fold + alias lookup + embedding-similarity dedup) BEFORE inserting nodes into the graph.</statement>
+      <rationale source="GraphRAG arXiv 2404.16130 §3.2">Without canonicalization the graph explodes with duplicates ('OpenAI' / 'openai' / 'Open AI') and community detection breaks.</rationale>
     </rule>
+    <rule id="community-summaries-cached-by-version" testable="true" depth="essential">
+      <statement>Community summaries MUST be cached keyed by (community_id, member_set_hash); regenerate only when membership changes.</statement>
+      <rationale source="Microsoft GraphRAG cost notes 2026">LLM summarization is the dominant cost item; regenerating per query burns budget.</rationale>
+    </rule>
+    <rule id="resumable-checkpoint-every-batch" testable="true" depth="essential">
+      <statement>Pipeline MUST checkpoint progress per batch (extracted entities + chunk offset) to disk so a kill -9 resumes within one batch.</statement>
+      <rationale source="Internal pipeline runbook">Full restart of a 10k-doc indexing job costs hours and dollars; checkpointing reduces blast radius.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If corpus has no named entities OR queries are pure semantic-similarity, skip GraphRAG and use vanilla vector RAG.</statement>
+      <rationale source="Cost benchmarks Faion internal 2026">GraphRAG indexing is 10-50x cost of vanilla embedding; only pays off when traversal queries dominate.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

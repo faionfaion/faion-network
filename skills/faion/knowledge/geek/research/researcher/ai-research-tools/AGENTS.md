@@ -3,72 +3,95 @@ slug: ai-research-tools
 tier: geek
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Stage-to-tool mapping for AI-augmented research pipelines with orchestrator pattern: Haiku for dispatch, Sonnet for synthesis, Opus for validation.
-content_id: "e7431974126f3854"
-tags: [research-tools, multi-stage-pipeline, agent-orchestration, source-attribution]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Selection map of concrete AI research tools (Perplexity, Elicit, Consensus, Scite, NotebookLM) matched to research-task shape, evidence requirements, and budget.
+content_id: "48aca207b51ff38a"
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [ai-research, tools, perplexity, elicit, consensus, scite]
 ---
-# AI Research Tools (geek/researcher)
+# AI Research Tools Selection Map
 
 ## Summary
 
-**One-sentence:** Stage-to-tool mapping for AI-augmented research pipelines with orchestrator pattern: Haiku for dispatch, Sonnet for synthesis, Opus for validation.
+**One-sentence:** Selection map of concrete AI research tools (Perplexity, Elicit, Consensus, Scite, NotebookLM) matched to research-task shape, evidence requirements, and budget.
 
-**One-paragraph:** Stage-to-tool mapping for AI-augmented research pipelines with orchestrator pattern: Haiku for dispatch, Sonnet for synthesis, Opus for validation.
+**One-paragraph:** Selection map of concrete AI research tools (Perplexity, Elicit, Consensus, Scite, NotebookLM) matched to research-task shape, evidence requirements, and budget. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Швидко обрати правильний tool під конкретне завдання дослідження.
+- Перевірка ground-truth: Consensus / Scite з citation graph + study design.
+- Synthesis над завантаженими джерелами: NotebookLM замість 'все в Claude'.
+- Live market data + funding rounds: Perplexity Pro з recency filter.
 
 ## Applies If (ALL must hold)
 
-- Building or instrumenting a multi-stage research pipeline for a geek/agent project
-- Selecting the right tool before starting any structured literature or market sweep
-- Producing synthesis reports from heterogeneous sources (news, academic, market data)
-- Citation tracking and source verification is required
+- Завдання дослідження є чітким (research question + evidence type).
+- Бюджет на subscription ($20-200/міс) АБО free-tier достатній.
+- Час < 1 день на висновок — не повний systematic review.
 
 ## Skip If (ANY kills it)
 
-- Primary source collection requiring human judgment (expert interviews, observation)
-- Legally sensitive research where AI hallucination risk is unacceptable
-- Real-time data requiring live API access beyond what exposed tools support
-- Tasks where source provenance must be court-admissible or regulatory-grade
+- Внутрішні документи / приватні дані — потрібен RAG, не загальний tool.
+- Open-ended exploration без research question — Brainstorm спочатку.
+- Systematic review або PhD-level rigour — потрібен PRISMA, не AI shortcut.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| research question | one sentence | PI / PM |
+| evidence type | one of {market data, scientific claim, opinion, summary} | research lead |
+| budget | USD/mo | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ai-research-tool-categories]] | tool categories taxonomy loaded |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/research-decision.md` | Human-readable decision record |
+| `templates/decision.json` | Machine-readable decision matching schema |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-research-tools.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/research/researcher/`
+- [[ai-research-tool-categories]]
+- [[perplexity-ai-research]]
+- [[market-sizing-with-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Is there a sharp research question with a defined evidence_type?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

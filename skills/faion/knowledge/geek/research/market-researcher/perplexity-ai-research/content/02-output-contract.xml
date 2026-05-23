@@ -1,22 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="perplexity-ai-research Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Perplexity AI Research Workflow Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/perplexity-ai-research.json",
+  "type": "object",
+  "required": [
+    "research_question",
+    "sub_queries",
+    "claims",
+    "verified_by"
+  ],
+  "properties": {
+    "research_question": {
+      "type": "string",
+      "minLength": 10
+    },
+    "sub_queries": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "query",
+          "recency_filter"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "recency_filter": {
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year"
+            ]
+          }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "confidence",
+          "citations"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "H",
+              "M",
+              "L"
+            ]
+          },
+          "citations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        }
+      }
+    },
+    "verified_by": {
+      "type": "string",
+      "minLength": 2
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "research_question": "What is the 2026 market size for AI coding-agent tools?",
+  "sub_queries": [
+    {
+      "query": "AI dev tools market size 2026",
+      "recency_filter": "year"
+    },
+    {
+      "query": "coding-agent revenue share 2026",
+      "recency_filter": "year"
+    }
+  ],
+  "claims": [
+    {
+      "text": "AI dev tools market is approximately $40B in 2026",
+      "confidence": "H",
+      "citations": [
+        "https://example.com/r1",
+        "https://example.com/r2"
+      ]
+    }
+  ],
+  "verified_by": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "research_question": "tam"
+}
+]]></code>
+    <note>research_question too short; missing sub_queries, claims, verified_by; no recency filter.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">sub_queries length &lt; 2 for a compound question</pattern>
+    <pattern id="f2">recency_filter outside the enum</pattern>
+    <pattern id="f3">claim with empty citations</pattern>
+    <pattern id="f4">verified_by missing (skipping verification gate)</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-perplexity-ai-research.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

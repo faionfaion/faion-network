@@ -1,4 +1,10 @@
-"""Whisper API: transcribe_audio, transcribe_with_timestamps, translate_audio."""
+"""
+purpose: OpenAI Whisper API helpers — language-pinned transcribe + verbose_json with timestamps + translate.
+consumes: audio path + language code + OpenAI client
+produces: verbose_json with segments + start/end timestamps
+depends-on: content/01-core-rules.xml r1, r2
+token-budget-impact: per-minute API cost (no Whisper input-token cost; flat per-minute)
+"""
 from openai import OpenAI
 
 client = OpenAI()

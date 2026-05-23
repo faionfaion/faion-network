@@ -1,4 +1,10 @@
-"""Split audio into chunks under 24MB for Whisper API upload."""
+"""
+purpose: Split an audio file on silence boundaries into chunks under 24 MB for Whisper API upload.
+consumes: audio path + target chunk MB (default 22) + silence threshold
+produces: list of (chunk_path, start_offset_s) preserving order
+depends-on: content/01-core-rules.xml r4
+token-budget-impact: zero — splitting only
+"""
 from pydub import AudioSegment
 import math
 import os

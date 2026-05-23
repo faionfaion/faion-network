@@ -1,42 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Vendor Evaluation Scorecard Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Vendor Evaluation Scorecard output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Vendor Evaluation Scorecard for AI Tooling Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the rubric artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="scorecard_url" type="string" required="true">shared scorecard</field>
-      <field name="weights" type="object" required="true">{axis: weight}, pre-committed</field>
-      <field name="trial_records" type="list" required="true">[{vendor, trial_dates, outcomes}]</field>
-      <field name="decision_record" type="string" required="true">ADR-equivalent path</field>
-      <field name="contract_renewal_date" type="date" required="true">next revisit</field>
-      <field name="owner" type="string" required="true">named PM</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">weights changed after scoring</pattern>
-      <pattern id="f2">decision without trial of top-2</pattern>
-      <pattern id="f3">decision_record absent</pattern>
-      <pattern id="f4">auto-renewal without revisit</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/vendor-evaluation-scorecard.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>scorecard_url populated with a typed value</item>
-      <item>weights populated with a typed value</item>
-      <item>trial_records populated with a typed value</item>
-      <item>decision_record populated with a typed value</item>
-      <item>contract_renewal_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/vendor-evaluation-scorecard.json",
+  "type": "object",
+  "required": [
+    "category",
+    "vendors",
+    "weights",
+    "scores",
+    "winner",
+    "exit_cost_eng_days"
+  ],
+  "properties": {
+    "category": {
+      "type": "string"
+    },
+    "vendors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2
+    },
+    "weights": {
+      "type": "object",
+      "required": [
+        "quality",
+        "cost",
+        "lock_in",
+        "security",
+        "sla"
+      ],
+      "properties": {
+        "quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "lock_in": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "security": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sla": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "scores": {
+      "type": "object"
+    },
+    "winner": {
+      "type": "string"
+    },
+    "exit_cost_eng_days": {
+      "type": "object"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "category": "vector-db",
+  "vendors": [
+    "qdrant-cloud",
+    "pinecone",
+    "weaviate-cloud"
+  ],
+  "weights": {
+    "quality": 0.25,
+    "cost": 0.2,
+    "lock_in": 0.2,
+    "security": 0.2,
+    "sla": 0.15
+  },
+  "scores": {
+    "qdrant-cloud": {
+      "quality": 0.9,
+      "cost": 0.8,
+      "lock_in": 0.9,
+      "security": 0.85,
+      "sla": 0.8
+    },
+    "pinecone": {
+      "quality": 0.92,
+      "cost": 0.6,
+      "lock_in": 0.5,
+      "security": 0.9,
+      "sla": 0.9
+    },
+    "weaviate-cloud": {
+      "quality": 0.85,
+      "cost": 0.7,
+      "lock_in": 0.8,
+      "security": 0.8,
+      "sla": 0.8
+    }
+  },
+  "winner": "qdrant-cloud",
+  "exit_cost_eng_days": {
+    "qdrant-cloud": 5,
+    "pinecone": 25,
+    "weaviate-cloud": 12
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "category": "x",
+  "vendors": [
+    "only-one"
+  ]
+}
+]]></code>
+    <note>vendors must be ≥2; missing weights, scores, winner, exit_cost_eng_days.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">vendors with fewer than 2 entries</pattern>
+    <pattern id="f2">weights missing any of quality/cost/lock_in/security/sla</pattern>
+    <pattern id="f3">scores cell with single evidence item</pattern>
+    <pattern id="f4">exit_cost_eng_days absent for the winner</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-vendor-evaluation-scorecard.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

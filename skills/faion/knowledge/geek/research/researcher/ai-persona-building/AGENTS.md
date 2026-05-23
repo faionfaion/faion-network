@@ -3,71 +3,97 @@ slug: ai-persona-building
 tier: geek
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Fully automated end-to-end persona generation for large user datasets (1,000+ users): Haiku ingests behavioral event exports via API, Opus validates cluster separability, Sonnet transforms clusters into JSON persona documents consumable by downstream agents.
-content_id: "2550b232685227d3"
-tags: [personas, clustering, automation, agent-workflow]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Builds research-grounded personas from interview transcripts + behavioral data using staged LLM passes with explicit segment criteria and human verification.
+content_id: "17ce350f88c4c6be"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [personas, ai-research, synthesis, interviews, segments]
 ---
-# AI Persona Building (Automated Pipeline)
+# AI Persona Building Workflow
 
 ## Summary
 
-**One-sentence:** Fully automated end-to-end persona generation for large user datasets (1,000+ users): Haiku ingests behavioral event exports via API, Opus validates cluster separability, Sonnet transforms clusters into JSON persona documents consumable by downstream agents.
+**One-sentence:** Builds research-grounded personas from interview transcripts + behavioral data using staged LLM passes with explicit segment criteria and human verification.
 
-**One-paragraph:** Fully automated end-to-end persona generation for large user datasets (1,000+ users): Haiku ingests behavioral event exports via API, Opus validates cluster separability, Sonnet transforms clusters into JSON persona documents consumable by downstream agents. Human approval gate sits between Opus and Sonnet.
+**One-paragraph:** Builds research-grounded personas from interview transcripts + behavioral data using staged LLM passes with explicit segment criteria and human verification. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Швидкий перший draft персон з 8-20 інтерв'ю замість 5-day workshop.
+- Behavioral-data fusion: інтерв'ю + survey + product signals в одну особу.
+- Explicit segment criteria — кожна персона має сегмент-membership rules.
+- Verification gate: researcher підписує перед використанням у roadmap.
 
 ## Applies If (ALL must hold)
 
-- Automating persona generation as part of a recurring research pipeline (monthly cohort refresh).
-- Building personas programmatically from large datasets where manual review of clustering is infeasible.
-- Running JTBD map generation at scale across multiple product areas simultaneously.
-- Integrating persona data into a downstream agent (copywriting, feature-priority) via stable JSON schema.
+- ≥8 інтерв'ю + behavioral data на ту ж cohort.
+- Існує сегментація гіпотеза, яку треба підтвердити/спростувати.
+- Researcher доступний для верифікації результату.
 
 ## Skip If (ANY kills it)
 
-- One-off persona creation for a single product decision — use ai-assisted-persona-building with direct team involvement.
-- When data quality is unknown — run a data audit before feeding into the pipeline.
-- When personas will be presented to external stakeholders without human review of the narrative layer.
+- < 8 інтерв'ю — недостатньо для статистично значущих сегментів.
+- Marketing fluff personas без data backing — це не цей workflow.
+- Бренди без segmentation — single-persona shortcut кращий.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| interview transcripts | JSONL | interview platform |
+| behavioral signals | CSV/JSON exports | analytics |
+| segment hypothesis | YAML candidate segments | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ai-interview-analysis]] | single-interview analysis available |
+| [[interview-note-synthesis-ai]] | cross-interview themes available |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/persona-spec.md` | Persona spec skeleton |
+| `templates/personas.json` | Machine-readable personas matching schema |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-persona-building.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/research/researcher/`
+- [[ai-interview-analysis]]
+- [[interview-note-synthesis-ai]]
+- [[ai-coding-of-qualitative-data-protocol]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Do we have N >= 8 interviews and behavioral data?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

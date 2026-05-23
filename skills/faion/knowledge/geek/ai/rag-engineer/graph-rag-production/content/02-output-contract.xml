@@ -1,22 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="graph-rag-production Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Graph RAG in Production Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/graph-rag-production.json",
+  "type": "object",
+  "required": [
+    "service_name",
+    "router_model",
+    "cache_backend",
+    "max_cost_usd_per_query",
+    "delta_stream",
+    "slo_p95_seconds",
+    "alert_webhook"
+  ],
+  "properties": {
+    "service_name": {
+      "type": "string"
+    },
+    "router_model": {
+      "type": "string"
+    },
+    "cache_backend": {
+      "enum": [
+        "redis",
+        "memcached",
+        "valkey",
+        "in-memory"
+      ]
+    },
+    "max_cost_usd_per_query": {
+      "type": "object",
+      "required": [
+        "global",
+        "local",
+        "community"
+      ],
+      "properties": {
+        "global": {
+          "type": "number",
+          "minimum": 0
+        },
+        "local": {
+          "type": "number",
+          "minimum": 0
+        },
+        "community": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "delta_stream": {
+      "type": "string"
+    },
+    "slo_p95_seconds": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 60
+    },
+    "alert_webhook": {
+      "type": "string",
+      "format": "uri"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service_name": "graphrag-portfolio",
+  "router_model": "claude-haiku-4.5",
+  "cache_backend": "valkey",
+  "max_cost_usd_per_query": {
+    "global": 0.5,
+    "local": 0.05,
+    "community": 0.1
+  },
+  "delta_stream": "kafka://graphrag-delta",
+  "slo_p95_seconds": 5.0,
+  "alert_webhook": "https://alerts.example.com/graphrag"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service_name": "x",
+  "cache_backend": "sqlite"
+}
+]]></code>
+    <note>cache_backend not in enum; max_cost_usd_per_query missing; router_model, delta_stream, slo_p95_seconds, alert_webhook all absent.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">cache_backend outside enum</pattern>
+    <pattern id="f2">max_cost_usd_per_query missing any of global/local/community</pattern>
+    <pattern id="f3">slo_p95_seconds &gt; 60 (production SLO upper bound)</pattern>
+    <pattern id="f4">alert_webhook not a uri</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-graph-rag-production.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

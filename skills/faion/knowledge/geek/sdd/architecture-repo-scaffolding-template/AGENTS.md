@@ -3,77 +3,95 @@ slug: architecture-repo-scaffolding-template
 tier: geek
 group: sdd
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Architecture Repo Scaffolding Template: codified spec-driven-development practice that turns the recurring 'role-software-architect/Architecture-as-code repository — continuous maintenance with monthly review' decision into a repeatable, auditable artefact.
-content_id: "5bcf6d602e7bab4b"
-tags: [architecture-repo-scaffolding-template, sdd, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Generates a versioned architecture repo skeleton (ADRs + diagrams + fitness functions + runbooks) ready for monthly architect review.
+content_id: "246bb530257cd2bc"
+complexity: medium
+produces: config
+est_tokens: 3400
+tags: ["sdd", "architecture", "scaffolding", "adr", "fitness-functions"]
 ---
 # Architecture Repo Scaffolding Template
 
 ## Summary
 
-**One-sentence:** Architecture Repo Scaffolding Template: codified spec-driven-development practice that turns the recurring 'role-software-architect/Architecture-as-code repository — continuous maintenance with monthly review' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a versioned architecture repo skeleton (ADRs + diagrams + fitness functions + runbooks) ready for monthly architect review.
 
-**One-paragraph:** Architecture Repo Scaffolding Template addresses the gap identified by the role-software-architect/Architecture-as-code repository — continuous maintenance with monthly review playbook: SDD covers spec / design / plan, but not the architect's repo structure (ADRs + diagrams + fitness functions + runbooks) as a first-class artifact. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Architecture Repo Scaffolding Template produces a config that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+
+**Ефективно для:**
+
+- Старт нового продукту: одразу мати канонічну архітектурну директорію.
+- Monthly architecture review: фіксована структура для evidence-based ревʼю.
+- Onboarding інженера-архітектора: чітка карта 'що де лежить'.
+- Audit prep: ADR + fitness functions discoverable за стандартним шляхом.
+- Cross-team alignment: однаковий скаффолд у всіх репозиторіях організації.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-architect/Architecture-as-code repository — continuous maintenance with monthly review OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team owns architecture decisions and wants them version-controlled.
+- Monthly or quarterly architecture review cadence exists.
+- Multiple services share architectural patterns and need a uniform repo layout.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-developer prototype where no review cadence exists.
+- Architecture is already captured in a wiki and there is no plan to migrate it.
 
 ## Prerequisites
 
-- recent context for the role-software-architect/Architecture-as-code repository — continuous maintenance with monthly review task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tech stack inventory | Markdown | architect |
+| Review cadence policy | Markdown | architect |
+| Fitness-function targets | JSON / Markdown | architect + dev lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdd/sdd-author` | parent role skill — provides the operating context for this methodology |
+| [[adr-consequence-evidence-binding]] | scaffold contains ADRs with evidence-binding shape |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-architecture-repo-scaffolding-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/architecture-repo-scaffolding-template.json` | JSON schema for the Architecture Repo Scaffolding Template output contract |
-| `templates/architecture-repo-scaffolding-template.md` | Markdown skeleton with the required fields |
+| `templates/repo-skeleton.tree` | Tree-format skeleton showing canonical dirs + sentinel files |
+| `templates/cadence.yml` | Review cadence YAML with owner + next-review + evidence sources |
+| `templates/ADR-0000-template.md` | MADR-style ADR template with consequence-evidence section |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-architecture-repo-scaffolding-template.py` | Enforce Architecture Repo Scaffolding Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-architecture-repo-scaffolding-template.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/sdd/`
-- upstream playbook: `role-software-architect/Architecture-as-code repository — continuous maintenance with monthly review`
+- [[adr-consequence-evidence-binding]]
+- [[release-train-coordination]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

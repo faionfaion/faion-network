@@ -1,42 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Segment-Aware Design System Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Segment-Aware Design System output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Segment-Aware Design System Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="segments" type="list" required="true">[{name, definition, %_traffic}]</field>
-      <field name="state_taxonomy" type="object" required="true">{locked, preview, full, overflow}</field>
-      <field name="token_extensions" type="list" required="true">segment-specific tokens</field>
-      <field name="cta_policy" type="object" required="true">{contextual_only, frequency_cap_per_session}</field>
-      <field name="trial_policy" type="object" required="true">{duration, reminder_cadence, grandfather_on_change}</field>
-      <field name="owner" type="string" required="true">named design lead + PM</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">state_taxonomy missing 'locked' state</pattern>
-      <pattern id="f2">upgrade CTAs uncapped (constant nags)</pattern>
-      <pattern id="f3">dark patterns in copy</pattern>
-      <pattern id="f4">trial expiration with no notice</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/segment-aware-design-system.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>segments populated with a typed value</item>
-      <item>state_taxonomy populated with a typed value</item>
-      <item>token_extensions populated with a typed value</item>
-      <item>cta_policy populated with a typed value</item>
-      <item>trial_policy populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/segment-aware-design-system.json",
+  "type": "object",
+  "required": [
+    "segments",
+    "tokens_path",
+    "components_with_segment_prop",
+    "i18n_namespace"
+  ],
+  "properties": {
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "tone"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]+$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "neutral",
+              "formal",
+              "playful",
+              "technical"
+            ]
+          }
+        }
+      }
+    },
+    "tokens_path": {
+      "type": "string"
+    },
+    "components_with_segment_prop": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "i18n_namespace": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "segments": [
+    {
+      "id": "developer",
+      "label": "Solo developer",
+      "tone": "technical"
+    },
+    {
+      "id": "exec",
+      "label": "Engineering leader",
+      "tone": "formal"
+    }
+  ],
+  "tokens_path": "design-system/tokens/segments/",
+  "components_with_segment_prop": [
+    "Button",
+    "Hero",
+    "PricingCard"
+  ],
+  "i18n_namespace": "marketing"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "segments": [],
+  "tokens_path": ""
+}
+]]></code>
+    <note>segments empty (minItems=1); tokens_path empty; missing components_with_segment_prop, i18n_namespace.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">segments.length &gt; 5</pattern>
+    <pattern id="f2">tone outside enum</pattern>
+    <pattern id="f3">components_with_segment_prop empty</pattern>
+    <pattern id="f4">tokens_path missing or empty</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-segment-aware-design-system.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

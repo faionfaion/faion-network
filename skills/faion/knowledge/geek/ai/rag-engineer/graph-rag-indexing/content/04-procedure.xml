@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Graph RAG Indexing Pipeline Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7-step procedure to apply this methodology end-to-end with explicit decision-gates.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="ingest-and-chunk">
+      <input>corpus + chunking-basics output</input>
+      <action>Chunk every doc with deterministic chunk_id = sha1(doc_id + idx + content_hash)[:16].</action>
+      <output>JSONL of chunks</output>
+    </step>
+    <step n="2" name="extract-entities">
+      <input>chunks + entity schema</input>
+      <action>LLM-extract (entity, type, mentions) per chunk with extraction_model=cheap.</action>
+      <output>Raw entity rows</output>
+    </step>
+    <step n="3" name="canonicalize-entities">
+      <input>raw entity rows</input>
+      <action>Case fold + alias table + embedding-sim dedup at cosine ≥ 0.92.</action>
+      <output>Canonical entity table</output>
+      <decision-gate>If canonical count &gt; 5x distinct mentions, raise threshold to 0.95 and re-run.</decision-gate>
+    </step>
+    <step n="4" name="build-graph">
+      <input>canonical entities + co-occurrence</input>
+      <action>Build nodes + weighted edges (co-occurrence within chunk_window).</action>
+      <output>Graph file (parquet)</output>
+    </step>
+    <step n="5" name="detect-communities">
+      <input>graph</input>
+      <action>Run Leiden clustering at multiple resolutions; assign community_id.</action>
+      <output>Hierarchical communities</output>
+    </step>
+    <step n="6" name="summarize-communities">
+      <input>communities + chunks</input>
+      <action>LLM-summarize each community with summary_model; cache by member_set_hash.</action>
+      <output>Summary JSONL</output>
+      <decision-gate>If community has 1 member, skip summary.</decision-gate>
+    </step>
+    <step n="7" name="checkpoint-and-version">
+      <input>all artefacts</input>
+      <action>Write checkpoint manifest matching schema; bump version; pass to validator.</action>
+      <output>Versioned index</output>
+    </step>
+
+  </section>
+</text>

@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="graph-rag-production Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for graph-rag-production. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Graph RAG in Production Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the graph-rag-production methodology. Each rule pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>When using LlamaIndex KnowledgeGraphIndex, set max_triplets_per_chunk to at least 10 and verify extraction coverage on a sample of dense chunks. LlamaIndex is tightly coupled to the OpenAI API format — migrating to Anthropic requires a custom LLM adapter; do not assume provider portability.</statement>
-      <rationale source="v1-source">The default max_triplets_per_chunk silently truncates dense academic or legal text at chunk extraction time, producing an incomplete graph without any error. OpenAI API coupling is not documented prominently; discovering it after a large index has been built on OpenAI keys and then switching providers is expensive.</rationale>
+
+    <rule id="query-router-classifies-before-traversal" testable="true" depth="essential">
+      <statement>Every incoming query MUST first hit a router that classifies it as GLOBAL / LOCAL / COMMUNITY / NONE, then dispatches to the matching retrieval path.</statement>
+      <rationale source="Microsoft GraphRAG production guide 2026">Running the wrong retrieval path (e.g. global on a local question) wastes 10x cost AND degrades quality; routing is the cheapest precision lever.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>When running Microsoft graphrag CLI in automated pipelines: checkpoint the generated config after the first run, pin the graphrag version, and track indexing cost by counting chunks before running. Do not run graphrag index without a cost estimate when the corpus exceeds 10,000 chunks.</statement>
-      <rationale source="v1-source">graphrag CLI rewrites config on first run and the config format changes between minor versions. A version bump mid-pipeline can force a full re-index. At $0.004/chunk (gpt-4o extraction), 100k chunks = $400 per index run; cost visibility before execution is mandatory.</rationale>
+    <rule id="community-summary-cache-keyed-by-version" testable="true" depth="essential">
+      <statement>Community summaries served from cache keyed by (community_id, index_version); cache miss triggers regeneration AND emits metric.</statement>
+      <rationale source="Production runbook §4">Without versioned cache keys, an index re-build silently serves stale summaries until eviction.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>For single-process Graph RAG pipelines with no concurrent access requirement, prefer Kuzu (embedded, zero server cost) over Neo4j. For multi-process or multi-user deployments, use Neo4j self-hosted (Docker) or Neo4j AuraDB. Do not use Amazon Neptune unless already committed to the AWS ecosystem — cost is 5-10x Neo4j AuraDB for equivalent workloads.</statement>
-      <rationale source="v1-source">Kuzu eliminates the operational overhead of running and maintaining a graph database server for workloads that do not need concurrent access. For most RAG indexing pipelines that index once and read from a single query process, the embedded pattern is the simplest and cheapest path.</rationale>
+    <rule id="incremental-updates-via-delta-events" testable="true" depth="essential">
+      <statement>Document inserts/deletes MUST go through a delta event stream that updates entities + edges + affected communities; no in-place mutation of the live graph.</statement>
+      <rationale source="Faion internal GraphRAG ops 2026">Live mutation races against in-flight retrievals; the delta stream gives an atomic apply point.</rationale>
     </rule>
+    <rule id="cost-cap-per-query-type" testable="true" depth="essential">
+      <statement>Each query type MUST carry a max-cost cap (USD); router rejects with HTTP 429 above cap and emits alert.</statement>
+      <rationale source="Cost governance policy 2026">One adversarial GLOBAL query can cost 100x a normal LOCAL one; without a cap, a single attacker blows the budget.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If traffic &lt; 100 queries/day OR index is read-only static, skip production patterns and run the simpler retrieval methodology directly.</statement>
+      <rationale source="Internal cost-benefit study">Production overhead (router, cache, delta stream) only amortizes above a traffic floor.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

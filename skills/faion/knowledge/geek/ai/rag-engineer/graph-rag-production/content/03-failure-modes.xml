@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="graph-rag-production Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for graph-rag-production as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Graph RAG in Production Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Building a production Graph RAG system on top of NetworkX without a persistence layer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>NetworkX graphs are in-memory only. A process restart loses the entire graph and forces a full re-index. Any production deployment needs a persistent graph store (Neo4j, Kuzu, FalkorDB) so the graph survives restarts and can be accessed by multiple query processes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running entity extraction without entity normalization before graph insert.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLM extraction produces variant spellings of the same entity across chunks ("OpenAI", "openai", "Open AI"). Without normalization (lowercase, strip punctuation, resolve aliases), each variant becomes a separate node in the graph and relationship paths between them are broken.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="no-query-router" severity="high">
+      <symptom>Random latency spikes 30s+; cost per query erratic.</symptom>
+      <root-cause source="practitioner audit 2026">All queries dispatched to GLOBAL retrieval regardless of intent.</root-cause>
+      <fix>Insert classifier (haiku) at ingress; route GLOBAL vs LOCAL vs COMMUNITY.</fix>
+    </antipattern>
+
+    <antipattern id="in-place-graph-mutation" severity="high">
+      <symptom>Retrievals see partially-applied updates; relevance flips between identical queries.</symptom>
+      <root-cause source="practitioner audit 2026">New docs written directly into graph store while traffic is live.</root-cause>
+      <fix>Replace with delta event stream + atomic version flip.</fix>
+    </antipattern>
+
+    <antipattern id="uncapped-global-queries" severity="high">
+      <symptom>Daily LLM bill jumps 10x after a marketing campaign sends loosely-worded queries.</symptom>
+      <root-cause source="practitioner audit 2026">No max-cost-per-query-type cap; router accepts any GLOBAL query.</root-cause>
+      <fix>Add USD cap per query type; 429 over cap; alert ops.</fix>
+    </antipattern>
+
   </section>
 </text>

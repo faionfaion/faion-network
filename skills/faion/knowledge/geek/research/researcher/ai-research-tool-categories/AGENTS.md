@@ -3,71 +3,93 @@ slug: ai-research-tool-categories
 tier: geek
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A phase-and-budget decision map for selecting research tools across seven categories: exploration, competitor intel, user interviews, survey analysis, sentiment, synthesis, and synthetic research.
-content_id: "d557e075aba85165"
-tags: [research-tools, decision-tree, budget-tiers, agent-workflow]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Taxonomy of AI research tool categories (live-web search, citation graphs, document Q&A, synthesis-over-uploaded-sources) with selection criteria and corpus-bias notes per category.
+content_id: "6df54efa30bd149e"
+complexity: light
+produces: rubric
+est_tokens: 3400
+tags: [taxonomy, ai-research, categories, selection, corpus-bias]
 ---
-# AI Research Tool Categories
+# AI Research Tool Categories Taxonomy
 
 ## Summary
 
-**One-sentence:** A phase-and-budget decision map for selecting research tools across seven categories: exploration, competitor intel, user interviews, survey analysis, sentiment, synthesis, and synthetic research.
+**One-sentence:** Taxonomy of AI research tool categories (live-web search, citation graphs, document Q&A, synthesis-over-uploaded-sources) with selection criteria and corpus-bias notes per category.
 
-**One-paragraph:** A phase-and-budget decision map for selecting research tools across seven categories: exploration, competitor intel, user interviews, survey analysis, sentiment, synthesis, and synthetic research. Agents use this map as a decision tree; given phase and budget, they output a stack recommendation with API availability flags.
+**One-paragraph:** Taxonomy of AI research tool categories (live-web search, citation graphs, document Q&A, synthesis-over-uploaded-sources) with selection criteria and corpus-bias notes per category. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Швидка orientation у landscape: live-web vs citation-graph vs document Q&A vs synthesis.
+- Розуміння corpus bias кожної категорії (web bias, academic bias, vendor bias).
+- Pre-condition before picking concrete tool — спочатку категорія, потім продукт.
+- Бази навчання junior researchers щодо правильної tool-orientation.
 
 ## Applies If (ALL must hold)
 
-- Planning a research stack at the start of a new project or research sprint.
-- Selecting tools for a specific research phase (discovery → synthesis → validation).
-- Budget-scoping a research operation (free vs. mid vs. enterprise).
-- Choosing the right tool per research question type before committing to a SaaS contract.
+- Новий research-проект і команді треба узгодити tool stack.
+- Onboarding researcher має зрозуміти, що чим відрізняється.
+- Аудит поточного workflow на corpus-bias gaps.
 
 ## Skip If (ANY kills it)
 
-- As a substitute for evaluating data privacy requirements — always check data processing agreements.
-- When the question is fully addressable with a single tool already in use — avoid tool sprawl.
-- For purely qualitative synthesis where Claude alone suffices — no additional tooling needed.
+- Команда вже узгоджена на tool stack — категорії зайві.
+- Single-shot research question — одразу до tool selection.
+- Internal-only docs без зовнішніх джерел — таксономія не релевантна.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| research charter | one paragraph — scope and questions | research lead |
+| current tool inventory | list of tools team uses | research ops |
+| budget envelope | USD/mo | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| _none_ | This methodology does not require upstream context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/categories.yaml` | Filled taxonomy ready for team adoption |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-research-tool-categories.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/research/researcher/`
+- [[ai-research-tools]]
+- [[perplexity-ai-research]]
+- [[market-sizing-with-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Has the team already aligned on a research tool stack?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

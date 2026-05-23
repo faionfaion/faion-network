@@ -1,4 +1,10 @@
-"""FasterWhisperTranscriber with VAD filter and streaming output."""
+"""
+purpose: Local faster-whisper (CTranslate2) transcriber with VAD filter and streaming output.
+consumes: audio path + model size + GPU/CPU device + language
+produces: segments with timestamps (verbose_json-equivalent)
+depends-on: content/01-core-rules.xml r1, r5
+token-budget-impact: zero per call (sunk GPU cost)
+"""
 from faster_whisper import WhisperModel
 from typing import Generator
 

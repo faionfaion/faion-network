@@ -3,69 +3,95 @@ slug: segment-aware-design-system
 tier: geek
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Tier-aware experiences: same design system expressing different states (locked, preview, full) across free/paid or B2C/B2B segments.
-content_id: "3a3fd3d5f01e9af5"
-tags: [segment-aware-design-system, product, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Defines a design system where tokens, components, and copy variants are partitioned by user segment so a single codebase serves multiple audiences without forking.
+content_id: "510423d7e1374004"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [design-system, segments, tokens, personalization, i18n]
 ---
-
 # Segment-Aware Design System
 
 ## Summary
 
-**One-sentence:** Tier-aware experiences: same design system expressing different states (locked, preview, full) across free/paid or B2C/B2B segments.
+**One-sentence:** Defines a design system where tokens, components, and copy variants are partitioned by user segment so a single codebase serves multiple audiences without forking.
 
-**One-paragraph:** When a product has free/paid tiers or B2C/B2B segments, the same design system must express different states (locked, preview, full). No corpus methodology covers designing for tier-aware experiences. Output: state taxonomy + token extensions + upgrade-path UX.
+**One-paragraph:** Defines a design system where tokens, components, and copy variants are partitioned by user segment so a single codebase serves multiple audiences without forking. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Один продукт для 2-5 сегментів (B2B/B2C, dev/exec) без форку кодбази.
+- Token-level theming замість per-segment forked CSS.
+- Component variants з explicit segment prop замість feature flags spaghetti.
+- Copy variants централізовані в i18n + segment dimension, не у компонентах.
 
 ## Applies If (ALL must hold)
 
-- product has ≥2 user segments (free/paid, B2C/B2B, basic/pro)
-- design system in place with token foundation
-- PM + designer want consistent expression across segments
+- ≥2 user segments з різним tone/density/copy при тому ж функціональному ядрі.
+- Існує design system з токенами (Style Dictionary / Tokens Studio).
+- Команда дизайну + фронту узгоджена на token-driven workflow.
 
 ## Skip If (ANY kills it)
 
-- single-segment product
-- team has no design-system foundation (build first)
-- segments are sufficiently different to warrant separate apps
+- Один сегмент — segment dimension зайвий.
+- Сегменти різняться функцією, а не UI — потрібен SaaS multi-tenancy, не дизайн-система.
+- Прототип <100 користувачів — рано формалізувати сегменти.
 
 ## Prerequisites
 
-- segment definitions + traffic distribution
-- current design system tokens + component library
-- product-tier capability matrix
+| Artefact | Format | Source |
+|----------|--------|--------|
+| segment definitions | YAML list of segments with attributes | research / PM |
+| token source | Style Dictionary JSON | design system |
+| component inventory | Storybook stories list | frontend |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent skill — provides operating context for this methodology |
-| `pro/product/design-ops-foundations` | peer methodology — produces inputs or consumes outputs |
-| `pro/product/segment-aware-design-system` | peer methodology — produces inputs or consumes outputs |
+| [[ai-assisted-persona-building]] | segments validated by research |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/segments.yaml` | Segment registry consumed by tokens + i18n |
+| `templates/button-variants.stories.tsx` | Storybook stories showing Button across segments |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-segment-aware-design-system.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodology: `pro/product/design-ops-foundations`
-- peer methodology: `pro/product/segment-aware-design-system`
-- peer methodology: `geek/ai/ai-product-marketing-patterns`
-- external: https://www.smashingmagazine.com/2021/09/empty-states-design/; https://baymard.com/learn/empty-state-design
+- [[vendor-evaluation-scorecard]]
+- [[ai-assisted-persona-building]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Does the product serve ≥2 user segments with differing tone/copy on the same functional core?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

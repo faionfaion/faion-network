@@ -1,22 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ai-native-product-development Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AI-Native Product Development Operating Model Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-native-product-development.json",
+  "type": "object",
+  "required": [
+    "feature_id",
+    "eval_set_id",
+    "thresholds",
+    "prompt_version",
+    "guardrail_review_status",
+    "owners"
+  ],
+  "properties": {
+    "feature_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]+$"
+    },
+    "eval_set_id": {
+      "type": "string"
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "faithfulness_min",
+        "refusal_max_rate",
+        "p95_latency_seconds"
+      ],
+      "properties": {
+        "faithfulness_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "refusal_max_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "p95_latency_seconds": {
+          "type": "number",
+          "minimum": 0.1
+        }
+      }
+    },
+    "prompt_version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "guardrail_review_status": {
+      "enum": [
+        "pending",
+        "passed",
+        "failed"
+      ]
+    },
+    "owners": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feature_id": "support-bot-summary",
+  "eval_set_id": "support-q2-2026",
+  "thresholds": {
+    "faithfulness_min": 0.85,
+    "refusal_max_rate": 0.05,
+    "p95_latency_seconds": 3.0
+  },
+  "prompt_version": "v2.1.0",
+  "guardrail_review_status": "passed",
+  "owners": [
+    "pm@example.com",
+    "ml@example.com"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feature_id": "X",
+  "eval_set_id": ""
+}
+]]></code>
+    <note>feature_id violates pattern; eval_set_id empty; missing thresholds, prompt_version, guardrail_review_status, owners.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">guardrail_review_status == 'pending' at rollout</pattern>
+    <pattern id="f2">owners with fewer than 2 entries</pattern>
+    <pattern id="f3">prompt_version not semver</pattern>
+    <pattern id="f4">thresholds missing any of faithfulness_min/refusal_max_rate/p95_latency_seconds</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-ai-native-product-development.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

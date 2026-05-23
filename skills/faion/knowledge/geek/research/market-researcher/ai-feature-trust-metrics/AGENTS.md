@@ -3,77 +3,94 @@ slug: ai-feature-trust-metrics
 tier: geek
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Feature-management method for ai feature trust metrics — what the brief, gate, and rollout artefacts must contain to move a feature from idea to production safely.
-content_id: "cb1e454a0e288247"
-tags: [ai, feature-mgmt, research]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Defines instrumentable trust metrics for an AI feature (perceived accuracy, transparency, recovery, fairness) and how to measure them via in-product probes + survey deltas.
+content_id: "d59feb05f828261e"
+complexity: medium
+produces: rubric
+est_tokens: 4300
+tags: [trust, ai-ux, metrics, instrumentation, market-research]
 ---
-# AI Feature Trust Metrics
+# AI-Feature Trust Metrics for Market Research
 
 ## Summary
 
-**One-sentence:** Feature-management method for ai feature trust metrics — what the brief, gate, and rollout artefacts must contain to move a feature from idea to production safely.
+**One-sentence:** Defines instrumentable trust metrics for an AI feature (perceived accuracy, transparency, recovery, fairness) and how to measure them via in-product probes + survey deltas.
 
-**One-paragraph:** Feature-management method for ai feature trust metrics — what the brief, gate, and rollout artefacts must contain to move a feature from idea to production safely. Trust is the dominant KPI for AI features but corpus measures only classic usability. Need correction-rate, override-rate, abandonment-after-AI-touch, citation-click-rate.
+**One-paragraph:** Defines instrumentable trust metrics for an AI feature (perceived accuracy, transparency, recovery, fairness) and how to measure them via in-product probes + survey deltas. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Запускаєш AI-фічу і потрібна trust-baseline до GA (vs post-launch noise).
+- Instrumentable signals: thumbs, regen rate, undo rate, hover-on-citation rate.
+- Survey deltas Likert до/після для perceived accuracy + fairness.
+- Trust dashboard разом з product KPIs — щоб не вибирати між adoption та trust.
 
 ## Applies If (ALL must hold)
 
-- You shepherd a feature through the SDLC gate covered by ai feature trust metrics.
-- There is a named owner accountable for the gate exit criteria.
-- Rollback or kill-criteria for the feature are explicit before the gate.
-- Cross-team consumers (support, finance, legal) are pre-briefed.
+- AI-фіча у production або pre-GA з ≥100 unique users/week.
+- Instrumentation pipeline (PostHog, Mixpanel) уже стоїть.
+- Доступний канал для micro-surveys (1-2 пит/тиждень).
 
 ## Skip If (ANY kills it)
 
-- Spikes / research with no production path — gate criteria are inapplicable.
-- Hot-fix or restore-path changes — incident response, not feature gating.
-- Internal-only, blameless dogfood features with no external customer signal.
+- Pre-prototype без real users — trust signals шум.
+- Закрита B2B з 5 користувачами — на 1-1 інтерв'ю краще.
+- AI-фіча без user-facing output (silent ranking) — нічого міряти.
 
 ## Prerequisites
 
-- Feature brief or RFC at the gate's expected maturity.
-- Named gate-owner and downstream consumer-owner.
-- Roll-back or kill-criteria decision recorded.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| feature spec | PRD with AI section | PM |
+| instrumentation map | events emitted by the feature | analytics |
+| baseline survey results | CSV pre-launch | research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/research/market-researcher/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[ai-native-product-development]] | AI-feature ops in place |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `artefact_check` | haiku | Lint the feature brief against gate criteria |
-| `gap_diagnosis` | sonnet | Identify which exit criteria are unmet |
-| `gate_decision` | opus | Author go/no-go with consequence narrative |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/trust-rubric.yaml` | Per-feature trust rubric |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-feature-trust-metrics.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/research/market-researcher/`
-- peer methodologies: see siblings under `geek/research/market-researcher/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-native-product-development]]
+- [[ai-research-tools]]
+- [[interview-note-synthesis-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Is the feature live with WAU >= 100 and instrumentation pipeline?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

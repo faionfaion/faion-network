@@ -3,68 +3,95 @@ slug: vendor-evaluation-scorecard
 tier: geek
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Recurring atomic-task scorecard for new SaaS tool, observability platform, AI provider evaluation — the buyer-side complement of gtm-* pages.
-content_id: "99510b38f9e48b5f"
-tags: [vendor-evaluation-scorecard, product, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Scorecard rubric for choosing AI vendors (LLM, vector DB, eval, observability) across quality, cost, lock-in, security, and SLA — produces a comparable score + decision artefact.
+content_id: "a02b0892da1f8e61"
+complexity: medium
+produces: rubric
+est_tokens: 4300
+tags: [vendor-evaluation, rubric, ai-tooling, lock-in, procurement]
 ---
-
-# Vendor Evaluation Scorecard
+# Vendor Evaluation Scorecard for AI Tooling
 
 ## Summary
 
-**One-sentence:** Recurring atomic-task scorecard for new SaaS tool, observability platform, AI provider evaluation — the buyer-side complement of gtm-* pages.
+**One-sentence:** Scorecard rubric for choosing AI vendors (LLM, vector DB, eval, observability) across quality, cost, lock-in, security, and SLA — produces a comparable score + decision artefact.
 
-**One-paragraph:** Vendor evaluation (new SaaS, observability, AI provider) is a recurring atomic task. faion has gtm-* (seller-side) pages but nothing buyer-side. Output: scorecard template + scoring policy + decision record.
+**One-paragraph:** Scorecard rubric for choosing AI vendors (LLM, vector DB, eval, observability) across quality, cost, lock-in, security, and SLA — produces a comparable score + decision artefact. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Обираєш LLM-провайдера між OpenAI / Anthropic / Bedrock з compliance + lock-in factor.
+- Vector DB shortlist: Qdrant vs Weaviate vs Pinecone + self-host vs SaaS.
+- Eval / observability tools (Braintrust, LangSmith, Helicone) — порівняння за єдиною rubric.
+- Procurement gate: pricing tier vs scale; SLA + DPA + SOC2 obov'yazkovi для enterprise.
 
 ## Applies If (ALL must hold)
 
-- team evaluating a tool or platform
-- ≥2 candidates exist
-- PM/EM has authority to pick
+- ≥2 vendors під розгляд для тієї ж функції.
+- Контракт > $5k/рік або production-залежність.
+- Доступний technical contact зі сторони вендора для уточнень.
 
 ## Skip If (ANY kills it)
 
-- single-candidate (only one viable vendor)
-- auto-buy mandated by parent org or compliance
-- evaluation already covered by vendor-eval-framework (use the bigger one)
+- Один вендор з якого вже залежиш і немає реальної alternative.
+- Free-tier prototype без production планів.
+- Sub-$1k purchase — overhead rubric > value.
 
 ## Prerequisites
 
-- candidates list + initial criteria
-- scoring rubric + weights
-- trial / demo access for each candidate
+| Artefact | Format | Source |
+|----------|--------|--------|
+| vendor shortlist | list of ≥2 vendors + URLs | research |
+| requirements | Markdown spec — must/should/nice | product |
+| budget cap | USD/month | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent skill — provides operating context for this methodology |
-| `geek/pm/vendor-eval-framework` | peer methodology — produces inputs or consumes outputs |
-| `solo/dev/library-evaluation-rubric` | peer methodology — produces inputs or consumes outputs |
+| [[ai-research-tools]] | shortlist informed by tool-categories scan |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/scorecard.md` | Human-readable scorecard with five-axis table |
+| `templates/scorecard.json` | Machine-readable scorecard matching schema |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-vendor-evaluation-scorecard.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodology: `geek/pm/vendor-eval-framework`
-- peer methodology: `solo/dev/library-evaluation-rubric`
-- external: https://www.softwareadvice.com/buyers-guides; https://www.g2.com/categories
+- [[ai-research-tools]]
+- [[ai-research-tool-categories]]
+- [[ai-native-product-development]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Are there ≥2 realistic vendors AND contract value ≥ $1k/yr?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

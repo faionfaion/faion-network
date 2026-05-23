@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedding-model-selection Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedding-model-selection as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Embedding Model Selection for RAG Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Switching the embedding model mid-pipeline because a newer model was released, without re-indexing the entire corpus.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The new vectors occupy a different latent space. Cosine similarity between old and new vectors is meaningless. All retrieval results become wrong without full re-ingestion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Cohere's embed-multilingual-v3.0 called with texts exceeding 512 tokens without pre-chunking.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cohere silently truncates server-side at 512 tokens. The resulting vector represents only the first 512 tokens, not the full text.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="switch-model-after-ingestion" severity="high">
+      <symptom>Team upgrades from text-embedding-3-small to -large; queries return wrong chunks; relevance collapses.</symptom>
+      <root-cause source="practitioner audit 2026">Model swap silently mixes two vector spaces — old vectors stay at 1536 dims, new queries at 3072.</root-cause>
+      <fix>Lock model in decision-record; treat swap as full re-ingestion event with index versioning.</fix>
+    </antipattern>
+
+    <antipattern id="default-dimension-with-storage-blowup" severity="medium">
+      <symptom>Vector DB cost 4x expected; latency at p99 doubles.</symptom>
+      <root-cause source="practitioner audit 2026">Author left text-embedding-3-large at default 3072 dims for a 10M-chunk corpus.</root-cause>
+      <fix>Use 1024 dims for -large, 512 for -small; record choice in metadata.</fix>
+    </antipattern>
+
+    <antipattern id="monolingual-on-multilingual-corpus" severity="high">
+      <symptom>Recall@10 drops 40% on Ukrainian/English mixed query set.</symptom>
+      <root-cause source="practitioner audit 2026">Picked text-embedding-3-small (English-biased) for a multilingual corpus.</root-cause>
+      <fix>Switch to embed-multilingual-v3.0 or bge-m3; re-ingest.</fix>
+    </antipattern>
+
   </section>
 </text>

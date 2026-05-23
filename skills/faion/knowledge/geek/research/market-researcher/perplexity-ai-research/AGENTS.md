@@ -3,74 +3,96 @@ slug: perplexity-ai-research
 tier: geek
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Decompose a research question into 3-5 targeted Perplexity sub-queries, dispatch each via the Perplexity REST API with explicit search_recency_filter, collect cited results, de-duplicate sources, and consolidate into a markdown synthesis with a source registry.
-content_id: "dc8d19cecf63327c"
-tags: [perplexity, research, api, market-sizing, citations]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Decompose-execute-synthesize Perplexity Pro Search workflow: atomic sub-queries, recency filters, per-claim confidence ratings, and human verification before publication.
+content_id: "8bc3dfefd8018b3e"
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [perplexity, research, web-search, citations, synthesis]
 ---
-# Perplexity AI for Research
+# Perplexity AI Research Workflow
 
 ## Summary
 
-**One-sentence:** Decompose a research question into 3-5 targeted Perplexity sub-queries, dispatch each via the Perplexity REST API with explicit search_recency_filter, collect cited results, de-duplicate sources, and consolidate into a markdown synthesis with a source registry.
+**One-sentence:** Decompose-execute-synthesize Perplexity Pro Search workflow: atomic sub-queries, recency filters, per-claim confidence ratings, and human verification before publication.
 
-**One-paragraph:** Decompose a research question into 3-5 targeted Perplexity sub-queries, dispatch each via the Perplexity REST API with explicit search_recency_filter, collect cited results, de-duplicate sources, and consolidate into a markdown synthesis with a source registry. Never query the full question at once — narrow sub-queries produce better coverage and citation quality.
+**One-paragraph:** Decompose-execute-synthesize Perplexity Pro Search workflow: atomic sub-queries, recency filters, per-claim confidence ratings, and human verification before publication. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Compound research question → атомарні sub-queries по одному факту.
+- search_recency_filter='year' проти 2022-числен у 2026 звіті.
+- Confidence H/M/L per claim з кількості та якості джерел.
+- Human verification gate ДО downstream pipeline — без auto-publish.
 
 ## Applies If (ALL must hold)
 
-- Fast, cited multi-source synthesis where manual source collection would take hours
-- Market sizing queries needing recent (under 6 months) data with traceable URLs
-- Competitive landscape sweeps producing a first-pass list of players and funding events
-- Trend research where breadth matters more than depth in the first pass
-- Validating or cross-checking a specific claim with multiple independent sources
+- Питання вимагає live web data (post-cutoff events, current prices).
+- ≥5 web sources потрібно synthesizувати з citations.
+- Доступний Perplexity Pro API key АБО web UI з sonar-pro моделлю.
 
 ## Skip If (ANY kills it)
 
-- Deep primary-source research — Perplexity aggregates web content, not proprietary data
-- When citations must be peer-reviewed or from specific databases (PubMed, SSRN, SEC EDGAR)
-- Real-time streaming data (stock prices, live social signals) — Perplexity crawls on delay
-- Tasks where context must persist across multiple sessions — Perplexity has no persistent memory
-- When the research question is too ambiguous — vague queries produce authoritative-sounding but unreliable results
+- Питання має одне authoritative джерело — fetch напряму.
+- Confidential competitive research — leaks query intent через Perplexity сервери.
+- Reasoning task — Perplexity retrieves, не reasons.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| research question | compound question, may have sub-parts | PI |
+| Perplexity API key | env var PPLX_API_KEY | secrets |
+| budget cap | USD/run | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ai-research-tools]] | Perplexity confirmed as the right tool |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/research-report.md` | Final research report skeleton |
+| `templates/perplexity_research.py` | Runnable Perplexity batch caller |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-perplexity-ai-research.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/research/market-researcher/`
+- [[ai-research-tools]]
+- [[ai-research-tool-categories]]
+- [[market-sizing-with-ai]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Does the question need live web data with citations?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.

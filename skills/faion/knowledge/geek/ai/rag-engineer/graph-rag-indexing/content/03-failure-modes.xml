@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="graph-rag-indexing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for graph-rag-indexing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Graph RAG Indexing Pipeline Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Re-running indexing on the same corpus without using a versioned graph namespace or progress checkpoint.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Entity extraction LLM calls cost $4-20 per million tokens. A 10k-doc corpus without checkpointing wastes the full cost on every crash or restart. Use a content-hash progress file and a versioned collection prefix (e.g., corpus-v2-2026-04) so a re-index does not corrupt an in-use production graph.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Assuming all entities in a corpus are present in the graph.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLM entity extraction has recall of 70-85%. Agents must fall back to vector search for entities not found in the graph rather than reporting "no information found".</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="random-chunk-uuids" severity="high">
+      <symptom>Pipeline rerun produces a different graph; entity dedup fails; community detection unstable.</symptom>
+      <root-cause source="practitioner audit 2026">Author used uuid4() for chunk_id instead of content-derived hash.</root-cause>
+      <fix>Switch chunk_id to sha1(doc_id + chunk_index + content_hash)[:16].</fix>
+    </antipattern>
+
+    <antipattern id="entity-dup-explosion" severity="high">
+      <symptom>Graph has 50k 'organization' nodes for a 5k-doc corpus; communities are noise.</symptom>
+      <root-cause source="practitioner audit 2026">No entity canonicalization step — every casing variant becomes a node.</root-cause>
+      <fix>Insert canonicalization step: case fold + alias table + sim-dedup at 0.92 cosine.</fix>
+    </antipattern>
+
+    <antipattern id="regenerate-summaries-per-query" severity="medium">
+      <symptom>Per-query latency 30s+; LLM bill grows linearly with traffic.</symptom>
+      <root-cause source="practitioner audit 2026">Summaries treated as ephemeral, not cached by community version.</root-cause>
+      <fix>Cache summaries keyed by (community_id, member_set_hash); only invalidate on membership change.</fix>
+    </antipattern>
+
   </section>
 </text>

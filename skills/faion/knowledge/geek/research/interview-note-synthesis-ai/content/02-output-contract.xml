@@ -1,42 +1,141 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Interview Note Synthesis (AI-Assisted) Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Interview Note Synthesis (AI-Assisted) output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI-Assisted Interview Note Synthesis Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="extracted_items" type="list" required="true">[{quote, transcript_id, tag, date}]</field>
-      <field name="clusters" type="list" required="true">[{name, items, mention_count, recency_count}]</field>
-      <field name="signal_themes" type="list" required="true">themes meeting r3 threshold</field>
-      <field name="ost_candidates" type="list" required="true">[{opportunity, evidence_links, priority}]</field>
-      <field name="synthesis_date" type="date" required="true">ISO date</field>
-      <field name="owner" type="string" required="true">named PM or researcher</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">clusters not human-reviewed</pattern>
-      <pattern id="f2">signal_themes lacks ≥3 mention threshold</pattern>
-      <pattern id="f3">ost_candidates missing evidence links</pattern>
-      <pattern id="f4">claims without verbatim citations</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/interview-note-synthesis-ai.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>extracted_items populated with a typed value</item>
-      <item>clusters populated with a typed value</item>
-      <item>signal_themes populated with a typed value</item>
-      <item>ost_candidates populated with a typed value</item>
-      <item>synthesis_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/interview-note-synthesis-ai.json",
+  "type": "object",
+  "required": [
+    "research_question",
+    "interview_count",
+    "themes",
+    "verified_by"
+  ],
+  "properties": {
+    "research_question": {
+      "type": "string",
+      "minLength": 10
+    },
+    "interview_count": {
+      "type": "integer",
+      "minimum": 3
+    },
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "theme_id",
+          "label",
+          "confidence",
+          "supporting_interviews",
+          "quotes"
+        ],
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "H",
+              "M",
+              "L"
+            ]
+          },
+          "supporting_interviews": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "quotes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "interview_id",
+                "line_range",
+                "text"
+              ],
+              "properties": {
+                "interview_id": {
+                  "type": "string"
+                },
+                "line_range": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "verified_by": {
+      "type": "string",
+      "minLength": 2
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "research_question": "Why do solo developers churn from faion in week 2?",
+  "interview_count": 8,
+  "themes": [
+    {
+      "theme_id": "t1",
+      "label": "Auth flow friction",
+      "confidence": "H",
+      "supporting_interviews": [
+        "i01",
+        "i03",
+        "i04",
+        "i07"
+      ],
+      "quotes": [
+        {
+          "interview_id": "i01",
+          "line_range": "L42-L48",
+          "text": "I gave up after the third login redirect"
+        }
+      ]
+    }
+  ],
+  "verified_by": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "themes": []
+}
+]]></code>
+    <note>Empty themes; missing research_question, interview_count, verified_by; no quote attribution.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">themes with supporting_interviews count &lt; 1</pattern>
+    <pattern id="f2">quote missing interview_id or line_range</pattern>
+    <pattern id="f3">confidence outside H/M/L</pattern>
+    <pattern id="f4">verified_by empty (skipping human review gate)</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-interview-note-synthesis-ai.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

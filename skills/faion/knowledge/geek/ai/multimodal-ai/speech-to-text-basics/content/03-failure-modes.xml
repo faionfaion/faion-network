@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="speech-to-text-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for speech-to-text-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Speech-to-Text Basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five recurring failures in Whisper-based transcription pipelines.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using response_format other than "verbose_json" when requesting timestamp_granularities=["word"]</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Non-verbose formats silently drop word timestamps — no error is raised, the timestamps are simply absent from the response.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Polling AssemblyAI or AWS Transcribe with a synchronous await</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long audio transcription jobs via cloud services are async — agent must poll a status URL. Synchronous waiting blocks the event loop for minutes.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <symptom>Ukrainian audio transcribes as transliterated Russian (or vice versa); downstream search fails.</symptom>
+      <root-cause>language= parameter omitted; Whisper auto-detect chose the wrong language.</root-cause>
+      <fix>Always pass language= explicitly from content metadata (rule r1).</fix>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Pipeline rejects FLAC / OGG sources at API time, late in the flow.</symptom>
+      <root-cause>Format guard not at the ingest edge; unsupported formats accepted upstream.</root-cause>
+      <fix>Reject unsupported formats at ingest with a clear error (rule r3).</fix>
+    </antipattern>
+    <antipattern id="fm-03" severity="high">
+      <symptom>Files &gt;25 MB silently fail; whole episode goes untranscribed.</symptom>
+      <root-cause>No pre-split step; pipeline assumes API will handle large files.</root-cause>
+      <fix>Use pydub or ffmpeg to split on silence boundaries before API call (rule r4).</fix>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Engineers build "streaming" with overlapping 30s windows; latency 5s, accuracy 60%.</symptom>
+      <root-cause>Whisper used for sub-300ms streaming; tries to stitch end-of-segment results.</root-cause>
+      <fix>Use Deepgram / AssemblyAI / Azure Realtime for actual streaming (rule r6).</fix>
+    </antipattern>
+    <antipattern id="fm-05" severity="medium">
+      <symptom>API bill explodes at high volume; finops escalates.</symptom>
+      <root-cause>Production runs >10k hours/month on the API instead of local faster-whisper.</root-cause>
+      <fix>At &gt;10k hr/month switch to faster-whisper on GPU; amortise hardware (rule r5).</fix>
+    </antipattern>
   </section>
 </text>

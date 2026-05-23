@@ -1,39 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Architecture Repo Scaffolding Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Architecture Repo Scaffolding Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Architecture Repo Scaffolding Template Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. The validator script enforces required keys, evidence-link presence, and slug match. Forbidden patterns: missing evidence array, slug mismatch, free-form version strings.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/architecture-repo-scaffolding-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/architecture-repo-scaffolding-template.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/architecture-repo-scaffolding-template.json",
+  "title": "Architecture Repo Scaffolding Template",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "owner",
+    "produced_at",
+    "evidence",
+    "body"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "architecture-repo-scaffolding-template"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri-reference"
+      },
+      "minItems": 1
+    },
+    "body": {
+      "type": "object"
+    },
+    "ai_drafted": {
+      "type": "boolean"
+    },
+    "reviewer": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "architecture-repo-scaffolding-template",
+  "version": "1.0.0",
+  "owner": "tech-lead@example.com",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "evidence": [
+    "https://example.com/adr/0007",
+    "./docs/decision-log.md#2026-05-22"
+  ],
+  "body": {
+    "summary": "real content here"
+  },
+  "ai_drafted": false,
+  "reviewer": "tech-lead@example.com"
+}
+]]></code>
+    <note>Required fields present, slug matches, evidence non-empty, version is semver.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "v1",
+  "evidence": []
+}
+]]></code>
+    <note>Slug mismatched, version not semver, evidence empty, body + owner + produced_at missing. Forbidden patterns: missing required keys, evidence=[], non-semver version, slug != expected.</note>
+  </example>
+
+  <reference path="scripts/validate-architecture-repo-scaffolding-template.py">Validator script (stdlib only, supports --self-test).</reference>
 </text>

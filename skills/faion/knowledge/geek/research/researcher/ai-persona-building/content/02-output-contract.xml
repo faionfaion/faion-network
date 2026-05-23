@@ -1,22 +1,162 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ai-persona-building Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AI Persona Building Workflow Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator enforces required fields + per-field constraints. Forbidden patterns listed at end.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-persona-building.json",
+  "type": "object",
+  "required": [
+    "personas",
+    "verified_by",
+    "interview_count"
+  ],
+  "properties": {
+    "personas": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "goals",
+          "pains",
+          "segment_rules",
+          "evidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]+$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "goals": {
+            "type": "array",
+            "minItems": 1
+          },
+          "pains": {
+            "type": "array",
+            "minItems": 1
+          },
+          "segment_rules": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "type": "object",
+              "required": [
+                "source_id",
+                "type",
+                "snippet"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "interview",
+                    "survey",
+                    "behavior"
+                  ]
+                },
+                "snippet": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "verified_by": {
+      "type": "string",
+      "minLength": 2
+    },
+    "interview_count": {
+      "type": "integer",
+      "minimum": 8
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "personas": [
+    {
+      "id": "solo-builder",
+      "label": "Solo builder",
+      "goals": [
+        "ship a sellable product alone",
+        "stay under $200/mo tooling"
+      ],
+      "pains": [
+        "context-loss between sessions",
+        "auth boilerplate"
+      ],
+      "segment_rules": [
+        "plan_tier in [free, solo]",
+        "team_size == 1"
+      ],
+      "evidence": [
+        {
+          "source_id": "i01",
+          "type": "interview",
+          "snippet": "I gave up after auth boilerplate"
+        },
+        {
+          "source_id": "i03",
+          "type": "interview",
+          "snippet": "I lose context every restart"
+        },
+        {
+          "source_id": "s12",
+          "type": "survey",
+          "snippet": "Top pain: time on plumbing"
+        }
+      ]
+    }
+  ],
+  "verified_by": "ruslan@faion.net",
+  "interview_count": 14
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "personas": [
+    {
+      "id": "X"
+    }
+  ]
+}
+]]></code>
+    <note>id pattern fail; missing goals/pains/segment_rules/evidence; missing verified_by/interview_count.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">evidence array with fewer than 3 items</pattern>
+    <pattern id="f2">segment_rules empty</pattern>
+    <pattern id="f3">personas length &gt; 5</pattern>
+    <pattern id="f4">verified_by empty</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-ai-persona-building.py">Validator script (stdlib + jsonschema-style validation; --self-test included).</reference>
 </text>

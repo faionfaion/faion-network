@@ -4,86 +4,96 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a RAG-feature canary rollout plan — fixed 1/5/25/100 curve, golden-eval gate per step, sampled online quality scoring, 60s kill switch.
 content_id: "e1dc6570331dfbe4"
-summary: A staged-rollout plan for a RAG-backed feature with answer-quality-based auto-rollback — canary percentage curve, golden-eval guardrails, online-quality scoring, kill-switch criteria, and a 60-second rollback path.
-tags: [rag, canary, rollout, auto-rollback, answer-quality, llm-feature]
+complexity: medium
+produces: spec
+est_tokens: 3200
+tags: [rag, canary, rollout, quality-gate, llm-as-judge, ml-ops]
 ---
-
-# RAG Canary Rollout with Auto-Rollback
+# RAG Canary Rollout Plan
 
 ## Summary
 
-**One-sentence:** Ship a RAG-backed feature on a staged canary (1% → 5% → 25% → 100%) with golden-eval guardrails before each step, live answer-quality scoring at the gateway, and an auto-rollback trigger when quality drops below the floor for ≥ 5 minutes.
+**One-sentence:** Produces a RAG-feature canary rollout plan — fixed 1/5/25/100 curve, golden-eval gate per step, sampled online quality scoring, 60s kill switch.
 
-**One-paragraph:** ml-ops covers drift monitoring; canary rollout for RAG features specifically needs answer-quality scoring and an auto-rollback decision tree. Traditional canaries gate on latency and error rate; RAG features additionally need to gate on answer quality (groundedness, relevance, completeness) because a "successful" call with low latency can still be a wrong answer. The methodology pins six choices: (1) the canary curve (1% / 5% / 25% / 100% with hold periods), (2) the golden-eval gate at each step (offline regression on a frozen set), (3) the online-quality scoring stack (LLM-as-judge or rubric-based, sampled), (4) the rollback floor (paired with the eval suite), (5) the kill-switch trigger logic, (6) the rollback path that must complete in &lt; 60 seconds. Primary output: a rollout-plan.yaml + an answer-quality dashboard + a rehearsed rollback runbook.
+**One-paragraph:** RAG quality regresses in ways that latency and error-rate canaries do not see. This methodology fixes the canary curve at 1% (24h hold) → 5% (24h) → 25% (48h) → 100%, gates each step with a golden-eval pass and online rubric-based quality scoring (5-10% sampled, ≥200 samples/hour during the 5% step), and enforces a ≤60-second kill switch by atomic in-memory routing flip (no deploy). Output: a versioned rollout-plan + per-step gate result + online-quality event + rollback receipt — all typed against the schema so step promotion can be automated.
+
+**Ефективно для:** ML-engineer / SRE, що випускає новий retriever / prompt / model у RAG-пайплайн і хоче ловити quality drop без чекання на user complaints.
 
 ## Applies If (ALL must hold)
 
-- production system has a RAG-backed feature ready to ship (new or major change)
-- LLM gateway or proxy exists with traffic-routing primitives (percentage split, kill switch)
-- frozen golden-eval set exists for the feature (≥ 50 representative questions)
-- answer-quality scoring runs (or can run) on a sample of live traffic
+- RAG feature with measurable answer-quality rubric (groundedness, relevance, completeness, no-hallucination).
+- Gateway can atomically flip versions in ≤60 seconds (in-memory routing table).
+- Golden eval suite exists and is updated within the last 90 days.
+- LLM-as-judge or human review queue available for online sampling.
 
 ## Skip If (ANY kills it)
 
-- pre-launch feature with no live traffic — golden eval is sufficient; canary applies after launch
-- no eval set — build the eval first, canary is downstream
-- gateway cannot do percentage splits — implement the split first; client-side feature flags are too leaky for RAG quality canary
-- single user / private beta with manual quality review — direct rollout with manual oversight, canary overhead is excess
+- No measurable quality rubric — return to rubric design first.
+- Gateway requires a deploy or cache warm-up to flip versions (rebuild gateway first).
+- Internal-only tool with no SLO and no users (no canary needed).
 
 ## Prerequisites
 
-- working RAG pipeline that the rollout will target
-- frozen golden eval set with per-question expected answer or expected facts
-- answer-quality scoring infrastructure (LLM judge, rubric scorer, or human review queue)
-- gateway with kill-switch primitive that fires in &lt; 60 seconds
+| Input artifact | Format | Source |
+|---|---|---|
+| Versioned retriever + prompt + reranker config | git sha | repo |
+| Golden eval suite (≥200 items) | JSONL | eval repo |
+| Online rubric definition with weights | YAML | rubric repo |
+| Atomic-flip gateway | service | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ml-engineer/prompt-version-pinning-runbook` | Pinned prompt version is the unit being canaried |
-| `geek/ai/rag-engineer/rag-eval-strategy` | The eval framework feeding both offline and online quality scoring |
-| `pro/infra/devops-engineer/dora-metrics` | MTTR target for the rollback |
+|---|---|
+| `geek/ai/ml-engineer/rag-pipeline-design` | Defines the pipeline shape that is being rolled out. |
+| `geek/ai/ml-engineer/rag-evaluation` | Provides the eval that gates each step. |
+| `geek/ai/ml-engineer/llm-observability-stack` | Source of the online-quality sink. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: canary curve, golden eval at each step, online quality scoring, kill-switch criteria, 60s rollback | ~900 |
-| `content/02-output-contract.xml` | essential | rollout-plan.yaml + online-quality-event + rollback-receipt schemas | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: kill-switch slow, eval-set stale, sampling-too-thin, etc. | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: fixed curve, golden eval per step, sampled online quality, 60s kill switch, atomic flip. | ~900 |
+| `content/02-output-contract.xml` | essential | Schema for rollout plan + per-step gate result + online quality event + rollback receipt. | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: slow kill switch, sampling too thin, stale eval, skipped steps, no kill-switch rehearsal, judge drift. | ~900 |
+| `content/04-procedure.xml` | medium | Steps: plan → golden eval pass at 1% → 24h hold → online sample → promote/rollback → repeat at 5/25/100. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routes by gate-state and quality-band at each step. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `golden_eval_run_at_step` | sonnet | Per-step eval execution and delta interpretation |
-| `online_quality_judge` | sonnet | Per-sample bounded judgment using rubric |
-| `canary_health_summary` | sonnet | Cross-metric synthesis per step |
-| `rollback_orchestration` | opus | Cross-system reasoning during an incident (gateway, observability, comms) |
+|---|---|---|
+| `draft-rollout-plan` | sonnet | Schema fill from prior templates. |
+| `score-sampled-traffic` | haiku | LLM-as-judge for cheap online scoring. |
+| `decide-rollback` | opus | Cross-signal synthesis on borderline cases. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/rollout-plan.yaml` | Per-feature rollout plan with curve, gates, floors |
-| `templates/answer-quality-rubric.md` | Rubric for the online judge: groundedness, relevance, completeness, hallucination |
-| `templates/rollback-runbook.md` | The 60-second runbook for kill-switch + comms |
+|---|---|
+| `templates/rollout-plan.json` | JSON schema for the rollout plan. |
+| `templates/rollout-plan.md` | Markdown skeleton for the human-readable plan. |
+| `templates/step-gate-result.json` | Per-step gate result schema. |
+| `templates/rollback-receipt.json` | Rollback receipt schema (records the 60s contract). |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/canary-step-gate.py` | At each step transition, runs golden eval, computes pass/fail, posts to channel | Step boundary |
-| `scripts/online-quality-monitor.py` | Samples live traffic, scores via judge, alerts on floor breach | Continuous during canary |
-| `scripts/auto-rollback-trigger.py` | When online quality &lt; floor for N consecutive minutes, fires the kill switch and records the receipt | On floor breach |
+|---|---|---|
+| `scripts/validate-rag-canary-rollout-plan.py` | Validate the plan: 4 steps, sample_rate ≥0.05 during 5%, kill_switch criteria ≥4, atomic flip = true. | Pre-commit + per-step gate. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/SKILL.md`
-- peer methodologies: `geek/ai/rag-engineer/rag-eval-strategy`, `geek/ai/ml-engineer/prompt-version-pinning-runbook`, `geek/ai/ml-ops/llm-observability-stack-2026`
-- external: [DeepEval / RAGAS / Ragatouille evaluation tooling] · [LangSmith canary deployment docs] · [Microsoft RAG production case studies] · [Google PaLM/Gemini deployment whitepapers on quality canaries]
+- [[rag-pipeline-design]]
+- [[rag-evaluation]]
+- [[retrieval-drift-alerting-recipe]]
+- [[router-shadow-deploy-protocol]]
+
+## Decision tree
+
+The tree at `content/06-decision-tree.xml` enumerates the per-step gate path: golden eval pass + online quality within band + latency p95 within +20% → promote; else → rollback within 60s. Walk it before promoting any step; never skip the hold.

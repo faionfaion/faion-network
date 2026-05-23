@@ -3,77 +3,95 @@ slug: ai-coding-of-qualitative-data-protocol
 tier: geek
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for ai coding of qualitative data protocol that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "c51a94fca768d327"
-tags: [ai, research, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Protocol for AI-assisted qualitative coding (codebook design, inter-coder agreement, audit trail) combining LLM proposal with human reconciliation to reach publishable kappa.
+content_id: "dca5ac21121b5e3e"
+complexity: deep
+produces: playbook-step
+est_tokens: 4300
+tags: [qualitative-coding, codebook, kappa, inter-coder-agreement, ai-research]
 ---
-# AI Coding Of Qualitative Data Protocol
+# AI-Assisted Coding Protocol for Qualitative Data
 
 ## Summary
 
-**One-sentence:** Reusable template for ai coding of qualitative data protocol that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Protocol for AI-assisted qualitative coding (codebook design, inter-coder agreement, audit trail) combining LLM proposal with human reconciliation to reach publishable kappa.
 
-**One-paragraph:** Reusable template for ai coding of qualitative data protocol that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. ai-interview-analysis exists but the practical loop (prompt template, code-book versioning, human-in-the-loop validation) is not codified — solo researchers need it most.
+**One-paragraph:** Protocol for AI-assisted qualitative coding (codebook design, inter-coder agreement, audit trail) combining LLM proposal with human reconciliation to reach publishable kappa. The methodology is testable end-to-end: each artefact it produces conforms to the JSON Schema in `content/02-output-contract.xml`, every claim in the body resolves to a rule in `content/01-core-rules.xml`, and the decision-tree in `content/06-decision-tree.xml` routes observable inputs to the right rule.
+
+**Ефективно для:**
+
+- Швидке coding of 20-200 транскриптів з кappa-validation > 0.7.
+- Codebook design ітеративно: human seeds → AI expands → human prunes.
+- Inter-coder agreement check: AI vs human reviewer на 10% sample.
+- Audit trail: кожен код → segment_id + reviewer + codebook_version.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by ai coding of qualitative data protocol (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Корпус 20-200 transcripts/segments; meaningful unit identifiable.
+- Codebook v1 існує або готовий до итеративної побудови.
+- Можливо залучити ≥1 додаткового coder для kappa-check.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- <20 segments — manual coding швидший і точніший.
+- Codebook fluid без stable concepts — занадто рано для protocol.
+- PII/sensitive content без redaction policy.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| segment corpus | JSONL {segment_id, text} | transcript pipeline |
+| codebook v1 | YAML {code_id, definition, examples} | research lead |
+| second-coder availability | yes/no flag + identifier | research ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/research/researcher/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[ai-interview-analysis]] | single-interview analysis available |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure (input/action/output/decision-gate) | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule in 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| classify-input | sonnet | Light judgment; identifies branch in decision tree. |
+| draft-output | sonnet | Drafting the output artefact per schema. |
+| validate-output | haiku | Mechanical schema validation via script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/codebook.yaml` | Codebook skeleton |
+| `templates/coded-segments.jsonl` | Sample coded segments with audit fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-coding-of-qualitative-data-protocol.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/research/researcher/`
-- peer methodologies: see siblings under `geek/research/researcher/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-interview-analysis]]
+- [[interview-note-synthesis-ai]]
+- [[ai-assisted-persona-building]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from the question "Is corpus size >= 20 AND second coder available?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
