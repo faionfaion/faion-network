@@ -3,73 +3,96 @@ slug: lessons-learned
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Continuous capture, structured categorisation, and mandatory retrieval of project knowledge so that the same mistakes are not repeated.
-content_id: "15d77bd37b2b85c5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Continuous capture, structured categorisation, and mandatory retrieval of project knowledge so the same mistakes are not repeated; produces a searchable lesson database.
+content_id: "28455eb0a8d4949e"
+complexity: medium
+produces: report
+est_tokens: 4900
 tags: [lessons-learned, retrospectives, knowledge-management, organizational-learning, continuous-improvement]
 ---
 # Lessons Learned
 
 ## Summary
 
-**One-sentence:** Continuous capture, structured categorisation, and mandatory retrieval of project knowledge so that the same mistakes are not repeated.
+**One-sentence:** Continuous capture, structured categorisation, and mandatory retrieval of project knowledge so the same mistakes are not repeated; produces a searchable lesson database.
 
-**One-paragraph:** Continuous capture, structured categorisation, and mandatory retrieval of project knowledge so that the same mistakes are not repeated. A lesson is only valid if it has a specific situation, measurable impact, root cause, and an actionable recommendation with a verb. "Communication was bad" is not a lesson — it is noise.
+**One-paragraph:** Continuous capture, structured categorisation, and mandatory retrieval of project knowledge so the same mistakes are not repeated; produces a searchable lesson database. The methodology applies in pm-traditional contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-lessons-learned.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Programs delivering >3 phases or releases per year.
+- Org with project portfolio across multiple PMs.
+- Recurring vendor relationships where pattern recognition matters.
+- Compliance regimes requiring documented learning loops.
 
 ## Applies If (ALL must hold)
 
-- Capturing decision rationale and outcomes throughout a project, not only at close-out
-- Running structured retrospectives (per milestone, per sprint, project-end)
-- Building an org-level knowledge base queried by future PMs before starting similar projects
-- Feeding improver and /faion mistake/pattern memories with structured lessons
-- Generating project close-out reports where the top 5 lessons are the executive summary
+- A lesson repository exists (Notion / Confluence / Markdown repo).
+- Lessons can be tagged with category (process, technical, vendor, comms, risk).
+- Retrieval is mandatory at planning + at risk identification on new work.
 
 ## Skip If (ANY kills it)
 
-- Trivial routine work where lessons are predictable — capturing them adds noise
-- Active blame/political environments — fix the culture first or run anonymous-only retros
-- Live-incident postmortems — use a blameless postmortem template, not project lessons
-- Confidential/regulated programs where each lesson requires individual legal review before sharing
+- Single-project team with no future projects.
+- Lessons captured but never read — fix retrieval first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Lesson repository | Markdown/Notion | PMO |
+| Category taxonomy | list of tags | PMO |
+| Retrieval triggers | list (planning, risk-id, retro) | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[scrum-ceremonies]] | retro is the source of agile-side lessons |
+| [[project-closure]] | closure is the source of waterfall lessons |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | optional | End-to-end worked example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-lesson` | sonnet | Judgement: extract reusable lesson vs project-specific note. |
+| `validate-lesson` | haiku | Mechanical schema check. |
+| `retrieve-for-planning` | haiku | Tag-based query into repository. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/lesson-validator.py` | Validator script: required fields, category in taxonomy, retrievability check |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-lessons-learned.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[scrum-ceremonies]]
+- [[project-closure]]
+- [[communications-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+

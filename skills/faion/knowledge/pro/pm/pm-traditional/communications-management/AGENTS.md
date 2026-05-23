@@ -3,75 +3,95 @@ slug: communications-management
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Plan, execute, and monitor stakeholder communications so that the right people receive the right information at the right time.
-content_id: "1fd0695dcdc612d7"
-tags: [communications, stakeholders, status-reporting, meetings]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Plan, execute, and monitor stakeholder communications so the right people receive the right information at the right time via comms plan + status reports + action extraction.
+content_id: "85d5fba2ceef8dea"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [communications, stakeholders, status-reporting, meetings, comms-plan]
 ---
 # Communications Management
 
 ## Summary
 
-**One-sentence:** Plan, execute, and monitor stakeholder communications so that the right people receive the right information at the right time.
+**One-sentence:** Plan, execute, and monitor stakeholder communications so the right people receive the right information at the right time via comms plan + status reports + action extraction.
 
-**One-paragraph:** Plan, execute, and monitor stakeholder communications so that the right people receive the right information at the right time. The core artifact is a per-stakeholder communication matrix (needs, format, frequency, owner). Every status report must show the worst metric as the headline, not the average — default-to-green status is the leading communication antipattern.
+**One-paragraph:** Plan, execute, and monitor stakeholder communications so the right people receive the right information at the right time via comms plan + status reports + action extraction. The methodology applies in pm-traditional contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-communications-management.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Multi-stakeholder programs with varied information needs (exec, ops, dev, vendor).
+- Distributed teams with timezone-driven async-first comms.
+- Crisis comms during incidents or scope escalations.
+- Programs where status fatigue erodes stakeholder engagement.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a project's communication plan from a stakeholder register: deriving a per-stakeholder matrix of needs/format/frequency/owner.
-- Designing meeting cadences (daily/weekly/monthly) to minimise meeting load while keeping decisions flowing.
-- Generating standardised status report and meeting-notes templates that propagate across project portfolios.
-- Auditing existing comms hygiene — too many meetings, missing owners, decisions undocumented, escalation path unclear.
-- Routing comms by channel: choosing email vs Slack vs meeting vs wiki for each communication purpose.
-- Solopreneur client-comms playbook: weekly update emails + on-demand Loom + monthly milestone review.
+- Stakeholder register exists with ≥3 segments.
+- Comms plan can be authored before delivery starts.
+- Tooling exists for status distribution (email, Slack, dashboard).
 
 ## Skip If (ANY kills it)
 
-- Single-stakeholder projects (just you + one customer) — informal communication suffices, the matrix is overkill.
-- Crisis / incident response — comms move to incident-management runbook (status page, war room, hourly updates), not the PM matrix.
-- High-trust / collocated small teams using ambient awareness; formalising channels can suppress collaboration.
-- Sales / marketing / support communications — those are external-comms with their own playbook (CRM, email-marketing, ticketing).
-- Already-mature org with a working comms cadence; switching to a new template imposes friction with little gain.
+- Single-stakeholder side project.
+- Team < 3 with co-located workspace and verbal sync.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stakeholder register | CSV/YAML | PM |
+| Comms channels inventory | list | PM + IT |
+| Status report cadence | weekly/biweekly | Sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[seven-performance-domains]] | comms lives within Stakeholders domain |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-comms-plan` | sonnet | Judgement: channel + cadence per segment. |
+| `extract-actions` | haiku | Mechanical: regex/heuristic on transcript. |
+| `score-engagement` | haiku | Roll-up of opens/replies/attendance. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/comms-plan.md` | Comms plan template: segment × channel × cadence × content × owner |
+| `templates/action-extractor.py` | Action extraction from meeting transcript → owner + due + linked issue |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-communications-management.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[seven-performance-domains]]
+- [[change-control]]
+- [[project-integration]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+

@@ -3,72 +3,97 @@ slug: change-control
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Change control is the formal process that evaluates every proposed change to scope, schedule, cost, or quality against the approved baseline before any work begins.
-content_id: "5a43867c425632e1"
-tags: [change-control, scope, ccb, governance]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Formal process evaluating every proposed change to scope, schedule, cost, or quality against the approved baseline via Change Request Form, CCB review, impact analysis, and decision log.
+content_id: "80621a1aaee241dc"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [change-control, scope, ccb, governance, baseline]
 ---
 # Change Control
 
 ## Summary
 
-**One-sentence:** Change control is the formal process that evaluates every proposed change to scope, schedule, cost, or quality against the approved baseline before any work begins.
+**One-sentence:** Formal process evaluating every proposed change to scope, schedule, cost, or quality against the approved baseline via Change Request Form, CCB review, impact analysis, and decision log.
 
-**One-paragraph:** Change control is the formal process that evaluates every proposed change to scope, schedule, cost, or quality against the approved baseline before any work begins. It requires a written change request with impact analysis, a tiered decision-authority matrix, and a register that tracks both approved and rejected requests — because rejected requests that resurface three times are real requirements signals.
+**One-paragraph:** Formal process evaluating every proposed change to scope, schedule, cost, or quality against the approved baseline via Change Request Form, CCB review, impact analysis, and decision log. The methodology applies in pm-traditional contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-change-control.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Fixed-price contracts where scope creep destroys margin.
+- Regulated programs requiring audit trail of every change.
+- Multi-vendor programs with contractually defined scope baselines.
+- Capital projects with locked budgets and milestone-funded gates.
 
 ## Applies If (ALL must hold)
 
-- Fixed-bid or fixed-scope contracts where every change has billing implications.
-- Multi-stakeholder programs with a Change Control Board (CCB) and tiered authority.
-- Regulated work (medical, finance, government) where audit trail of approved changes is mandatory.
-- Any project where scope creep cost more than 15% of original budget on prior runs.
+- A baselined scope, schedule, and cost exist.
+- A Change Control Board (CCB) or equivalent decision body exists.
+- Stakeholders accept formal CR turnaround time (typically 3-10 working days).
 
 ## Skip If (ANY kills it)
 
-- Pure agile sprints with an empowered Product Owner — backlog reordering replaces CR ceremony.
-- Internal tools or R&D where changes are the work.
-- Solo projects — apply a lightweight CHANGES.md instead.
-- Phases before the scope baseline is signed off — there is nothing to "change" yet.
+- Agile delivery without baselines — use backlog re-ordering instead.
+- Experimental phase pre-baseline.
+- Single-developer side project.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope baseline | Markdown/CSV | PM |
+| Schedule baseline | Gantt/JSON | scheduler |
+| Cost baseline | Currency total | Finance |
+| CCB roster | named list | Sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[project-integration]] | integration baselines are the change reference |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-cr` | sonnet | Judgement: impact analysis across scope/schedule/cost. |
+| `score-cr-priority` | haiku | Mechanical urgency + impact → priority. |
+| `detect-drift` | haiku | Diff current vs baseline to detect un-controlled change. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/change-register.md` | Change register template with CR ID, requestor, decision, baseline impact |
+| `templates/change-request-form.md` | Change Request Form template: trigger, impact, alternatives, recommendation |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-change-control.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[project-integration]]
+- [[communications-management]]
+- [[procurement-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+

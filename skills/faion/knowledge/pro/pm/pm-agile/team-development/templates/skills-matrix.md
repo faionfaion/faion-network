@@ -1,3 +1,9 @@
+<!-- purpose: Skills × people matrix template with primary/secondary marks -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Skills Matrix — [Team Name]
 
 Scale: 1 = Beginner | 2 = Basic | 3 = Intermediate | 4 = Expert

@@ -3,73 +3,96 @@ slug: tool-migration-process
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A phase-by-phase execution playbook for migrating project data between PM tools at org scale: six phases (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilization) with an ETL engine, cutover checklist, rollback strategy, and change-management comms plan.
-content_id: "bb584d529cc9a1a8"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Six-phase execution playbook for org-scale PM-tool migrations (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilisation) with ETL engine, rollback, comms plan.
+content_id: "3daeda8806670023"
+complexity: deep
+produces: playbook-step
+est_tokens: 4600
 tags: [migration, pm-tools, cutover, etl, change-management]
 ---
 # Cross-Tool PM Migration — Process
 
 ## Summary
 
-**One-sentence:** A phase-by-phase execution playbook for migrating project data between PM tools at org scale: six phases (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilization) with an ETL engine, cutover checklist, rollback strategy, and change-management comms plan.
+**One-sentence:** Six-phase execution playbook for org-scale PM-tool migrations (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilisation) with ETL engine, rollback, comms plan.
 
-**One-paragraph:** A phase-by-phase execution playbook for migrating project data between PM tools at org scale: six phases (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilization) with an ETL engine, cutover checklist, rollback strategy, and change-management comms plan. Designed for migrations touching ≥3 teams, ≥1k issues, or any compliance scope.
+**One-paragraph:** Six-phase execution playbook for org-scale PM-tool migrations (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilisation) with ETL engine, rollback, comms plan. The methodology applies in pm-agile contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-tool-migration-process.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Org-wide migration of ≥4 boards or ≥500 active issues.
+- Programs requiring formal rollback strategy and change-management comms plan.
+- Migrations spanning multiple business units with non-uniform field schemas.
 
 ## Applies If (ALL must hold)
 
-- You have completed field-mapping and audit (see tool-migration-basics) and need an execution playbook.
-- Org-wide migration touching ≥3 teams, ≥1k issues, or a compliance scope.
-- Multi-wave migrations where teams cut over in batches across weeks.
-- Cutover windows requiring rollback rehearsal and freeze coordination.
-- Post-merger consolidation requiring two source tools → one target.
+- Migration scope includes ≥4 boards or ≥500 issues.
+- Business sponsor + dedicated migration owner are named.
+- Change-management comms plan can be authored before cutover.
 
 ## Skip If (ANY kills it)
 
-- Single-team or <100 issue migration — use basics + a one-day cutover; this playbook adds overhead.
-- Vendor-managed migration where their tooling does extract/transform/load — defer to it.
-- Migrations during an active product launch or incident — wait for a quieter window.
-- Projects where the primary risk is political (team adoption), not technical — invest in change management depth instead.
+- Single team, <500 issues — use tool-migration-basics.
+- No sponsor or budget for full 6-phase execution.
+- Source tool will sunset within 30 days — emergency path needed instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Migration sponsor | named person | exec |
+| Migration owner | named PM | PMO |
+| Source/target schema audit | Markdown | tool admins |
+| Pilot cohort definition | list of boards/teams | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[tool-migration-basics]] | single-team mechanics are the building block |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `plan-phases` | sonnet | Judgement on phase ordering + pilot cohort selection. |
+| `run-etl` | haiku | Mechanical batch ETL with checkpointing. |
+| `draft-comms` | sonnet | Change-management copy per phase. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/migration-plan.md` | Six-phase migration plan template with gate criteria per phase |
+| `templates/load_resume.py` | ETL load + resume script with checkpointing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tool-migration-process.py` | Validate the playbook-step artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- [[tool-migration-basics]]
+- [[change-control]]
+- [[communications-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+

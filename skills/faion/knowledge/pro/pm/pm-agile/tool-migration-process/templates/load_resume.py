@@ -1,3 +1,9 @@
+# purpose: ETL load + resume script with checkpointing
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 #!/usr/bin/env python3
 """Load JSONL of target-shaped issues; resumes from .checkpoint on rerun.
 

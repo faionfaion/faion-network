@@ -1,3 +1,9 @@
+# purpose: Action extraction from meeting transcript → owner + due + linked issue
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 """action_extractor.py — extract action items from markdown meeting notes.
 
 Matches lines like:

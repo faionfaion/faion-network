@@ -1,3 +1,9 @@
+<!-- purpose: Change register template with CR ID, requestor, decision, baseline impact -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Change Register: [Project Name]
 
 **Last Updated:** [Date]

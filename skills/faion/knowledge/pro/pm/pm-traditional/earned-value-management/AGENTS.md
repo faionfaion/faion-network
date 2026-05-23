@@ -3,74 +3,97 @@ slug: earned-value-management
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Earned Value Management (EVM) measures project performance by integrating scope, schedule, and cost into three numbers — Planned Value (PV), Earned Value (EV), and Actual Cost (AC) — and derives objective indices (SPI, CPI) and forecasts (EAC, TCPI) that predict final cost and completion date.
-content_id: "e613e20980b40046"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Integrates scope/schedule/cost into PV, EV, AC with indices (SPI, CPI) and forecasts (EAC, TCPI) to predict final cost and completion date.
+content_id: "8d22af56a4b80d38"
+complexity: deep
+produces: report
+est_tokens: 5300
 tags: [earned-value-management, performance-measurement, project-control, forecasting, pmbok]
 ---
 # Earned Value Management
 
 ## Summary
 
-**One-sentence:** Earned Value Management (EVM) measures project performance by integrating scope, schedule, and cost into three numbers — Planned Value (PV), Earned Value (EV), and Actual Cost (AC) — and derives objective indices (SPI, CPI) and forecasts (EAC, TCPI) that predict final cost and completion date.
+**One-sentence:** Integrates scope/schedule/cost into PV, EV, AC with indices (SPI, CPI) and forecasts (EAC, TCPI) to predict final cost and completion date.
 
-**One-paragraph:** Earned Value Management (EVM) measures project performance by integrating scope, schedule, and cost into three numbers — Planned Value (PV), Earned Value (EV), and Actual Cost (AC) — and derives objective indices (SPI, CPI) and forecasts (EAC, TCPI) that predict final cost and completion date. All computation is deterministic; LLMs narrate, they never calculate.
+**One-paragraph:** Integrates scope/schedule/cost into PV, EV, AC with indices (SPI, CPI) and forecasts (EAC, TCPI) to predict final cost and completion date. The methodology applies in pm-traditional contexts where the preconditions in `Applies If` hold and none of the `Skip If` triggers fire. Decision routing lives in `content/06-decision-tree.xml`; testable rules with rationale live in `content/01-core-rules.xml`; the validator at `scripts/validate-earned-value-management.py` enforces the output contract.
+
+**Ефективно для:**
+
+- Capital programs with monthly steering and locked baselines.
+- Government / defence programs where EVM compliance is contractual.
+- Multi-phase programs needing objective progress vs schedule + budget.
+- Forecasting EAC + completion date with mathematical defensibility.
 
 ## Applies If (ALL must hold)
 
-- Fixed-price or cost-plus contracts requiring DCMA/DCAA compliance (defense, aerospace, government)
-- Capital programs with multi-year baselines where SPI/CPI trends feed quarterly board reporting
-- Programs where percent-complete claims have been chronically inflated
-- Hybrid/agile programs that still need finance-grade burn forecasts (EAC, ETC, VAC) tied to velocity
-- Portfolio reporting where many projects feed a single rollup
+- Cost + schedule baselines published.
+- Each work package has a measurement method (0/100, 50/50, % complete, milestone).
+- Actual cost data available per accounting period.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF startups or pure agile teams without baseline budgets — EVM math is meaningless without a credible PV curve
-- Time-and-materials contracts where only AC matters — EVM adds overhead with no decision impact
-- Discovery or spike phases where "percent complete" is undefined
-- Projects under one quarter with a single team — burndown and weekly retro provide the same insight cheaper
-- Projects without WBS or work-package-level budgets — EVM rolls up from packages; without them the metrics are fiction
+- Agile delivery without baselines — use velocity + burn-up.
+- No actual-cost feed from finance — EVM is unreliable.
+- Project <$100k — EVM overhead exceeds insight.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Cost baseline (PV curve) | JSON/CSV with cumulative PV per period | PM + Finance |
+| EV measurement method per package | dict slug → method | PM |
+| AC per period | CSV from finance system | Finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cost-estimation]] | PV curve is built from the cost estimate |
+| [[project-integration]] | EVM is the integrator's pulse |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (incl. skip rule) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix triplets | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | optional | End-to-end worked example | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `compute-evm` | haiku | Mechanical EVM formulae. |
+| `forecast-eac` | sonnet | Judgement on EAC formula selection (CPI, SPI*CPI, etc.). |
+| `draft-evm-narrative` | sonnet | Narrative tied to variance > thresholds. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/evm-report.md` | EVM report template: PV, EV, AC, SPI, CPI, EAC, TCPI per period |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-earned-value-management.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[cost-estimation]]
+- [[project-integration]]
+- [[benefits-realization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
+
