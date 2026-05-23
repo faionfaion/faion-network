@@ -3,74 +3,99 @@ slug: surveys
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured data collection from many users through standardized questions that quantify attitudes, preferences, and experiences.
-content_id: "55ff0d01c0e32d70"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Standardized-survey report: question-bank instance, sample plan, fielding log, metric computations (NPS / SUS / CSAT) with cohort breakdowns and verbatim evidence.
+content_id: "90fa87abb6bf603d"
+complexity: medium
+produces: report
+est_tokens: 4900
 tags: [surveys, questionnaires, quantitative-research, metrics, nps, sus]
 ---
 # Surveys and Questionnaires
 
 ## Summary
 
-**One-sentence:** Structured data collection from many users through standardized questions that quantify attitudes, preferences, and experiences.
+**One-sentence:** Standardized-survey report: question-bank instance, sample plan, fielding log, metric computations (NPS / SUS / CSAT) with cohort breakdowns and verbatim evidence.
 
-**One-paragraph:** Structured data collection from many users through standardized questions that quantify attitudes, preferences, and experiences. Four survey types: satisfaction (CSAT, NPS), task-based (SUS, SEQ), preference (A vs B), and exploratory (usage patterns). Standard metrics require exact question wording and order — any deviation invalidates benchmarking against published norms.
+**One-paragraph:** Standardized-survey report: question-bank instance, sample plan, fielding log, metric computations (NPS / SUS / CSAT) with cohort breakdowns and verbatim evidence. The methodology pins inputs to citable sources, runs >=5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- The triggering activity for surveys recurs in the operator's workload at least once per cycle.
+- A named downstream consumer exists (human reviewer or downstream agent) for the produced artefact.
+- Inputs come from a citable source-of-truth, not paraphrase.
+- Result will drive a binding action (commit, ship, ramp, freeze) that justifies the methodology overhead.
+- The operator has write or sign-off authority over the artefact this methodology produces.
 
 ## Applies If (ALL must hold)
 
-- Validating qualitative findings at scale after interviews or diary studies.
-- Tracking standardized UX metrics over time: NPS, CSAT, SUS, SEQ, CES — quarterly cohorts vs baseline.
-- Post-task micro-surveys (1-2 questions) embedded in product after key flows.
-- Segmenting a large user base: screener surveys to recruit participants for deeper qualitative work.
-- Quantifying feature value across the full user base.
+- The triggering activity for surveys appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- "Why" questions — surveys give "what" and "how much"; interviews give "why".
-- Sample below 100 — confidence intervals are too wide; do interviews instead.
-- Highly emotional or sensitive topics — social desirability bias dominates self-report.
-- Concept testing where artifact context matters — closed questions cannot substitute for showing the design.
-- When results cannot drive action — running surveys you will ignore burns respondent trust permanently.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/ux-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[survey-design]] | upstream context this methodology builds on |
+| [[user-research-at-scale]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-surveys-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-surveys.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-researcher/`
+- [[survey-design]]
+- [[user-research-at-scale]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

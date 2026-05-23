@@ -3,72 +3,99 @@ slug: cog-walk-basics
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A usability inspection method where evaluators step through a task from a first-time user's perspective, answering four questions per step: (1) Will the user try to achieve the right effect? (2) Will they notice the correct action? (3) Will they associate the action with the desired effect? (4) Will they see that progress is being made? Designed specifically to expose learnability failures before user testing.
-content_id: "1aa71d897cb9dfe0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Learnability inspection: per-step answers to the four cognitive-walkthrough questions (intent, action visibility, action-effect link, progress feedback), emitted as a structured findings report.
+content_id: "9f7fe352382d7324"
+complexity: medium
+produces: report
+est_tokens: 4900
 tags: [cognitive-walkthrough, usability-inspection, learnability, first-time-user, evaluation]
 ---
 # Cognitive Walkthrough: Basics
 
 ## Summary
 
-**One-sentence:** A usability inspection method where evaluators step through a task from a first-time user's perspective, answering four questions per step: (1) Will the user try to achieve the right effect? (2) Will they notice the correct action? (3) Will they associate the action with the desired effect? (4) Will they see that progress is being made? Designed specifically to expose learnability failures before user testing.
+**One-sentence:** Learnability inspection: per-step answers to the four cognitive-walkthrough questions (intent, action visibility, action-effect link, progress feedback), emitted as a structured findings report.
 
-**One-paragraph:** A usability inspection method where evaluators step through a task from a first-time user's perspective, answering four questions per step: (1) Will the user try to achieve the right effect? (2) Will they notice the correct action? (3) Will they associate the action with the desired effect? (4) Will they see that progress is being made? Designed specifically to expose learnability failures before user testing.
+**One-paragraph:** Learnability inspection: per-step answers to the four cognitive-walkthrough questions (intent, action visibility, action-effect link, progress feedback), emitted as a structured findings report. The methodology pins inputs to citable sources, runs >=5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- The triggering activity for cog-walk-basics recurs in the operator's workload at least once per cycle.
+- A named downstream consumer exists (human reviewer or downstream agent) for the produced artefact.
+- Inputs come from a citable source-of-truth, not paraphrase.
+- Result will drive a binding action (commit, ship, ramp, freeze) that justifies the methodology overhead.
+- The operator has write or sign-off authority over the artefact this methodology produces.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch usability inspection of an onboarding flow, signup, or first-run experience where no users are available yet.
-- Evaluating clickable prototypes (Figma, Framer, deployed staging) for learnability before investing in moderated usability testing.
-- Reviewing AI-generated UI from a design-to-code tool against the four-question framework before merging to main.
-- Onboarding-flow regressions in CI: a vision-capable agent walks the latest preview build and flags new Q1/Q2/Q3/Q4 failures.
+- The triggering activity for cog-walk-basics appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Expert-user efficiency tasks (power-user shortcuts, dashboards). Use heuristic evaluation or quantitative testing.
-- Highly subjective aesthetic decisions; the four questions don't catch visual hierarchy issues well.
-- When you have real users available — actual usability testing always beats inspection.
-- Static brand/marketing pages with no task flow — there are no "steps" to walk through.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/ux-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[cog-walk-process]] | upstream context this methodology builds on |
+| [[personas]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-cog-walk-basics-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cog-walk-basics.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ux-researcher/`
+- [[cog-walk-process]]
+- [[personas]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

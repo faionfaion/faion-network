@@ -3,73 +3,99 @@ slug: user-research-at-scale
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An operating model for running research in parallel with product velocity using AI-augmented pipelines: automated transcription, agent-driven tagging and clustering, human verification on a sampled 10%, and a repository as the single source of truth.
-content_id: "6ff97c201f0b5419"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Operating-model spec for AI-augmented research: automated transcription, agent-driven tagging/clustering, 10% human verification sample, repository as single source of truth.
+content_id: "7ef86f3a7a26bab5"
+complexity: deep
+produces: spec
+est_tokens: 4900
 tags: [user-research, ai-augmented, research-operations, transcription, tagging]
 ---
 # User Research at Scale
 
 ## Summary
 
-**One-sentence:** An operating model for running research in parallel with product velocity using AI-augmented pipelines: automated transcription, agent-driven tagging and clustering, human verification on a sampled 10%, and a repository as the single source of truth.
+**One-sentence:** Operating-model spec for AI-augmented research: automated transcription, agent-driven tagging/clustering, 10% human verification sample, repository as single source of truth.
 
-**One-paragraph:** An operating model for running research in parallel with product velocity using AI-augmented pipelines: automated transcription, agent-driven tagging and clustering, human verification on a sampled 10%, and a repository as the single source of truth. Humans own study design, ethics, interpretation, and stakeholder framing; agents own transcription, tagging, clustering, and report drafting.
+**One-paragraph:** Operating-model spec for AI-augmented research: automated transcription, agent-driven tagging/clustering, 10% human verification sample, repository as single source of truth. The methodology pins inputs to citable sources, runs >=5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- The triggering activity for user-research-at-scale recurs in the operator's workload at least once per cycle.
+- A named downstream consumer exists (human reviewer or downstream agent) for the produced artefact.
+- Inputs come from a citable source-of-truth, not paraphrase.
+- Result will drive a binding action (commit, ship, ramp, freeze) that justifies the methodology overhead.
+- The operator has write or sign-off authority over the artefact this methodology produces.
 
 ## Applies If (ALL must hold)
 
-- Product velocity outpaces a single research team — multiple squads need findings same-week, not month-later.
-- Continuous-discovery operating model where every PM/designer is expected to run small studies, with researchers as enablers.
-- High-volume unmoderated testing programmes (1k+ recordings/quarter) where AI-assisted analysis is a force multiplier.
-- Multinational rollouts that require parallel sessions across regions/locales.
-- Mature ResearchOps practice with a repository, intake, and recruitment infrastructure already in place.
+- The triggering activity for user-research-at-scale appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF startups with fewer than 50 paying users — qualitative depth from a researcher trumps scale.
-- Studies requiring sensitive populations (children, healthcare, accessibility) where panel quality and ethics review must dominate over throughput.
-- Strategic generative research (problem framing) — small samples with senior researcher synthesis still wins.
-- Regulated environments (HIPAA, GDPR with special-category data) where AI auto-tagging is restricted.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/user-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[survey-design]] | upstream context this methodology builds on |
+| [[audience-segmentation]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-user-research-at-scale-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-user-research-at-scale.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/user-researcher/`
+- [[survey-design]]
+- [[audience-segmentation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

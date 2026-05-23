@@ -3,72 +3,99 @@ slug: survey-design
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A six-step process for designing surveys that produce valid quantitative data: define a single research objective, choose question types, write neutral non-hypothetical questions, structure the flow (screener → easy → core → demographics → open-end), pilot with 5-10 people, and pre-register the analysis plan before fielding.
-content_id: "5f18f84108d2cf5e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 6-step survey-design spec: single research objective, question type selection, neutral phrasing audit, ordered flow (screener->demographics), 5-10 person pilot, pre-registered analysis plan.
+content_id: "1f2db72381860c1d"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [surveys, quantitative-research, survey-methodology, product-research, data-analysis]
 ---
 # Survey Design
 
 ## Summary
 
-**One-sentence:** A six-step process for designing surveys that produce valid quantitative data: define a single research objective, choose question types, write neutral non-hypothetical questions, structure the flow (screener → easy → core → demographics → open-end), pilot with 5-10 people, and pre-register the analysis plan before fielding.
+**One-sentence:** 6-step survey-design spec: single research objective, question type selection, neutral phrasing audit, ordered flow (screener->demographics), 5-10 person pilot, pre-registered analysis plan.
 
-**One-paragraph:** A six-step process for designing surveys that produce valid quantitative data: define a single research objective, choose question types, write neutral non-hypothetical questions, structure the flow (screener → easy → core → demographics → open-end), pilot with 5-10 people, and pre-register the analysis plan before fielding. Surveys quantify hypotheses already shaped by 10+ qualitative interviews — they do not discover new problems.
+**One-paragraph:** 6-step survey-design spec: single research objective, question type selection, neutral phrasing audit, ordered flow (screener->demographics), 5-10 person pilot, pre-registered analysis plan. The methodology pins inputs to citable sources, runs >=5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- The triggering activity for survey-design recurs in the operator's workload at least once per cycle.
+- A named downstream consumer exists (human reviewer or downstream agent) for the produced artefact.
+- Inputs come from a citable source-of-truth, not paraphrase.
+- Result will drive a binding action (commit, ship, ramp, freeze) that justifies the methodology overhead.
+- The operator has write or sign-off authority over the artefact this methodology produces.
 
 ## Applies If (ALL must hold)
 
-- Quantifying a hypothesis already shaped by 10+ qualitative interviews.
-- Measuring satisfaction (CSAT, NPS, CES), feature priority (MaxDiff, Kano), or pricing (Van Westendorp, Gabor-Granger) over a defined population.
-- Tracking a metric over time where comparability across waves matters more than depth.
-- Screening a panel before booking interviews.
+- The triggering activity for survey-design appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Discovery of unknown problems — interviews and analytics outperform surveys here.
-- Segment N below ~30 where you intend to report on that segment (confidence intervals explode).
-- Predicting future behaviour ("would you buy?") — ask about past behaviour only.
-- Audiences who cannot self-report accurately (children, expert tasks, sensitive topics).
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/user-researcher/` parent skill context | vocabulary, neighbouring methodologies |
+| [[surveys]] | upstream context this methodology builds on |
+| [[user-research-at-scale]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-survey-design-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-survey-design.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/user-researcher/`
+- [[surveys]]
+- [[user-research-at-scale]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

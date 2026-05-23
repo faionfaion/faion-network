@@ -1,43 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="content-audit-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for content-audit-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Content Audit Basics Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Content Audit Basics methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Choose audit type based on the decision being made: quantitative (inventory — what exists) when scope is unknown; qualitative (quality evaluation) when decisions require quality scoring; comparative (consistency check) when merging or migrating; ROI-focused (analytics-driven) when prioritizing update investment.</statement>
-      <rationale source="v1-source">Using a qualitative audit when an inventory suffices wastes effort. Using an inventory-only audit when quality decisions are needed leaves the hardest question unanswered.</rationale>
+
+    <rule id="anchor-evidence-required" testable="true" depth="essential">
+      <statement>Every non-trivial field in the produced artefact MUST carry &gt;=1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
+      <rationale source="Anti-hallucination practice for Content Audit Basics">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Run a full audit (quantitative + qualitative) before any website redesign, content strategy development, or site consolidation. Run rolling quantitative audits for SEO governance. Skip audit entirely for greenfield (no content yet) and for sites under ~50 pages.</statement>
-      <rationale source="v1-source">Sites under 50 pages are faster to review manually than to set up crawl tooling. Greenfield needs content modeling, not auditing.</rationale>
+    <rule id="owner-and-last-touched" testable="true" depth="essential">
+      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
+      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Treat content governance as ongoing, not a one-time event. Establish quality standards, review processes, update schedules, ownership, and archival policies after the first audit.</statement>
-      <rationale source="v1-source">One-time audits decay immediately without governance. Content reverts to its pre-audit state within 6-12 months without structured ownership and review triggers.</rationale>
+    <rule id="template-version-pinned" testable="true" depth="essential">
+      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
+      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Score every URL on three dimensions: accuracy (1-5: is the content correct?), relevance (1-5: do users need this?), and quality (1-5: is the writing clear and complete?). Average the three scores to produce an overall score driving the action column.</statement>
-      <rationale source="v1-source">Single-dimension scoring (quality only, or traffic only) misses critical cases: high-traffic but inaccurate content causes brand damage; accurate but unreachable content is wasted investment.</rationale>
+    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
+      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
+      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Treat "consolidate" as a distinct action from "remove." Do not collapse low-traffic pages directly to remove when a canonical merge is the better play.</statement>
-      <rationale source="v1-source">LLM scoring agents over-classify low-traffic pages as remove. Canonical merging preserves link equity and consolidates thin content without losing it entirely.</rationale>
+    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
+      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
+      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Lock the rubric prompt as a versioned YAML file in the repo. Fix temperature=0 and pin the model version for every scoring run. Do not mix scores from different rubric versions or model versions.</statement>
-      <rationale source="v1-source">LLM quality scores drift across runs at non-zero temperature. Same page can score 3 vs 4 without a locked rubric. Cross-cycle comparisons require identical scoring conditions.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
+      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Sample 5-10% of LLM scores for human review on every run. Track inter-rater agreement (Cohen's kappa target &gt;0.6) before trusting at scale.</statement>
-      <rationale source="v1-source">LLMs score coherently but not necessarily correctly for brand voice or strategic relevance. Human spot-checks provide the calibration signal needed to trust the automated column.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Join three data sources before scoring: crawl (existence and structure), GSC (search demand), and GA4 (in-product behavior). Auditing crawl-only produces SEO blind spots.</statement>
-      <rationale source="v1-source">Crawl-only audits miss search demand. A low-traffic page with high GSC impressions is under-optimized, not low-value. GA4 shows in-product use that GSC cannot capture.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Pre-extract main content (Trafilatura or Readability) and cap input at ~6k characters per URL before LLM scoring. Do not feed raw HTML.</statement>
-      <rationale source="v1-source">Full HTML blows context window and introduces navigation, boilerplate, and script noise. Pre-extraction improves scoring accuracy and reduces token cost.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
