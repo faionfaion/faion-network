@@ -3,73 +3,95 @@ slug: cicd-tls-renewal-automation
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Automate certificate renewal end-to-end: ACME client selection, systemd timer or cron scheduling, post-renew reload hooks, and short-lived cert policy.
-content_id: "3d4d238d18c2881d"
-tags: [tls, certificates, acme, automation, let-s-encrypt]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an automated ACME renewal pipeline (certbot / acme.sh / lego under systemd timer + renewal hooks) that eliminates manual rotation outages for public-facing TLS.
+content_id: "613e9556554ceca8"
+complexity: medium
+produces: config
+est_tokens: 4100
+tags: ["tls", "certificates", "acme", "automation", "lets-encrypt"]
 ---
-# TLS Certificate Renewal Automation
+# ACME TLS Renewal Automation
 
 ## Summary
 
-**One-sentence:** Automate certificate renewal end-to-end: ACME client selection, systemd timer or cron scheduling, post-renew reload hooks, and short-lived cert policy.
+**One-sentence:** Generates an automated ACME renewal pipeline (certbot / acme.sh / lego under systemd timer + renewal hooks) that eliminates manual rotation outages for public-facing TLS.
 
-**One-paragraph:** Automate certificate renewal end-to-end: ACME client selection, systemd timer or cron scheduling, post-renew reload hooks, and short-lived cert policy. Manual renewal is an outage waiting to happen — treat it as a reliability requirement.
+**One-paragraph:** ACME TLS Renewal Automation — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a config that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Public-facing TLS endpoints using Let's Encrypt / ZeroSSL / Buypass / Google Trust Services.
+- Self-hosted reverse proxy (nginx, Caddy, HAProxy, Traefik standalone).
+- Renewal needs to be hands-off + observable.
 
 ## Applies If (ALL must hold)
 
-- Issuing and rotating certificates for public web or API endpoints (Let's Encrypt, ZeroSSL, commercial CA).
-- Adopting short-lived certs (LE 6-day or 45-day) where manual renewal is structurally impossible.
-- Setting up post-renewal hooks to reload nginx/apache/traefik after certificate update.
-- Configuring ACME Renewal Information (ARI) checks to catch early renewal recommendations from the CA.
-- Any CI/CD pipeline that provisions or re-provisions infrastructure and needs certs issued automatically.
+- Public-facing TLS endpoints using Let's Encrypt / ZeroSSL / Buypass / Google Trust Services.
+- Self-hosted reverse proxy (nginx, Caddy, HAProxy, Traefik standalone).
+- Renewal needs to be hands-off + observable.
 
 ## Skip If (ANY kills it)
 
-- Internal-only dev environments where mkcert self-signed is sufficient and not regulated — overhead exceeds value.
-- Service-mesh mTLS — Linkerd/Istio/Cilium auto-rotate identities; do not hand-roll ACME on top of a mesh.
-- Legacy systems mandated to use TLS 1.0/1.1 — you have a compliance/risk problem, not a setup problem.
-- VPN/IPSec — different protocols and certificate authorities apply.
+- Managed LB (ACM, GCP managed cert, Cloudflare) handles ACME transparently.
+- Internal-only services — use `cicd-mtls-deployment` with an internal CA instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cicd-cert-rotation-pipeline]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (systemd-timer-not-cron, renewal-hook-reload, staging-then-prod, expiry-alert-14-days, dns-01-for-wildcards, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the config + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-cicd-tls-renewal-automation` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/certbot-renew.timer` | systemd timer for daily certbot renewal attempt |
+| `templates/certbot-renew.service` | systemd service invoking certbot renew + deploy hook |
+| `templates/backup-config.example.json` | Filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cicd-tls-renewal-automation.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[cicd-cert-rotation-pipeline]]
+- [[cicd-tls-validation-gate]]
+- [[cicd-mtls-deployment]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

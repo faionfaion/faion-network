@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cicd-cert-rotation-pipeline Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cicd-cert-rotation-pipeline. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Certificate Rotation Pipeline (cert-manager / Terraform / Compose) Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the cicd-cert-rotation-pipeline methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>cert-manager Certificate resources MUST set privateKey.rotationPolicy: Always, duration: 2160h (90d for LE; 144h for 6-day), and renewBefore: 720h (for 90d) or 48h (for 6-day). The Ingress secretName MUST match the Certificate spec.secretName exactly — any mismatch is a silent failure.</statement>
-      <rationale source="v1-source">Without rotationPolicy: Always, the private key is reused across renewals, increasing the blast radius of key compromise. secretName mismatches are the most common cert-manager misconfiguration and produce no error log — the Ingress simply continues serving the old cert.</rationale>
+
+    <rule id="no-private-keys-in-git" testable="true" depth="essential">
+      <statement>Private keys MUST NOT be committed to Git; the pipeline MUST emit keys only into a secrets manager (Vault, AWS Secrets Manager, K8s Secret) and reference them by name.</statement>
+      <rationale source="OWASP Cryptographic Storage Cheat Sheet">Private keys in Git are unrecoverable from a security standpoint — rotation cost is non-trivial and historical exposure is permanent.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The cert rotation pipeline MUST follow: (1) author cert-manager CRDs or IaC resource, (2) apply to staging cluster/environment first, (3) run testssl.sh or sslyze against staging, (4) promote to production only on clean scan, (5) run scan again against production. Never commit private keys to Git — use SOPS, Vault, or External Secrets for any private material.</statement>
-      <rationale source="v1-source">Agents iterating on cert config can accidentally embed private key material in commit history. The staged scan-before-promote step catches TLS misconfigurations (wrong cipher list, missing chain, expired stapling) before they affect production traffic.</rationale>
+
+    <rule id="iac-author-render-scan-apply" testable="true" depth="essential">
+      <statement>Pipeline MUST follow author → render → scan → apply: cert-manager Certificate CRD or Terraform module is authored; CI renders effective YAML; a scanner (`kubectl-validate`, `tflint`) gates; only then is it applied.</statement>
+      <rationale source="Internal IaC review">Direct kubectl apply bypasses review and lint; render-scan-apply is the minimum safe path.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All new cert-manager Certificate resources and ACME client issuances MUST use ECDSA P-256 (algorithm: ECDSA, size: 256) unless the CA or client explicitly does not support it. RSA is acceptable only as a fallback for legacy CAs.</statement>
-      <rationale source="v1-source">ECDSA P-256 provides 128-bit security with smaller key and signature sizes than RSA-3072, reducing TLS handshake overhead. RSA-2048 only provides 112-bit security. Modern Let's Encrypt, ACM, and cert-manager all support ECDSA P-256.</rationale>
+
+    <rule id="renewal-30-days-before-expiry" testable="true" depth="essential">
+      <statement>Renewal MUST trigger at least 30 days before NotAfter; cert-manager's `spec.renewBefore` MUST be set explicitly (not relying on the 2/3-lifetime default for short-lived certs).</statement>
+      <rationale source="cert-manager docs — Certificate Resource">Without an explicit `renewBefore`, short-lived certs may renew too late; explicit configuration is the safe path.</rationale>
     </rule>
+
+    <rule id="expiry-alert-7-days" testable="true" depth="essential">
+      <statement>Prometheus MUST alert when any certificate in the cluster has &lt; 7 days to expiry; cert-manager metrics `certmanager_certificate_expiration_timestamp_seconds` MUST be scraped.</statement>
+      <rationale source="cert-manager docs — Metrics">Renewal failures are silent until the alert fires; 7 days is the floor for operator response.</rationale>
+    </rule>
+
+    <rule id="issuer-isolated-per-env" testable="true" depth="essential">
+      <statement>Each environment MUST use its own ClusterIssuer / Terraform ACM module; staging and prod MUST NOT share an issuer.</statement>
+      <rationale source="cert-manager docs — Issuers, Internal security review">Shared issuers cross-pollinate rate-limit budgets and create blast-radius coupling between environments.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If TLS termination is fully handled by a managed load balancer (AWS ALB + ACM, GCP HTTPS LB + Google-managed cert) with auto-renewal, this methodology MUST be skipped.</statement>
+      <rationale source="AWS ACM docs, GCP managed cert docs">Managed-LB certs renew transparently; an IaC pipeline duplicates and risks drift.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

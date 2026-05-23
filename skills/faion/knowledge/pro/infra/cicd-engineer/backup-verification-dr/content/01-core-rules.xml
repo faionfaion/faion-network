@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="backup-verification-dr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for backup-verification-dr. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Backup Verification + Disaster Recovery Drills Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the backup-verification-dr methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every backup pipeline MUST include an automated verification step that restores or probes the backup artifact in an isolated environment and checks a quantifiable integrity signal (table count, row count, schema-only diff, file hash, or restic check output). Verification MUST run on a schedule independent of the backup job — a verification failure MUST trigger a page-level alert, not just a log entry.</statement>
-      <rationale source="v1-source">A backup job that exits 0 only proves the write phase succeeded. Corruption, truncation, and logical inconsistency are invisible until restore time. Scheduled verification decouples detection from the crisis moment and gives the ops team a repair window before the backup is actually needed.</rationale>
+
+    <rule id="restore-drill-cron" testable="true" depth="essential">
+      <statement>Every backup pipeline MUST be exercised by an automated restore drill at least weekly; the drill MUST restore to a fresh disposable target and run a verification query (row-count, checksum, smoke test).</statement>
+      <rationale source="DORA Reliability research, Internal DR drill program">Backups never tested at restore time fail at restore time; the &gt;50% failure rate is repeatedly measured across audit programs.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Schedule a restore-drill at least weekly. A backup that has never been restored is undefined behavior — not a backup. The drill MUST restore to an isolated environment (separate namespace, separate AWS account) and MUST run an integrity probe (row count, schema diff, or file hash).</statement>
-      <rationale source="v1-source">The gap between a successful backup write and a successful restore is where most backup failures live. Regular drills also exercise the restore documentation and confirm the ops team can execute it under pressure.</rationale>
+
+    <rule id="alert-on-stale-backup" testable="true" depth="essential">
+      <statement>Backup age MUST be observable as a Prometheus metric (`backup_age_seconds`) and alert when it exceeds 1.5x the expected interval.</statement>
+      <rationale source="Prometheus best practices, SRE Workbook ch.4">An invisible stalled cron leaves the team certain backups are running while the file in S3 ages for weeks.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Monitor backup size delta AND latency, not just success. Alert on: size drop &gt; 50% (source may be empty or wrong path), size increase &gt; 10x (wrong exclusion filter), duration &gt; 2x 7-day average (infrastructure degradation).</statement>
-      <rationale source="v1-source">A backup that succeeds but backs up an empty directory is worse than a failed backup — it creates false confidence. Size and duration signals reveal these failures before a restore is attempted.</rationale>
+
+    <rule id="alert-on-size-anomaly" testable="true" depth="essential">
+      <statement>Backup size MUST be observable as a Prometheus metric (`backup_size_bytes`); alert on &gt; 50% drop vs 7-day median.</statement>
+      <rationale source="Internal incident review">Sudden size collapse indicates the dump truncated, the source pruned data, or the script lost a flag.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Verify backups in the script that emits them, not in a separate downstream job: `pg_dump | gzip | gunzip -t` on the same pipe, `pg_restore -l` before upload. A downstream verification job can be skipped, misconfigured, or outrun by retention purge.</statement>
-      <rationale source="v1-source">In-pipe verification catches corruption at the producer before the corrupt artifact reaches storage. Downstream verification adds latency to detection and creates a window where the corrupt artifact is the "latest backup" in the catalog.</rationale>
+
+    <rule id="dr-runbook-as-code" testable="true" depth="essential">
+      <statement>DR procedure MUST be a versioned runbook (Markdown with tagged steps) the agent can execute; ad-hoc tribal-knowledge restore is forbidden.</statement>
+      <rationale source="Internal incident review">On-call without a runbook produces non-deterministic restore times and risks data loss from one-off shell improvisation.</rationale>
     </rule>
+
+    <rule id="rpo-rto-measured" testable="true" depth="essential">
+      <statement>Each drill MUST emit `dr_rpo_seconds_actual` and `dr_rto_seconds_actual` metrics; alert when actual &gt; 1.2x target.</statement>
+      <rationale source="DORA Reliability metric">Without measured RPO/RTO the team can claim any objective; ground truth is the drill timer.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If no backup pipeline is in place yet, this methodology MUST be skipped — produce the backup pipeline first (`backup-database-postgres`, `backup-filesystem-restic`, etc.).</statement>
+      <rationale source="Internal DR review">Verification methodology applied to no backups is theatre.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

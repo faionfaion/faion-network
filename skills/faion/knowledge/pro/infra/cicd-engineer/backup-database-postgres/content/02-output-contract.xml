@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="backup-database-postgres Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="backup-database-postgres Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the backup pipeline config artefact this methodology produces. Includes valid + invalid + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/backup-database-postgres.json",
+  "type": "object",
+  "required": ["db_name", "backup_format", "verify_before_upload", "wal_monitoring", "secrets_source", "retention_local_days", "retention_remote_days"],
+  "properties": {
+    "db_name": {"type": "string", "minLength": 1},
+    "backup_format": {"enum": ["custom", "directory", "tar-base"]},
+    "verify_before_upload": {"type": "boolean", "const": true},
+    "wal_monitoring": {
+      "type": "object",
+      "required": ["enabled", "alert_on_failed_count_increase"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "alert_on_failed_count_increase": {"type": "boolean"}
+      }
+    },
+    "secrets_source": {"enum": ["vault", "aws-secrets-manager", "gcp-secret-manager", "pgpass-0600"]},
+    "remote_storage": {
+      "type": "object",
+      "required": ["kind", "uri"],
+      "properties": {
+        "kind": {"enum": ["s3", "gcs", "azure-blob", "restic", "pgbackrest"]},
+        "uri": {"type": "string"}
+      }
+    },
+    "retention_local_days": {"type": "integer", "minimum": 1, "maximum": 365},
+    "retention_remote_days": {"type": "integer", "minimum": 7, "maximum": 3650},
+    "encryption_at_rest": {"type": "boolean"},
+    "parallel_workers": {"type": "integer", "minimum": 1, "maximum": 32}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "db_name": "billing",
+  "backup_format": "custom",
+  "verify_before_upload": true,
+  "wal_monitoring": {"enabled": true, "alert_on_failed_count_increase": true},
+  "secrets_source": "vault",
+  "remote_storage": {"kind": "s3", "uri": "s3://backups-prod/postgres/billing/"},
+  "retention_local_days": 7,
+  "retention_remote_days": 90,
+  "encryption_at_rest": true,
+  "parallel_workers": 4
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "db_name": "billing",
+  "backup_format": "plain",
+  "verify_before_upload": false,
+  "secrets_source": "inline",
+  "retention_local_days": 0
+}
+]]></code>
+    <note>backup_format=plain forbidden; verify_before_upload must be true; secrets_source not in enum; retention_local_days &lt; 1; wal_monitoring missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`backup_format == "plain"` — production must drive parallel/selective restore.</item>
+      <item>`verify_before_upload == false` — every artifact must be verified at the producer.</item>
+      <item>`secrets_source == "inline"` or any literal key in config — leaks via Git.</item>
+      <item>`retention_local_days &lt; 1` or `retention_remote_days &lt; 7` — defeats DR window.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-backup-database-postgres.py">Validator script</reference>
 </text>

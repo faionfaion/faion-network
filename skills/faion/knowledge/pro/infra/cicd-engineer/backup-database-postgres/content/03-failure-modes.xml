@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="backup-database-postgres Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for backup-database-postgres as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="backup-database-postgres Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production PostgreSQL backup pipelines. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent generates pg_dump script without specifying -Fc (custom format), producing a plain SQL file that cannot be partially restored or used with pg_restore -j for parallel restore.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Plain SQL format is human-readable but cannot do parallel restore or selective table restore. Always use -Fc or -Fd for production backups.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent sets up WAL archiving with archive_command pointing to a path without verifying the archive_status in pg_stat_archiver after enabling.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>archive_command failures are silent from the application's perspective; the database continues to run while the PITR chain silently breaks. Verify after every archive_command change.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent commits Restic password or PGPASSWORD into the backup script or repository instead of loading from secrets manager.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Encryption key loss = data loss; credential exposure in Git = security incident. Force pull from secrets manager and add a git pre-commit check: `git diff --staged | grep -E 'RESTIC_PASSWORD|PGPASSWORD'`.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="silent-upload-no-verify">
+      <symptom>Backup file uploads to S3 nightly; restore drill 6 weeks later fails with `pg_restore: error: input file appears to be a text-format dump` or truncated table.</symptom>
+      <root-cause source="Internal restore-drill audit">Author wrote `pg_dump ... | gzip &gt; file &amp;&amp; aws s3 cp file s3://...` with no `pg_restore -l` or `gunzip -t` check; partial dumps from disk-full / SIGPIPE upload as if successful.</root-cause>
+      <fix>Insert `pg_restore -l "$DUMP" &gt; /dev/null || { alert; exit 1; }` between dump and upload. For gzipped streams, `gunzip -t "$DUMP.gz"`. For tar base backups, `pg_verifybackup "$DIR"`.</fix>
+    </antipattern>
+
+    <antipattern id="silent-wal-gap">
+      <symptom>PITR restore attempt fails with `WAL segment 0000000100000ABC0000000F not found`; the gap dates to a network outage 18 days earlier; no alert ever fired.</symptom>
+      <root-cause source="PostgreSQL docs — Continuous Archiving, internal incident review">archive_command was `aws s3 cp %p s3://bucket/%f || true` (swallowed exit code), or `pg_stat_archiver` was never monitored; transient failures recovered silently leaving permanent gaps in the WAL chain.</root-cause>
+      <fix>Remove the `|| true`; let archive_command propagate non-zero. Add a Prometheus query on `pg_stat_archiver_failed_count_total` rate &gt; 0 and alert on increase. Treat WAL gaps as P1 incidents.</fix>
+    </antipattern>
+
+    <antipattern id="secret-in-script">
+      <symptom>Security scan flags `RESTIC_PASSWORD=hunter2` or `PGPASSWORD=...` in a committed script; in the worst case, a leaked archive password makes encrypted backups undecryptable.</symptom>
+      <root-cause source="OWASP Secrets Management, internal incident review">Author treated the backup script as "internal-only" and inlined credentials for convenience; no secrets-manager integration and no pre-commit grep.</root-cause>
+      <fix>Pull credentials from Vault / AWS Secrets Manager / GCP Secret Manager at script start (`vault kv get -field=password secret/pg/backup`). Add pre-commit hook: `git diff --staged | grep -E 'PGPASSWORD=|RESTIC_PASSWORD='` rejects on match. Rotate any historically-leaked credential.</fix>
+    </antipattern>
+
   </section>
 </text>

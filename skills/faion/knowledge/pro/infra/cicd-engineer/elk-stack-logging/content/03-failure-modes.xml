@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="elk-stack-logging Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for elk-stack-logging as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ELK / OpenSearch Centralized Logging Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="public-elasticsearch">
+      <symptom>Cluster bound to 0.0.0.0:9200 without auth; ransomware actor wipes indices, leaves a ransom note.</symptom>
+      <root-cause source="Internal incident review, Elasticsearch security docs">Author followed an old 'just docker run' tutorial that disabled security.</root-cause>
+      <fix>Enable xpack.security; rotate built-in user passwords; restrict cluster network to private subnet + bastion; rebuild from backup.</fix>
+    </antipattern>
+
+    <antipattern id="no-ilm">
+      <symptom>Single index grows to 8TB across 18 months; queries time out; cluster JVM OOMs.</symptom>
+      <root-cause source="Elasticsearch ILM docs">Author created indices without rollover policy.</root-cause>
+      <fix>Define ILM policy: rollover at 50GB or 7 days; warm at 30d; cold at 90d; delete at 365d (per compliance). Apply to existing index via alias + reindex.</fix>
+    </antipattern>
+
+    <antipattern id="plain-text-logs">
+      <symptom>Logstash grok pipeline takes 80% of cluster CPU parsing unstructured Nginx logs; ingest lag balloons.</symptom>
+      <root-cause source="OpenTelemetry Logs spec">Apps emit `[2026-05-23 INFO] ...` plain text; pipeline does regex extraction at ingest time.</root-cause>
+      <fix>Switch apps to structured JSON logs (e.g. pino / structlog); drop grok; ingest as-is into Elasticsearch.</fix>
+    </antipattern>
+
   </section>
 </text>

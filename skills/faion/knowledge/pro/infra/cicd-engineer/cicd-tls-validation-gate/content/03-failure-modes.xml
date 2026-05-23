@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cicd-tls-validation-gate Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cicd-tls-validation-gate as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="TLS Validation CI Gate Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running the TLS gate only on initial setup and not on every deploy that touches TLS configuration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Config drift is the primary source of TLS regressions. A web server upgrade, cipher list copy-paste from a Stack Overflow answer, or nginx config refactor can silently re-enable TLS 1.1 or weak ciphers. The gate must run on every TLS-touching deploy, not just once at setup time.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="continue-on-error">
+      <symptom>CI step `- run: testssl.sh staging.example.com || true` always returns 0; team thinks the gate works while regressions ship.</symptom>
+      <root-cause source="Internal release-engineering review">Author added `|| true` to silence flaky output and never removed it.</root-cause>
+      <fix>Remove `|| true`; pipe testssl.sh output to a parser that exits non-zero on grade &lt; A+; fix the flakiness instead of swallowing it.</fix>
+    </antipattern>
+
+    <antipattern id="scan-prod-not-staging">
+      <symptom>Gate runs after production deploy; a regression hits real users for the 5 minutes until the scan completes.</symptom>
+      <root-cause source="Internal release-engineering review">Author wired the scan to post-deploy hook.</root-cause>
+      <fix>Move the scan to a staging-promotion gate (before prod deploy); only promote on PASS; keep a continuous prod probe for monitoring, not gating.</fix>
+    </antipattern>
+
+    <antipattern id="ignore-hsts">
+      <symptom>Scan ignores HSTS header; A+ grade reported even with `max-age=300`; first-visit downgrade attack stays open.</symptom>
+      <root-cause source="Mozilla SSL Configuration Generator">Author chose a fast scan profile that skips header checks.</root-cause>
+      <fix>Use testssl.sh `--full` or enable HSTS scoring; require `max-age &gt;= 31536000`; add an explicit assertion `grep includeSubDomains`.</fix>
+    </antipattern>
+
   </section>
 </text>

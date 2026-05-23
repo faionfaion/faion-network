@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="elk-stack-logging Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for elk-stack-logging. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ELK / OpenSearch Centralized Logging Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules grounding the elk-stack-logging methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="ilm-required" testable="true" depth="essential">
+      <statement>Indices MUST have an Index Lifecycle Management policy (hot/warm/cold/delete) with explicit retention; unbounded retention is forbidden.</statement>
+      <rationale source="Elasticsearch ILM docs">Without ILM, indices grow without bound, cluster degrades, and cost grows linearly with time.</rationale>
     </rule>
+
+    <rule id="security-enabled" testable="true" depth="essential">
+      <statement>Elasticsearch security (xpack.security or OpenSearch security plugin) MUST be enabled; clusters bound to 0.0.0.0 without auth are forbidden.</statement>
+      <rationale source="Elasticsearch security docs, internal incident review">Unauthenticated public Elasticsearch is one of the most-exploited misconfigurations in the wild.</rationale>
+    </rule>
+
+    <rule id="structured-logs-only" testable="true" depth="essential">
+      <statement>Applications MUST emit structured logs (JSON with `timestamp`, `level`, `service`, `trace_id`); plain-text logs are forbidden in new pipelines.</statement>
+      <rationale source="OpenTelemetry Logs spec">Unstructured logs require regex parsing at ingest; structured logs allow direct indexing and reliable field-level queries.</rationale>
+    </rule>
+
+    <rule id="trace-id-correlation" testable="true" depth="essential">
+      <statement>Logs MUST carry a `trace_id` matching the distributed tracing system; logs without trace_id MUST be flagged for backfill.</statement>
+      <rationale source="OpenTelemetry spec">Without trace_id, log search degenerates to grep across service boundaries; with trace_id, an incident query is one click.</rationale>
+    </rule>
+
+    <rule id="agent-mtls-or-token" testable="true" depth="essential">
+      <statement>Filebeat / Vector agents MUST authenticate to the ingest pipeline via mTLS or API token; unauthenticated ingestion is forbidden.</statement>
+      <rationale source="Filebeat docs, Vector docs">Open ingest endpoints are abused by attackers to flood logs (denial-of-wallet) or inject false events.</rationale>
+    </rule>
+
+    <rule id="kibana-saved-dashboards" testable="true" depth="essential">
+      <statement>Kibana MUST ship at least three saved dashboards: per-service error rate, latency percentiles, top-N exceptions; dashboards MUST be version-controlled (NDJSON export).</statement>
+      <rationale source="Kibana saved-objects docs">Ad-hoc query exploration loses the institutional knowledge of which views matter; saved dashboards are the runbook.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If a managed observability platform already covers logs OR if logs volume &lt; 1GB/day on a single host, this methodology MUST be skipped.</statement>
+      <rationale source="Internal scope review">ELK at small scale is more burden than value; managed platforms cover the same needs cheaper.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

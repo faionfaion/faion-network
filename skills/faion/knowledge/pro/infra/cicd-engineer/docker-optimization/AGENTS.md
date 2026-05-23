@@ -3,66 +3,95 @@ slug: docker-optimization
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: # Docker Optimization **Image size reduction, build caching, multi-stage builds, and security hardening** ## Overview Docker image optimization focuses on four key areas: 1.
-content_id: "38d672979bdaa958"
-tags: [[]]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an optimized Dockerfile (multi-stage + BuildKit cache mounts + distroless/Wolfi base + pinned digest + non-root) targeting <200MB images and zero-CVE base.
+content_id: "34ead4023eff3ee1"
+complexity: medium
+produces: config
+est_tokens: 4100
+tags: ["docker", "image-size", "buildkit", "supply-chain", "container"]
 ---
-# Docker Optimization
+# Docker Image Optimization (size + cache + supply chain)
 
 ## Summary
 
-**One-sentence:** # Docker Optimization **Image size reduction, build caching, multi-stage builds, and security hardening** ## Overview Docker image optimization focuses on four key areas: 1.
+**One-sentence:** Generates an optimized Dockerfile (multi-stage + BuildKit cache mounts + distroless/Wolfi base + pinned digest + non-root) targeting <200MB images and zero-CVE base.
 
-**One-paragraph:** # Docker Optimization **Image size reduction, build caching, multi-stage builds, and security hardening** ## Overview Docker image optimization focuses on four key areas: 1. **Image Size** - Smaller images = faster pulls, less storage, reduced attack surface 2. **Build Caching** - Faster builds through intelligent layer ordering 3. **Multi-Stage Builds** - Separate build and runtime environments 4. **Security** - Non-root users, scanning, secrets management ## Quick Reference | Optimization | Impact | Complexity | |--------------|--------|------------| | Slim/Alpine base | -70-80% size | Low | | Multi-stage builds | -50-90% size | Medium | | BuildKit cache mounts | -60% build time | Low | | .dockerignore | Variable | Low | | Non-root user | Security | Low | | Image scanning | Security | Low | ## Base Image Comparison (2025-2026) | Base Image | Size | Use Case | |------------|------|----------| | `scratch` | 0 MB | Static Go/Rust binaries | | `gcr.io/distroless/static` | <2 MB | Maximum security, no shell | | `cgr.dev/chainguard/static` | <2 MB | Wolfi-based, zero CVEs | | `alpine:3.20` | ~5 MB | Minimal with package manager | | `debian:12-slim` | ~40 MB | Balance of tools and size | | `ubuntu:24.04` | ~70 MB | General purpose | ## Modern Best Practices (2025-2026) ### 1. Enable BuildKit (Default in Docker 23+) ```bash export DOCKER_BUILDKIT=1 ``` ### 2. Use Cache Mounts ```dockerfile # syntax=docker/dockerfile:1.7 RUN --mount=type=cache,target=/root/.cache/pip \ pip install -r requirements.txt ``` ### 3. Pin Image Digests for Supply Chain Security ```dockerfile FROM python:3.12-slim@sha256:abc123... ``` ### 4. Scan Images with Docker Scout or Trivy ```bash docker scout cves myapp:latest trivy image myapp:latest ``` ### 5. Use Chainguard/Wolfi Images for Zero-CVE Base ```dockerfile FROM cgr.dev/chainguard/python:latest ``` ## Size Reduction Formula ``` Final Size = Base Image + Dependencies + Application Code - Excluded Files ``` **Target:** Production images < 200 MB (ideally < 100 MB) ## Layer Ordering Principle Order Dockerfile instructions from **least to most frequently changing**: ``` 1. Base image (rarely changes) 2. System packages (occasionally changes) 3. Dependencies (changes with requirements) 4. Application code (changes frequently) ``` ## Tools | Tool | Purpose | Command | |------|---------|---------| | **Dive** | Layer analysis | `dive myapp:latest` | | **Hadolint** | Dockerfile linting | `hadolint Dockerfile` | | **Docker Scout** | Vulnerability scanning | `docker scout cves myapp` | | **Trivy** | Security scanner | `trivy image myapp` | | **DockerSlim** | Image minification | `docker-slim build myapp` | ## Related Files | File | Purpose | |------|---------| | [checklist.md](checklist.md) | Pre-build and post-build verification | | [examples.md](examples.md) | Language-specific Dockerfile examples | | [templates.md](templates.md) | Copy-paste production templates | | [llm-prompts.md](llm-prompts.md) | AI-assisted optimization promp
+**One-paragraph:** Docker Image Optimization (size + cache + supply chain) — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a config that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Production container image larger than 500MB or rebuilding > 10x per day.
+- Supply-chain hardening required (image signing, SBOM, digest pinning).
+- Multi-language project where build deps should not bleed into runtime image.
 
 ## Applies If (ALL must hold)
 
-- TBD — populate from v1 when-to-use list
+- Production container image larger than 500MB or rebuilding > 10x per day.
+- Supply-chain hardening required (image signing, SBOM, digest pinning).
+- Multi-language project where build deps should not bleed into runtime image.
 
 ## Skip If (ANY kills it)
 
-- TBD — populate from v1 when-not-to-use list
+- Throwaway dev image for one-shot experiments — optimization overhead exceeds value.
+- Image already meets size + CVE + cache targets; no rework needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cicd-cert-rotation-pipeline]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (multi-stage-build, distroless-or-wolfi-runtime, digest-pinned-base, non-root-user, buildkit-cache-mounts, hadolint-and-scan, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the config + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-docker-optimization` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Dockerfile.optimized` | Multi-stage Dockerfile with cache mounts + distroless + non-root + digest-pinned base |
+| `templates/dockerignore` | .dockerignore skeleton excluding common bloat |
+| `templates/backup-config.example.json` | Filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-optimization.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[cicd-cert-rotation-pipeline]]
+- [[elk-stack-logging]]
+- [[dora-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

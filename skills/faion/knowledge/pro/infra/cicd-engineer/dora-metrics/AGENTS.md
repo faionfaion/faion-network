@@ -3,82 +3,97 @@ slug: dora-metrics
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: DORA (DevOps Research and Assessment) metrics are four research-validated KPIs that measure software delivery performance: Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Restore.
-content_id: "b0d7d14c181a3387"
-tags: [dora, metrics, devops, ci-cd, observability]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a DORA metrics report (Deployment Frequency, Lead Time for Changes, Change Failure Rate, MTTR + Reliability) with deploy-event ingestion, Prometheus rules, schema, and Grafana wiring.
+content_id: "3d1db3c3785be582"
+complexity: medium
+produces: report
+est_tokens: 4400
+tags: ["dora", "metrics", "devops", "ci-cd", "observability"]
 ---
-# DORA Metrics
+# DORA + Reliability Metrics Report
 
 ## Summary
 
-**One-sentence:** DORA (DevOps Research and Assessment) metrics are four research-validated KPIs that measure software delivery performance: Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Restore.
+**One-sentence:** Generates a DORA metrics report (Deployment Frequency, Lead Time for Changes, Change Failure Rate, MTTR + Reliability) with deploy-event ingestion, Prometheus rules, schema, and Grafana wiring.
 
-**One-paragraph:** DORA (DevOps Research and Assessment) metrics are four research-validated KPIs that measure software delivery performance: Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Restore. Elite teams deploy 208x more often and recover 2,604x faster than low performers. A fifth metric — Reliability (SLO achievement) — was added in 2025. AI-generated code reduces delivery stability by approximately 7%, so batch size must be monitored when using AI tools.
+**One-paragraph:** DORA + Reliability Metrics Report — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a report that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Team wants to measure delivery performance objectively against the 2024+ DORA bands (Elite/High/Medium/Low).
+- CI/CD pipeline + incident management produce machine-readable events (deploy timestamp, lead time, MTTR signal).
+- Audience is engineering leadership or board-level KPIs.
 
 ## Applies If (ALL must hold)
 
-- Engineering org wants a baseline + improvement plan for software delivery performance.
-- Quarterly/annual exec reporting: leadership needs a credible answer to "are we shipping faster?".
-- Tracking AI-assistant adoption impact (DORA 2025 research shows AI affects stability/throughput; need data).
-- Comparing teams' delivery health without falling into "lines of code" or "story points" anti-metrics.
-- Justifying platform/CI investments — DORA metrics provide before/after evidence.
-- Setting up engineering metrics for a team or service for the first time.
-- Evaluating CI/CD pipeline health before a refactoring sprint.
-- Connecting engineering output to business outcomes (revenue, churn, team wellbeing).
-- Running quarterly DevOps performance reviews.
-- Designing a metrics collection system backed by CI/CD + incident tools.
+- Team wants to measure delivery performance objectively against the 2024+ DORA bands (Elite/High/Medium/Low).
+- CI/CD pipeline + incident management produce machine-readable events (deploy timestamp, lead time, MTTR signal).
+- Audience is engineering leadership or board-level KPIs.
 
 ## Skip If (ANY kills it)
 
-- Single-person / very small teams — the variance dominates the signal.
-- As a stack-rank tool ("Team X is Elite, Team Y is Low — fire the manager"). Goodhart's Law applies hard.
-- For non-software work (data pipelines, ML training, content) — definitions don't transfer cleanly.
-- When the org doesn't yet have basic CI/CD — measure something else first (build pass rate, deploy automation %).
-- As the only health metric — DORA + Reliability + SPACE + developer experience surveys complement each other.
-- Comparing individual developers — metrics are team-level, not individual.
-- Early-stage prototype projects with no production — no deployment signal to measure.
-- When incident tooling (PagerDuty, Opsgenie) is not yet integrated — MTTR will be inaccurate.
+- Pre-product team with no production deploys.
+- Single-developer side project where metrics overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[docker-optimization]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (ingest-deploy-event-cdevents, lead-time-from-commit-to-prod, deploy-frequency-rolling-7-day, change-failure-rate-from-incidents, mttr-includes-detection-time, reliability-as-fifth-metric, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the report + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | One worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-dora-metrics` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/deploy-event.yml` | CDEvents-style deploy event schema |
+| `templates/prometheus-rules.yml` | Prometheus recording + alerting rules for DORA metrics |
+| `templates/schema.sql` | SQL schema for deploys + incidents join |
+| `templates/backup-config.example.json` | Filled report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-dora-metrics.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[docker-optimization]]
+- [[elk-stack-logging]]
+- [[cicd-tls-validation-gate]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

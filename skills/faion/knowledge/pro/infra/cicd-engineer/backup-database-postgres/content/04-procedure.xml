@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="backup-database-postgres Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure to apply the PostgreSQL backup methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scope-and-rpo">
+      <input>Database list + RPO/RTO target + managed-vs-self-managed flag</input>
+      <action>Apply skip-this-methodology gate. If self-managed AND RPO ≤ 24h, continue. If PaaS with no cross-cloud requirement, STOP.</action>
+      <output>scope decision (proceed / skip)</output>
+      <decision-gate>If scope == skip, halt and document the managed-backup path instead.</decision-gate>
+    </step>
+
+    <step n="2" name="choose-format">
+      <input>Database size + restore granularity needed</input>
+      <action>Pick `-Fc` (custom) for &lt; 50 GB or selective restore; `-Fd -j N` (directory) for &gt; 50 GB and parallel restore; `pg_basebackup`/pgBackRest for PITR.</action>
+      <output>backup_format value for the config artefact</output>
+    </step>
+
+    <step n="3" name="emit-pipeline">
+      <input>Format choice + secrets source + remote storage URI</input>
+      <action>Fill `templates/postgres-backup.sh` skeleton: load secrets from secrets manager, run dump, verify, push to remote, prune local. For PITR, fill `templates/pgbackrest.conf` with stanza + repo + retention.</action>
+      <output>backup script + (optional) pgbackrest.conf</output>
+    </step>
+
+    <step n="4" name="wire-monitoring">
+      <input>Prometheus / Loki / CloudWatch endpoint</input>
+      <action>Emit a job that scrapes `pg_stat_archiver_failed_count_total` (via postgres_exporter) and alerts on positive rate. Add a daily restore-drill cron pointing at `backup-verification-dr`.</action>
+      <output>monitoring config + alert routes</output>
+      <decision-gate>If WAL archiving is enabled and monitoring is NOT wired, STOP — a PITR pipeline without WAL monitoring is worse than no PITR.</decision-gate>
+    </step>
+
+    <step n="5" name="validate-and-register">
+      <input>Filled config artefact + scripts/validate-backup-database-postgres.py</input>
+      <action>Run the validator. On exit 0, commit; on exit 1, fix violations and re-run.</action>
+      <output>Production pipeline live; first verified backup in S3.</output>
+    </step>
+
+  </section>
+</text>

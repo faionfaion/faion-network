@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cicd-mtls-deployment Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cicd-mtls-deployment. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="mTLS Service-to-Service Deployment Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the cicd-mtls-deployment methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Internal CA MUST issue short-lived client certificates (24h–7d) and MUST expose an ACME or API endpoint for automated renewal. Long-lived shared client certs (validity &gt; 30d) shared across multiple services are forbidden — key compromise requires mass rotation with no revocation guarantee.</statement>
-      <rationale source="v1-source">Revocation (CRL/OCSP) is operationally hard to operate reliably at scale — clients cache CRL responses, OCSP responders are single points of failure, and many implementations silently accept certs if the OCSP check fails (soft-fail). Short-lived certs replace revocation with expiry as the primary security boundary.</rationale>
+
+    <rule id="internal-ca-only" testable="true" depth="essential">
+      <statement>mTLS MUST use an internal CA (step-ca, Vault PKI, service-mesh issuer) for service identities; public CAs (Let's Encrypt) MUST NOT be used for service-to-service auth.</statement>
+      <rationale source="step-ca docs, Vault PKI docs">Public CAs issue identities trusted by the world; internal CAs restrict the trust domain to your services.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>nginx mTLS configurations MUST pass $ssl_client_s_dn (client Distinguished Name) and $ssl_client_verify to the backend via X-SSL-Client-DN and X-SSL-Client-Verify headers. The backend MUST validate $ssl_client_verify == SUCCESS before trusting the identity in X-SSL-Client-DN.</statement>
-      <rationale source="v1-source">Without passing $ssl_client_verify, the backend cannot distinguish between a verified client cert and an unauthenticated connection that somehow reached the proxy. A backend trusting X-SSL-Client-DN without checking the verify status is a critical authentication bypass.</rationale>
+
+    <rule id="short-lived-certs" testable="true" depth="essential">
+      <statement>Per-pod / per-service certs MUST have lifetime ≤ 24h; long-lived client certs (&gt;30 days) are forbidden.</statement>
+      <rationale source="SPIFFE/SPIRE design, step-ca docs">Long-lived certs amplify revocation blast radius; short-lived certs auto-expire on compromise.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>When a service mesh is present (Linkerd, Istio, or Cilium), MUST NOT hand-roll mTLS by injecting client certs into application pods. The mesh's identity plane handles cert issuance, rotation, and revocation automatically per pod identity (SPIFFE/X.509 SVIDs). Hand-rolling on top of a mesh creates two competing PKI systems with conflicting root trust.</statement>
-      <rationale source="v1-source">Service mesh mTLS is transparent, automatic, and operates at the sidecar level with cryptographic identity bound to the pod service account. Adding application-level client certs on top introduces two PKIs with different roots, rotation schedules, and failure modes — all of which manifest as intermittent authentication failures that are extremely hard to diagnose.</rationale>
+
+    <rule id="no-shared-cert" testable="true" depth="essential">
+      <statement>Each workload identity MUST have its own cert; sharing one client cert across N services is forbidden.</statement>
+      <rationale source="SPIFFE Workload Identity spec">Shared certs make impersonation undetectable and rotation impossible without coordinated downtime.</rationale>
     </rule>
+
+    <rule id="verify-client-cert-at-edge" testable="true" depth="essential">
+      <statement>nginx / envoy MUST be configured with `ssl_verify_client on` (or envoy equivalent) and require a non-empty `$ssl_client_s_dn` to forward requests.</statement>
+      <rationale source="nginx ssl_verify_client docs">Without `ssl_verify_client on`, mTLS terminates without enforcement and any client cert is accepted.</rationale>
+    </rule>
+
+    <rule id="crl-or-ocsp-stapling" testable="true" depth="essential">
+      <statement>Either CRL distribution point OR OCSP stapling MUST be configured to revoke compromised certs before they expire naturally.</statement>
+      <rationale source="RFC 5280, RFC 6066">Without revocation, a stolen private key remains valid until the (short) cert expires; CRL/OCSP shrinks the exposure window.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If application-layer auth (OIDC/JWT-PoP) already provides cryptographic service-to-service auth equivalent to mTLS, this methodology MUST be skipped.</statement>
+      <rationale source="OAuth2 DPoP RFC">Layering mTLS on top of equivalent app-layer auth duplicates infra without security gain.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

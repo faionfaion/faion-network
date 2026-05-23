@@ -1,15 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fco-cost-allocation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fco-cost-allocation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="FinOps — Cloud Cost Allocation via Tagging Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the fco-cost-allocation methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>All cloud resources MUST be tagged with environment, team, service, and cost-center at creation time. Resource creation MUST be blocked via SCP (AWS), Azure Policy, or GCP Organization Policy if any required tag is absent.</statement>
-      <rationale source="v1-source">Retroactive tagging achieves at best 60-70% coverage; some resource types cannot be tagged after creation. Enforcement at creation time is the only mechanism that achieves 98%+ compliance. Warning-based approaches without blocking achieve 40-60% compliance at best.</rationale>
+
+    <rule id="mandatory-tag-set" testable="true" depth="essential">
+      <statement>Every taggable resource MUST carry a mandatory tag set: `team`, `service`, `environment`, `cost-center`, `owner-email`. Resources missing tags MUST fail creation.</statement>
+      <rationale source="AWS Tag Policies docs, FinOps Foundation tagging guide">Optional tags = no tags. Allocation only works if tag coverage is 100% at creation time.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Measure untagged resource percentage weekly and report to engineering leadership. The target is below 5% of resources untagged. If the weekly measurement shows the percentage is stable above 5%, escalate the enforcement mechanism from warning-only to blocking.</statement>
-      <rationale source="v1-source">Weekly measurement creates accountability pressure. If the metric is not reviewed and acted upon, it becomes meaningless data. The 5% target is achievable with proper enforcement and represents the minimum threshold for meaningful cost attribution.</rationale>
+
+    <rule id="enforce-at-creation-not-ex-post" testable="true" depth="essential">
+      <statement>Tag enforcement MUST be at creation time (SCP / Organization Policy / Azure Policy `deny` effect); ex-post tagging campaigns are forbidden as primary mechanism.</statement>
+      <rationale source="AWS SCP docs, GCP Org Policy docs">Ex-post tagging campaigns achieve 60-80% coverage at best; creation-time enforcement is the only path to 100%.</rationale>
     </rule>
+
+    <rule id="controlled-vocabulary" testable="true" depth="essential">
+      <statement>Tag values for `team` / `environment` / `cost-center` MUST come from a controlled vocabulary (e.g. `prod|staging|dev`); free-text is forbidden.</statement>
+      <rationale source="FinOps Foundation tagging guide">Free-text values produce `prod`/`Prod`/`production`/`prd` chaos; allocation reports cannot reconcile.</rationale>
+    </rule>
+
+    <rule id="untagged-resource-alarm" testable="true" depth="essential">
+      <statement>An automated job MUST run daily, listing untagged or wrong-tagged resources; report MUST notify the offending account owner.</statement>
+      <rationale source="AWS Config rules, GCP Asset Inventory">Even with SCPs, edge cases slip through (legacy resources, console exceptions). The daily report closes the loop.</rationale>
+    </rule>
+
+    <rule id="cost-allocation-tags-activated" testable="true" depth="essential">
+      <statement>The chosen tag keys MUST be marked as 'cost allocation tags' in billing / cost-explorer so they appear in chargeback reports.</statement>
+      <rationale source="AWS Cost Allocation Tags docs">A tag not activated for cost allocation does not appear in CUR / BigQuery billing export — allocation is invisible.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the account is single-team or spend &lt; $5k/mo, this methodology MUST be skipped.</statement>
+      <rationale source="Internal scope review, FinOps Foundation">Tag policy overhead is justified by allocation need; small accounts can settle for account-level attribution.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

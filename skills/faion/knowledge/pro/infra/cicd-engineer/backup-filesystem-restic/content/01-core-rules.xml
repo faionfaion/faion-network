@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="backup-filesystem-restic Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for backup-filesystem-restic. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Filesystem Backup with Restic Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the backup-filesystem-restic methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Restic backup scripts MUST load RESTIC_PASSWORD from a secrets manager or password file (RESTIC_PASSWORD_FILE) — never hard-code or pass on the command line. Scripts MUST run `restic check --read-data-subset=5%` at least weekly to detect silent repository corruption before a restore is needed.</statement>
-      <rationale source="v1-source">Restic encrypts the repository; a lost or wrong password renders all data unrecoverable. Passing passwords on the CLI exposes them in process listings and shell history. The check command detects pack file corruption that can accumulate silently over months.</rationale>
+
+    <rule id="password-from-secrets-manager" testable="true" depth="essential">
+      <statement>Restic scripts MUST load `RESTIC_PASSWORD` via `RESTIC_PASSWORD_FILE` (mode 0600) or `RESTIC_PASSWORD_COMMAND` from a secrets manager; never pass on the command line or inline-literal in the script.</statement>
+      <rationale source="Restic docs — Environment Variables, OWASP Secrets Management">Restic encrypts the repository; a lost or wrong password renders all data unrecoverable. CLI args appear in process listings and shell history.</rationale>
     </rule>
+
+    <rule id="weekly-repo-check" testable="true" depth="essential">
+      <statement>Every Restic repository MUST run `restic check --read-data-subset=5%` at least weekly with an alert on non-zero exit.</statement>
+      <rationale source="Restic docs — check subcommand">Pack files corrupt silently over months; detection at restore time is the failure case.</rationale>
+    </rule>
+
+    <rule id="forget-with-prune" testable="true" depth="essential">
+      <statement>Retention scripts MUST run `restic forget --prune` (not bare `forget`); a `forget` without `--prune` leaves orphaned packs holding full storage.</statement>
+      <rationale source="Restic docs — forget vs prune">forget removes snapshot references but does not garbage-collect packs; storage growth continues unbounded.</rationale>
+    </rule>
+
+    <rule id="exclude-volatile-paths" testable="true" depth="essential">
+      <statement>Backup commands MUST include `--exclude` patterns for `/proc`, `/sys`, `/dev`, `/tmp`, `node_modules`, `.cache`, `*.sock` to avoid wasted backup bandwidth and corrupt snapshots.</statement>
+      <rationale source="Restic docs — Excluding Files">Volatile or virtual filesystems explode snapshot size and can hang the backup.</rationale>
+    </rule>
+
+    <rule id="systemd-timer-not-cron" testable="true" depth="essential">
+      <statement>Production backup wiring MUST use a systemd timer + service unit (with `OnFailure=` alert hook) rather than crond; cron silently swallows failures and lacks structured logging.</statement>
+      <rationale source="systemd.timer manual">Cron sends mail-only failure notifications that are ignored at scale; systemd integrates with journald + alerting.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the host is a managed VM (RDS, GKE node, Lambda) with platform-managed snapshots covering the RPO target, or if it carries only ephemeral state, this methodology MUST be skipped.</statement>
+      <rationale source="Cloud provider snapshot docs">Adding Restic on top of managed snapshots duplicates cost and introduces drift.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

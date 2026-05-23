@@ -3,71 +3,94 @@ slug: fco-commitment-pricing
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Commitment-based pricing (Reserved Instances and Savings Plans) delivers 60-75% discounts over on-demand for predictable steady-state workloads.
-content_id: "96c598c57bef1b32"
-tags: [finops, reserved-instances, savings-plans, cloud-cost, commitment-pricing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a commitment-pricing plan (RIs / Savings Plans / 1-3yr commitments) for steady-state workloads delivering 60-75% discount, with utilization monitoring and unused-commitment alarm.
+content_id: "df3d31611a50d4dc"
+complexity: medium
+produces: decision-record
+est_tokens: 4100
+tags: ["finops", "reserved-instances", "savings-plans", "cloud-cost", "commitment-pricing"]
 ---
-# Reserved Instances and Savings Plans
+# FinOps — Reserved Instances / Savings Plans Commitment
 
 ## Summary
 
-**One-sentence:** Commitment-based pricing (Reserved Instances and Savings Plans) delivers 60-75% discounts over on-demand for predictable steady-state workloads.
+**One-sentence:** Generates a commitment-pricing plan (RIs / Savings Plans / 1-3yr commitments) for steady-state workloads delivering 60-75% discount, with utilization monitoring and unused-commitment alarm.
 
-**One-paragraph:** Commitment-based pricing (Reserved Instances and Savings Plans) delivers 60-75% discounts over on-demand for predictable steady-state workloads. The key discipline is to rightsize before committing, target 70-80% of baseline compute, and start conservative with Convertible RIs to preserve flexibility while the commitment strategy matures.
+**One-paragraph:** FinOps — Reserved Instances / Savings Plans Commitment — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a decision-record that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Cloud spend on a steady-state workload exceeds $10k/mo for at least 3 months running.
+- Capacity needs are predictable within 20% over the commitment horizon.
+- Finance has authority to commit to a 1-3 year term.
 
 ## Applies If (ALL must hold)
 
-- Production databases, application servers, and analytics clusters that run 24/7 without interruption.
-- Workloads with at least 6 months of stable usage history to establish a reliable baseline.
-- Any environment where on-demand compute exceeds $5,000/month — the break-even on a 1-year RI is typically 7-9 months.
-- After rightsizing: always rightsize first, then commit to the correct size.
+- Cloud spend on a steady-state workload exceeds $10k/mo for at least 3 months running.
+- Capacity needs are predictable within 20% over the commitment horizon.
+- Finance has authority to commit to a 1-3 year term.
 
 ## Skip If (ANY kills it)
 
-- Variable or bursty workloads with no stable baseline — commit only to the floor, use on-demand or Spot for burst.
-- Workloads scheduled to be decommissioned or migrated within the commitment period.
-- Environments where the architecture is actively evolving (consider shorter 1-year terms or Convertible RIs instead).
+- Variable / bursty workload (spot-suitable) — use `fco-spot-instances` instead.
+- Pre-product / pre-PMF stage where capacity needs may pivot within 3 months.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[fco-cost-allocation]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (3-month-baseline-required, convertible-for-uncertainty, cover-base-not-peak, utilization-alert-80pct, staggered-renewal, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the decision-record + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-fco-commitment-pricing` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/commitment-plan.md` | Decision record: workload + baseline + commitment shape + utilization plan |
+| `templates/backup-config.example.json` | Filled decision-record artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-fco-commitment-pricing.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[fco-cost-allocation]]
+- [[fco-rightsizing]]
+- [[fco-spot-instances]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

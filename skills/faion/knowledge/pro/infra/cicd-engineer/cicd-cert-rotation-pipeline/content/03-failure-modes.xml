@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cicd-cert-rotation-pipeline Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cicd-cert-rotation-pipeline as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Certificate Rotation Pipeline (cert-manager / Terraform / Compose) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using Issuer (namespace-scoped) instead of ClusterIssuer for certificates that span multiple namespaces.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each namespace requires its own Issuer, multiplying configuration and drift surface. ClusterIssuer is the correct choice for platform-wide issuance; namespace-scoped Issuer is only for tenant isolation requirements.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Committing private keys or ACME account keys to Git repositories.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Private keys in Git are permanently compromised even after deletion — the history is cloned by everyone with access. Use SOPS-encrypted secrets, Vault dynamic secrets, or External Secrets Operator to inject private material at runtime.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="key-committed-to-git">
+      <symptom>Pre-commit security scanner flags `BEGIN PRIVATE KEY` in repo; key has been rotated 4 times but historical commits still hold the original.</symptom>
+      <root-cause source="OWASP, internal incident review">Author treated the cert + key as 'just config' and committed both.</root-cause>
+      <fix>Rotate the affected cert immediately; revoke old cert at issuer; rewrite Git history with BFG / git-filter-repo; add pre-commit hook scanning for `BEGIN PRIVATE KEY|BEGIN RSA PRIVATE KEY`.</fix>
+    </antipattern>
+
+    <antipattern id="manual-kubectl-apply">
+      <symptom>Operator runs `kubectl apply -f cert.yaml` directly; renewal config is silently wrong; cert expires 60 days later.</symptom>
+      <root-cause source="Internal IaC review">Bypass of the IaC pipeline; no render-scan-apply.</root-cause>
+      <fix>Lock RBAC so only the CI service account can apply Certificate CRDs; route every change through render-scan-apply CI.</fix>
+    </antipattern>
+
+    <antipattern id="no-expiry-alert">
+      <symptom>Cert expires at 03:00 UTC Saturday; first user-visible 502 wakes on-call at 09:00.</symptom>
+      <root-cause source="Internal incident review">Prometheus rule never wired; cert-manager metrics scraped but not alerted on.</root-cause>
+      <fix>Add alert rule on `certmanager_certificate_expiration_timestamp_seconds - time() &lt; 7*86400`; route to PagerDuty.</fix>
+    </antipattern>
+
   </section>
 </text>

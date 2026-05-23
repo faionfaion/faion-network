@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="backup-kubernetes-velero Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for backup-kubernetes-velero. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Cluster Backup with Velero Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the backup-kubernetes-velero methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Velero installations on v1.15+ MUST NOT use `--default-volumes-to-restic`. Use `--default-volumes-to-fs-backup` and Kopia as the data mover. The Restic integration path in Velero v1.15 is deprecated and will be removed in a future version.</statement>
-      <rationale source="v1-source">Velero deprecated the Restic FSB path in v1.15 in favor of Kopia, which has better performance and active maintenance. Scripts with `--default-volumes-to-restic` on v1.15+ produce a deprecation warning or error; on future versions they will fail entirely.</rationale>
+
+    <rule id="velero-1-15-no-restic" testable="true" depth="essential">
+      <statement>Velero installations MUST use the Kopia data mover (default in 1.15+); the Restic uploader is deprecated and MUST NOT be enabled for new clusters.</statement>
+      <rationale source="Velero docs — Data Mover, Velero v1.15 release notes">Restic uploader is marked deprecated; new install paths default to Kopia which is faster and uses native CSI snapshots.</rationale>
     </rule>
+
+    <rule id="csi-snapshots-enabled" testable="true" depth="essential">
+      <statement>The cluster MUST have a CSI driver with VolumeSnapshotClass installed; Velero MUST use CSI snapshots (`--features=EnableCSI`) rather than restic-file-copy fallback when available.</statement>
+      <rationale source="Kubernetes CSI Volume Snapshot docs">File-copy fallback is order-of-magnitude slower and loses application-consistent snapshot semantics.</rationale>
+    </rule>
+
+    <rule id="pre-post-hooks-for-stateful" testable="true" depth="essential">
+      <statement>Schedule CRDs targeting stateful workloads (Postgres, MySQL, Mongo) MUST declare `pre.hook.backup.velero.io/command` (quiesce / fsfreeze) and `post.hook.backup.velero.io/command` (unfreeze).</statement>
+      <rationale source="Velero docs — Backup Hooks">Without quiesce, the snapshot is crash-consistent only; application data files may be torn mid-write.</rationale>
+    </rule>
+
+    <rule id="backup-storage-location-separate-cloud" testable="true" depth="essential">
+      <statement>BackupStorageLocation MUST point to an object store in a DIFFERENT cloud or region than the cluster's control plane.</statement>
+      <rationale source="Internal DR review">Co-located backups die with the cluster in a regional outage; cross-region/cluster is the only resilient pattern.</rationale>
+    </rule>
+
+    <rule id="schedule-retention" testable="true" depth="essential">
+      <statement>Every Schedule CRD MUST set `ttl` explicitly (no infinite retention); recommended ttl: daily=168h, weekly=720h, monthly=2160h.</statement>
+      <rationale source="Velero docs — Schedule">Unbounded retention grows object-store cost linearly without RTO benefit.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If all in-cluster state is reconciled from Git + external object storage (pure GitOps, no PVC state), this methodology MUST be skipped.</statement>
+      <rationale source="GitOps principles, Kubernetes Backup Whitepaper">Backing up derived state duplicates the source of truth; reconcile-from-Git is faster restore than Velero.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="backup-database-postgres Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule id from content/01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-managed">Is the cluster fully managed PaaS (RDS/Cloud SQL/AlloyDB) with native backups enabled AND no cross-cloud copy required?</root-question>
+
+    <branch when="managed_with_native_backup == true">
+      <conclusion ref="skip-this-methodology" verdict="use the PaaS native backup engine; do not run a parallel pipeline"/>
+    </branch>
+
+    <branch when="managed_with_native_backup == false">
+      <question id="q-pitr">Is PITR (RPO &lt; 24h) required?</question>
+
+      <branch when="pitr_required == true">
+        <question id="q-wal-monitoring">Will pg_stat_archiver.failed_count be monitored and alerted on?</question>
+        <branch when="wal_monitoring_planned == false">
+          <conclusion ref="wal-archive-monitoring" verdict="STOP — wire monitoring before enabling WAL archiving; an unmonitored PITR chain is worse than no PITR"/>
+        </branch>
+        <branch when="wal_monitoring_planned == true">
+          <conclusion ref="wal-archive-monitoring" verdict="enable pg_basebackup or pgBackRest stanza + archive_command + Prometheus alert"/>
+        </branch>
+      </branch>
+
+      <branch when="pitr_required == false">
+        <question id="q-format">Database size + restore granularity?</question>
+        <branch when="size_gb &gt;= 50 OR parallel_restore_needed == true">
+          <conclusion ref="custom-format-required" verdict="emit pg_dump -Fd -j N pipeline"/>
+        </branch>
+        <branch when="size_gb &lt; 50 AND parallel_restore_needed == false">
+          <conclusion ref="custom-format-required" verdict="emit pg_dump -Fc pipeline"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="billing-prod">
+    managed_with_native_backup=false → pitr_required=true → wal_monitoring_planned=true → conclusion=wal-archive-monitoring (enable pgBackRest + Prometheus alert).
+  </example>
+</text>

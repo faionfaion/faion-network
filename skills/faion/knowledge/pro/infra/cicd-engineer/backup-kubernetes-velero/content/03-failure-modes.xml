@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="backup-kubernetes-velero Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for backup-kubernetes-velero as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Kubernetes Cluster Backup with Velero Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent emits `--default-volumes-to-restic` or `--use-restic` for Velero v1.15+ installations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Restic path is deprecated in Velero v1.15. Use --use-node-agent and --default-volumes-to-fs-backup with Kopia. Anchor the prompt to the exact installed Velero version to avoid this.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent generates Velero Schedule with cron expression "0 2 * * *" without noting the timezone, causing the schedule to run at 2 AM UTC regardless of the team's local time — potentially during peak traffic hours for non-UTC teams.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Velero schedules run in UTC by default. "0 2 * * *" stomps on traffic peaks for teams in UTC+3 to UTC+8 time zones. Add a comment documenting the UTC schedule and its local equivalent for the ops team.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent generates Velero Backup that includes kube-system, velero, and other platform namespaces in the includedNamespaces wildcard without explicitly excluding them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Backing up kube-system and velero namespaces adds noise, inflates backup size, and can cause restore conflicts. Always exclude them with excludedNamespaces in wildcard schedules.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agent treats Velero CSI snapshot as equivalent to an off-cluster backup — "snapshot = backup".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CSI snapshots live on the same storage system. If the storage system fails (cloud provider outage, cluster deletion), all snapshots go with it. Always configure a BackupStorageLocation in a separate account/region that copies backup data off the cluster's storage.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="restic-uploader-on-new-cluster">
+      <symptom>New 2026 cluster installed with `--uploader-type=restic`; backups are 5x slower and Velero docs warn the path is deprecated.</symptom>
+      <root-cause source="Velero v1.15 release notes">Author copied a 2023 install command without checking the data-mover migration.</root-cause>
+      <fix>Re-install with `--uploader-type=kopia`; migrate existing repos via Velero's documented data-mover migration script.</fix>
+    </antipattern>
+
+    <antipattern id="no-pre-hook-on-postgres">
+      <symptom>Postgres restore from a Velero CSI snapshot fails to start: `LOG: invalid checkpoint record`. Snapshot was crash-consistent but not application-consistent.</symptom>
+      <root-cause source="Velero hooks docs, PostgreSQL crash-recovery docs">Schedule targeted the namespace without `pre.hook.backup.velero.io/command=pg_start_backup`.</root-cause>
+      <fix>Add pre-hook `pg_start_backup` (or `SELECT pg_backup_start()` on PG 15+) and post-hook `pg_stop_backup`. Test restore in a temp namespace.</fix>
+    </antipattern>
+
+    <antipattern id="co-located-storage-location">
+      <symptom>Cluster in eu-central-1 backs up to an S3 bucket in eu-central-1; regional outage takes both down simultaneously.</symptom>
+      <root-cause source="Internal DR drill">Backup storage location defaulted to cluster's home region.</root-cause>
+      <fix>Provision a second BackupStorageLocation in a different region (eu-west-1 or us-east-1) and set it as the schedule target.</fix>
+    </antipattern>
+
   </section>
 </text>

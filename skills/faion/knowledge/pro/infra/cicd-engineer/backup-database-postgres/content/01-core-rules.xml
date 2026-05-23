@@ -1,15 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="backup-database-postgres Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for backup-database-postgres. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="backup-database-postgres Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules grounding the PostgreSQL backup pipeline. Each rule pairs a binary check with a sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every pg_dump script MUST verify the dump file with `pg_restore -l "$BACKUP_PATH" &gt; /dev/null` before uploading to remote storage. A backup that fails pg_restore -l is corrupt and must trigger an alert — not a silent upload.</statement>
-      <rationale source="v1-source">pg_dump can produce a partial file when the source crashes mid-export or when disk fills. Silent uploads create the illusion of a backup without the substance. The verification adds under one second for most database sizes.</rationale>
+
+    <rule id="verify-before-upload" testable="true" depth="essential">
+      <statement>Every pg_dump or pg_basebackup script MUST verify the produced artifact (`pg_restore -l` for custom format, `gunzip -t` for gzipped streams, `pg_verifybackup` for tar/plain base backups) BEFORE pushing to remote storage. A failed verification MUST trigger an alert and MUST NOT upload.</statement>
+      <rationale source="PostgreSQL docs — pg_verifybackup, internal restore-drill audits">pg_dump can produce a partial file when the source crashes mid-export or disk fills; silent uploads create the illusion of a backup without the substance. Verification adds under one second for most database sizes and catches corruption at the producer.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Repositories using WAL archiving for PITR MUST monitor `pg_stat_archiver.failed_count` and alert when it increases. Silently failed WAL segments create invisible gaps that make the PITR chain unrestorable from the point of the first failure forward.</statement>
-      <rationale source="v1-source">archive_command failures are transient (network blip, S3 throttle) and often recover silently in production without any log noise. Without explicit monitoring, the failure is discovered only during a restore attempt — the worst possible moment.</rationale>
+
+    <rule id="wal-archive-monitoring" testable="true" depth="essential">
+      <statement>Clusters using WAL archiving for PITR MUST monitor `pg_stat_archiver.failed_count` and alert when it increases, AND MUST set `archive_command` to a script that exits non-zero on remote write failure (no silent retries that swallow the exit code).</statement>
+      <rationale source="PostgreSQL docs — Continuous Archiving">archive_command failures are transient (network blip, S3 throttle) and often recover silently in production without log noise. Without explicit monitoring, the failure is discovered only during a restore attempt — the worst possible moment.</rationale>
     </rule>
+
+    <rule id="custom-format-required" testable="true" depth="essential">
+      <statement>Production pg_dump scripts MUST use custom format (`-Fc`) or directory format (`-Fd`); plain SQL (`-Fp` or default) is forbidden for production backups because it cannot drive `pg_restore -j` parallel restore or selective table restore.</statement>
+      <rationale source="PostgreSQL docs — pg_restore">Plain SQL format is human-readable but cannot be partially restored or parallel-restored. Directory format is required for `-j` parallelism; custom format is required for `pg_restore -L` filtering.</rationale>
+    </rule>
+
+    <rule id="secret-hygiene" testable="true" depth="essential">
+      <statement>Backup scripts MUST load `PGPASSWORD`, `RESTIC_PASSWORD`, and S3 access keys from a secrets manager (Vault, AWS Secrets Manager, GCP Secret Manager) or `~/.pgpass` with mode `0600`; never inline-literal in script source or commit metadata. A pre-commit grep MUST reject `RESTIC_PASSWORD=|PGPASSWORD=` in staged hunks.</statement>
+      <rationale source="OWASP Secrets Management, internal incident review">Credential leakage in Git is a security incident with broad blast radius (replication, archive deletion). Encryption key loss = data loss; both modes are eliminated by mandatory secrets-manager pull.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the cluster is fully managed PaaS (RDS, Cloud SQL, AlloyDB) WITH automated backups enabled AND there is no cross-account or cross-cloud copy requirement, this methodology MUST be skipped in favour of the platform's native backup; only enable when at least one of those conditions is false.</statement>
+      <rationale source="AWS RDS Backup docs, GCP Cloud SQL Backup docs">Managed PaaS backup engines already implement integrity, retention, and PITR. Adding a parallel pipeline duplicates cost and introduces drift between two recovery paths.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

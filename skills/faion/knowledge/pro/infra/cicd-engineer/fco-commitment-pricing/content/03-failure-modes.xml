@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="fco-commitment-pricing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for fco-commitment-pricing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="FinOps — Reserved Instances / Savings Plans Commitment Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Purchasing 3-year Standard RIs for 100% of current capacity without accounting for workload evolution.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Workloads shrink due to rightsizing, efficiency improvements, or architectural changes. Over-committed Standard RIs cannot be easily exited; losses can total tens of thousands per month for large environments.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Committing before rightsizing — purchasing RIs for oversized instances.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>You lock in the waste. Rightsize first, validate performance, then commit to the correct smaller instance. Committing to m5.2xlarge when m5.large is sufficient means paying 3-year committed prices for twice the capacity you need.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Treating RI coverage as a one-time purchase decision reviewed annually.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cloud environments change constantly. Quarterly RI reviews catch misalignments before they become expensive. An RI purchased 18 months ago for a service that was rightsized 6 months ago is wasting money daily.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="over-commit-on-peak">
+      <symptom>Team committed to peak Black-Friday capacity; utilization averages 40% the other 11 months; unused commitment burns ~$200k/yr.</symptom>
+      <root-cause source="FinOps Foundation framework">Author sized the commitment to absolute peak rather than baseline.</root-cause>
+      <fix>Recompute commitment against 3-month p25 utilization; cover only base; let peak run on-demand.</fix>
+    </antipattern>
+
+    <antipattern id="standard-ri-uncertain-mix">
+      <symptom>Standard RI bought for m5.large; team migrates to Graviton (m6g) 4 months later; RI sits unused for 32 months.</symptom>
+      <root-cause source="AWS docs — RI types">Author chose Standard for the 3pp extra discount without modeling workload-change risk.</root-cause>
+      <fix>Prefer Compute Savings Plan or Convertible RI when migration is plausible; the flexibility premium pays for itself on the first family swap.</fix>
+    </antipattern>
+
+    <antipattern id="renewal-cliff">
+      <symptom>All 12 RIs expire same week; team caught flat-footed; on-demand spike doubles bill for 2 months.</symptom>
+      <root-cause source="FinOps Foundation">All commitments purchased in a single procurement cycle.</root-cause>
+      <fix>Stagger renewals: split commitments across quarters; queue renewals 60 days in advance with `fco-cost-allocation` reports as evidence.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -3,72 +3,95 @@ slug: cicd-tls-validation-gate
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Enforce TLS quality as a pipeline gate: run testssl.
-content_id: "31e7af2246a37603"
-tags: [tls, ci-gate, security-scanning, testssl, ssl-labs]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Adds a CI gate that runs testssl.sh + sslyze + (optional) SSL Labs against staging and blocks promotion to production unless A+ grade, cipher policy, and certificate chain validity all pass.
+content_id: "bb212e274cff36e9"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: ["tls", "ci-gate", "security-scanning", "testssl", "ssl-labs"]
 ---
-# TLS Validation Gate in CI/CD
+# TLS Validation CI Gate
 
 ## Summary
 
-**One-sentence:** Enforce TLS quality as a pipeline gate: run testssl.
+**One-sentence:** Adds a CI gate that runs testssl.sh + sslyze + (optional) SSL Labs against staging and blocks promotion to production unless A+ grade, cipher policy, and certificate chain validity all pass.
 
-**One-paragraph:** Enforce TLS quality as a pipeline gate: run testssl.sh --severity HIGH and SSL Labs or sslyze against staging before every production promotion. Catch cipher regressions, broken chains, weak protocols, and HSTS misconfigurations before they reach users. Monitor Certificate Transparency logs for rogue issuance.
+**One-paragraph:** TLS Validation CI Gate — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a config that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Public-facing TLS endpoint promotion pipeline (staging → production).
+- Compliance regime requires demonstrable TLS posture (PCI-DSS, SOC2).
+- Team is willing to fail builds on TLS regression.
 
 ## Applies If (ALL must hold)
 
-- Any deploy pipeline that provisions or modifies TLS configuration — run the gate on every change.
-- Post-cert-rotation validation before declaring a rotation complete.
-- Quarterly TLS hygiene review to catch protocol or cipher drift.
-- New domain onboarding: verify the full chain, HSTS headers, and OCSP stapling before public launch.
-- Post-nginx/HAProxy/Envoy upgrade to confirm TLS config survived the upgrade.
+- Public-facing TLS endpoint promotion pipeline (staging → production).
+- Compliance regime requires demonstrable TLS posture (PCI-DSS, SOC2).
+- Team is willing to fail builds on TLS regression.
 
 ## Skip If (ANY kills it)
 
-- Internal-only endpoints not reachable from the scanner — use local openssl s_client checks instead.
-- Development environments where self-signed certs are intentional — the gate will always fail by design.
-- Pre-commit hooks — TLS scanning requires a live running server; it is a post-deploy check, not a pre-commit check.
+- Internal-only services without public TLS exposure.
+- Pre-prod environment without a staging URL to scan.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cicd-tls-renewal-automation]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (a-plus-required, cipher-policy-mozilla-intermediate, hsts-min-1-year, ocsp-stapling-enabled, scan-blocks-promotion, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the config + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-cicd-tls-validation-gate` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tls-scan.gha.yml` | GitHub Actions workflow step running testssl.sh + parsing grade |
+| `templates/testssl-policy.json` | testssl.sh policy file enforcing A+ + Mozilla intermediate |
+| `templates/backup-config.example.json` | Filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cicd-tls-validation-gate.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[cicd-tls-renewal-automation]]
+- [[cicd-cert-rotation-pipeline]]
+- [[cicd-mtls-deployment]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

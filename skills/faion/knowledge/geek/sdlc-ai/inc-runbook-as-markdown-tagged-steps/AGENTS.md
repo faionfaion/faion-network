@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Runbooks stored as markdown with tagged steps (`[read]`, `[write]`, `[approval-required]`, `[verify]`) the agent can parse and execute; humans + agents read the same file.
 content_id: "cff78cb2d52f8f01"

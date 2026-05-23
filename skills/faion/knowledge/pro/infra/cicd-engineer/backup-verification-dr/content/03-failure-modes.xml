@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="backup-verification-dr Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for backup-verification-dr as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Backup Verification + Disaster Recovery Drills Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent creates a restore-drill subagent that restores to the production database or namespace because the test environment is "not available".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A faulty drill can overwrite live data. Restore drills must always isolate scratch resources: separate namespace, separate AWS account if possible. If the test environment is not available, block the drill and alert — do not fall back to production.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent monitors only backup_last_status (success/failure) and misses silent data corruption, empty backups, and wrong-path dumps.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Monitor backup_last_success_timestamp (age), backup_size_bytes (delta), and backup_duration_seconds (regression). A successful empty backup is a critical failure that shows up only in size monitoring.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent runs `restic forget --prune` autonomously without a dry-run gate or human approval.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Forget/prune is irreversible. Agent may emit `forget --dry-run` only; a human runs the real prune after reviewing the dry-run output. Add a guardrail to any agentic workflow that touches retention operations.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="never-restored">
+      <symptom>Operator declares 'backups are running' for 2 years; first restore attempt finds 18 months of WAL gap and unreadable tar files.</symptom>
+      <root-cause source="Internal incident review">No automated drill was scheduled; manual quarterly drills slipped repeatedly.</root-cause>
+      <fix>Schedule a weekly restore-drill cron; have it fail loudly via PagerDuty on non-zero exit; require drill-pass before approving release.</fix>
+    </antipattern>
+
+    <antipattern id="monitor-presence-not-content">
+      <symptom>Monitor checks 'file exists in S3'; a partial 0-byte upload passes the check while the restore fails.</symptom>
+      <root-cause source="Internal incident review">Monitor was wired to object existence, not size or restore exit code.</root-cause>
+      <fix>Replace existence check with `backup_size_bytes` + median-anomaly alert + scheduled restore-drill with exit-code propagation.</fix>
+    </antipattern>
+
+    <antipattern id="runbook-in-wiki-only">
+      <symptom>DR runbook lives in a wiki with no version control; during incident the on-call discovers half the commands reference a decommissioned server.</symptom>
+      <root-cause source="Internal incident review">Runbook was authored once and never refreshed; no automation to detect drift.</root-cause>
+      <fix>Move runbook to Markdown in the repo (see `inc-runbook-as-markdown-tagged-steps`); add weekly cron that lints command syntax + dry-runs each tagged step.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: During incidents the AI agent operates in read-only mode by default; write actions require explicit per-action approval token; trust-escalation script tracks the trust ratchet.
 content_id: "4762f290d6d2e42b"

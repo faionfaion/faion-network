@@ -3,70 +3,95 @@ slug: fco-cost-allocation
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cost allocation assigns cloud spend to the teams, services, and environments that generate it.
-content_id: "002c850a2a4ee296"
-tags: [finops, cost-allocation, tagging, chargeback, cloud-governance]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a tagging policy + enforcement (SCP/Org Policy) + chargeback report wiring so every cloud resource carries accurate metadata for cost attribution to team, service, environment.
+content_id: "906adb51d3e266bf"
+complexity: medium
+produces: config
+est_tokens: 4100
+tags: ["finops", "cost-allocation", "tagging", "chargeback", "cloud-governance"]
 ---
-# Cloud Cost Allocation and Tagging Strategy
+# FinOps — Cloud Cost Allocation via Tagging
 
 ## Summary
 
-**One-sentence:** Cost allocation assigns cloud spend to the teams, services, and environments that generate it.
+**One-sentence:** Generates a tagging policy + enforcement (SCP/Org Policy) + chargeback report wiring so every cloud resource carries accurate metadata for cost attribution to team, service, environment.
 
-**One-paragraph:** Cost allocation assigns cloud spend to the teams, services, and environments that generate it. Without a mandatory tagging taxonomy enforced at resource creation time, cost accountability is impossible — teams cannot optimize what they cannot see. A 300-person engineering org that implemented cost allocation reduced total spend by 20% in 6 months, not by technical optimization, but by making each team responsible for its own bill.
+**One-paragraph:** FinOps — Cloud Cost Allocation via Tagging — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a config that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Multi-team cloud account where shared spend cannot be attributed without tags.
+- FinOps / Finance needs to chargeback or showback to product / team owners.
+- Compliance regime requires resource ownership traceability.
 
 ## Applies If (ALL must hold)
 
-- Organizations with more than one team sharing cloud accounts where cost accountability is unclear.
-- Before implementing chargeback or showback models — tagging must precede attribution.
-- When cloud spend exceeds $50,000/month and no team-level breakdowns exist.
-- When implementing budget alerts and wanting to notify the correct team owner.
+- Multi-team cloud account where shared spend cannot be attributed without tags.
+- FinOps / Finance needs to chargeback or showback to product / team owners.
+- Compliance regime requires resource ownership traceability.
 
 ## Skip If (ANY kills it)
 
-- Single-person teams or single-service accounts where the entire bill is already attributed to one owner — tagging overhead exceeds value.
-- Temporary scratch accounts for R&D that are destroyed within days — enforce time-to-live instead of full tagging policy.
+- Single-team account where all spend is owned by that team.
+- Spend < $5k/mo where allocation overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[fco-commitment-pricing]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (mandatory-tag-set, enforce-at-creation-not-ex-post, controlled-vocabulary, untagged-resource-alarm, cost-allocation-tags-activated, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the config + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-fco-cost-allocation` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tag-policy.json` | AWS Tag Policy / GCP Org Policy skeleton enforcing required tag keys |
+| `templates/scp-tag-enforcement.json` | SCP skeleton denying resource creation without required tags |
+| `templates/backup-config.example.json` | Filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-fco-cost-allocation.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[fco-commitment-pricing]]
+- [[fco-rightsizing]]
+- [[fco-spot-instances]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

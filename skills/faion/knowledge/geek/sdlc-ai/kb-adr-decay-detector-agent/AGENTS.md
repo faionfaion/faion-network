@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Agent that scans ADRs against current code and emits a decay report: ADRs contradicted by code, deprecated by other ADRs, missing referenced artifacts.
 content_id: "ab9973da083a0b77"

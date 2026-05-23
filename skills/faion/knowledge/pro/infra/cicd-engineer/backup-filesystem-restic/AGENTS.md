@@ -3,72 +3,96 @@ slug: backup-filesystem-restic
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Implement encrypted, deduplicated filesystem backups using Restic (modern, cloud-native S3/B2/REST backends) or BorgBackup (compression-focused, SSH-based).
-content_id: "3eec1d7d76f50d39"
-tags: [backup, restic, borgbackup, filesystem, encryption]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an encrypted filesystem backup pipeline using Restic (or BorgBackup) with S3/B2 backend, retention policy, weekly repo check, and systemd timer wiring.
+content_id: "431f139632d3bb44"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: ["backup", "restic", "borgbackup", "filesystem", "encryption"]
 ---
-# Filesystem Backup with Restic and BorgBackup
+# Filesystem Backup with Restic
 
 ## Summary
 
-**One-sentence:** Implement encrypted, deduplicated filesystem backups using Restic (modern, cloud-native S3/B2/REST backends) or BorgBackup (compression-focused, SSH-based).
+**One-sentence:** Generates an encrypted filesystem backup pipeline using Restic (or BorgBackup) with S3/B2 backend, retention policy, weekly repo check, and systemd timer wiring.
 
-**One-paragraph:** Implement encrypted, deduplicated filesystem backups using Restic (modern, cloud-native S3/B2/REST backends) or BorgBackup (compression-focused, SSH-based). Both tools deduplicate at the chunk level to reduce storage costs. Automate with systemd timers and prune retention policies.
+**One-paragraph:** Filesystem Backup with Restic — applied when the preconditions below hold. The methodology pins the artefact shape via `content/02-output-contract.xml`, anchors testable rules in `content/01-core-rules.xml`, and routes ambiguous cases through `content/06-decision-tree.xml` to a concrete rule or to `skip-this-methodology`. Failure modes in `content/03-failure-modes.xml` describe the antipatterns this methodology eliminates. The output is a config that the downstream agent can verify with the included validator.
+
+**Ефективно для:**
+
+- Self-hosted hosts with persistent filesystem state (databases dumps, mailspools, /etc, user homes) requiring offsite copy.
+- Encryption-at-rest mandated by compliance or cross-tenant data handling.
+- Retention discipline (daily/weekly/monthly) over rolling tarballs.
 
 ## Applies If (ALL must hold)
 
-- Backing up application data directories, /etc, /home, or /var/www to cloud object storage (S3, Backblaze B2, Wasabi).
-- Environments where deduplication matters — large media files, log archives, database export directories with repeated content.
-- When encryption at the source is required (PII, compliance) — Restic and Borg encrypt before transmission.
-- Multi-server environments where a central Borg server or Restic REST server receives backups from many hosts.
-- Replacing legacy rsync-only backup setups that lack encryption and deduplication.
+- Self-hosted hosts with persistent filesystem state (databases dumps, mailspools, /etc, user homes) requiring offsite copy.
+- Encryption-at-rest mandated by compliance or cross-tenant data handling.
+- Retention discipline (daily/weekly/monthly) over rolling tarballs.
 
 ## Skip If (ANY kills it)
 
-- Kubernetes PersistentVolume backups — use Velero with CSI snapshots instead; Restic/Borg do not understand K8s resource state.
-- Database hot backups — run pg_dump/XtraBackup/mongodump first, then send the export file to Restic for offsite copy.
-- Environments where object storage is the primary store (S3 with versioning enabled) — backup the source, not the bucket replica.
+- Cloud-native VMs with infra-managed snapshots already covering RPO/RTO.
+- Ephemeral CI runner filesystems with no durable state.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task signal / spec | text / Markdown | user |
+| Domain context | XML | `pro/infra/cicd-engineer/AGENTS.md` |
+| Inventory of in-scope resources | list / JSON | infra catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[backup-database-postgres]] | Sibling methodology — shared vocabulary and patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules (password-from-secrets-manager, weekly-repo-check, forget-with-prune, exclude-volatile-paths, systemd-timer-not-cron, skip-this-methodology) | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the config + valid + invalid + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-backup-filesystem-restic` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/backup-restic.sh` | Restic backup + forget --prune + weekly check skeleton |
+| `templates/backup.timer` | systemd timer skeleton |
+| `templates/backup.service` | systemd service skeleton invoking backup-restic.sh |
+| `templates/backup-config.example.json` | Filled config artefact conforming to the schema |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-backup-filesystem-restic.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/`
+- [[backup-database-postgres]]
+- [[backup-kubernetes-velero]]
+- [[backup-verification-dr]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

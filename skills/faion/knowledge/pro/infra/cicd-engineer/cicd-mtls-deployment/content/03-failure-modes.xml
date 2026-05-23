@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cicd-mtls-deployment Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cicd-mtls-deployment as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="mTLS Service-to-Service Deployment Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using long-lived shared client certs (validity 1 year+) for service-to-service mTLS across multiple microservices.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wildcard certs or shared service certs spread across teams. A single key compromise requires mass rotation with no revocation guarantee (OCSP/CRL is unreliable at scale). Use per-service short-lived certs from an internal CA instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Disabling HSTS preload without verifying every subdomain is reachable via HTTPS first.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>HSTS preload with the wrong domain creates a permanently unreachable subdomain for any user whose browser has cached the HSTS policy. Only add preload after auditing every subdomain in the HSTS scope.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Pasting private keys into chat sessions or CI/CD environment variable values as plain text for debugging mTLS issues.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Private keys in chat history, CI/CD logs, or environment variable exports are permanently compromised. Use Vault dynamic secrets or CI/CD secret stores (GitHub Secrets, GCP Secret Manager) to inject private material at runtime without exposing it in logs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Configuring mTLS with ssl_verify_client on nginx but not validating $ssl_client_verify in the backend application.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>nginx may be bypassed by internal routing, misconfigured load balancers, or direct-to-backend traffic in Kubernetes. The backend MUST verify the ssl_client_verify header value equals SUCCESS before trusting any client identity headers.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="shared-client-cert">
+      <symptom>20 services share `client.crt` mounted from a single K8s Secret; one compromised pod = revocation of all services.</symptom>
+      <root-cause source="Internal security review">Author treated mTLS as a simple shared-secret model.</root-cause>
+      <fix>Issue per-service identity via SPIFFE / cert-manager + CSI driver; each workload gets its own short-lived cert; remove the shared Secret.</fix>
+    </antipattern>
+
+    <antipattern id="long-lived-cert">
+      <symptom>Service client cert valid for 5 years; rotation never happens; key compromise unrecoverable within window.</symptom>
+      <root-cause source="SPIFFE/SPIRE design">Author set `--days 1825` to 'avoid renewal hassle'.</root-cause>
+      <fix>Reduce lifetime to ≤24h; automate renewal via SPIRE workload API or cert-manager; verify rotation works under load.</fix>
+    </antipattern>
+
+    <antipattern id="ssl-verify-client-off">
+      <symptom>nginx config sets `ssl_verify_client optional` and downstream code never checks `$ssl_client_s_dn`; mTLS is fiction.</symptom>
+      <root-cause source="nginx ssl_verify_client docs">Author left a debug `optional` setting and forgot to enforce.</root-cause>
+      <fix>Set `ssl_verify_client on; ssl_verify_depth 2;` and gate request forwarding on a non-empty client DN.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: SonarQube quality-gate config that holds AI-generated code to a higher bar than human-authored: coverage, duplication, security hotspots, AI-author tag, gated merge.
 content_id: "8bee55ff6689d0ce"

@@ -1,66 +1,7 @@
-# .github/workflows/deploy-with-dora.yml
-# GitHub Actions workflow that deploys and emits a DORA deployment event.
-# Required secrets: DORA_METRICS_ENDPOINT, DORA_API_KEY
+# purpose: CDEvents-style deploy event schema
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200 tokens when loaded as context
 
-name: Deploy with DORA Metrics
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-env:
-  METRICS_ENDPOINT: ${{ secrets.DORA_METRICS_ENDPOINT }}
-  SERVICE_NAME: ${{ github.repository }}
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get commit timestamp
-        id: commit_info
-        run: |
-          echo "commit_timestamp=$(git show -s --format=%cI HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Deploy
-        id: deploy
-        run: ./deploy.sh
-
-      - name: Record Deployment (Success)
-        if: success()
-        run: |
-          curl -X POST "$METRICS_ENDPOINT/events/deployment" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.DORA_API_KEY }}" \
-            -d '{
-              "service": "${{ env.SERVICE_NAME }}",
-              "environment": "production",
-              "commit_sha": "${{ github.sha }}",
-              "commit_timestamp": "${{ steps.commit_info.outputs.commit_timestamp }}",
-              "deployed_at": "'$(date -Iseconds)'",
-              "is_rollback": false,
-              "is_hotfix": false,
-              "pipeline_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
-
-      - name: Record Deployment (Failure)
-        if: failure()
-        run: |
-          curl -X POST "$METRICS_ENDPOINT/events/deployment" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.DORA_API_KEY }}" \
-            -d '{
-              "service": "${{ env.SERVICE_NAME }}",
-              "environment": "production",
-              "commit_sha": "${{ github.sha }}",
-              "commit_timestamp": "${{ steps.commit_info.outputs.commit_timestamp }}",
-              "deployed_at": "'$(date -Iseconds)'",
-              "status": "failed",
-              "pipeline_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
+# Skeleton — replace placeholder values before applying.

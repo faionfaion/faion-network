@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Tools the agent can use are tiered (T0 read / T1 mutable-self / T2 customer-impact / T3 multi-cluster); higher tiers require additional approval gates.
 content_id: "24c982577fd7ff03"

@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cicd-tls-renewal-automation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cicd-tls-renewal-automation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ACME TLS Renewal Automation Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules grounding the cicd-tls-renewal-automation methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Select the ACME client before writing any cert-related code: certbot for nginx/apache on Ubuntu/Debian; acme.sh for DNS-01 wildcard certs or minimal-dependency environments; lego for Go-based pipelines or containers. Do NOT mix clients on the same host — competing renewals corrupt the cert store.</statement>
-      <rationale source="v1-source">Each client owns /etc/letsencrypt or its equivalent and writes lockfiles; mixing clients causes race conditions on renewal and inconsistent certificate paths referenced by the web server.</rationale>
+
+    <rule id="systemd-timer-not-cron" testable="true" depth="essential">
+      <statement>ACME renewal MUST run under a systemd timer with `OnFailure=` alert hook; cron is forbidden because failed renewals are silent.</statement>
+      <rationale source="systemd.timer manual, ACME docs">Cron mail-only failure reporting is ignored at scale; systemd integrates with journald + alerting.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every certbot or acme.sh renewal MUST include a post-hook that reloads the web server (systemctl reload nginx, systemctl reload apache2, etc.). The hook MUST be tested independently before enabling the timer.</statement>
-      <rationale source="v1-source">Auto-renewal silent failure: cert renewed but reverse-proxy not reloaded. The new cert file exists on disk but the running process holds the old one in memory. The outage only appears when the old cert actually expires, making root-cause analysis harder.</rationale>
+
+    <rule id="renewal-hook-reload" testable="true" depth="essential">
+      <statement>A renewal hook MUST gracefully reload the consuming service (`nginx -s reload`, `systemctl reload haproxy`); without it, a renewed cert sits unused until next deploy.</statement>
+      <rationale source="certbot docs — deploy hooks">Cert file refreshed on disk doesn't reach the listener without reload; the practical effect is no renewal.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>When adopting LE 6-day or 45-day certs, the pipeline MUST automate renewal at least twice the renewal frequency (e.g., renew every 3 days for 6-day certs). Alert thresholds MUST be set at 2 days (warning) and 1 day (critical) rather than the default 30/7 day windows used for 90-day certs.</statement>
-      <rationale source="v1-source">Short-lived certs have reduced compromise windows and no OCSP/CRL URL overhead, improving security posture. But the standard "alert at 30 days" is useless for a 6-day cert — the cert would already be expired.</rationale>
+
+    <rule id="staging-then-prod" testable="true" depth="essential">
+      <statement>First-time ACME issuance MUST run against the issuer's staging environment first, then production; rate-limit lockouts from a misconfigured prod attempt take 7 days to recover.</statement>
+      <rationale source="Let's Encrypt rate-limit docs">ACME rate limits are unforgiving; the staging endpoint exists specifically to avoid them.</rationale>
     </rule>
+
+    <rule id="expiry-alert-14-days" testable="true" depth="essential">
+      <statement>Prometheus / blackbox_exporter MUST alert when any served cert has &lt; 14 days to expiry, independent of the renewal job's own logs.</statement>
+      <rationale source="Prometheus blackbox_exporter docs">Renewal job success ≠ cert delivered; only a probe against the live listener confirms the chain.</rationale>
+    </rule>
+
+    <rule id="dns-01-for-wildcards" testable="true" depth="essential">
+      <statement>Wildcard certs (`*.example.com`) MUST use DNS-01 challenge; HTTP-01 MUST NOT be attempted for wildcards.</statement>
+      <rationale source="Let's Encrypt challenges docs">HTTP-01 cannot satisfy a wildcard; the issuer will reject and rate-limit budget burns.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If TLS is managed by ACM / GCP managed cert / Cloudflare proxy with auto-renewal, this methodology MUST be skipped.</statement>
+      <rationale source="Cloud provider docs">Self-hosted ACME duplicates the managed path and creates two rotation surfaces.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

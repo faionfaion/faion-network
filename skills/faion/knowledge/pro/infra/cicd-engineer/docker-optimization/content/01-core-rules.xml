@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="docker-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for docker-optimization. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Docker Image Optimization (size + cache + supply chain) Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules grounding the docker-optimization methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="multi-stage-build" testable="true" depth="essential">
+      <statement>Production Dockerfile MUST use multi-stage build: a `builder` stage with compilers/SDKs and a `runtime` stage with only the binary + minimal libs.</statement>
+      <rationale source="Docker docs — Multi-stage builds">Single-stage images carry compilers + headers + cache into the runtime, inflating size and attack surface.</rationale>
     </rule>
+
+    <rule id="distroless-or-wolfi-runtime" testable="true" depth="essential">
+      <statement>Final runtime stage MUST use `gcr.io/distroless/*`, `cgr.dev/chainguard/*`, or `scratch` (for static Go/Rust); `ubuntu:*` / `debian:*` / `alpine:*` are forbidden for production unless documented exception.</statement>
+      <rationale source="Distroless project, Chainguard Wolfi docs">Distroless/Wolfi ship with zero or near-zero CVEs and &lt; 20MB base; full distros carry shells, package managers, and 100s of unused libs.</rationale>
+    </rule>
+
+    <rule id="digest-pinned-base" testable="true" depth="essential">
+      <statement>Base image references MUST be digest-pinned (`FROM image@sha256:...`); plain tags (`:latest`, `:1.0`) MUST NOT be used in production.</statement>
+      <rationale source="OCI image spec, supply-chain best practices">Tags are mutable; a 'reproducible' build with `:latest` is anything but. Digests are the only immutable anchor.</rationale>
+    </rule>
+
+    <rule id="non-root-user" testable="true" depth="essential">
+      <statement>Final stage MUST declare `USER` (non-zero UID) and the runtime process MUST run as that user.</statement>
+      <rationale source="OWASP container security cheatsheet">Containers running as root extend the host kernel attack surface; non-root is the policy default.</rationale>
+    </rule>
+
+    <rule id="buildkit-cache-mounts" testable="true" depth="essential">
+      <statement>Dependency installation steps MUST use BuildKit cache mounts (`RUN --mount=type=cache`); naive `pip install` / `npm install` without cache mount loses caching across rebuilds.</statement>
+      <rationale source="Docker BuildKit docs">Cache mounts speed up rebuilds 5-10x; without them dependency layers re-download on every change to upstream files.</rationale>
+    </rule>
+
+    <rule id="hadolint-and-scan" testable="true" depth="essential">
+      <statement>Image build pipeline MUST run `hadolint` on the Dockerfile and `trivy` / `docker scout` on the produced image, gating on HIGH/CRITICAL CVE.</statement>
+      <rationale source="hadolint docs, Trivy docs">Lint catches Dockerfile anti-patterns; scan catches CVE drift in base layers.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the image is throwaway dev-only with no production exposure, this methodology MUST be skipped.</statement>
+      <rationale source="Internal scope review">Optimization effort against ephemeral artifacts is waste.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

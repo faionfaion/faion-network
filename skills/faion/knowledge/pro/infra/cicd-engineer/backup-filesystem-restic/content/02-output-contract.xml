@@ -1,22 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="backup-filesystem-restic Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Filesystem Backup with Restic Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/backup-filesystem-restic.json",
+  "type": "object",
+  "required": [
+    "backend",
+    "password_source",
+    "retention",
+    "excludes",
+    "check_schedule",
+    "scheduler"
+  ],
+  "properties": {
+    "backend": {
+      "enum": [
+        "s3",
+        "b2",
+        "sftp",
+        "rest",
+        "local"
+      ]
+    },
+    "password_source": {
+      "enum": [
+        "vault",
+        "aws-secrets-manager",
+        "gcp-secret-manager",
+        "password-file-0600"
+      ]
+    },
+    "retention": {
+      "type": "object",
+      "required": [
+        "keep_daily",
+        "keep_weekly",
+        "keep_monthly"
+      ],
+      "properties": {
+        "keep_daily": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "keep_weekly": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "keep_monthly": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "excludes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 4
+    },
+    "check_schedule": {
+      "enum": [
+        "daily",
+        "weekly"
+      ]
+    },
+    "scheduler": {
+      "const": "systemd-timer"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "backend": "s3",
+  "password_source": "vault",
+  "retention": {
+    "keep_daily": 1,
+    "keep_weekly": 1,
+    "keep_monthly": 1
+  },
+  "excludes": [
+    "x",
+    "x",
+    "x",
+    "x"
+  ],
+  "check_schedule": "daily",
+  "scheduler": "systemd-timer"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "backend": null
+}
+]]></code>
+    <note>Required field set to null and other required fields missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>backend: must match enum: s3, b2, sftp, rest, local; otherwise reject.</item>
+      <item>password_source: must match enum: vault, aws-secrets-manager, gcp-secret-manager, password-file-0600; otherwise reject.</item>
+      <item>retention: must match object: keep_daily, keep_weekly, keep_monthly (each int&gt;=1); otherwise reject.</item>
+      <item>excludes: must match array of glob patterns; MUST include /proc /sys /dev /tmp; otherwise reject.</item>
+      <item>check_schedule: must match enum: daily, weekly; otherwise reject.</item>
+      <item>scheduler: must match enum: systemd-timer, cron-not-allowed; otherwise reject.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-backup-filesystem-restic.py">Validator script</reference>
 </text>

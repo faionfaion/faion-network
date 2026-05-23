@@ -1,82 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="dora-metrics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for dora-metrics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="DORA + Reliability Metrics Report Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in production. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>"Deployment" definition is the swamp: deploys to prod-like staging? Feature flag rollouts? Per-service or per-monorepo?</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without a written, agent-readable definition, every team measures something different.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Lead Time conflates "commit to merge" + "merge to deploy" + "deploy to release"; agents collapse them and miss the actual bottleneck.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Measure merge-to-deploy specifically, not from commit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Change Failure Rate depends on incident classification — many "rollbacks" are routine config changes, many incidents aren't tied to a deploy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents inflate or deflate CFR depending on the incident-system schema.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>MTTR includes detection time + response time + recovery time; agents compute from incident.opened_at → resolved_at and miss the silent half-hour before alert fires.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use incident detection time, not created time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>2025 research: AI-assistant adoption correlates with -1.5% throughput, -7.2% stability — likely because AI encourages larger batches.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents must track batch size or DORA improvements are illusory.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Vendor-tool dashboards (Sleuth/LinearB/Jellyfish) have opinionated definitions that may not match yours; agents take their numbers at face value.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Validate definitions match organizational intent.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Elite-vs-Low buckets feel motivating but encourage gaming (artificial micro-deploys to bump frequency).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Show trends, not absolute tiers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>"Reliability" as the fifth metric is not yet standardized — implementations vary; agents should expose error budget burn or SLO attainment, not invent their own.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use SLO attainment as the reliable proxy.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>LLMs invent thresholds ("Elite means daily deploys") — anchor every claim to a citation; the official thresholds change yearly in the State of DevOps report.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always cite the research source.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Lead-time computation often pulls pr.created_at instead of pr.merged_at; this inflates lead time and hides queue-after-merge time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use merge timestamp, not creation timestamp.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Agents include hotfix deploys when computing Deployment Frequency (good) but exclude them from Change Failure Rate (wrong) because they don't open an incident — fix the schema, not the calc.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Include hotfixes in all metrics consistently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Multi-service repos: agents attribute deploys to the wrong service when the deploy event lacks a service label.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force the deploy event to carry {service, sha, env, success}.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>AI-coauthored PRs are detectable via co-author trailer or commit-message tags; agents skip the signal and miss the AI-impact dimension.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Expose AI adoption signal in reports.</repair>
-    </failure-mode>
-    <failure-mode id="fm-14" severity="medium">
-      <description>"Time-zone aware" matters: deploy at 23:00 UTC vs 06:00 UTC affects Deployment Frequency buckets at month boundaries; pick UTC and stay there.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use consistent time zones.</repair>
-    </failure-mode>
-    <failure-mode id="fm-15" severity="medium">
-      <description>Agents recompute history retroactively after a definition tweak — breaks trust.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Version the definitions and freeze old data; show "definition v2 from 2026-01-15".</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="merge-time-lead-time">
+      <symptom>Reported lead time is 2 hours; actual user-felt lead time (commit-to-prod) is 5 days because the merge-to-deploy step is manual.</symptom>
+      <root-cause source="DORA Accelerate book">Author measured merge-to-tag instead of commit-to-prod.</root-cause>
+      <fix>Re-define lead time as `prod_deploy_timestamp - first_commit_in_pr_timestamp`; re-run the historical query; expose the gap.</fix>
+    </antipattern>
+
+    <antipattern id="monthly-aggregates">
+      <symptom>Monthly chart shows 'high' Deployment Frequency; weekly chart reveals a 3-week gap caused by a freeze nobody documented.</symptom>
+      <root-cause source="DORA 2024 report">Aggregation window chosen for stable-looking dashboards.</root-cause>
+      <fix>Report 7-day rolling counts + show the raw daily series alongside; alert on a 14-day flat-line.</fix>
+    </antipattern>
+
+    <antipattern id="cfr-from-survey">
+      <symptom>Change Failure Rate self-reported at 8%; deploy-linked incident query reveals 22%.</symptom>
+      <root-cause source="DORA Accelerate book">Author skipped the incident-data join and asked engineers to estimate.</root-cause>
+      <fix>Wire the incident ticket system to record `deploy_commit_sha`; join deploys with within-24h incidents to compute CFR.</fix>
+    </antipattern>
+
   </section>
 </text>
