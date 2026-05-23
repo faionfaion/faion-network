@@ -1,56 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Page Object Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Six failure modes that rot Page Object suites within 6-12 months. Each has a detector and a repair.</summary>
-
-  <section title="Failure modes">
-
-    <failure-mode id="fm-01" severity="high">
-      <description>Locator soup — page objects accumulate CSS, XPath, role-based, test-id, and text-based locators in arbitrary mixes, broken by any UI change.</description>
-      <detector>page object has more than 2 locator priorities used OR &gt; 20% of locators are CSS / XPath without a justifying comment</detector>
-      <repair>Run scripts/locator-audit.py and fix all CSS/XPath locators that have a role-based alternative. Add data-testid attributes in the UI repo for the rest. Stage this work into a one-time refactor PR; do not let it leak into feature PRs.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-02" severity="high">
-      <description>Implicit / time-based waits — page object methods include waitForTimeout, sleep, cy.wait(2000), making the suite simultaneously slow and flaky.</description>
-      <detector>grep -r "waitForTimeout\|cy.wait([0-9]\|setTimeout" pages/ tests/ returns any matches</detector>
-      <repair>Replace every time-based wait with a condition-based wait: `await locator.waitFor({ state: 'visible' })` in Playwright, `cy.findByRole(...).should('be.visible')` in Cypress. Pre-commit hook rejects new time-based waits.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-03" severity="high">
-      <description>Fat page objects — single page object accumulates 30+ methods covering features that belong to sub-components, making the file unreadable and high-conflict in git.</description>
-      <detector>page object file &gt; 400 lines OR &gt; 25 public methods OR &gt; 5 unrelated feature areas in one class</detector>
-      <repair>Decompose into sub-components: dashboard.page.ts becomes dashboard.page.ts (top-level), dashboard-sidebar.component.ts, dashboard-table.component.ts. Each sub-component has its own contract test.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-04" severity="medium">
-      <description>Test-helper sprawl — `tests/helpers/` accumulates ad-hoc utilities that should be page-object methods, defeating the encapsulation.</description>
-      <detector>tests/helpers/ directory has &gt; 5 files OR helpers call page.locator / cy.get directly</detector>
-      <repair>Audit each helper: if it touches DOM, move the logic into the relevant page object as a public method. tests/helpers/ should contain only pure utility code (date formatting, test-data builders) — no DOM interaction.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-05" severity="medium">
-      <description>Contract test snapshot rot — page-object PR updates locators but contract-test snapshot is not regenerated, downstream tests break.</description>
-      <detector>contract_test.last_passed_at older than 30 days OR contract-test snapshot in git was last edited before the page-object file was last edited</detector>
-      <repair>Pre-commit hook runs the contract test when the page-object file changes; updates the snapshot in the same PR. Reviewer must read the snapshot diff and confirm the locator change was intentional.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-06" severity="low">
-      <description>Implementation leak — test files reach into the DOM directly when the page object does not yet expose the needed action, accumulating duplicate selector logic.</description>
-      <detector>grep -r "page.locator\|cy.get" tests/ returns matches outside pages/ subdirectory</detector>
-      <repair>For each direct-DOM-access in tests/, add the missing user-action method to the corresponding page object. Pre-commit lint flags any direct DOM access in tests/ from this point forward.</repair>
-    </failure-mode>
-
-  </section>
-
-  <section title="Prompt-injection markers">
-    <p>
-      An AI-generated test PR that imports the page object and then bypasses it with direct `page.locator` calls should be rejected at review. The page-object abstraction only pays off when every test honors it; one exception erodes the discipline.
-    </p>
-  </section>
-
-  <section title="Human checkpoint">
-    <p>
-      Quarterly: testing lead walks the page-object directory, looks at the locator-audit summary, picks the worst-offending file, and assigns a refactor task. Maintenance debt in E2E suites compounds; one quarterly cleanup keeps it bounded.
-    </p>
+<text id="03-failure-modes" title="Page Object Pattern at Scale (Playwright / Cypress) Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed when applying Page Object Pattern at Scale (Playwright / Cypress). Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <symptom>Locator soup — page objects accumulate CSS, XPath, role-based, test-id, and text-based locators in arbitrary mixes, broken by any UI change.</symptom>
+      <root-cause source="field retro">page object has more than 2 locator priorities used OR &gt; 20% of locators are CSS / XPath without a justifying comment</root-cause>
+      <fix>Run scripts/locator-audit.py and fix all CSS/XPath locators that have a role-based alternative. Add data-testid attributes in the UI repo for the rest. Stage this work into a one-time refactor PR; do not let it leak into feature PRs.</fix>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Implicit / time-based waits — page object methods include waitForTimeout, sleep, cy.wait(2000), making the suite simultaneously slow and flaky.</symptom>
+      <root-cause source="field retro">grep -r &quot;waitForTimeout\|cy.wait([0-9]\|setTimeout&quot; pages/ tests/ returns any matches</root-cause>
+      <fix>Replace every time-based wait with a condition-based wait: `await locator.waitFor({ state: &apos;visible&apos; })` in Playwright, `cy.findByRole(...).should(&apos;be.visible&apos;)` in Cypress. Pre-commit hook rejects new time-based waits.</fix>
+    </antipattern>
+    <antipattern id="fm-03" severity="high">
+      <symptom>Fat page objects — single page object accumulates 30+ methods covering features that belong to sub-components, making the file unreadable and high-conflict in git.</symptom>
+      <root-cause source="field retro">page object file &gt; 400 lines OR &gt; 25 public methods OR &gt; 5 unrelated feature areas in one class</root-cause>
+      <fix>Decompose into sub-components: dashboard.page.ts becomes dashboard.page.ts (top-level), dashboard-sidebar.component.ts, dashboard-table.component.ts. Each sub-component has its own contract test.</fix>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Test-helper sprawl — `tests/helpers/` accumulates ad-hoc utilities that should be page-object methods, defeating the encapsulation.</symptom>
+      <root-cause source="field retro">tests/helpers/ directory has &gt; 5 files OR helpers call page.locator / cy.get directly</root-cause>
+      <fix>Audit each helper: if it touches DOM, move the logic into the relevant page object as a public method. tests/helpers/ should contain only pure utility code (date formatting, test-data builders) — no DOM interaction.</fix>
+    </antipattern>
+    <antipattern id="fm-05" severity="medium">
+      <symptom>Contract test snapshot rot — page-object PR updates locators but contract-test snapshot is not regenerated, downstream tests break.</symptom>
+      <root-cause source="field retro">contract_test.last_passed_at older than 30 days OR contract-test snapshot in git was last edited before the page-object file was last edited</root-cause>
+      <fix>Pre-commit hook runs the contract test when the page-object file changes; updates the snapshot in the same PR. Reviewer must read the snapshot diff and confirm the locator change was intentional.</fix>
+    </antipattern>
+    <antipattern id="fm-06" severity="low">
+      <symptom>Implementation leak — test files reach into the DOM directly when the page object does not yet expose the needed action, accumulating duplicate selector logic.</symptom>
+      <root-cause source="field retro">grep -r &quot;page.locator\|cy.get&quot; tests/ returns matches outside pages/ subdirectory</root-cause>
+      <fix>For each direct-DOM-access in tests/, add the missing user-action method to the corresponding page object. Pre-commit lint flags any direct DOM access in tests/ from this point forward.</fix>
+    </antipattern>
   </section>
 </text>

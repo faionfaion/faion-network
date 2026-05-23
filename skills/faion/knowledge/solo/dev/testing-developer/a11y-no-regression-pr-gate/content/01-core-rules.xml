@@ -1,82 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="A11y No-Regression PR Gate — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules for an accessibility regression gate that blocks PRs without becoming a ceremony everyone routes around.</summary>
-
+<text id="01-core-rules" title="A11y No-Regression PR Gate Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding A11y No-Regression PR Gate. Each rule pairs a binary check with a cited rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-
     <rule id="r1-net-regression-only" testable="true" depth="essential">
       <statement>The gate fails ONLY on NEW violations vs the stored baseline. Pre-existing violations do not block PRs. A PR that introduces 1 new violation AND fixes 5 pre-existing ones is GREEN (net negative).</statement>
       <rationale source="Continuous improvement / ratchet pattern, axe-linter docs">Demanding zero violations on day one blocks every PR and creates a culture of waivers. Net-regression lets teams ship while ratcheting down debt. Empirically, teams with net-regression gates close 70-80% of a11y debt within 12 months; teams with zero-violation gates close ~10%.</rationale>
     </rule>
-
     <rule id="r2-baseline-in-vcs" testable="true" depth="essential">
       <statement>The baseline JSON MUST be committed to the repo at a known path (e.g., `.a11y/baseline.json`) and updated only via reviewed PRs. The gate generates the baseline from main / trunk and refuses to mutate it from feature branches.</statement>
-      <rationale source="Infrastructure-as-code principles, snapshot-test patterns">Baseline drift through silent edits destroys the ratchet. VCS-tracked baseline makes every change reviewable. Refusing feature-branch baseline updates prevents "I just added my violations to the baseline" smuggling.</rationale>
+      <rationale source="Infrastructure-as-code principles, snapshot-test patterns">Baseline drift through silent edits destroys the ratchet. VCS-tracked baseline makes every change reviewable. Refusing feature-branch baseline updates prevents &quot;I just added my violations to the baseline&quot; smuggling.</rationale>
     </rule>
-
     <rule id="r3-explicit-waivers-only" testable="true" depth="essential">
       <statement>A waiver bypasses the gate only when the waiver file (`.a11y-waivers.json`) contains an entry with: WCAG criterion ID, route, element selector, rationale (sentence), reviewer name, expiry date (max 90 days). Waivers MUST be reviewed by an a11y-aware lead and expire automatically.</statement>
-      <rationale source="ITIL change management, GDPR data-processing register patterns">Waivers without expiry become permanent debt. Forcing rationale + reviewer makes waivers a deliberate decision with an owner. The 90-day cap forces re-evaluation; chronic items get fixed or upgraded to "won't fix" with explicit business justification.</rationale>
+      <rationale source="ITIL change management, GDPR data-processing register patterns">Waivers without expiry become permanent debt. Forcing rationale + reviewer makes waivers a deliberate decision with an owner. The 90-day cap forces re-evaluation; chronic items get fixed or upgraded to &quot;won&apos;t fix&quot; with explicit business justification.</rationale>
     </rule>
-
     <rule id="r4-route-detection-from-diff" testable="true" depth="essential">
       <statement>The gate scans only routes / Storybook stories impacted by the PR diff. A diff mapping (file -&gt; routes) MUST exist in the repo (e.g., `.a11y/route-map.json`) OR be derivable from framework conventions (Next.js pages dir, Storybook story files). Full-site scans run on a nightly schedule, not on every PR.</statement>
       <rationale source="CI/CD performance research, axe-core CI patterns">Scanning every route on every PR is too slow (5-30 min) and creates flakes that erode trust. Scoped scans run in 30-90 sec and stay green when irrelevant. Nightly full scans catch cross-route regressions without blocking the merge queue.</rationale>
     </rule>
-
     <rule id="r5-severity-stratified-blocking" testable="true" depth="essential">
-      <statement>The gate's block decision is severity-aware. New violations at axe-core severity "critical" or "serious" block automatically. "Moderate" and "minor" violations require explicit ack in the PR description ("a11y-ack: 2 moderate violations added — tracked in TICKET-123") but do not auto-block.</statement>
+      <statement>The gate&apos;s block decision is severity-aware. New violations at axe-core severity &quot;critical&quot; or &quot;serious&quot; block automatically. &quot;Moderate&quot; and &quot;minor&quot; violations require explicit ack in the PR description (&quot;a11y-ack: 2 moderate violations added — tracked in TICKET-123&quot;) but do not auto-block.</statement>
       <rationale source="axe-core severity model, regression-budget research">Treating all violations equally creates noise. Critical / serious correlate with actual user impact (keyboard traps, missing labels, color contrast failures). Moderate / minor (e.g., heading order off, redundant landmarks) matter but rarely warrant PR-blocking on a single offense.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if every `## Applies If` entry holds and no `## Skip If` entry triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical example">
-
-    <example type="good" title="Gate output for a net-zero PR">
-      <code lang="text"><![CDATA[
-PR #1247 - "Refactor PricingCard component"
-Routes scanned: /pricing, /pricing/enterprise, story:PricingCard/Default
-
-Baseline diff:
-  - NEW critical: 0
-  - NEW serious:  0
-  - NEW moderate: 1   (heading-order in PricingCard footer)
-  - NEW minor:    0
-  - FIXED:        3   (color-contrast on /pricing CTA, region label,
-                       missing input label)
-
-Decision: PASS (no critical/serious added; moderate requires ack)
-PR description contains: "a11y-ack: 1 moderate heading-order
-  regression accepted, ticket A11Y-145 created"
-Net: -2 violations against baseline. Baseline NOT auto-updated;
-  fix-PR will rebase baseline after merge.
-      ]]></code>
-      <note>Illustrates r1, r4, r5: net-regression accounting, scoped scan, severity-aware block decision.</note>
-    </example>
-
-    <example type="bad" title="Waiver-everything pattern">
-      <code lang="text"><![CDATA[
-.a11y-waivers.json:
-  47 entries, all with rationale "addressed in next sprint",
-  expiry dates set 5 years in the future, reviewer field empty.
-
-PR #1340: introduces 6 new violations.
-  Author adds 6 entries to waivers file, sets reviewer to themselves,
-  gate goes green, merge proceeds.
-
-Repair: enforce r3 strictly. Reviewer field MUST be a different
-person from the PR author. Expiry MUST be &lt;= 90 days. Schema
-validator rejects entries that violate these. The waiver process
-is for exceptions, not for routing around the gate.
-      ]]></code>
-      <note>Illustrates r3 violation — waiver bypass that defeats the gate.</note>
-    </example>
-
-  </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

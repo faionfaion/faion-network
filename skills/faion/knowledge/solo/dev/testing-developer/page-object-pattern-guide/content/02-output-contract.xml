@@ -1,51 +1,144 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Page Object Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of a page-object file and its companion contract test. Both must validate before merge.</summary>
-
-  <output-contract>
-    <required>
-      <field name="page_object.class_name" type="PascalCase_string" notes="ends with `Page` or `Component`"/>
-      <field name="page_object.url_pattern" type="string" notes="regex or pathname this page maps to"/>
-      <field name="page_object.extends" type="enum" values="BasePage|BaseComponent"/>
-      <field name="page_object.locators" type="list_of_object" min="1"/>
-      <field name="page_object.locators[].name" type="camelCase_string"/>
-      <field name="page_object.locators[].priority" type="enum" values="role|test-id|text|css"/>
-      <field name="page_object.locators[].selector_expression" type="string"/>
-      <field name="page_object.public_methods" type="list_of_object" min="1"/>
-      <field name="page_object.public_methods[].name" type="camelCase_string" notes="user-action level"/>
-      <field name="page_object.public_methods[].parameters" type="list_of_object"/>
-      <field name="page_object.public_methods[].returns" type="string" notes="next page object or `this` or `Promise&lt;void&gt;`"/>
-      <field name="contract_test.file_path" type="path" notes="pages/contracts/{name}.contract.spec.ts"/>
-      <field name="contract_test.snapshot_path" type="path"/>
-      <field name="contract_test.last_passed_at" format="ISO8601"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">page_object.public_methods includes a name in the closed list of DOM-action verbs: type, click, hover, blur, focus, fill, press</pattern>
-      <pattern id="f2">locators include any of waitForTimeout, sleep, cy.wait with a numeric timeout</pattern>
-      <pattern id="f3">locators[].priority = css AND no comment explaining why role/test-id/text were not viable</pattern>
-      <pattern id="f4">test file outside pages/ calls page.locator, page.click, cy.get directly</pattern>
-      <pattern id="f5">page object missing a companion contract_test in pages/contracts/</pattern>
-      <pattern id="f6">contract_test.last_passed_at older than 30 days (snapshot rotted, page-object has drifted from reality)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Inline-compose two methods into one when they always run together with no decision points (e.g. fillEmail and fillPassword become loginAs).</transformation>
-      <transformation>Promote a locator to a getter-method when it returns a list whose length is meaningful (count of rows, count of errors).</transformation>
-      <transformation>Move a sub-component (modal, dropdown) into its own *.component.ts file when it has &gt; 3 locators of its own.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/base-page-object.ts"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Page Object Pattern at Scale (Playwright / Cypress) Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/page-object-pattern-guide.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "framework",
+    "pages",
+    "locator_hierarchy",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "framework": {
+      "type": "string",
+      "enum": [
+        "playwright",
+        "cypress",
+        "webdriverio"
+      ]
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "actions"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "locator_hierarchy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "role",
+          "test-id",
+          "label",
+          "text",
+          "css",
+          "xpath"
+        ]
+      }
+    },
+    "implicit_waits_banned": {
+      "type": "boolean"
+    },
+    "contract_test_path": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_reviewed": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "pop-2026-q2",
+  "owner": "qa@faion.net",
+  "framework": "playwright",
+  "pages": [
+    {
+      "name": "LoginPage",
+      "actions": [
+        "signInWithEmail",
+        "requestPasswordReset"
+      ]
+    }
+  ],
+  "locator_hierarchy": [
+    "role",
+    "test-id",
+    "css"
+  ],
+  "implicit_waits_banned": true,
+  "contract_test_path": "tests/contracts/page-objects.contract.ts",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "",
+  "owner": "",
+  "framework": "junit",
+  "pages": [],
+  "locator_hierarchy": [
+    "xpath"
+  ],
+  "implicit_waits_banned": false,
+  "version": "",
+  "last_reviewed": ""
+}
+    ]]></code>
+    <note>Violates required-field presence / forbidden-pattern constraints above.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Class extends BasePage / BaseComponent — no standalone page objects</item>
-      <item>Every locator uses the highest viable priority</item>
-      <item>Every public method is named at user-action level</item>
-      <item>No time-based waits anywhere in the file</item>
-      <item>Contract test exists, snapshot fresh, last passed within 30 days</item>
-      <item>Tests in `tests/` use page-object methods only, no direct DOM access</item>
+      <pattern id="xpath-first">locator_hierarchy starts with xpath/css before role</pattern>
+      <pattern id="god-class-page">single page has &gt; 20 actions</pattern>
+      <pattern id="implicit-waits-allowed">implicit_waits_banned is false</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-page-object-pattern-guide.py">Validator script (see scripts/).</reference>
 </text>

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Design OpenAPI contracts before writing implementation code so stubs, SDKs, and mocks all derive from the spec.
-content_id: "2bd87b8001fa08e5"
+content_id: "a91afa99518af8d9"
 complexity: medium
 produces: spec
 est_tokens: 4500

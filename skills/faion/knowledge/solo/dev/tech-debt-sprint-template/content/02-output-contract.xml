@@ -1,39 +1,168 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Tech Debt Sprint Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Tech Debt Sprint Template output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/tech-debt-sprint-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Tech Debt Sprint Template Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/tech-debt-sprint-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "sprint_window",
+    "scope_items",
+    "guardrails",
+    "exit_metrics",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sprint_window": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
+      }
+    },
+    "scope_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "size"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "XS",
+              "S",
+              "M",
+              "L"
+            ]
+          }
+        }
+      }
+    },
+    "guardrails": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "exit_metrics": {
+      "type": "object",
+      "required": [
+        "lint_warn_before",
+        "lint_warn_target"
+      ],
+      "properties": {
+        "lint_warn_before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lint_warn_target": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_pct_target": {
+          "type": "number"
+        }
+      }
+    },
+    "retro_link": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_reviewed": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "td-2026-q2",
+  "owner": "ruslan@faion.net",
+  "sprint_window": {
+    "start": "2026-05-26",
+    "end": "2026-06-06"
+  },
+  "scope_items": [
+    {
+      "id": "i1",
+      "title": "Drop deprecated v1 auth shim",
+      "size": "M"
+    }
+  ],
+  "guardrails": [
+    "no new features",
+    "no migrations"
+  ],
+  "exit_metrics": {
+    "lint_warn_before": 87,
+    "lint_warn_target": 40,
+    "coverage_pct_target": 75.0
+  },
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "",
+  "owner": "team",
+  "sprint_window": {},
+  "scope_items": [],
+  "guardrails": [],
+  "exit_metrics": {},
+  "version": "",
+  "last_reviewed": ""
+}
+    ]]></code>
+    <note>Violates required-field presence / forbidden-pattern constraints above.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/tech-debt-sprint-template.json</item>
+      <pattern id="collective-owner">owner is &apos;team&apos; / &apos;we&apos; / &apos;engineering&apos;</pattern>
+      <pattern id="empty-scope">scope_items is empty</pattern>
+      <pattern id="missing-exit-metric">exit_metrics omits a measurable target</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-tech-debt-sprint-template.py">Validator script (see scripts/).</reference>
 </text>

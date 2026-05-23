@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cloudflare-domain-dns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cloudflare-domain-dns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cloudflare Domain + DNS Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Cloudflare Domain + DNS` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-full-strict-only" testable="true" depth="essential">
+      <statement>Cloudflare SSL mode MUST be Full (Strict). Never Flexible, never plain Full, never Off. Wrong mode = REJECT.</statement>
+      <rationale source="Cloudflare SSL incident corpus">Flexible terminates TLS at edge and re-issues HTTP to origin; nginx 301s back to HTTPS; infinite loop, ERR_TOO_MANY_REDIRECTS within 10 hops.</rationale>
     </rule>
+
+    <rule id="r2-aaaa-matches-a" testable="true" depth="essential">
+      <statement>On dual-stack origins, A and AAAA MUST be added together. AAAA-without-A or A-without-AAAA on dual-stack origin = REJECT.</statement>
+      <rationale source="Happy Eyeballs / IPv6 corpus">Browsers prefer IPv6; a stale or missing AAAA leads to intermittent failures from IPv6 clients while IPv4 users see no problem — hardest 'works for me' bug.</rationale>
+    </rule>
+
+    <rule id="r3-proxy-per-record-justified" testable="true" depth="essential">
+      <statement>Every record MUST have an explicit proxy decision (orange/gray) with rationale in the record comment. Default-orange-everywhere is rejected.</statement>
+      <rationale source="Cloudflare proxy patterns">Mail subdomains MUST stay gray (Cloudflare proxy is HTTP-only); raw TCP/UDP services MUST stay gray; HTTPS services SHOULD be orange. Per-record decision avoids broken mail or hidden origin IP leaks.</rationale>
+    </rule>
+
+    <rule id="r4-2fa-and-autorenew" testable="true" depth="essential">
+      <statement>Cloudflare account MUST have 2FA enabled (TOTP / WebAuthn) AND auto-renew enabled AND billing email monitored. Missing any = REJECT.</statement>
+      <rationale source="Domain hijacking incidents">Domain hijacking and accidental expiry are catastrophic and silent. Cloudflare enables most defaults but billing drift can silently break auto-renew.</rationale>
+    </rule>
+
+    <rule id="r5-propagation-from-multiple-resolvers" testable="true" depth="essential">
+      <statement>Propagation MUST be verified from at least 2 external resolvers (1.1.1.1 + 8.8.8.8) and from at least 1 second network (mobile / VPN). Single-resolver checks = REJECT.</statement>
+      <rationale source="DNS migration patterns">Local resolver cache or split-horizon can hide stale NS for hours; multi-resolver + multi-network confirms global propagation.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

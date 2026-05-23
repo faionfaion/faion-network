@@ -3,78 +3,99 @@ slug: tech-debt-sprint-template
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6bf49557153d6b74"
-summary: "Tech Debt Sprint Template: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Quarterly tech-debt sprint (2 weeks)'."
-tags: [tech-debt-sprint-template, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Two-week tech-debt sprint template producing a versioned, owner-signed plan artefact: scope, guardrails, daily sync, retro, exit metrics."
+content_id: "4db87061697bde5e"
+complexity: medium
+produces: playbook-step
+est_tokens: 5200
+tags: [tech-debt, sprint, ritual, refactor, solo]
 ---
 # Tech Debt Sprint Template
 
 ## Summary
 
-**One-sentence:** Tech Debt Sprint Template: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Quarterly tech-debt sprint (2 weeks)'.
+**One-sentence:** Two-week tech-debt sprint template producing a versioned, owner-signed plan artefact: scope, guardrails, daily sync, retro, exit metrics.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-software-developer/Quarterly tech-debt sprint (2 weeks)': Two-week debt sprints are a recurring P6 ritual. A reusable template (scope, guardrails, daily sync, retro, metrics) would lift this from ad-hoc to repeatable. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a tech debt sprint template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Solo + small-team teams accumulate debt between feature pushes; ad-hoc cleanup weeks produce no measurable outcome because scope, owner, and exit metric are never written down. This methodology pins a two-week debt sprint to a reusable template: scope (<=5 named items, each sized XS-L), guardrails (no new features, freeze migrations), daily 10-min sync (shipped / blocked / cut), retro template (metric movement + carry-over), exit metrics (lint warnings, coverage on touched code, p95 build time). Output is a versioned plan artefact reviewed by a named owner and consumed by retro at sprint end.
+
+**Ефективно для:**
+
+- Recurring quarterly debt-paydown ritual without plan or metric.
+- Past cleanup weeks produced no retro - install template + metrics.
+- Solo operator burning evenings on debt - timebox + close out.
+- Team carries >50 lint warnings - sprint to cut by 50%.
+- Test coverage on touched modules <60% - sprint to lift it.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-developer/Quarterly tech-debt sprint (2 weeks)' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- team / operator has run >=1 prior quarter and accumulated visible debt items
+- exit metrics can be computed automatically (linter, coverage, build time)
+- named owner is accountable for the artefact and the retro
+- two contiguous weeks of capacity are available with no feature commit
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working tech debt sprint template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- team already has a working debt-sprint template - replace fields, don't duplicate
+- debt is concentrated in one file - just refactor it, no sprint needed
+- regulatory deadline overrides scope freeze - defer to compliance
 
 ## Prerequisites
 
-- recent context for the 'role-software-developer/Quarterly tech-debt sprint (2 weeks)' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Debt item list | markdown list with size estimates | team backlog / lint output |
+| Baseline metrics | JSON: lint_warn, coverage_pct, p95_build_sec | CI dashboard |
+| Named owner | GitHub handle / email | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/dev` | parent domain group — provides operating context for Tech Debt Sprint Template |
+| [[timeboxed-refactor-session-template]] | intra-sprint refactor sessions feed this artefact |
+| [[weekly-branch-hygiene-checklist]] | branch hygiene runs every Friday during the sprint |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology gate | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / gate) | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scope-debt-items` | sonnet | Per-item sizing requires judgement against codebase. |
+| `draft-retro-template` | haiku | Bounded template fill from prior sprint. |
+| `compute-exit-metrics` | haiku | Mechanical lint + coverage delta. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high (freeze decisions). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/tech-debt-sprint-template.json` | JSON schema for the Tech Debt Sprint Template output contract |
-| `templates/tech-debt-sprint-template.md` | Markdown skeleton with the required fields |
+| `templates/tech-debt-sprint-template.md` | Markdown skeleton for the Tech Debt Sprint Template artefact. |
+| `templates/_smoke-test.json` | Minimum viable tech-debt-sprint-template record for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-tech-debt-sprint-template.py` | Enforce Tech Debt Sprint Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-tech-debt-sprint-template.py` | Validate Tech Debt Sprint Template artefact against content/02-output-contract.xml. | After draft, before merge; pre-commit hook. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-software-developer/Quarterly tech-debt sprint (2 weeks)`
-- solo/dev/role-software-developer
+- [[timeboxed-refactor-session-template]]
+- [[weekly-branch-hygiene-checklist]]
+- [[test-pyramid-policy-enforcement]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps measurable-debt, capacity, and named-ownership signals onto a rule from 01-core-rules.xml. Use it before opening a sprint: it catches blind-sprint and collective-owner upstream.

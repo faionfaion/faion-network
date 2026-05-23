@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Design a relational schema (PostgreSQL-first) for integrity, query performance, and zero-downtime migrations.
-content_id: "4637ec007df638a6"
+content_id: "6aef59232670f66a"
 complexity: medium
 produces: spec
 est_tokens: 4500

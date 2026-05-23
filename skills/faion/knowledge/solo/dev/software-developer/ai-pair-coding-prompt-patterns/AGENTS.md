@@ -47,7 +47,7 @@ tags: [ai-pair-coding, prompt-engineering, claude-code, patterns]
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Task description | free text | issue / TODO / pairing notes |
+| Task description | free text | issue / task-list / pairing notes |
 | Repo context | tree + relevant files | Claude Code / Cursor index |
 | Cap policy | ai-diff-size-discipline config | team defaults |
 

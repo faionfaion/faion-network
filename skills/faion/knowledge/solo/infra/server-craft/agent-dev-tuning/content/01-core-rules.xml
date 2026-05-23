@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agent-dev-tuning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agent-dev-tuning. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Agent Dev Tuning for VPS Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Agent Dev Tuning for VPS` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-inotify-524288" testable="true" depth="essential">
+      <statement>Set `fs.inotify.max_user_watches = 524288` as the first tuning step. Defaults (65536 or 8192) are exhausted on large workspaces. Missing setting = REJECT.</statement>
+      <rationale source="Claude Code workspace patterns">Claude Code creates one watch per tracked file; a 50k-file repo with worktrees exceeds defaults immediately. The 'ENOSPC' error is misleading — disk is fine, the watch table is full.</rationale>
     </rule>
+
+    <rule id="r2-pam-nofile-65535" testable="true" depth="essential">
+      <statement>Set `nofile` to 65535 (soft) and 131072 (hard) for the agent user in `/etc/security/limits.d/`. Default soft (1024) is hit during workspace indexing.</statement>
+      <rationale source="Claude Code indexer behaviour">MCP servers + indexer + subprocesses open thousands of FDs together; PAM gates every process started in the user's session, including systemd user services.</rationale>
+    </rule>
+
+    <rule id="r3-swap-with-swappiness-10" testable="true" depth="essential">
+      <statement>Create a 4-8 GB swap file with `vm.swappiness=10` on any server running LLM API calls. LLM response processing spikes RAM transiently; without swap, OOM-kill fires.</statement>
+      <rationale source="Agent OOM corpus">A 100MB JSON tree from a large LLM response is a transient spike. Without swap the kernel OOM-kills; with 4 GB swap + swappiness=10 the spike lands in swap and the process completes normally.</rationale>
+    </rule>
+
+    <rule id="r4-linger-for-tmux" testable="true" depth="essential">
+      <statement>Enable `loginctl enable-linger &lt;user&gt;` so tmux + systemd user services survive SSH disconnects. Missing linger = REJECT for any agent workload that must persist.</statement>
+      <rationale source="tmux + systemd discipline">When SSH disconnects, the login session ends and SIGHUP fires. Linger keeps a persistent user session alive, so tmux survives without screen/nohup workarounds.</rationale>
+    </rule>
+
+    <rule id="r5-worktree-per-agent" testable="true" depth="essential">
+      <statement>Use `git worktree add` to give each parallel agent its own directory + branch. Never run two agents on the same branch simultaneously.</statement>
+      <rationale source="Parallel agent patterns">Worktrees share the object store but each has its own index and HEAD; two agents can stage and commit independently without locking or conflict.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

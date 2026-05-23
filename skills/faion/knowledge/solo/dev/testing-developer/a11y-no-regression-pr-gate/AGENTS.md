@@ -3,88 +3,98 @@ slug: a11y-no-regression-pr-gate
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: CI / PR gate that blocks merges on new accessibility regressions against a baseline budget, with an explicit waiver workflow for documented exceptions.
-content_id: "b62ce01261b793a5"
-tags: [a11y, accessibility, ci, pr-gate, wcag, axe, pa11y, regression-budget]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "CI / PR gate that blocks merges on NEW accessibility violations vs a VCS-tracked baseline, with explicit time-boxed waivers and severity-stratified blocking."
+content_id: "0f742257a0b03734"
+complexity: medium
+produces: config
+est_tokens: 5300
+tags: [a11y, accessibility, ci, pr-gate, wcax, axe, regression-budget]
 ---
-
 # A11y No-Regression PR Gate
 
 ## Summary
 
-**One-sentence:** A CI gate that runs axe-core / pa11y against the changed routes on every PR, compares to a stored baseline, blocks merge on new violations, and provides a waiver workflow for documented exceptions.
+**One-sentence:** CI / PR gate that blocks merges on NEW accessibility violations vs a VCS-tracked baseline, with explicit time-boxed waivers and severity-stratified blocking.
 
-**One-paragraph:** Solves the gap where general a11y testing methodology exists but the operational CI / PR gate + waiver workflow do not. Mechanism: on every PR (a) detect changed routes / components from the diff, (b) run axe-core (or pa11y) headless against those routes, (c) compare violation set to a baseline JSON stored in the repo, (d) block merge if NEW violations appear, (e) allow merge if violations are unchanged or reduced, (f) provide a `.a11y-waivers.json` file where waived violations are listed with rationale, expiry, and reviewer sign-off. Primary output: a PR check that is green when net accessibility has not regressed and red with a diff when it has.
+**One-paragraph:** Zero-violation a11y gates create ceremony everyone routes around; this methodology installs a net-regression gate. Only NEW violations vs `.a11y/baseline.json` (committed to VCS) block PRs; waivers live in `.a11y-waivers.json` with WCAG ID + route + selector + rationale + reviewer + 90-day expiry; the gate scans only routes / stories impacted by the diff; severity-stratified blocking auto-blocks new critical/serious and requires PR-description ack for moderate/minor. Output: a versioned `.a11y/gate-config.json` consumed by the CI workflow.
+
+**Ефективно для:**
+
+- Zero-violation gate is being routed around - install net-regression ratchet.
+- Waivers never expire - 90-day cap forces re-evaluation.
+- Baseline edited from feature branches - lock to main-only via PR review.
+- Full-site scan slows every PR - scope to diff-impacted routes.
+- All violations block equally - stratify by axe severity.
 
 ## Applies If (ALL must hold)
 
-- product has a UI (web app, marketing site)
-- CI exists with PR-blocking checks (GitHub Actions, GitLab CI, CircleCI, Buildkite)
-- repo can host a baseline file under version control
-- team has an accessibility-aware lead OR an external auditor for waiver review
+- team uses a CI system that can block PRs
+- a11y scanning tool is available (axe-core, pa11y, Lighthouse CI)
+- PRs are review-merged (not auto-merged) so waivers + acks are visible
+- team owns the codebase and can commit baseline + waiver files
 
 ## Skip If (ANY kills it)
 
-- pure backend / API repo with no UI
-- WCAG conformance not a project goal AND no contractual / regulatory requirement
-- product is in pre-launch prototype phase with no users — establish a baseline first; add the gate at launch
-- team will treat the gate as ceremony only and waive everything — fix the culture first
+- team has no review gate (auto-merge on green)
+- no a11y scanner can be wired (no DOM surface)
+- regulated industry mandates zero-violation gate - use that instead
 
 ## Prerequisites
 
-- one of: axe-core, pa11y, lighthouse-ci installed and runnable against built artifacts (Storybook, dev server, or static export)
-- a baseline JSON (`a11y-baseline.json`) committed to repo, generated from the current state of the trunk
-- list of routes / Storybook stories the gate scans (avoid scanning every page on every PR — too slow)
-- waiver review SLA documented (e.g., "tech lead reviews within 1 business day")
+| Artefact | Format | Source |
+|----------|--------|--------|
+| a11y scanner | axe-core / pa11y / Lighthouse CI in CI | engineering |
+| Route map | .a11y/route-map.json or framework convention | frontend |
+| Baseline file | .a11y/baseline.json committed to main | engineering |
+| Waiver file | .a11y-waivers.json (may start empty) | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/accessibility-specialist/wcag-baseline-aa` | Defines the WCAG 2.2 AA rule set the gate enforces |
-| `pro/ux/accessibility-specialist/a11y-test-automation` | Source of axe / pa11y test patterns the gate runs |
-| `solo/dev/testing-developer/visual-regression-baseline` | Same baseline-and-diff pattern; share infrastructure |
+| [[qa-changed-lines-coverage-dashboard]] | diff-only metrics share the route-map; coordinate paths |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: net-regression-only, baseline-in-vcs, explicit-waivers-only, route-detection-from-diff, severity-stratified-blocking | ~1000 |
-| `content/02-output-contract.xml` | essential | Gate output schema + waiver record schema + forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (waiver-everything, baseline-drift, flaky-rules, etc.) with detector + repair | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology gate | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / gate) | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `changed_route_detection` | haiku | Walk PR diff, map files to routes / stories |
-| `violation_diff_against_baseline` | sonnet | Compare current scan to baseline; classify new / fixed / unchanged |
-| `waiver_proposal_drafting` | sonnet | For unfixable-immediately violations, draft a waiver entry with WCAG criterion + rationale |
-| `gate_decision` | haiku | Pass/fail based on diff + waivers; mechanical |
+| `diff-route-mapping` | haiku | Mechanical file -> route lookup. |
+| `severity-stratified-decision` | sonnet | Per-violation judgement on block vs ack. |
+| `waiver-review` | opus | Cross-input synthesis when waiving live a11y issues. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/a11y-baseline.json` | Baseline JSON schema (per-route violation set) |
-| `templates/a11y-waivers.json` | Waiver registry schema (criterion, rationale, reviewer, expiry) |
-| `templates/gate-output.json` | PR comment / annotation JSON schema |
-| `templates/ci-workflow.yml` | Sample GitHub Actions workflow runnable as drop-in |
+| `templates/a11y-no-regression-pr-gate.md` | Markdown skeleton for the A11y No-Regression PR Gate artefact. |
+| `templates/_smoke-test.json` | Minimum viable a11y-no-regression-pr-gate record for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/a11y-diff.py` | Computes new / fixed / unchanged violations vs baseline | Every PR run |
-| `scripts/validate-waivers.py` | Checks `.a11y-waivers.json` against schema, flags expired waivers | Pre-merge and weekly cron |
-| `scripts/rebase-baseline.py` | Regenerates baseline after net-fix PRs land | On main branch after a fix-PR merges |
+| `scripts/validate-a11y-no-regression-pr-gate.py` | Validate A11y No-Regression PR Gate artefact against content/02-output-contract.xml. | After draft, before merge; pre-commit hook. |
 
 ## Related
 
-- parent skill: `solo/dev/testing-developer/`
-- peer methodologies: `visual-regression-baseline`, `lighthouse-perf-budget`, `pr-merge-checks-floor`
-- external: [axe-core rules](https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md) · [WCAG 2.2 Quick Ref](https://www.w3.org/WAI/WCAG22/quickref/) · [pa11y CI docs](https://github.com/pa11y/pa11y-ci)
+- [[qa-changed-lines-coverage-dashboard]]
+- [[qa-risk-matrix-method]]
+- [[security-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree filters on scanner presence, VCS-baseline discipline, and per-PR new-violation severity; routes critical/serious new violations to block and moderate/minor to ack-required.

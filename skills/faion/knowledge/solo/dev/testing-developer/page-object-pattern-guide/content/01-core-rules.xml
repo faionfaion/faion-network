@@ -1,72 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Page Object Pattern Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Five testable rules every page object in a Playwright or Cypress suite must satisfy. Hard rules; locator-audit hook rejects PRs that violate them.</summary>
-
-  <section title="The five rules">
-
+<text id="01-core-rules" title="Page Object Pattern at Scale (Playwright / Cypress) Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding Page Object Pattern at Scale (Playwright / Cypress). Each rule pairs a binary check with a cited rationale, plus the universal skip-this-methodology gate.</summary>
+  <section title="Rule set">
     <rule id="r1-locator-priority-order" testable="true" depth="essential">
-      <statement>Locator priority is strict: role-based (getByRole, findByRole) FIRST, then test-id (getByTestId, data-testid), then text (getByText), and ONLY as last resort CSS / XPath. No page object mixes priorities for the same element. A locator's choice must be commented with the next-best alternative if the chosen one is not role-based.</statement>
+      <statement>Locator priority is strict: role-based (getByRole, findByRole) FIRST, then test-id (getByTestId, data-testid), then text (getByText), and ONLY as last resort CSS / XPath. No page object mixes priorities for the same element. A locator&apos;s choice must be commented with the next-best alternative if the chosen one is not role-based.</statement>
       <rationale source="Kent C. Dodds testing-library priority; Playwright official locator priority guidance">Role-based locators survive design refactors that change CSS classes and DOM structure. CSS / XPath locators break the moment a designer renames a class. Mixing locator types within a page object guarantees inconsistent breakage when the UI evolves. The strict priority order is the single highest-leverage discipline for a maintainable E2E suite.</rationale>
-      <example type="good" title="Strict locator priority">
-        <code lang="typescript"><![CDATA[
-class LoginPage extends BasePage {
-  // role first — survives CSS refactors
-  emailInput   = this.page.getByRole('textbox', { name: /email/i });
-  passwordInput= this.page.getByRole('textbox', { name: /password/i });
-  submitButton = this.page.getByRole('button',  { name: /log in/i });
-
-  // test-id only when role is genuinely not applicable (e.g. non-semantic widget)
-  rememberMeToggle = this.page.getByTestId('remember-me-toggle');
-}
-        ]]></code>
-      </example>
-      <example type="bad" title="Mixed locators">
-        <code lang="typescript"><![CDATA[
-class LoginPage extends BasePage {
-  emailInput   = this.page.locator('#email');                       // css
-  passwordInput= this.page.locator('input[name="password"]');       // css
-  submitButton = this.page.getByText('Log In');                     // text
-  rememberMeToggle = this.page.locator('.login-form > div:nth-child(3) > input'); // brittle css
-}
-        ]]></code>
-        <note>Mixed priorities mean the page object breaks at four different change-triggers (id change, name change, button text change, DOM-structure change). The locator-audit hook rejects this file.</note>
-      </example>
     </rule>
-
     <rule id="r2-one-method-per-user-action" testable="true" depth="essential">
-      <statement>Public methods on a page object express user-meaningful actions, not DOM interactions. `loginAs(user)` is allowed; `typeUsername`, `typePassword`, `clickSubmit` are not allowed as public methods. The page object's public surface is the user's mental model, not the developer's interaction model.</statement>
+      <statement>Public methods on a page object express user-meaningful actions, not DOM interactions. `loginAs(user)` is allowed; `typeUsername`, `typePassword`, `clickSubmit` are not allowed as public methods. The page object&apos;s public surface is the user&apos;s mental model, not the developer&apos;s interaction model.</statement>
       <rationale source="Selenium and Playwright Page Object best practice; testing-library philosophy">When tests call `typeUsername` then `typePassword` then `clickSubmit`, a UI refactor that combines email and password into a single SSO button breaks 30 tests. When tests call `loginAs(user)`, the same refactor changes ONE method on the page object and the 30 tests keep passing. The user-action level of abstraction is what survives UI redesigns.</rationale>
     </rule>
-
     <rule id="r3-explicit-waits-only" testable="true" depth="essential">
-      <statement>No implicit waits, no fixed-time waits. Forbidden: `page.waitForTimeout`, `cy.wait(2000)`, sleep(). Allowed: `expect(locator).toBeVisible()`, `await locator.waitFor({ state: 'visible' })`, `cy.findByRole(...).should('be.visible')`. All waits are on a condition, never on the clock.</statement>
+      <statement>No implicit waits, no fixed-time waits. Forbidden: `page.waitForTimeout`, `cy.wait(2000)`, sleep(). Allowed: `expect(locator).toBeVisible()`, `await locator.waitFor({ state: &apos;visible&apos; })`, `cy.findByRole(...).should(&apos;be.visible&apos;)`. All waits are on a condition, never on the clock.</statement>
       <rationale source="Playwright auto-waiting documentation; flaky-test root cause analysis">Time-based waits are the single biggest source of E2E flakiness. Either they are too short on a slow CI and break randomly, or they are too long and the suite becomes painfully slow. Condition-based waits succeed as fast as possible and fail meaningfully when the condition never holds.</rationale>
     </rule>
-
     <rule id="r4-per-page-contract-test" testable="true" depth="essential">
       <statement>Every page object has a single contract test that exercises its public surface against a known-good snapshot (smoke navigation, key locator visibility, key user actions complete). When a page-object PR changes a locator or method signature, the contract test fails in THAT PR — selector drift is caught at the page-object author, not at 30 downstream test authors.</statement>
       <rationale source="contract-testing patterns from consumer-contract testing; cost-of-defect curves">Selector breakage discovered in 30 unrelated PRs is the most expensive way to find it. A per-page contract test moves the failure to the PR that introduced the change, where the cost-to-fix is lowest. The contract test runs in &lt; 30 seconds per page; the team-wide cost saved is enormous.</rationale>
     </rule>
-
     <rule id="r5-no-implementation-leak-to-tests" testable="true" depth="essential">
-      <statement>Tests MUST NOT access the underlying `page` / `cy` object directly when a page object exists for the URL. Lint rule: in `tests/*.spec.ts`, direct calls to `page.locator`, `page.click`, `cy.get` outside a page object's methods are flagged.</statement>
+      <statement>Tests MUST NOT access the underlying `page` / `cy` object directly when a page object exists for the URL. Lint rule: in `tests/*.spec.ts`, direct calls to `page.locator`, `page.click`, `cy.get` outside a page object&apos;s methods are flagged.</statement>
       <rationale source="page-object encapsulation principle; refactor-cost analysis">Direct DOM access from tests defeats the abstraction. Every direct access is a future selector-rot hotspot that the contract test cannot protect. Encapsulation discipline is the only way the page-object pattern actually pays off.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if every `## Applies If` entry holds and no `## Skip If` entry triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
+    </rule>
   </section>
-
-  <section title="Directory layout">
-    <list>
-      <item>pages/ — one file per page or per meaningful component (login.page.ts, dashboard.page.ts)</item>
-      <item>pages/base/ — BasePage class with the locator-priority helpers and explicit-wait helpers</item>
-      <item>pages/contracts/ — per-page contract test (one per page object)</item>
-      <item>tests/ — test files that use page objects exclusively</item>
-      <item>fixtures/ — test data, user roles, no DOM helpers</item>
-    </list>
-  </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>
