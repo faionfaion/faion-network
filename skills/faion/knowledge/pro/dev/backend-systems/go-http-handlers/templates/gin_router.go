@@ -1,3 +1,8 @@
+// purpose: Legacy template for the go-http-handlers methodology.
+// consumes: inputs declared in go-http-handlers/AGENTS.md prerequisites.
+// produces: working code/config aligned with content/01-core-rules.xml.
+// depends-on: content/02-output-contract.xml schema for output shape.
+// token-budget-impact: ~600 tokens when loaded as reference.
 // internal/router/router.go
 // Gin router setup with middleware stack and user CRUD route group.
 package router

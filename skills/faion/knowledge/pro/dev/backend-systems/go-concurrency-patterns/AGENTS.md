@@ -1,76 +1,104 @@
 ---
 slug: go-concurrency-patterns
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Four battle-tested Go concurrency primitives — worker pool, fan-out/fan-in, errgroup with semaphore, and pipeline — selected by workload type (IO-bound vs CPU-bound vs streaming vs fail fast).
-content_id: "07220ddb2d1d598e"
-tags: [go, concurrency, goroutines, patterns, performance]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a per-task concurrency-pattern spec: worker pool (IO-bound), fan-out/fan-in (CPU-bound), errgroup + semaphore (fail-fast), pipeline (streaming). Context propagation + panic recovery + goleak test mandatory."
+content_id: "594fd495cbc0da85"
+complexity: deep
+produces: spec
+est_tokens: 4300
+tags: [go, concurrency, worker-pool, errgroup, pipeline]
 ---
-# Go Concurrency Patterns
+
+# Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline)
 
 ## Summary
 
-**One-sentence:** Four battle-tested Go concurrency primitives — worker pool, fan-out/fan-in, errgroup with semaphore, and pipeline — selected by workload type (IO-bound vs CPU-bound vs streaming vs fail fast).
+**One-sentence:** Produces a per-task concurrency-pattern spec: worker pool (IO-bound), fan-out/fan-in (CPU-bound), errgroup + semaphore (fail-fast), pipeline (streaming). Context propagation + panic recovery + goleak test mandatory.
 
-**One-paragraph:** Four battle-tested Go concurrency primitives — worker pool, fan-out/fan-in, errgroup with semaphore, and pipeline — selected by workload type (IO-bound vs CPU-bound vs streaming vs fail fast). Every pattern requires context propagation, panic recovery, and a goleak-based goroutine-leak test.
+**Ефективно для:**
+
+- Bulk HTTP calls to external APIs (IO-bound).
+- Parallel CPU-heavy transformations.
+- Fail-fast batch jobs that must abort on first error.
+- Streaming readers → transformers → writers.
+
+**One-paragraph:** Four battle-tested Go concurrency primitives — worker pool, fan-out/fan-in, `errgroup` with semaphore, and pipeline — selected by workload type (IO-bound vs CPU-bound vs streaming vs fail-fast). Every pattern requires context propagation, panic recovery, and a goleak-based goroutine-leak test.
 
 ## Applies If (ALL must hold)
 
-- Building a worker pool to consume from a queue (Kafka, NATS, SQS) with bounded parallelism.
-- Fan-out/fan-in over a slice where each item has independent IO.
-- Pipelines of transforming stages joined by channels.
-- Replacing ad-hoc goroutine launches lacking Context/WaitGroup discipline.
-- Rate-limiting outbound calls.
+- Workload is parallelisable.
+- Tasks accept a context for cancellation.
+- CI runs goleak + race detector.
+- Bound on max parallelism is documented.
 
 ## Skip If (ANY kills it)
 
-- Pure CPU-bound number crunching — simple parallel for without channels.
-- Single-flight de-duplication — use golang.org/x/sync/singleflight.
-- First error cancels siblings — use errgroup directly, not a custom pool.
-- Hot path with billions of tiny tasks — goroutine-per-request already in the runtime.
-- Libraries exposing their own concurrency (e.g., DB pool) — don't double-wrap.
+- Single-task synchronous flow — no concurrency needed.
+- Tasks share large mutable state — single goroutine + queue is simpler.
+- Latency budget < goroutine spawn cost (~µs) — inline.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Workload classification (IO/CPU/streaming/fail-fast) | design doc | tech lead |
+| Max parallelism bound | ops doc | SRE |
+| CI gates (race + goleak) | CI config | SRE |
+| Per-task timeout policy | ADR | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-channels]]` | channel primitives |
+| `[[go-goroutines]]` | goroutine basics |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-task` | haiku | Matrix lookup IO/CPU/streaming/fail-fast. |
+| `draft-pattern` | sonnet | Generates pattern code with ctx + recovery. |
+| `review-leak-and-bound` | sonnet | Audits semaphore + goleak presence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/go-concurrency-patterns.json` | JSON Schema for the Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) output contract |
+| `templates/go-concurrency-patterns.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a go-concurrency-patterns record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-concurrency-patterns.py` | Enforce the Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[go-channels]]
+- [[go-goroutines]]
+- [[go-backend]]
+- [[go-error-handling-patterns]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

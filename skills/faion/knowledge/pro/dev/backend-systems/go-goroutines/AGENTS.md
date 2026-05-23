@@ -1,75 +1,102 @@
 ---
 slug: go-goroutines
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Goroutines are lightweight threads managed by Go runtime.
-content_id: "249c25f2cec17c32"
-tags: [go, concurrency, goroutines, worker-pools, synchronization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a goroutine-lifecycle spec: each goroutine has explicit start + exit; context-driven cancellation; bounded worker pools; goleak-tested; no `go func()` without WaitGroup."
+content_id: "643bc863d170655a"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [go, goroutines, concurrency, context, worker-pool]
 ---
+
 # Go Goroutines and Worker Patterns
 
 ## Summary
 
-**One-sentence:** Goroutines are lightweight threads managed by Go runtime.
+**One-sentence:** Produces a goroutine-lifecycle spec: each goroutine has explicit start + exit; context-driven cancellation; bounded worker pools; goleak-tested; no `go func()` without WaitGroup.
 
-**One-paragraph:** Goroutines are lightweight threads managed by Go runtime. Use for parallel processing, HTTP servers, background tasks, and I/O-bound work. Key principle: don't share memory; communicate via channels. Keep lock sections small. Avoid leaks with exit conditions. Use context for cancellation.
+**Ефективно для:**
+
+- Per-request background work (after-response side effects).
+- Worker pools serving a task queue.
+- Periodic tickers + timers inside a service.
+- I/O-bound parallelism (HTTP / DB calls).
+
+**One-paragraph:** Goroutines are lightweight threads managed by the Go runtime. Use them for parallel processing, HTTP servers, background tasks, and I/O-bound work. Key principle: do not share memory; communicate via channels. Keep lock sections small. Avoid leaks by giving every goroutine a defined exit condition. Use `context` for cancellation. Bound parallelism with a worker pool or semaphore.
 
 ## Applies If (ALL must hold)
 
-- Parallel processing of data where goroutines can work independently.
-- HTTP servers handling concurrent requests, where each request gets its own goroutine.
-- Background task processing and job queues, dispatching work to worker pools.
-- I/O-bound operations where waiting for network or disk does not block other work.
-- CPU-bound parallel computation on multi-core systems.
+- Caller can give the goroutine a `context.Context` for cancellation.
+- Goroutine has a defined exit (channel close, ctx.Done, finite loop).
+- Tests run under `-race` and `goleak`.
+- Parallelism is bounded by a pool or semaphore.
 
 ## Skip If (ANY kills it)
 
-- Simple sequential programs where concurrency adds unnecessary complexity.
-- Very hot inner loops where goroutine scheduling overhead is significant compared to work done.
-- Systems where you cannot use channels (e.g., certain legacy C bindings) and must use raw locks.
-- Scenarios where the cost of context propagation (setup, cleanup) exceeds the parallelism benefit.
+- Synchronous flow is fast enough — no parallelism needed.
+- Heavy shared mutable state — single goroutine + queue is safer.
+- Tiny tasks (<1µs) — goroutine spawn cost dominates.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Lifecycle owner per goroutine (who waits) | design doc | team |
+| Context propagation policy | ADR | tech lead |
+| Parallelism cap | ops doc | SRE |
+| CI race + goleak gate | CI config | SRE |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-channels]]` | channel primitives |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `inventory-goroutines` | sonnet | Finds every `go func()` in code. |
+| `annotate-lifecycle` | haiku | Adds WG + ctx to each. |
+| `review-leak-risk` | sonnet | Audits exit conditions + bounds. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/go-goroutines.json` | JSON Schema for the Go Goroutines and Worker Patterns output contract |
+| `templates/go-goroutines.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a go-goroutines record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-goroutines.py` | Enforce the Go Goroutines and Worker Patterns output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[go-channels]]
+- [[go-concurrency-patterns]]
+- [[go-backend]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

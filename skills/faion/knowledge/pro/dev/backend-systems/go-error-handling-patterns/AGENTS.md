@@ -1,75 +1,102 @@
 ---
 slug: go-error-handling-patterns
 tier: pro
-group: dev
+group: backend-systems
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Wrap errors once per layer with fmt.
-content_id: "62abd60a22cf38be"
-tags: [go, errors, patterns, wrapping, sentinels]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a Go error-handling tactics spec: wrap with `%w` once per layer, translate storage sentinels at repository boundary, single `apperror` package with sentinel vars + AppError struct, log exactly once per request."
+content_id: "5995c6d54b5c83eb"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [go, errors, wrap, sentinels, log-once]
 ---
-# Go Error Handling Patterns
+
+# Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once)
 
 ## Summary
 
-**One-sentence:** Wrap errors once per layer with fmt.
+**One-sentence:** Produces a Go error-handling tactics spec: wrap with `%w` once per layer, translate storage sentinels at repository boundary, single `apperror` package with sentinel vars + AppError struct, log exactly once per request.
 
-**One-paragraph:** Wrap errors once per layer with fmt.Errorf("verb context: %w", err) to preserve the errors.Is/errors.As chain. Translate storage-layer sentinels (sql.ErrNoRows) into domain sentinels (ErrNotFound) at the repository boundary. Define one apperror package with sentinel vars and a typed AppError struct; never scatter errors.New("not found") per call site. Log errors at exactly one place per request — the outermost handler.
+**Ефективно для:**
+
+- Services with 3+ layers between storage and handler.
+- Teams that previously had log-spam or lost error chains.
+- Codebases with multiple storage backends (SQL + NoSQL + cache).
+- Migrations from string-comparing errors to typed chains.
+
+**One-paragraph:** Wrap errors once per layer with `fmt.Errorf("verb context: %w", err)` to preserve the `errors.Is`/`errors.As` chain. Translate storage-layer sentinels (`sql.ErrNoRows`) into domain sentinels (`ErrNotFound`) at the repository boundary. Define ONE `apperror` package with sentinel vars and a typed `AppError` struct; never scatter `errors.New("not found")` per call site. Log errors at exactly one place per request — the outermost handler.
 
 ## Applies If (ALL must hold)
 
-- New Go service or package where error contracts must be stable for callers.
-- Refactoring a codebase using errors.New(fmt.Sprintf(...)) instead of fmt.Errorf("...: %w", err).
-- Wiring errors.Is/errors.As checks at HTTP/gRPC boundaries to map domain errors to status codes.
-- Adding retry-with-backoff and panic-recovery middleware for production handlers.
-- Aggregating validation errors via errors.Join (Go 1.20+) or a MultiError type.
+- Go ≥1.13 (error wrapping).
+- Multi-layer architecture (handler → service → repository).
+- Lint rules accept `errorlint` / `wrapcheck`.
+- Logging is structured (zap / zerolog / slog).
 
 ## Skip If (ANY kills it)
 
-- Quick scripts or main packages where log.Fatalf on first error is acceptable.
-- Test helpers — t.Fatal(err) is preferred over wrapping.
-- Code that interacts only with the standard library and never returns an error to a caller.
-- Legacy packages with stable public sentinel errors — changing them is a breaking change.
+- Single-layer scripts — `fmt.Errorf("%s", err)` is enough.
+- Library packages — return wrapped errors, no logging.
+- gRPC services that already use `status` codes end-to-end.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| apperror package committed | code | team |
+| Per-package sentinel catalogue | doc page | team |
+| Lint config with errorlint + wrapcheck | CI config | SRE |
+| Structured logger | ADR | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-error-handling]]` | AppError taxonomy |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-existing-errors` | sonnet | Finds double-wraps + string equality. |
+| `draft-translation-table` | haiku | Storage sentinel → domain sentinel map. |
+| `write-lint-rules` | haiku | errorlint / wrapcheck config. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/go-error-handling-patterns.json` | JSON Schema for the Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) output contract |
+| `templates/go-error-handling-patterns.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a go-error-handling-patterns record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-error-handling-patterns.py` | Enforce the Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- [[go-error-handling]]
+- [[go-backend]]
+- [[go-http-handlers]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.

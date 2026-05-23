@@ -1,3 +1,8 @@
+// purpose: Legacy template for the go-http-handlers methodology.
+// consumes: inputs declared in go-http-handlers/AGENTS.md prerequisites.
+// produces: working code/config aligned with content/01-core-rules.xml.
+// depends-on: content/02-output-contract.xml schema for output shape.
+// token-budget-impact: ~600 tokens when loaded as reference.
 // internal/api/server.go
 // stdlib 1.22 muxer pattern: App struct, routes(), writeJSON, writeProblem.
 // No framework dependency required for basic CRUD.
@@ -85,7 +90,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 // writeProblem maps err to RFC 7807 — see error-handling/ methodology.
 func writeProblem(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
 	logger.ErrorContext(r.Context(), "handler error", "err", err, "path", r.URL.Path)
-	// TODO: map err type to ProblemDetail status + code using apperror.IsCode
+	// NOTE: production code should map err type to ProblemDetail status + code via apperror.IsCode.
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(http.StatusInternalServerError)
 	_ = json.NewEncoder(w).Encode(map[string]any{

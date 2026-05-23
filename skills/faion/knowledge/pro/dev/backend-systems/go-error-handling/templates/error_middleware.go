@@ -1,3 +1,8 @@
+// purpose: Legacy template for the go-error-handling methodology.
+// consumes: inputs declared in go-error-handling/AGENTS.md prerequisites.
+// produces: working code/config aligned with content/01-core-rules.xml.
+// depends-on: content/02-output-contract.xml schema for output shape.
+// token-budget-impact: ~600 tokens when loaded as reference.
 // internal/middleware/errors.go
 // Gin middleware: maps AppError (or any error) to a structured JSON response.
 // Register as a global middleware BEFORE route definitions.

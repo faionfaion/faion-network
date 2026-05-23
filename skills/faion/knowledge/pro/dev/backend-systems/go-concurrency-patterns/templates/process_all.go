@@ -1,3 +1,8 @@
+// purpose: Legacy template for the go-concurrency-patterns methodology.
+// consumes: inputs declared in go-concurrency-patterns/AGENTS.md prerequisites.
+// produces: working code/config aligned with content/01-core-rules.xml.
+// depends-on: content/02-output-contract.xml schema for output shape.
+// token-budget-impact: ~600 tokens when loaded as reference.
 // internal/concurrent/process_all.go
 // Bounded-parallel helper: errgroup + semaphore, fail-fast on first error.
 // Requires Go 1.21+ (for range over integer), golang.org/x/sync.

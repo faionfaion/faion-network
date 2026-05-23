@@ -1,43 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="go-http-handlers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-http-handlers. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules every Go HTTP Handlers (Gin / Echo / Chi / stdlib) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Register middleware in this order: Recovery (outermost), RequestID, Logger, Auth (on protected groups). Recovery must be outermost so panics are caught before the logger middleware runs. Logger must be after RequestID so the request ID is available in logs.</statement>
-      <rationale source="v1-source">Recovery placed inside Logger means a panicking handler crashes the Logger middleware before it can write the log line. The recovery response is then written by a dead middleware, producing a garbled or empty body.</rationale>
+
+    <rule id="r-framework-locked" testable="true" depth="essential">
+      <statement>ONE framework per service; mixed routers across files are FORBIDDEN.</statement>
+      <rationale source="Internal Go reviews">Rule rooted in source: Internal Go reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>For new services without a team-wide framework standard, prefer the stdlib 1.22 muxer (http.NewServeMux with METHOD /path patterns) over adding a framework dependency. Add a framework only when its features (validator, response helpers) justify the dependency.</statement>
-      <rationale source="v1-source">The 1.22 muxer supports method-specific routing (GET /users/{id}) and path parameters (r.PathValue) natively, eliminating the primary reason to reach for Gin/Echo in simple CRUD APIs.</rationale>
+
+    <rule id="r-struct-handler" testable="true" depth="essential">
+      <statement>Handlers MUST be methods on a struct holding dependencies (services, loggers), never package-level funcs with globals.</statement>
+      <rationale source="Hexagonal architecture">Rule rooted in source: Hexagonal architecture. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Define handlers as methods on a struct that holds service dependencies (logger, services). Never use package-level globals (var DB *sql.DB) inside handlers. Inject dependencies at construction time.</statement>
-      <rationale source="v1-source">Package-level globals prevent parallel test execution (shared state between test cases) and make dependency substitution impossible without init() hacks.</rationale>
+
+    <rule id="r-dto-with-validation" testable="true" depth="essential">
+      <statement>Request DTOs MUST carry binding/validate tags; controller binds + validates before calling service.</statement>
+      <rationale source="go-playground/validator docs">Rule rooted in source: go-playground/validator docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use c.ShouldBindJSON (not c.Bind) on Gin. ShouldBind returns an error without writing a response; c.Bind writes a 400 directly and the handler continues — producing a double-write bug.</statement>
-      <rationale source="v1-source">c.Bind's auto-response behavior is a Gin anti-pattern; handlers that check err after c.Bind may still execute, producing conflicting response writes.</rationale>
+
+    <rule id="r-typed-response-struct" testable="true" depth="essential">
+      <statement>Responses MUST be typed structs (never `map[string]any` from a handler).</statement>
+      <rationale source="Internal reviews">Rule rooted in source: Internal reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Pass r.Context() (or c.Request.Context() in Gin) as the first argument into every service call. Never use context.Background() inside a handler.</statement>
-      <rationale source="v1-source">context.Background() ignores client disconnection. Long-running service calls (DB, HTTP) continue consuming resources after the client has gone away.</rationale>
+
+    <rule id="r-rfc-7807-on-error" testable="true" depth="essential">
+      <statement>Errors MUST be returned to middleware (`c.Error(err)`) that renders RFC 7807; handlers never write JSON for errors.</statement>
+      <rationale source="error-handling methodology">Rule rooted in source: error-handling methodology. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Lock the router choice (Gin, Echo, Chi, stdlib) in the system prompt for any LLM session. Reject any file where Gin and Echo imports coexist. Add a CI lint check for the unwanted import.</statement>
-      <rationale source="v1-source">LLMs mix handler signatures when context windows overflow. func(c *gin.Context) and func(c echo.Context) error are incompatible; mixed files produce confusing compile errors.</rationale>
+
+    <rule id="r-table-driven-tests" testable="true" depth="essential">
+      <statement>Tests MUST be table-driven over `httptest` with the actual router; mock the service interface.</statement>
+      <rationale source="Effective Go testing">Rule rooted in source: Effective Go testing. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Set ReadHeaderTimeout, WriteTimeout, and IdleTimeout on http.Server. Frameworks do not set these; a server without timeouts is vulnerable to slowloris attacks and resource exhaustion.</statement>
-      <rationale source="v1-source">A client that never finishes sending headers holds a goroutine and file descriptor indefinitely. ReadHeaderTimeout terminates such connections.</rationale>
+
+    <rule id="r-ctx-from-request" testable="true" depth="essential">
+      <statement>Handlers MUST pass `r.Context()` / `c.Request.Context()` to service calls; never `context.Background()`.</statement>
+      <rationale source="Go context docs">Rule rooted in source: Go context docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Test handlers with httptest.NewRecorder + router.ServeHTTP. Cover both happy-path and unhappy-path (missing required field, invalid type, oversized body). Do not spin a real server for unit tests.</statement>
-      <rationale source="v1-source">httptest tests run in parallel, start instantly, and exercise the full middleware chain. Agents generating only happy-path tests miss the most common field-validation regressions.</rationale>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold and no duplicate exists.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Always pass r.Context() or c.Request.Context() into service calls. Never use context.Background() inside a handler.</statement>
-      <rationale source="v1-source">context.Background() ignores client disconnection. Long-running service calls (DB, HTTP) continue consuming resources after the client has gone away.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
+    </rule>
+    <rule id="update-existing-artefact" testable="true" depth="essential">
+      <statement>Update the existing artefact in place (bump version, refresh last_reviewed).</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when a duplicate is found.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
