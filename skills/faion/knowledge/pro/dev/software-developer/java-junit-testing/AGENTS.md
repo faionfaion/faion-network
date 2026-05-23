@@ -3,74 +3,100 @@ slug: java-junit-testing
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: JUnit 5 (Jupiter) is the standard test framework for modern Spring Boot applications.
-content_id: "e1f6c1c935629bbe"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: JUnit 5 + Spring Boot test conventions — @WebMvcTest for controllers, @ExtendWith(MockitoExtension) for services, @DataJpaTest for slices, Testcontainers for integration.
+content_id: "c5e3f95d3ba72010"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [java, junit5, mockito, testing, spring-boot]
 ---
 # JUnit Testing for Spring Boot
 
 ## Summary
 
-**One-sentence:** JUnit 5 (Jupiter) is the standard test framework for modern Spring Boot applications.
+**One-sentence:** JUnit 5 + Spring Boot test conventions — @WebMvcTest for controllers, @ExtendWith(MockitoExtension) for services, @DataJpaTest for slices, Testcontainers for integration.
 
-**One-paragraph:** JUnit 5 (Jupiter) is the standard test framework for modern Spring Boot applications. Write controller tests via MockMvc or WebTestClient, service unit tests using Mockito annotations (@Mock, @InjectMocks), and repository slice tests via @DataJpaTest. Parameterize tests with @ParameterizedTest and @ValueSource, enforce test isolation through @ExtendWith(MockitoExtension.class), and use Testcontainers for integration tests with real PostgreSQL or MySQL instances. Measure coverage via JaCoCo and enforce thresholds in CI.
+**One-paragraph:** Spring Boot test misuse — `@SpringBootTest` everywhere, H2 instead of real DB, manual collaborator construction, no `@ParameterizedTest` — produces slow, flaky CI. This methodology pins five rules: controller tests use `@WebMvcTest` + mock service, service unit tests use `@ExtendWith(MockitoExtension.class)`, repository tests use `@DataJpaTest`, integration tests use `@SpringBootTest(webEnvironment=RANDOM_PORT) + @Testcontainers` with real DB, parametric tests use `@ParameterizedTest`. Output: test-class spec conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Layered Spring Boot test suite with right-sized slices.
+- Repository tests that catch N+1 + lazy bugs.
+- Integration tests that use the actual production DB engine.
+- Parametric boundary tests via `@CsvSource`/`@ValueSource`.
+- Coverage thresholds enforced in CI via JaCoCo.
 
 ## Applies If (ALL must hold)
 
-- Spring Boot applications with controller, service, and repository layers.
-- Unit tests for service logic, domain logic, and utility classes using Mockito.
-- Slice tests for repositories via @DataJpaTest, catching lazy-loading and query bugs in isolation.
-- Integration tests that need a real database (PostgreSQL, MySQL) via Testcontainers.
-- Controller tests via MockMvc to verify HTTP endpoints without a full application context.
-- CI gates with JaCoCo coverage thresholds.
+- Spring Boot 3.x with JUnit Jupiter.
+- Mockito 5+, AssertJ, Testcontainers available.
+- Postgres (or other real engine) is the production DB.
+- CI can run docker (for Testcontainers).
 
 ## Skip If (ANY kills it)
 
-- BDD-flavored prose specs where Cucumber or Gherkin readability is non-negotiable — JUnit 5 is orthogonal to BDD.
-- Browser-based end-to-end tests — use Selenium or Playwright with a different harness.
-- Microservice contract tests where Pact or Spring Cloud Contract is mandated by a central team.
-- Legacy JUnit 4 code where the cost of upgrading exceeds the value — backport patterns carefully if needed.
+- Reactive stack — `@WebFluxTest` patterns differ.
+- Plain Java SE without Spring Boot — apply the relevant framework's methodology.
+- DB-less microservice — repository slice + Testcontainers irrelevant.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Unit-under-test | Java source | repo |
+| Test plan | Markdown | spec |
+| Testcontainers + Docker | infra | CI config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[java-spring]] | Controller/service layout being tested. |
+| [[java-jpa-hibernate]] | Repository slice tests target these patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: webmvctest-for-controllers, mockitoextension-for-services, datajpatest-for-repo-slices, testcontainers-for-integration, parameterizedtest-for-boundaries | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for test-class spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: springboottest-for-everything, h2-for-relational, manual-collaborator-construction, void-async-test | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on test target → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-test-scope` | sonnet | Unit / slice / integration judgment. |
+| `write-test-class` | haiku | Mechanical scaffolding once scope chosen. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ControllerTests.java` | @WebMvcTest skeleton |
+| `templates/ServiceTests.java` | Mockito service test skeleton |
+| `templates/RepositoryTests.java` | @DataJpaTest skeleton |
+| `templates/IntegrationTests.java` | @SpringBootTest + Testcontainers skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-java-junit-testing.py` | Validate test-class spec | Pre-commit on spec artefact |
 
 ## Related
 
+- [[java-spring]]
+- [[java-jpa-hibernate]]
+- [[csharp-xunit-testing]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps target (controller/service/repository/integration) to a rule from `01-core-rules.xml`. Use it whenever picking the right Spring Boot test annotation set.

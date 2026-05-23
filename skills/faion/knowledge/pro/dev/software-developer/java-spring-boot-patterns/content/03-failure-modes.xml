@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring-boot-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring-boot-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Boot Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Spring Boot codebases.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Anemic domain model: entity has only getters/setters, business logic lives in service.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Domain invariants (e.g., "can't promote if already admin") cannot be enforced; any service can bypass them.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>N+1 query: iterating a list and accessing a lazy association inside the loop.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Produces one query per item. Fix: JOIN FETCH in @Query or @EntityGraph on the repository method.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>@Transactional on a controller method or on a private service method.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spring AOP proxy cannot intercept private methods or the controller layer; the annotation is silently ignored.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="value-blast" severity="medium">
+      <symptom>Bean has 15 @Value('${...}') fields; renaming a property breaks compile-untouched code at runtime.</symptom>
+      <root-cause source="Spring Boot reference — externalized configuration">String-based property access spread across beans; no central type-safe binding.</root-cause>
+      <fix>Collapse to one `@ConfigurationProperties` record per concern (MailProperties, AuthProperties); inject the record.</fix>
+    </antipattern>
+
+    <antipattern id="exception-leak" severity="high">
+      <symptom>Production 500 responses leak stack trace; client integrations fragile to error format changes.</symptom>
+      <root-cause source="RFC 7807; Spring Framework reference — exception handling">No @ControllerAdvice; each controller catches differently; Spring's default JSON includes timestamp + trace.</root-cause>
+      <fix>Add `@RestControllerAdvice` extending ResponseEntityExceptionHandler; map business exceptions to `ProblemDetail.forStatusAndDetail(...)`.</fix>
+    </antipattern>
+
+    <antipattern id="runtime-env-branch" severity="medium">
+      <symptom>`if (env.equals(&quot;prod&quot;)) sendEmail(); else log(...);` — dev still sends real email after refactor.</symptom>
+      <root-cause source="Spring Framework reference — environment">Environment branching at runtime instead of bean-wiring via @Profile.</root-cause>
+      <fix>Replace the if-branch with two beans: `@Profile(&quot;prod&quot;) EmailSender realSender()` and `@Profile(&quot;!prod&quot;) EmailSender logSender()`.</fix>
+    </antipattern>
+
+    <antipattern id="startup-misconfig" severity="high">
+      <symptom>Deploy succeeds; first request fails with NumberFormatException because retry.delay=abc.</symptom>
+      <root-cause source="Spring Boot reference — JSR-380 validation">Property bound via @Value at injection time; no validation; bad value reaches business logic.</root-cause>
+      <fix>Bind via @ConfigurationProperties + @Validated; misconfig fails the context startup with a clear ConstraintViolation message.</fix>
+    </antipattern>
+
   </section>
 </text>

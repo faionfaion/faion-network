@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="laravel-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for laravel-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Laravel Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Laravel codebases.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Fat controller: validation inline, model creation inline, event dispatch inline, mail send inline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cannot be tested without HTTP, duplicates logic across endpoints, violates single responsibility.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>N+1 query: $users = User::all(); foreach ($users as $u) { $u-&gt;organization-&gt;name; }</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Generates one SELECT per user. Fix: User::with('organization')-&gt;get().</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Empty $fillable with no $guarded — mass assignment on all columns.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Allows an attacker to set any column (e.g., is_admin) via a create/update request.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="fat-controller" severity="high">
+      <symptom>OrderController grows to 180+ lines; controller methods open transactions, hit Eloquent, format responses inline.</symptom>
+      <root-cause source="Laravel reference — service container">No service layer; all logic shoved into controller.</root-cause>
+      <fix>Extract to OrderService; controller method becomes 5-10 lines calling service + returning Resource.</fix>
+    </antipattern>
+
+    <antipattern id="raw-eloquent-response" severity="medium">
+      <symptom>API exposes timestamps + soft-delete flag + foreign keys to consumers; client breaks on schema migration.</symptom>
+      <root-cause source="Laravel reference — Eloquent serialization">`return $order;` returns the entire model array.</root-cause>
+      <fix>Wrap in OrderResource; explicitly list fields; version the resource (V1, V2).</fix>
+    </antipattern>
+
+    <antipattern id="validation-in-controller" severity="medium">
+      <symptom>Validation rules duplicated across Store + Update; messages inconsistent; auth check intermixed.</symptom>
+      <root-cause source="Laravel reference — validation">`$request-&gt;validate([...])` inline in controller instead of Form Request.</root-cause>
+      <fix>Generate StoreOrderRequest + UpdateOrderRequest; both extend OrderRequest with shared rules in protected method.</fix>
+    </antipattern>
+
+    <antipattern id="no-policy" severity="high">
+      <symptom>Authorization scattered across controller `if ($user-&gt;id !== $order-&gt;user_id) abort(403)` checks.</symptom>
+      <root-cause source="Laravel reference — authorization">No Policy class; logic duplicated and untestable.</root-cause>
+      <fix>Generate OrderPolicy; register in AuthServiceProvider; call `$this-&gt;authorize('update', $order)` from controller or `$this-&gt;user()-&gt;can(...)` from Form Request.</fix>
+    </antipattern>
+
   </section>
 </text>

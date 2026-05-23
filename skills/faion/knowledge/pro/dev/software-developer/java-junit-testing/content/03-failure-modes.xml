@@ -1,52 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-junit-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-junit-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="JUnit 5 + Spring Boot Test Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four Spring Boot test antipatterns. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using @SpringBootTest instead of @WebMvcTest for controller tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>@SpringBootTest spins up the entire application context (database, all beans) on every test class. Tests become slow (multi-second startup). Use @WebMvcTest for controller-only tests.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using H2 in-memory database for integration tests that depend on PostgreSQL-specific features (JSONB, window functions, sequences).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>H2 silently skips unsupported SQL, causing tests to pass that would fail in production. Use Testcontainers PostgreSQL for reality-based testing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>N+1 queries as the default outcome of FetchType.LAZY collections plus naive iteration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lazy collections are not fetched until accessed. Iterating over a collection in the service layer fires one query per item. Use @EntityGraph or JOIN FETCH inside a @Transactional method to load the collection eagerly, within the transactional boundary.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>@OneToMany(cascade = ALL, orphanRemoval = true) on relations where the child is referenced elsewhere.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Looks tidy but corrupts data. orphanRemoval=true deletes the child when it is removed from the parent collection, even if other entities still reference it. Always justify cascade and orphanRemoval in comments, and test the scenario where the child has multiple parents.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Confusing merge() vs save() vs persist() semantics; agents pick the wrong one.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>merge() re-attaches a detached entity and updates it; persist() inserts a new one; save() is Spring Data, not JPA. Test agents will produce duplicate rows or detached-entity exceptions. Code review must verify the right method is used for the domain operation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>LazyInitializationException outside transactions — accessing lazy collections in a controller method.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hibernate session is closed at the end of the service transaction. Accessing u.getRoles() in the controller triggers a query on a closed session. Use JOIN FETCH or @EntityGraph inside the service before the session closes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Hibernate 6+ changed query parameter handling and implicit casts; copy-pasted code from old Stack Overflow answers compiles but throws at runtime.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Verify code against the active Hibernate major version. If migrating, test all JPQL queries in a fresh environment.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Schema drift between @Entity and Flyway/Liquibase migrations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Entity expects a column that does not exist in the database. spring.jpa.hibernate.ddl-auto=validate (the correct setting) throws InvalidDataAccessResourceUsageException on startup. CI passes (uses ddl-auto=create for tests) but production fails immediately. Pair every @Entity change with a migration in the same PR.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Using H2 in-memory database for integration tests that depend on PostgreSQL-specific features.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>H2 silently skips unsupported SQL and relational constraints. Tests pass that fail in production. Use Testcontainers PostgreSQL for reality-based testing.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="springboottest-for-everything" severity="high">
+      <symptom>Every test class uses `@SpringBootTest`. Test suite takes 20 minutes; developers stop running it locally; CI flakes.</symptom>
+      <root-cause source="Spring Boot test slices docs">Slice-appropriate annotations skipped; full context boot per test.</root-cause>
+      <fix>Replace controller tests with `@WebMvcTest`, services with `@ExtendWith(MockitoExtension.class)`, repositories with `@DataJpaTest`. Reserve `@SpringBootTest` for genuine end-to-end integration.</fix>
+    </antipattern>
+
+    <antipattern id="h2-for-relational" severity="high">
+      <symptom>Tests pass on H2; production fails on Postgres with `data exception: invalid input syntax for jsonb`. Repository code relied on Postgres JSONB.</symptom>
+      <root-cause source="H2 vs Postgres dialect divergence">In-memory H2 used for relational integration test.</root-cause>
+      <fix>Switch to Testcontainers Postgres for any test that depends on production dialect. Keep H2 only for stateless unit-of-test scenarios where SQL is trivial.</fix>
+    </antipattern>
+
+    <antipattern id="manual-collaborator-construction" severity="medium">
+      <symptom>`new OrderService(new MockRepository())` in tests. Each test wires collaborators manually; mock state leaks between tests; tests don't verify the real DI graph.</symptom>
+      <root-cause source="Mockito + JUnit Jupiter docs">Manual wiring; `MockitoExtension` not used.</root-cause>
+      <fix>Add `@ExtendWith(MockitoExtension.class)`. Declare `@Mock` for collaborators, `@InjectMocks` for the unit under test. Mockito resets mocks between tests.</fix>
+    </antipattern>
+
+    <antipattern id="void-async-test" severity="medium">
+      <symptom>Reactive/async test method declared `void`; assertion failures pass silently. CI green, prod broken.</symptom>
+      <root-cause source="JUnit Jupiter async testing">Async test must return `Mono`, `Flux`, `CompletableFuture`, or use `await` helpers; not `void`.</root-cause>
+      <fix>Return appropriate async type. Use `StepVerifier` for Reactor; `Awaitility` for general async. Never `void` for async work.</fix>
+    </antipattern>
+
   </section>
 </text>

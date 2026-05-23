@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Microservices Circuit Breaker Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Decision tree mapping call profile to a breaker rule.</summary>
+
+  <decision-tree>
+      <root-question id="q-call-shape">Call shape?</root-question>
+
+        <branch when="shape == sync_network">
+          <question id="q-fallback">Fallback defined?</question>
+          <branch when="fallback == false">
+            <conclusion ref="fallback-required" verdict="do NOT wrap; add async/queue or define fallback first"/>
+          </branch>
+          <branch when="fallback == true">
+            <question id="q-per">One breaker per downstream?</question>
+            <branch when="shared_breaker == true">
+              <conclusion ref="breaker-per-downstream" verdict="split into named per-downstream breakers"/>
+            </branch>
+            <branch when="shared_breaker == false">
+              <conclusion ref="explicit-thresholds" verdict="configure explicit thresholds + compose Retry(Breaker(Call)) + wire metrics"/>
+            </branch>
+          </branch>
+        </branch>
+        <branch when="shape == async_queue">
+          <conclusion ref="fallback-required" verdict="no breaker needed; durability handles failures"/>
+        </branch>
+        <branch when="shape == in_process">
+          <conclusion ref="fallback-required" verdict="no breaker target; not applicable"/>
+        </branch>
+    </decision-tree>
+
+    <example trace="payment-gateway">
+      shape=sync_network → fallback=true (enqueue) → shared=false → configure thresholds + wire metrics.
+    </example>
+</text>

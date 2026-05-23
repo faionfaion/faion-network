@@ -3,89 +3,95 @@ slug: junior-ai-overreliance-coaching-guide
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: A playbook for senior devs to spot AI-overreliance patterns during PR reviews and pairings, and to coach juniors back toward grounded engineering judgment.
-content_id: "a590e66f852832d6"
-tags: [mentorship,ai-assisted,review,pairing,junior,critical-thinking]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Playbook for senior devs to spot AI-overreliance patterns during reviews/pairings and coach juniors back toward grounded engineering judgment.
+content_id: "ec4b1b062d2f2336"
+complexity: medium
+produces: playbook-step
+est_tokens: 5200
+tags: [mentorship, ai-assisted, review, pairing, junior]
 ---
 # Junior AI-Overreliance Coaching Guide
 
 ## Summary
 
-**One-sentence:** A playbook for senior devs to spot AI-overreliance patterns during PR reviews and pairings, and to coach juniors back toward grounded engineering judgment.
+**One-sentence:** Playbook for senior devs to spot AI-overreliance patterns during reviews/pairings and coach juniors back toward grounded engineering judgment.
 
-**One-paragraph:** Juniors using AI assistants increasingly ship code they don't understand: APIs they never read, libraries they never compared, error handling they never thought about. This methodology gives senior devs a concrete pattern library of overreliance signals (mismatched naming, library-of-the-day, undefended exception flow, copy-pasted prompt artifacts, no-comment integration), a coaching conversation script that doesn't shame, and a delta-style review comment format that teaches. Mechanism: 6 detectable patterns, a "what-would-you-do-without-AI" conversation prompt, and a graduated intervention ladder (acknowledge → ask → block → escalate). Primary output: PR comments and pairing notes that move the junior from "AI suggested this" to "I chose this because…".
+**One-paragraph:** Juniors using AI assistants increasingly ship code they don't understand: APIs they never read, libraries they never compared, error handling they never thought about. This methodology gives senior devs a concrete pattern library of overreliance signals (mismatched naming, library-of-the-day, undefended exception flow, copy-pasted prompt artifacts), a coaching conversation script that doesn't shame, and a delta-style review comment format that teaches. Primary output: PR comments and pairing notes that move the junior from "AI suggested this" to "I chose this because…".
+
+**Ефективно для:**
+
+- PR review коли junior pull-request виглядає 'занадто рівно' — багато patterns одночасно без обґрунтування.
+- Pairing-сесії, де junior копіює AI-вихід без переказу 'що це робить'.
+- Виявлення library-of-the-day: вибрана незнайома команді бібліотека без compare-rationale.
+- Coaching без shaming: дельта-формат review-коментарів ('я б очікував', 'що про X').
 
 ## Applies If (ALL must hold)
 
-- team has ≥ 1 senior dev reviewing junior PRs
-- juniors use Copilot / Cursor / Claude Code / similar AI assistants
-- team has observed ≥ 1 incident traceable to undefended AI-generated code
-- senior dev has bandwidth for occasional 30-min pairing sessions
-- code review culture is established (not "approve and merge")
+- Junior dev (≤2 years) actively uses AI assistant (Copilot / Claude / Cursor) on production code.
+- Senior is responsible for the junior's PRs / pairing growth.
+- Codebase has consistent conventions the AI does not always honor.
+- Recent PRs show signal of overreliance (e.g. style break, unfamiliar lib, no error handling).
 
 ## Skip If (ANY kills it)
 
-- single-dev team (no junior to coach)
-- juniors don't use AI assistants — different coaching gap
-- pure AI-prohibited environment (regulated industry) — escalate to policy
-- team lead doesn't value engineering judgment over throughput
-- juniors have &gt; 5 years experience labeled "junior" — title mismatch, not AI issue
+- Junior is already evaluating AI suggestions critically (cite reasons, compare APIs) — apply normal review.
+- Code is genuinely written by senior + AI is editor-only autocomplete — no overreliance risk.
+- Senior lacks bandwidth for coaching — flag to manager, do not silently rewrite.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- documented PR review norms in the team
-- pairing slot calendar (recurring or ad-hoc)
-- access to junior's PRs over last 4 weeks (pattern detection baseline)
-- agreed-upon "coaching not punishing" tone with team lead
-- escalation path to engineering manager when behavior persists
+| Artefact | Format | Source |
+|----------|--------|--------|
+| PR diff | git diff | GitHub/GitLab |
+| Junior context | tenure + AI tools used | team page |
+| Project conventions | CONTRIBUTING.md / lint rules | repo |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `free/dev/software-developer/code-review-feedback` | Foundation for the coaching tone |
-| `pro/dev/software-developer/refactoring-decisions` | Reference for "what to defend" in code |
-| `geek/ai/claude-code/responsible-ai-usage` | Optional team-level usage policy |
+none — methodology is self-contained.
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: pattern library, ask-not-tell, what-would-you-do-without-AI, delta review, escalation ladder | ~1000 |
-| `content/02-output-contract.xml` | essential | Pairing note schema, PR comment format, escalation log | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (shaming, gaslighting, over-coaching, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: signal-six-patterns, ask-not-tell, graduated-intervention, what-without-ai, no-rewrite-without-explanation | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for playbook-step + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pr_pattern_detector` | sonnet | Find AI-overreliance signals in diff |
-| `comment_draft_in_voice` | sonnet | Tone-matched coaching comment |
-| `pairing_outline_draft` | sonnet | 30-min session structure |
-| `escalation_writeup` | sonnet | Manager escalation note when behavior persists |
+| `scan-pr-for-signals` | sonnet | Pattern detection across diff. |
+| `draft-delta-comment` | opus | Tone + framing decisions are high-judgment. |
+| `detect-shaming-phrases` | haiku | Mechanical regex against shame-vocabulary list. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pr-coaching-comment.md` | Delta-style coaching comment skeleton |
-| `templates/pairing-session-script.md` | 30-min pairing outline |
-| `templates/escalation-note.md` | Manager-level escalation when needed |
-| `templates/pattern-library.md` | The 6 overreliance signals with examples |
+| `templates/pr-coaching-comment.md` | Delta-format PR coaching comment template (one signal per bullet, one what-without-AI question) |
+| `templates/_smoke-test.md` | Minimal viable filled-in version of pr-coaching-comment.md |
+| `templates/six-signals-checklist.md` | Quick scan checklist mapping diff observations → named signal |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/detect-ai-overreliance.py` | Scan PRs for the 6 signals | Pre-review |
-| `scripts/coaching-progress-tracker.py` | Track per-junior signal-rate over time | Monthly review |
+| `scripts/validate-junior-ai-overreliance-coaching-guide.py` | Validate the coaching artefact against the schema | Pre-commit when committing review templates |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- peer methodology: `code-review-feedback`, `refactoring-decisions`
-- external: [GitHub Copilot best practices](https://docs.github.com/en/copilot/using-github-copilot/best-practices-for-using-github-copilot) · [Codermetrics — engineering judgment](https://martinfowler.com/articles/codermetrics.html)
+- [[junior-ai-pairing-protocol]]
+- [[java-spring-boot]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

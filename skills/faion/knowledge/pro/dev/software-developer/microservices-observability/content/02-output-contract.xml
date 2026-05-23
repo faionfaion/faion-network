@@ -1,22 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="microservices-observability Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Microservices Observability Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing one service's observability checklist artefact.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/microservices-observability.json",
+  "type": "object",
+  "required": [
+    "service_name",
+    "logs_structured",
+    "metrics_red",
+    "tracing_otel",
+    "propagator",
+    "log_trace_id_present"
+  ],
+  "properties": {
+    "service_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "logs_structured": {
+      "type": "boolean",
+      "const": true
+    },
+    "metrics_red": {
+      "type": "boolean",
+      "const": true
+    },
+    "tracing_otel": {
+      "type": "boolean",
+      "const": true
+    },
+    "propagator": {
+      "enum": [
+        "w3c",
+        "b3-fallback"
+      ]
+    },
+    "log_trace_id_present": {
+      "type": "boolean",
+      "const": true
+    },
+    "otlp_endpoint": {
+      "type": "string",
+      "format": "uri"
+    },
+    "slo_targets": {
+      "type": "object",
+      "properties": {
+        "availability": {
+          "type": "number"
+        },
+        "p99_latency_ms": {
+          "type": "integer"
+        }
+      }
+    },
+    "pii_in_spans": {
+      "type": "boolean",
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service_name": "order-service",
+  "logs_structured": true,
+  "metrics_red": true,
+  "tracing_otel": true,
+  "propagator": "w3c",
+  "log_trace_id_present": true,
+  "otlp_endpoint": "https://otlp.example.com:4317",
+  "slo_targets": {
+    "availability": 99.9,
+    "p99_latency_ms": 250
+  },
+  "pii_in_spans": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service_name": "OrderService",
+  "logs_structured": false,
+  "metrics_red": false,
+  "tracing_otel": true,
+  "propagator": "b3-fallback",
+  "log_trace_id_present": false,
+  "otlp_endpoint": "stdout",
+  "pii_in_spans": true
+}
+]]></code>
+    <note>service_name PascalCase; logs not structured; no RED metrics; B3 propagator (interop only); no trace_id in logs; OTLP endpoint not a URI; PII in spans.</note>
+  </example>
+  <forbidden>
+      <pattern id="println-logging">`System.out.println` / `console.log` / `print()` debug output — unstructured.</pattern>
+      <pattern id="pii-attr">Span attribute named `user.email` / `customer.phone` etc. carrying raw PII.</pattern>
+      <pattern id="custom-propagator">Custom `X-Trace-Id` / `X-Request-Id` propagation that bypasses W3C.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-microservices-observability.py">Validator script</reference>
 </text>

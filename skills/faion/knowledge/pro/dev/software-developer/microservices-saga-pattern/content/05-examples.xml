@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Saga Pattern for Distributed Transactions Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: place-order saga (order → billing → inventory → shipping) using Temporal orchestration.</summary>
+
+  <section title="Worked example">
+    <example trace="place-order saga">
+      <context>Order service kicks off place-order; billing charges card; inventory reserves stock; shipping schedules pickup. Any failure → compensate.</context>
+      <walk>Step 1: steps = [order.create-pending → order.cancel-order, billing.charge → billing.refund-card, inventory.reserve → inventory.release-stock, shipping.schedule-pickup → shipping.cancel-pickup]. All idempotent via saga_id+step_id key. Step 2: 4 steps + cross-team → orchestration; pick Temporal. Step 3: each service has outbox table; Debezium publishes to Kafka. Step 4: Temporal workflow PlaceOrderSaga: ExecuteActivity(CreatePendingOrder) → ExecuteActivity(ChargeCard) → ExecuteActivity(ReserveStock) → ExecuteActivity(SchedulePickup); on Activity error → reverse-order compensations. Step 5: chaos-test: kill inventory mid-saga → Temporal triggers RefundCard + CancelOrder (skip SchedulePickup since not executed yet). All idempotent retries verified.</walk>
+      <output>Cross-service consistency guaranteed (compensated on failure); operator sees one Temporal workflow execution per saga; manual reconciliation goes from 30/week to 0.</output>
+    </example>
+  </section>
+</text>

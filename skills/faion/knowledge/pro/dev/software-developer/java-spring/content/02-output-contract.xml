@@ -1,22 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-spring Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Spring Boot Layered Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a layered feature spec (controller + service + DTO + optional async).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/java-spring.json",
+  "type": "object",
+  "required": ["feature", "controller", "service", "request_dto", "response_dto"],
+  "properties": {
+    "feature": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "controller": {
+      "type": "object",
+      "required": ["class_name", "has_transactional", "calls_repository_directly"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Controller$"},
+        "has_transactional": {"type": "boolean", "const": false},
+        "calls_repository_directly": {"type": "boolean", "const": false},
+        "list_endpoint_uses_pageable": {"type": "boolean"}
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["class_name", "transactional_present", "returns_entity"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Service$"},
+        "transactional_present": {"type": "boolean", "const": true},
+        "returns_entity": {"type": "boolean", "const": false}
+      }
+    },
+    "request_dto": {
+      "type": "object",
+      "required": ["class_name", "is_record", "has_bean_validation"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Request$"},
+        "is_record": {"type": "boolean", "const": true},
+        "has_bean_validation": {"type": "boolean", "const": true}
+      }
+    },
+    "response_dto": {
+      "type": "object",
+      "required": ["class_name", "is_record"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Response$"},
+        "is_record": {"type": "boolean", "const": true}
+      }
+    },
+    "async": {
+      "type": "object",
+      "properties": {
+        "self_invocation": {"type": "boolean", "const": false},
+        "executor_name": {"type": "string"},
+        "executor_bean_defined": {"type": "boolean"}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feature": "Orders",
+  "controller": {"class_name": "OrdersController", "has_transactional": false, "calls_repository_directly": false, "list_endpoint_uses_pageable": true},
+  "service": {"class_name": "OrdersService", "transactional_present": true, "returns_entity": false},
+  "request_dto": {"class_name": "CreateOrderRequest", "is_record": true, "has_bean_validation": true},
+  "response_dto": {"class_name": "OrderResponse", "is_record": true},
+  "async": {"self_invocation": false, "executor_name": "emailExecutor", "executor_bean_defined": true}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feature": "Orders",
+  "controller": {"class_name": "OrderCtrl", "has_transactional": true, "calls_repository_directly": true, "list_endpoint_uses_pageable": false},
+  "service": {"class_name": "OrdersService", "transactional_present": false, "returns_entity": true},
+  "request_dto": {"class_name": "CreateOrderReq", "is_record": false, "has_bean_validation": false},
+  "response_dto": {"class_name": "OrderResp", "is_record": false},
+  "async": {"self_invocation": true, "executor_name": "", "executor_bean_defined": false}
+}
+]]></code>
+    <note>controller transactional + repo access; service returns entity; DTOs not records; async self-invocation.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`controller.has_transactional == true` OR `controller.calls_repository_directly == true`.</description>
+      <reason>Violates `thin-controller` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`service.returns_entity == true`.</description>
+      <reason>Violates `record-dtos-with-validation` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`async.self_invocation == true`.</description>
+      <reason>Violates `async-via-named-executor` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-java-spring.py">Validator script</reference>
 </text>

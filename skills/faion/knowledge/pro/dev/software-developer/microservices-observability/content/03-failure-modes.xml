@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="microservices-observability Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for microservices-observability as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Microservices Observability Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real microservice observability rollouts.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="missing-pillar" severity="high">
+      <symptom>Tracing wired, but logs are unstructured plain text; during incident the operator can see the trace but cannot grep for log context.</symptom>
+      <root-cause source="OpenTelemetry reference">Team rolled out one pillar at a time and stopped after tracing.</root-cause>
+      <fix>Make all three pillars a service ready-to-ship gate; pre-commit lints presence of structured logger + RED metrics + OTel tracer.</fix>
+    </antipattern>
+
+    <antipattern id="broken-propagation" severity="high">
+      <symptom>Traces stop at service boundary; downstream spans appear as separate root traces.</symptom>
+      <root-cause source="W3C Trace Context spec">Custom propagator on one service; W3C parser on the other; context lost.</root-cause>
+      <fix>Standardize on W3C propagator across all services; remove custom X-Trace-Id headers; use OTel auto-instrumentation where available.</fix>
+    </antipattern>
+
+    <antipattern id="no-trace-id-in-logs" severity="medium">
+      <symptom>Logs are JSON but lack trace_id; operator must guess which log lines belong to which trace.</symptom>
+      <root-cause source="OpenTelemetry Logs spec">Logger not wired to OTel context; trace_id not in MDC / context.</root-cause>
+      <fix>Add OTel-MDC bridge (logback-otel, pino-opentelemetry-transport); every log gets trace_id automatically.</fix>
+    </antipattern>
+
+    <antipattern id="pii-in-span" severity="high">
+      <symptom>Auditor flags trace data: `user.email = ruslan@faion.net` visible in third-party APM.</symptom>
+      <root-cause source="OWASP API security">Auto-instrumentation captured request body or auth header without redaction.</root-cause>
+      <fix>Configure OTel span processor to redact PII fields; hash user identifiers; exclude request bodies for sensitive endpoints.</fix>
+    </antipattern>
+
   </section>
 </text>

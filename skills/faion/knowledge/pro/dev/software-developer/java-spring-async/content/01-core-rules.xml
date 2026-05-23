@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring-async Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring-async. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spring Async Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the Spring Async methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="named-executor-required" testable="true" depth="essential">
+      <statement>Every @Async annotation MUST reference a named ThreadPoolTaskExecutor bean: `@Async(&quot;taskExecutor&quot;)`. Bare `@Async` or `@Async(&quot;&quot;)` is forbidden.</statement>
+      <rationale source="Spring Framework reference — scheduling">Bare @Async falls back to SimpleAsyncTaskExecutor (unbounded thread creation per call); under load it exhausts OS thread limits silently.</rationale>
     </rule>
+    <rule id="no-self-invocation" testable="true" depth="essential">
+      <statement>The @Async method MUST live in a different Spring bean than the caller. Calling `this.asyncMethod()` from inside the same class bypasses the proxy.</statement>
+      <rationale source="Spring Framework reference — AOP proxies">@Async works via a Spring AOP proxy. Self-invocation skips the proxy — the method runs synchronously and silently.</rationale>
+    </rule>
+    <rule id="completable-future-or-handler" testable="true" depth="essential">
+      <statement>@Async methods MUST return `CompletableFuture&lt;T&gt;` OR an `AsyncUncaughtExceptionHandler` MUST be registered in AsyncConfig. void-returning @Async without a handler is forbidden.</statement>
+      <rationale source="Spring Framework reference — Async exception handling">Void @Async drops exceptions silently. Lost exceptions = lost operational visibility on email/webhook failures.</rationale>
+    </rule>
+    <rule id="no-async-with-tx" testable="true" depth="essential">
+      <statement>@Async and @Transactional MUST NOT be combined on the same method. Either the caller opens no tx, or the async method opens its own.</statement>
+      <rationale source="Spring Framework reference — transactional + concurrency">@Transactional binds a JDBC connection to the calling thread via ThreadLocal. The async thread is a different thread — no tx propagation.</rationale>
+    </rule>
+    <rule id="task-decorator-propagation" testable="true" depth="essential">
+      <statement>Every ThreadPoolTaskExecutor MUST install a TaskDecorator that copies MDC context map, SecurityContextHolder, and OTel current span to the async thread.</statement>
+      <rationale source="Spring Security reference — concurrency">MDC (trace IDs), SecurityContext, OTel span are ThreadLocal. Without propagation, async logs are untraced and SecurityContext is null.</rationale>
+    </rule>
+    <rule id="shutdown-drain" testable="true" depth="essential">
+      <statement>Every ThreadPoolTaskExecutor MUST set `setWaitForTasksToCompleteOnShutdown(true)` and a bounded `setAwaitTerminationSeconds`.</statement>
+      <rationale source="Spring Framework reference — task execution">Without shutdown drain, in-flight tasks are dropped on deploy; emails/webhook calls silently lost.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

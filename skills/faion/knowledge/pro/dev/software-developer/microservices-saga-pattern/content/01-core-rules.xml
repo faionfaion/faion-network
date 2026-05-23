@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="microservices-saga-pattern Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for microservices-saga-pattern. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Saga Pattern for Distributed Transactions Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for designing a saga.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every saga step MUST have a paired compensation transaction. A saga without compensation for every completed step is incomplete and MUST be rejected in code review.</statement>
-      <rationale source="v1-source">Half-compensated sagas leave business entities in inconsistent states. Inventory reserved but payment refunded with no order cancellation means the item is unavailable to other buyers indefinitely.</rationale>
+
+    <rule id="compensation-required-every-step" testable="true" depth="essential">
+      <statement>Every step MUST have a paired compensation step that logically undoes it. A step without a compensation is forbidden.</statement>
+      <rationale source="Sagas (Garcia-Molina &amp; Salem, 1987)">Partial saga failure with no compensation leaves the system in an inconsistent state — the very failure mode saga exists to prevent.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Compensation transactions MUST be idempotent. The orchestrator may retry compensation multiple times; duplicate executions must be safe.</statement>
-      <rationale source="v1-source">Networks fail; orchestrators crash mid-compensation. Idempotency ensures that retrying compensation does not double-refund, double-release, or double-cancel.</rationale>
+    <rule id="idempotent-steps-and-comps" testable="true" depth="essential">
+      <statement>Every step AND every compensation MUST be idempotent. Redelivered events MUST produce the same end state.</statement>
+      <rationale source="Microservices Patterns (Richardson)">Message brokers redeliver; orchestrators retry. Non-idempotent steps double-charge, double-ship, double-decrement.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Saga state MUST be persisted and observable. Each state transition (STARTED, PROCESSING, COMPLETED, COMPENSATING, FAILED) must be logged with the saga ID, step name, and timestamp.</statement>
-      <rationale source="v1-source">Without observable state, debugging a half-compensated saga requires forensic log analysis across multiple services. A saga table or workflow engine log is the audit trail.</rationale>
+    <rule id="outbox-not-dual-write" testable="true" depth="essential">
+      <statement>When a step both writes to local DB AND publishes an event, the write MUST go through a transactional outbox (or CDC). Direct dual-write (DB write + broker publish in code) is forbidden.</statement>
+      <rationale source="Microservices Patterns — Transactional Outbox">Dual-write has a window where DB committed but publish failed — data is lost or duplicated.</rationale>
     </rule>
+    <rule id="compensation-order-reverse" testable="true" depth="essential">
+      <statement>On failure at step N, compensations MUST execute in reverse order: comp(N-1) → comp(N-2) → ... → comp(1). Forward-order or parallel compensation is forbidden.</statement>
+      <rationale source="Sagas — original paper">Compensations are not commutative — releasing inventory before refunding may surface to customer as 'item available' before refund completes.</rationale>
+    </rule>
+    <rule id="orchestrator-or-choreography-chosen" testable="true" depth="essential">
+      <statement>Saga MUST declare one coordination style: orchestration (central orchestrator) OR choreography (services react to events). Mixing styles in one saga is forbidden.</statement>
+      <rationale source="Microservices Patterns (Richardson)">Hybrid coordination splits the saga state across two locations; debugging becomes impossible.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

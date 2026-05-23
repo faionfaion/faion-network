@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="microservices-circuit-breaker Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for microservices-circuit-breaker as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Microservices Circuit Breaker Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real microservice deployments.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="flapping-breaker" severity="high">
+      <symptom>Breaker opens, closes, opens, closes every 30 seconds; downstream never recovers.</symptom>
+      <root-cause source="Resilience4j reference — open/half-open transitions">wait_duration_open_ms too short OR sliding window too small; first half-open call hits the still-degraded downstream and reopens immediately.</root-cause>
+      <fix>Increase wait_duration_open_ms to &gt;= 10s; increase sliding_window_size; set permitted_half_open_calls=3.</fix>
+    </antipattern>
+
+    <antipattern id="missing-fallback" severity="high">
+      <symptom>Breaker opens; every caller now receives CallNotPermittedException; HTTP responses become 500.</symptom>
+      <root-cause source="Resilience4j reference — fallback">Decorator wrapped the call but no fallback function declared.</root-cause>
+      <fix>Add `.recover()` / `.fallback(...)` returning cached value, default sentinel, or degraded UX response. Callers see successful (degraded) responses.</fix>
+    </antipattern>
+
+    <antipattern id="shared-breaker" severity="medium">
+      <symptom>Payment gateway slowdown opens the breaker; orders fail for a downstream that's perfectly healthy.</symptom>
+      <root-cause source="Resilience4j reference — naming">Same breaker used for &gt;1 downstream service.</root-cause>
+      <fix>Name one breaker per (caller, downstream) pair; e.g. `payment-gateway`, `inventory-service`.</fix>
+    </antipattern>
+
+    <antipattern id="retry-around-breaker" severity="high">
+      <symptom>Downstream open breaker still receives traffic spikes; manual retry by caller bypasses open state.</symptom>
+      <root-cause source="Resilience4j reference — composition order">Retry policy wraps the breaker call instead of being composed inside.</root-cause>
+      <fix>Compose order: Retry(Breaker(Call)) — retry counts the breaker's CallNotPermitted as a final failure and stops.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -3,73 +3,98 @@ slug: java-spring-boot-patterns
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-grade Spring Boot 3.
-content_id: "0eeda30a3c35a8b3"
-tags: [spring-boot, java, layered-architecture, jpa, rest-api]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Idiomatic Spring Boot patterns for configuration binding, exception handling, conditional beans, and externalized properties.
+content_id: "4d2a57c8a756e624"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [spring-boot, patterns, configuration-properties, java, rest]
 ---
-# Java Spring Boot Patterns
+# Spring Boot Patterns
 
 ## Summary
 
-**One-sentence:** Production-grade Spring Boot 3.
+**One-sentence:** Idiomatic Spring Boot patterns for configuration binding, exception handling, conditional beans, and externalized properties.
 
-**One-paragraph:** Production-grade Spring Boot 3.x layered architecture: entity → repository (JPA + Specification) → service (transactional) → controller (REST) → DTO/mapper (MapStruct). Enforces rich domain models, ProblemDetail error handling, UUID PKs, @Version optimistic locking, and Testcontainers-backed integration tests.
+**One-paragraph:** Apply Spring Boot's idiomatic patterns — @ConfigurationProperties for type-safe configuration, @ControllerAdvice + ProblemDetail for centralized exception translation, @Conditional bean wiring, and Profiles for environment isolation. The patterns make services portable across environments and surface configuration drift at startup, not at runtime.
+
+**Ефективно для:**
+
+- Сервіси з багатьма env-specific параметрами (dev/staging/prod) — type-safe @ConfigurationProperties.
+- Уніфікована обробка помилок REST → ProblemDetail (RFC 7807) через @ControllerAdvice.
+- Conditional bean wiring (@ConditionalOnProperty, @ConditionalOnClass) — feature-flag friendly.
+- Externalized configuration через application-{profile}.yml + Spring Cloud Config / Vault.
 
 ## Applies If (ALL must hold)
 
-- Scaffolding a Spring Boot 3.x service (Java 17/21, Hibernate 6) from a domain spec
-- Generating entity/repo/service/controller/DTO/mapper verticals
-- Adding Spring Security (JWT, OAuth2) to an existing app
-- Reviewing PRs for N+1, transaction-boundary violations, anemic domain antipatterns
-- Migrating Boot 2.x → 3.x (Jakarta EE namespace, Hibernate 6, Spring Security 6)
+- Spring Boot 3.x service with non-trivial configuration surface (>10 properties).
+- REST API needs a single uniform error contract (ProblemDetail).
+- Multiple deployment environments with different bean wirings.
+- Need to expose configuration validation errors at startup (fail fast).
 
 ## Skip If (ANY kills it)
 
-- Reactive workloads — Spring WebFlux + R2DBC has different transaction semantics
-- Lightweight microservices where JVM warmup and memory overhead hurt — consider Quarkus/Micronaut
-- Functions/FaaS — cold start is unacceptable; use GraalVM native image with explicit config
-- CQRS/event-sourced systems — JPA active-record pattern fights write/read separation
+- Trivial single-purpose CLI — pattern overhead outweighs benefit.
+- Legacy Boot 2.x services — ProblemDetail/binding APIs differ; use Boot 2.x methodology.
+- Non-Spring stack (Quarkus, Micronaut) — patterns named differently.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Property surface | list of env vars / config keys | ops |
+| Error catalogue | list of business exceptions → HTTP status | API design |
+| Profile map | dev/staging/prod yml files | deployment |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[java-spring-boot]] | Layered architecture is the substrate these patterns plug into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: configuration-properties-typed, controller-advice-problem-detail, conditional-on-property, validation-on-properties, no-system-getenv | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `extract-properties-record` | sonnet | Templated record generation. |
+| `design-error-catalogue` | opus | Mapping business exceptions ↔ HTTP status is decision-heavy. |
+| `lint-system-getenv` | haiku | Mechanical grep audit. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/MailProperties.java` | Typed @ConfigurationProperties record with Jakarta Bean Validation |
+| `templates/GlobalExceptionHandler.java` | @RestControllerAdvice translating business exceptions to ProblemDetail |
+| `templates/application-prod.yml` | Profile-specific configuration overlay (prod) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-java-spring-boot-patterns.py` | Validate the Boot-patterns artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[java-spring-boot]]
+- [[java-spring-async]]
+- [[clean-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

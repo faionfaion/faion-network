@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="microservices-service-boundaries Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for microservices-service-boundaries as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Microservices Service Boundaries Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real microservice rollouts.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Distributed monolith — services call each other synchronously for every operation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All services must be up simultaneously; a single failure cascades. The "microservices" label is cosmetic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Shared database — multiple services access the same database tables.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Schema changes to a shared table break all services simultaneously; deployment independence is lost.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="shared-db" severity="high">
+      <symptom>Schema migration in service A breaks service B; deploys must be coordinated; outages during migrations.</symptom>
+      <root-cause source="Microservices Patterns (Richardson)">Both services connect to the same DB; B reads A's tables.</root-cause>
+      <fix>Copy A's data to B's own DB via CDC; B reads from its local replica; remove cross-DB connections.</fix>
+    </antipattern>
+
+    <antipattern id="chatty-boundary" severity="high">
+      <symptom>One user request hits 12 services serially; p99 latency 4s; failures cascade.</symptom>
+      <root-cause source="Microservices Patterns — service decomposition">Service boundary cut by technical layer (controller/service/repo) instead of business sub-domain.</root-cause>
+      <fix>Redraw boundary along bounded context; merge services that share heavy data flow.</fix>
+    </antipattern>
+
+    <antipattern id="no-contract" severity="medium">
+      <symptom>Producer adds field; consumer NPEs; integration tests miss the break.</symptom>
+      <root-cause source="Microservices Patterns — published interface">Contract lives only in producer's code; no registry; no CI compatibility check.</root-cause>
+      <fix>Move contract to schema registry; CI validates every producer change against existing consumers.</fix>
+    </antipattern>
+
+    <antipattern id="co-ownership" severity="medium">
+      <symptom>Two teams keep stepping on each other's commits to one service; design decisions deadlock.</symptom>
+      <root-cause source="Team Topologies (Skelton &amp; Pais)">Service co-owned; Conway's law violated.</root-cause>
+      <fix>Split the service along bounded contexts OR formally assign single ownership; the other team becomes consumer-only.</fix>
+    </antipattern>
+
   </section>
 </text>

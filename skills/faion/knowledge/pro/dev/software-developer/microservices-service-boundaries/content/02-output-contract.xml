@@ -1,22 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="microservices-service-boundaries Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Microservices Service Boundaries Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing one service boundary artefact (bounded context + data + team + contract).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/microservices-service-boundaries.json",
+  "type": "object",
+  "required": [
+    "service_name",
+    "bounded_context",
+    "owner_team",
+    "data_owned",
+    "published_contract",
+    "cross_service_joins"
+  ],
+  "properties": {
+    "service_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "bounded_context": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner_team": {
+      "type": "string",
+      "minLength": 1
+    },
+    "co_owners": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 0
+    },
+    "data_owned": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "data_shared_dbs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 0
+    },
+    "published_contract": {
+      "type": "string",
+      "format": "uri"
+    },
+    "cross_service_joins": {
+      "type": "integer",
+      "maximum": 0
+    },
+    "uses_saga_for_cross_service_tx": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service_name": "order-service",
+  "bounded_context": "Order Management",
+  "owner_team": "checkout-team",
+  "co_owners": [],
+  "data_owned": [
+    "orders",
+    "order_items"
+  ],
+  "data_shared_dbs": [],
+  "published_contract": "https://schema-registry.example.com/order-service/v1",
+  "cross_service_joins": 0,
+  "uses_saga_for_cross_service_tx": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service_name": "OrderService",
+  "bounded_context": "",
+  "owner_team": "checkout-team",
+  "co_owners": [
+    "payments-team"
+  ],
+  "data_owned": [
+    "orders"
+  ],
+  "data_shared_dbs": [
+    "shared_db"
+  ],
+  "published_contract": "inline",
+  "cross_service_joins": 5,
+  "uses_saga_for_cross_service_tx": false
+}
+]]></code>
+    <note>PascalCase service_name; no bounded_context; co-owned by 2 teams; uses shared DB; contract inline; 5 cross-service joins; no saga.</note>
+  </example>
+  <forbidden>
+      <pattern id="shared-db">Two services connecting to the same database/schema.</pattern>
+      <pattern id="cross-service-join">SELECT from another service's tables (FROM other_db.other_table).</pattern>
+      <pattern id="co-ownership">More than one team listed as owner of a service.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-microservices-service-boundaries.py">Validator script</reference>
 </text>

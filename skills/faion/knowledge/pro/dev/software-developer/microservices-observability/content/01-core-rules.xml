@@ -1,15 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="microservices-observability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for microservices-observability. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Microservices Observability Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for shipping microservice observability.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every inbound HTTP request MUST open a trace span and every outbound HTTP call or message bus publish MUST propagate the traceparent header. A service that does not propagate traceparent breaks the trace for all downstream services.</statement>
-      <rationale source="v1-source">Without end-to-end trace propagation, a distributed trace is a collection of disconnected local traces. The value of distributed tracing is the cross-service correlation, which requires every service to propagate the context.</rationale>
+
+    <rule id="three-pillars-required" testable="true" depth="essential">
+      <statement>Every service MUST export structured logs (JSON) + RED metrics (rate/errors/duration) + distributed traces via OpenTelemetry OTLP. Missing any pillar fails the gate.</statement>
+      <rationale source="OpenTelemetry reference; Distributed Systems Observability (Sridharan)">The three pillars cross-reference each other via trace_id; missing one breaks the correlation story.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every event class MUST be registered in a schema registry (Apicurio, Confluent Schema Registry, Buf Schema Registry) and compatibility checks MUST be enforced as a CI gate before any producer is deployed.</statement>
-      <rationale source="v1-source">Event payloads are public APIs once consumed by another service. A breaking change (field rename, type change, required field added) crashes consumers silently at runtime. The registry's compatibility check is the only automated gate that catches this before production.</rationale>
+    <rule id="w3c-trace-context" testable="true" depth="essential">
+      <statement>Every inbound + outbound HTTP/gRPC call MUST propagate W3C `traceparent` (and `tracestate`) headers. B3 / custom propagators are forbidden unless explicit interop rule.</statement>
+      <rationale source="W3C Trace Context spec">W3C is the universal vendor-neutral standard; custom propagators silently lose context at boundaries.</rationale>
     </rule>
+    <rule id="trace-id-in-logs" testable="true" depth="essential">
+      <statement>Every log line MUST include `trace_id` and `span_id` fields extracted from the active OTel span (or empty if no span). Logs without trace context are forbidden.</statement>
+      <rationale source="OpenTelemetry Logs spec">trace_id correlation across logs/traces/metrics is the entire point of observability; without it logs are useless during incident.</rationale>
+    </rule>
+    <rule id="red-metrics-per-endpoint" testable="true" depth="essential">
+      <statement>Every HTTP/gRPC endpoint MUST export Rate, Errors, Duration (RED) metrics as a histogram bucketed by status code.</statement>
+      <rationale source="USE/RED method (Brendan Gregg / Tom Wilkie)">RED is the minimum SLO-measurable surface; alerts on error rate + p99 latency are derived from it.</rationale>
+    </rule>
+    <rule id="no-pii-in-spans" testable="true" depth="essential">
+      <statement>Span attributes + log fields MUST NOT contain PII (email, phone, full name, IP, SSN). Use hashed identifiers or omit.</statement>
+      <rationale source="OWASP API security; GDPR Article 32">Observability data flows to third-party SaaS backends; PII triggers GDPR/HIPAA exposure.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

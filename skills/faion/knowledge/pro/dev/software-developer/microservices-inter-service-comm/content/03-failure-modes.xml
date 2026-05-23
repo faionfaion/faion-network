@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="microservices-inter-service-comm Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for microservices-inter-service-comm as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Microservices Inter-Service Communication Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real microservice architectures.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="sync-cascade" severity="high">
+      <symptom>Service A → B → C → D sync chain; D slows down; A's p99 spikes 4x.</symptom>
+      <root-cause source="Microservices Patterns (Richardson)">Cumulative sync coupling: each layer waits for the next; failures cascade.</root-cause>
+      <fix>Convert non-critical hops to async events. Add timeouts + circuit breakers on remaining sync hops. Where possible, denormalize so A doesn't need D.</fix>
+    </antipattern>
+
+    <antipattern id="rest-fanout-coupling" severity="medium">
+      <symptom>Adding a new consumer requires modifying the producer service to add another HTTP call.</symptom>
+      <root-cause source="Enterprise Integration Patterns (Hohpe)">Producer uses sync REST fan-out instead of publishing events.</root-cause>
+      <fix>Publish OrderCreated event to Kafka topic; consumers subscribe independently. Producer no longer knows consumer list.</fix>
+    </antipattern>
+
+    <antipattern id="inline-schema-drift" severity="high">
+      <symptom>Producer adds optional field; consumer NPEs because their DTO doesn't know the field.</symptom>
+      <root-cause source="Confluent Schema Registry docs">Schema defined in-code per side; no registry to enforce backward-compatibility checks.</root-cause>
+      <fix>Migrate contract to schema registry; CI runs compatibility check on every producer change.</fix>
+    </antipattern>
+
+    <antipattern id="non-idempotent-write" severity="high">
+      <symptom>Retried POST creates a duplicate order; customer charged twice.</symptom>
+      <root-cause source="Stripe API design">POST has no Idempotency-Key; server treats retries as new requests.</root-cause>
+      <fix>Server-side: hash (Idempotency-Key, body) → cache result for 24h. Client: generate UUID per logical request; reuse on retry.</fix>
+    </antipattern>
+
   </section>
 </text>

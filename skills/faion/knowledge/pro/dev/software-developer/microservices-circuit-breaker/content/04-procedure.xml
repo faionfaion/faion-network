@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Microservices Circuit Breaker Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure for adding a circuit breaker to a downstream call.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="identify-call">
+      <input>Service inventory + SLO targets.</input>
+      <action>Pick one downstream call. Confirm sync network call with a meaningful fallback (cached / default / degraded).</action>
+      <output>Call descriptor (caller method + downstream URL).</output>
+      <decision-gate>If no fallback exists, STOP — don't wrap; add async/queue instead.</decision-gate>
+    </step>
+    <step n="2" name="size-thresholds">
+      <input>Downstream historical metrics.</input>
+      <action>Set failureRateThreshold (50%), slowCallDurationThreshold (2× p99), slidingWindowSize (50 calls), minimumNumberOfCalls (10), waitDurationInOpenState (10s), permittedNumberOfCallsInHalfOpenState (3).</action>
+      <output>Resilience4j config block.</output>
+    </step>
+    <step n="3" name="wire-decorator">
+      <input>Call method + breaker config.</input>
+      <action>Decorate the call: `Decorators.ofSupplier(() -&gt; client.call()).withCircuitBreaker(cb).withRetry(retry).withFallback(... fallback).decorate()`. Composition: Retry(Breaker(Call)).</action>
+      <output>Decorated call.</output>
+      <decision-gate>If Retry composition is outer (Breaker(Retry(Call))), STOP and swap.</decision-gate>
+    </step>
+    <step n="4" name="register-metrics">
+      <input>Breaker instance + Micrometer / Prometheus.</input>
+      <action>Register Resilience4jMetricsRegistry; expose resilience4j.circuitbreaker.state, resilience4j.circuitbreaker.calls. Add alert on state=open for &gt;60s and &gt;3 transitions/5min.</action>
+      <output>Metrics scraped + alerts wired.</output>
+    </step>
+    <step n="5" name="chaos-test">
+      <input>Fault injection tool (toxiproxy / chaos-mesh).</input>
+      <action>Inject downstream 5xx for 30s; confirm breaker opens; confirm fallback returns valid response; confirm breaker closes after downstream recovers.</action>
+      <output>Chaos test report attached to PR.</output>
+    </step>
+
+  </section>
+</text>

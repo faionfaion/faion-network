@@ -1,22 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-jpa-hibernate Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="JPA/Hibernate Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for entity + narrow-repository + service spec produced by this methodology.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/java-jpa-hibernate.json",
+  "type": "object",
+  "required": ["entity", "narrow_repository", "service", "open_in_view"],
+  "properties": {
+    "entity": {
+      "type": "object",
+      "required": ["class_name", "has_audit_timestamps", "associations"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+        "has_audit_timestamps": {"type": "boolean", "const": true},
+        "version_column": {"type": "boolean"},
+        "associations": {
+          "type": "array",
+          "items": {"type": "object", "required": ["kind", "justification"],
+            "properties": {
+              "kind": {"enum": ["OneToMany", "ManyToOne", "ManyToMany", "OneToOne"]},
+              "cascade": {"type": "string"},
+              "fetch": {"enum": ["LAZY", "EAGER"]},
+              "justification": {"type": "string", "minLength": 10}
+            }
+          }
+        }
+      }
+    },
+    "narrow_repository": {
+      "type": "object",
+      "required": ["interface_name", "extends_jparepository_directly"],
+      "properties": {
+        "interface_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Repository$"},
+        "extends_jparepository_directly": {"type": "boolean", "const": false},
+        "method_count": {"type": "integer", "minimum": 1, "maximum": 12}
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["class_name", "uses_dto_projection_on_reads"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Service$"},
+        "uses_dto_projection_on_reads": {"type": "boolean", "const": true},
+        "uses_joinfetch_or_entitygraph": {"type": "boolean", "const": true}
+      }
+    },
+    "open_in_view": {"type": "boolean", "const": false}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "entity": {
+    "class_name": "Order",
+    "has_audit_timestamps": true,
+    "version_column": true,
+    "associations": [
+      {"kind": "OneToMany", "cascade": "PERSIST", "fetch": "LAZY", "justification": "Items are owned by Order; persist with parent"}
+    ]
+  },
+  "narrow_repository": {"interface_name": "OrderRepository", "extends_jparepository_directly": false, "method_count": 5},
+  "service": {"class_name": "OrderService", "uses_dto_projection_on_reads": true, "uses_joinfetch_or_entitygraph": true},
+  "open_in_view": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "entity": {
+    "class_name": "order",
+    "has_audit_timestamps": false,
+    "associations": [{"kind": "OneToMany", "cascade": "ALL", "fetch": "EAGER", "justification": ""}]
+  },
+  "narrow_repository": {"interface_name": "OrderRepo", "extends_jparepository_directly": true},
+  "service": {"class_name": "orderSvc", "uses_dto_projection_on_reads": false, "uses_joinfetch_or_entitygraph": false},
+  "open_in_view": true
+}
+]]></code>
+    <note>class lower-case; no audit; CascadeType.ALL without justification; raw JpaRepository in service; no DTO projection; open-in-view enabled.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`open_in_view == true`.</description>
+      <reason>Violates `joinfetch-for-eager` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Any association with empty `justification`.</description>
+      <reason>Violates `justified-cascade-fetch` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`narrow_repository.extends_jparepository_directly == true`.</description>
+      <reason>Violates `narrow-repo-interface` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-java-jpa-hibernate.py">Validator script</reference>
 </text>

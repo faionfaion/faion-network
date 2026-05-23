@@ -1,42 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring-boot Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring-boot as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Boot Layered Architecture Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Spring Boot deployments; each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>@Transactional on a controller method or on a private service method.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spring AOP proxy cannot intercept controller-layer calls or private methods — the annotation is silently ignored. Transactions never open and reads see uncommitted data or write conflicts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Service returns JPA entity instead of DTO.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Exposes schema internals, triggers lazy-load exceptions outside @Transactional, prevents circular-reference handling, and couples the contract to the implementation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Field injection (@Autowired on a field) instead of constructor.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hides dependencies, couples to Spring, makes beans hard to test without reflection, and prevents immutability.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>@OneToMany without @EntityGraph or fetch join used in a list endpoint.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hidden N+1 queries: the list query loads N parent rows, then N separate queries load the associations. Invisible until production load hits. @EntityGraph or fetch joins make the intent explicit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>spring.jpa.open-in-view not explicitly set to false.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Boot default is true. Controllers can lazy-load after transaction close, hiding N+1 problems until production. Disabling forces fetch decisions into the service layer where they're visible and testable.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Password / secret in application.yml committed.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Secrets in code are exfiltrated via version control, log files, container images, and backups. Use environment variables or Spring Cloud Vault.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Using @SpringBootTest for every test instead of slicing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>@SpringBootTest loads the full context (5–15 seconds per test). Slicing with @WebMvcTest and @DataJpaTest keeps individual tests under 100ms. Test suite balloons and CI gets gamed via skip.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="lazy-init-exc" severity="high">
+      <symptom>LazyInitializationException in JSON response; works in tests, fails at runtime.</symptom>
+      <root-cause source="Spring Data JPA reference">Entity serialized outside @Transactional scope; lazy associations fetched after session close.</root-cause>
+      <fix>Convert entity to DTO inside the service while @Transactional active; use @EntityGraph for required associations.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-one" severity="high">
+      <symptom>List endpoint runs N+1 queries; latency scales linearly with result size.</symptom>
+      <root-cause source="Hibernate User Guide">@OneToMany / @ManyToOne loaded lazily inside a loop.</root-cause>
+      <fix>Use `@EntityGraph(attributePaths=...)` on the repository method, or JOIN FETCH in JPQL, or projection DTOs via constructor query.</fix>
+    </antipattern>
+
+    <antipattern id="tx-on-controller" severity="medium">
+      <symptom>Transaction held across HTTP write; long-running requests block connection pool.</symptom>
+      <root-cause source="Spring Framework reference — transactional anti-patterns">@Transactional placed on controller method — tx scope = entire HTTP exchange.</root-cause>
+      <fix>Move @Transactional to the @Service method; controller stays HTTP-only.</fix>
+    </antipattern>
+
+    <antipattern id="field-injection-test" severity="low">
+      <symptom>Unit test fails because `@Autowired` field is null; requires Spring container to test trivially.</symptom>
+      <root-cause source="Spring Framework reference — IoC">Field injection makes the class untestable without the container.</root-cause>
+      <fix>Refactor to constructor injection (final fields); test with plain `new Service(mockRepo)`.</fix>
+    </antipattern>
+
   </section>
 </text>

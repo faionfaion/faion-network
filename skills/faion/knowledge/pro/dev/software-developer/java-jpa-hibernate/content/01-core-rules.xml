@@ -1,43 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-jpa-hibernate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-jpa-hibernate. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="JPA/Hibernate Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Five testable rules grounding production JPA + Hibernate on Spring Boot.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Annotate created/updated timestamps with @CreationTimestamp and @UpdateTimestamp (Hibernate-specific) or use @EntityListeners(AuditingEntityListener.class) with @CreatedDate / @LastModifiedDate (Spring Data JPA). Mark createdAt with updatable=false to prevent accidental updates.</statement>
-      <rationale source="v1-source">Manual timestamp management in service code is error-prone and misses bulk update paths. Hibernate-managed timestamps are applied at the persistence layer regardless of which code path modifies the entity — POST, PUT, PATCH, or batch updates all get the same auditing logic.</rationale>
+
+    <rule id="audit-timestamps" testable="true" depth="essential">
+      <statement>Every entity MUST carry created/updated timestamps via `@CreationTimestamp` + `@UpdateTimestamp` (Hibernate) or `@CreatedDate` + `@LastModifiedDate` (Spring Data JPA with `@EntityListeners(AuditingEntityListener.class)`). `createdAt` MUST be `updatable=false`.</statement>
+      <rationale source="Spring Data JPA + Hibernate docs">Auditing fields support compliance + debugging at near-zero cost; missing them forces post-hoc trigger work later.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every @OneToMany and @ManyToMany MUST carry an explicit justification comment for cascade and orphanRemoval choices. Never use CascadeType.ALL without a written reason. FetchType.LAZY is the default and the correct default for collections; document any EAGER fetch with justification.</statement>
-      <rationale source="v1-source">CascadeType.ALL with orphanRemoval=true on a relation to an entity referenced elsewhere corrupts data — orphanRemoval deletes the child when it is removed from the parent collection, even if other entities still reference it. Lazy loading prevents accidental N+1 during development.</rationale>
+
+    <rule id="justified-cascade-fetch" testable="true" depth="essential">
+      <statement>Every `@OneToMany`/`@ManyToMany` MUST have an explicit Javadoc comment justifying the cascade + orphanRemoval + fetch choice. `CascadeType.ALL` is forbidden without a written reason; default `FetchType.LAZY` is preserved; `EAGER` requires justification.</statement>
+      <rationale source="Hibernate docs + observed antipatterns">Unjustified `CascadeType.ALL` deletes data; `EAGER` collections cause Cartesian explosions.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Add @Version on user-editable aggregates to enable optimistic locking. Use LockModeType.PESSIMISTIC_WRITE on repository methods for inventory / balance writes where lost updates must be prevented.</statement>
-      <rationale source="v1-source">Without locking, two concurrent requests that both read and then update the same row produce a lost update: the second write silently overwrites the first without either party knowing. @Version catches this at runtime; pessimistic locking prevents it from happening.</rationale>
+
+    <rule id="narrow-repo-interface" testable="true" depth="essential">
+      <statement>Services MUST consume a narrow repository interface listing only the operations actually used. Raw `JpaRepository&lt;T, ID&gt;` MUST NOT appear in service method signatures. `JpaSpecificationExecutor` is added only when dynamic filtering is required.</statement>
+      <rationale source="Interface-segregation principle + ddd-repositories methodology">Exposing the full CRUD surface tempts callers to bypass the aggregate boundary; narrow interfaces are testable + auditable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Extend JpaRepository&lt;T, ID&gt; for standard CRUD. Add JpaSpecificationExecutor&lt;T&gt; when the repository needs dynamic filtering. Never expose JpaRepository directly to service methods — define a narrower repository interface listing only required operations (e.g., a read-only interface without delete/update).</statement>
-      <rationale source="v1-source">JpaSpecificationExecutor enables type-safe dynamic queries without string concatenation. A narrower interface prevents services from calling arbitrary Jpa operations (deleteAllInBatch(), etc.) that bypass business rules and auditing.</rationale>
+
+    <rule id="dto-projection-on-reads" testable="true" depth="essential">
+      <statement>Read-only queries that don't need the full entity MUST project to a DTO (interface or class projection). Loading a full `@Entity` to populate a 3-field list view is forbidden.</statement>
+      <rationale source="Hibernate query performance docs">Entity hydration costs hundreds of bytes per row even when the caller wants three columns; projection short-circuits the cost.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use JOIN FETCH in @Query for queries that must eagerly load associations within the transactional boundary: "SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id". Use @EntityGraph as an alternative when the fetch plan varies by call site.</statement>
-      <rationale source="v1-source">FetchType.LAZY (the correct default) means accessing u.getRoles() outside a transaction throws LazyInitializationException. JOIN FETCH loads the association in a single query within the transactional boundary; @EntityGraph defers the join strategy to the query plan.</rationale>
+
+    <rule id="joinfetch-for-eager" testable="true" depth="essential">
+      <statement>Eager loading of an association inside the transactional boundary MUST use `JOIN FETCH` in `@Query` or `@EntityGraph` on the repository method. Lazy associations MUST NOT be accessed outside `@Transactional` (no controller-/view-side lazy loading; `spring.jpa.open-in-view=false`).</statement>
+      <rationale source="Hibernate fetch strategies">Lazy access outside session throws `LazyInitializationException`; open-in-view hides the problem and inflates request times.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Map read-only queries directly to DTO projections (interface or class projections) when the full entity graph is not needed. Never load a full @Entity to populate a list DTO with only 3 fields.</statement>
-      <rationale source="v1-source">Loading full entities for read-only list views initializes all columns, all Hibernate proxies, and all auditing state for data that is never written. DTO projections generate a SELECT with only the required columns, reducing memory and GC pressure.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Annotate service methods @Transactional(readOnly = true) for query-only methods and @Transactional for write methods. Never annotate repository methods with @Transactional — the service owns the transaction boundary and orchestrates multiple repository calls into a single atomic unit.</statement>
-      <rationale source="v1-source">readOnly=true tells Hibernate to skip dirty checking and flush at the end of the transaction, reducing overhead for read paths. The service owning the transaction boundary allows multiple repository calls (e.g., fetch user, fetch roles, fetch permissions) to participate in a single atomic context without nested transactions.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Never access lazy-loaded collections outside a @Transactional method. If the controller or view layer needs a relation, load it explicitly with JOIN FETCH inside the service method before the transaction closes.</statement>
-      <rationale source="v1-source">Lazy loading after the transaction closes causes LazyInitializationException. The session is scoped to the transaction; accessing lazy collections after the session is closed fails.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Configure spring.jpa.open-in-view=false, spring.jpa.hibernate.ddl-auto=validate, JDBC batch size, and SQL logging in application.yml. Never use ddl-auto=update or ddl-auto=create in production.</statement>
-      <rationale source="v1-source">open-in-view=false prevents session exhaustion. ddl-auto=validate fails fast if the entity schema drifts from the database. Batch settings reduce round-trips. SQL logging with log levels on org.hibernate.SQL and org.hibernate.orm.jdbc.bind catch N+1 bugs.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

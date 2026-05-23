@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Saga Pattern for Distributed Transactions Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Decision tree mapping saga shape to a coordination + safety rule.</summary>
+
+  <decision-tree>
+      <root-question id="q-shape">How many services in the saga?</root-question>
+
+        <branch when="service_count == 1">
+          <conclusion ref="compensation-required-every-step" verdict="use a local DB transaction; saga is unnecessary"/>
+        </branch>
+        <branch when="service_count &gt;= 2">
+          <question id="q-comp">All steps have a compensation?</question>
+          <branch when="all_compensable == false">
+            <conclusion ref="compensation-required-every-step" verdict="STOP — saga not safe; rework the flow"/>
+          </branch>
+          <branch when="all_compensable == true">
+            <question id="q-orch">Step count &gt; 3 OR cross-team?</question>
+            <branch when="needs_orchestration == true">
+              <conclusion ref="orchestrator-or-choreography-chosen" verdict="orchestration with Temporal / Camunda / Step Functions"/>
+            </branch>
+            <branch when="needs_orchestration == false">
+              <conclusion ref="orchestrator-or-choreography-chosen" verdict="choreography with event-driven compensations"/>
+            </branch>
+          </branch>
+        </branch>
+    </decision-tree>
+
+    <example trace="place-order">
+      service_count=4 → all_compensable=true → needs_orchestration=true → Temporal orchestration.
+    </example>
+</text>

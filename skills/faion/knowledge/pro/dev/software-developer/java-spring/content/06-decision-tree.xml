@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Spring Boot Layered Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable concerns to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-layer">Which layer is being authored?</root-question>
+
+    <branch when="layer == controller">
+      <conclusion ref="thin-controller" verdict="thin @RestController: one service call per method; no @Transactional; no repo; @Valid on requests"/>
+    </branch>
+
+    <branch when="layer == service">
+      <question id="q-shape">Method shape?</question>
+      <branch when="shape == async_workflow">
+        <conclusion ref="async-via-named-executor" verdict="extract into a separate bean; @Async with named executor; tune pool size"/>
+      </branch>
+      <branch when="shape == list_query">
+        <conclusion ref="pageable-list-endpoints" verdict="signature takes Pageable + returns Page&lt;ResponseDto&gt;"/>
+      </branch>
+      <branch when="shape == single_write">
+        <conclusion ref="transactional-on-service-only" verdict="@Transactional on the write method; map to/from DTOs"/>
+      </branch>
+    </branch>
+
+    <branch when="layer == dto">
+      <conclusion ref="record-dtos-with-validation" verdict="Java record + Bean Validation on request fields; response record carries no logic"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="orders-controller">
+    layer=controller → thin @RestController with @Valid CreateOrderRequest, calls OrdersService.create(req), returns ResponseEntity&lt;OrderResponse&gt;.
+  </example>
+</text>

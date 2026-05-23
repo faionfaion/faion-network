@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Boot Layered Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four Spring Boot antipatterns. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>@Transactional on a controller method or on a private service method.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spring AOP proxy cannot intercept controller-layer calls or private methods — the annotation is silently ignored.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Self-invocation of @Async method: calling this.sendEmail() from inside the same bean.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The call bypasses the AOP proxy and runs synchronously on the calling thread, ignoring the @Async directive.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Service returns JPA entity instead of DTO.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Exposes schema internals, triggers lazy-load exceptions outside @Transactional, and prevents circular-reference handling.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="transactional-on-controller" severity="high">
+      <symptom>`@Transactional` on a controller method. DB transaction lifetime spans the full HTTP request including JSON serialisation; lazy collections trigger queries; long transactions hold row locks.</symptom>
+      <root-cause source="Spring transaction docs">Author placed transaction boundary on the wrong layer.</root-cause>
+      <fix>Move `@Transactional` to the service method. Controller calls the service and returns the DTO; no transaction in the HTTP layer.</fix>
+    </antipattern>
+
+    <antipattern id="async-self-invocation" severity="high">
+      <symptom>Service method `sendEmail()` annotated `@Async` is called from another method in the SAME bean via `this.sendEmail()`. Runs synchronously; observed thread is the request thread.</symptom>
+      <root-cause source="Spring AOP proxy semantics">Self-invocation bypasses the Spring AOP proxy; `@Async` is never applied.</root-cause>
+      <fix>Extract `@Async` methods into a separate bean. Inject that bean and call `emailSender.sendEmail(...)`. Add a named executor (`@Bean("emailExecutor")`) and `@Async("emailExecutor")`.</fix>
+    </antipattern>
+
+    <antipattern id="service-returns-entity" severity="medium">
+      <symptom>Service signature `Order getOrder(UUID id)` returns the JPA entity. Controller serialises lazy associations; `LazyInitializationException` or N+1 in production.</symptom>
+      <root-cause source="Layered architecture discipline">Service skipped DTO mapping; entity leaked across the boundary.</root-cause>
+      <fix>Introduce `OrderResponse` record. Map inside the service (manually or via MapStruct). Controller returns the DTO.</fix>
+    </antipattern>
+
+    <antipattern id="custom-error-envelope" severity="medium">
+      <symptom>Controllers return `ApiErrorResponse{code, message, timestamp, …}` with custom shape. Adding new endpoints duplicates the envelope; clients implement N parsers.</symptom>
+      <root-cause source="RFC 7807 ProblemDetail / Spring 6 docs">Author rolled own error envelope instead of using `ProblemDetail`.</root-cause>
+      <fix>Replace with `@RestControllerAdvice` mapping exceptions to `ProblemDetail` (RFC 7807). Single error format for all endpoints; OpenAPI generation handles it.</fix>
+    </antipattern>
+
   </section>
 </text>

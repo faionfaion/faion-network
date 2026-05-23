@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Fork vs Fix Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping the 5-axis total score + overrides to one of 5 actions, each branch referencing a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-banlist">Is the library on the monkey-patch ban list (auth, crypto, framework-core, validation)?</root-question>
+
+    <branch when="ban_listed == true">
+      <question id="q-strategic-banned">strategic_dependency score == 3?</question>
+      <branch when="strategic == true">
+        <conclusion ref="r5-monkey-patch-ban-list" verdict="action = UPSTREAM-PR (with bridging workaround); FORK-PIN allowed if upstream unresponsive"/>
+      </branch>
+      <branch when="strategic == false">
+        <conclusion ref="r5-monkey-patch-ban-list" verdict="action = WORKAROUND or UPSTREAM-PR; MONKEY-PATCH forbidden"/>
+      </branch>
+    </branch>
+
+    <branch when="ban_listed == false">
+      <question id="q-strategic">strategic_dependency score == 3?</question>
+      <branch when="strategic == true">
+        <conclusion ref="r3-strategic-override" verdict="action must be &gt;= UPSTREAM-PR per strategic override"/>
+      </branch>
+      <branch when="strategic == false">
+        <question id="q-band">Total score band?</question>
+        <branch when="total_score &lt;= 3">
+          <conclusion ref="r2-action-map" verdict="WORKAROUND: config / wrap; calendar 90-day review"/>
+        </branch>
+        <branch when="total_score &gt;= 4 AND total_score &lt;= 6">
+          <conclusion ref="r2-action-map" verdict="MONKEY-PATCH via patch-package; record + sunset criterion"/>
+        </branch>
+        <branch when="total_score &gt;= 7 AND total_score &lt;= 9">
+          <conclusion ref="r2-action-map" verdict="UPSTREAM-PR with bridging workaround"/>
+        </branch>
+        <branch when="total_score &gt;= 10 AND total_score &lt;= 12">
+          <conclusion ref="r4-fork-hygiene" verdict="FORK-PIN with full hygiene (branch naming, Renovate, rebase cadence, sunset criterion)"/>
+        </branch>
+        <branch when="total_score &gt;= 13">
+          <conclusion ref="r2-action-map" verdict="REPLACE: swap for an alternative library if ≥2 viable alternatives exist"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="n8n-fork">
+    ban_listed=false → strategic=true (strategic_dependency=3) → action ≥ UPSTREAM-PR per r3 override; total=12 maps to FORK-PIN per r2 — apply BOTH: FORK-PIN with parallel UPSTREAM-PR.
+  </example>
+</text>

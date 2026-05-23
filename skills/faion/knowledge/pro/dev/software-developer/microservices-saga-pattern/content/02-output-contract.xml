@@ -1,22 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="microservices-saga-pattern Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Saga Pattern for Distributed Transactions Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing one saga definition artefact.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/microservices-saga-pattern.json",
+  "type": "object",
+  "required": [
+    "saga_name",
+    "coordination_style",
+    "steps",
+    "outbox_used"
+  ],
+  "properties": {
+    "saga_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "coordination_style": {
+      "enum": [
+        "orchestration",
+        "choreography"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "service",
+          "action",
+          "compensation",
+          "idempotent"
+        ],
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "compensation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "idempotent": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "outbox_used": {
+      "type": "boolean",
+      "const": true
+    },
+    "orchestrator": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "saga_name": "place-order",
+  "coordination_style": "orchestration",
+  "steps": [
+    {
+      "service": "order",
+      "action": "create-pending-order",
+      "compensation": "cancel-order",
+      "idempotent": true
+    },
+    {
+      "service": "billing",
+      "action": "charge-card",
+      "compensation": "refund-card",
+      "idempotent": true
+    },
+    {
+      "service": "inventory",
+      "action": "reserve-stock",
+      "compensation": "release-stock",
+      "idempotent": true
+    },
+    {
+      "service": "shipping",
+      "action": "schedule-pickup",
+      "compensation": "cancel-pickup",
+      "idempotent": true
+    }
+  ],
+  "outbox_used": true,
+  "orchestrator": "temporal"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "saga_name": "PlaceOrder",
+  "coordination_style": "orchestration",
+  "steps": [
+    {
+      "service": "order",
+      "action": "create",
+      "compensation": "",
+      "idempotent": false
+    },
+    {
+      "service": "billing",
+      "action": "charge",
+      "compensation": "refund",
+      "idempotent": true
+    }
+  ],
+  "outbox_used": false
+}
+]]></code>
+    <note>saga_name PascalCase; step 1 has no compensation; step 1 not idempotent; outbox not used (dual-write); only 2 steps with no transitive compensation.</note>
+  </example>
+  <forbidden>
+      <pattern id="no-compensation">A saga step with empty / missing compensation.</pattern>
+      <pattern id="dual-write">Code that does `db.save(...)` then `broker.publish(...)` without transactional outbox.</pattern>
+      <pattern id="hybrid-coordination">Same saga uses orchestrator for some steps AND event-driven choreography for others.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-microservices-saga-pattern.py">Validator script</reference>
 </text>

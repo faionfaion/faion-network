@@ -1,22 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-spring-async Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Spring Async Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing the async method + executor + AsyncConfig artefact produced by this methodology.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/java-spring-async.json",
+  "type": "object",
+  "required": [
+    "bean_name",
+    "method_name",
+    "executor_name",
+    "return_type",
+    "task_decorator_installed",
+    "shutdown_drain"
+  ],
+  "properties": {
+    "bean_name": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]+$"
+    },
+    "method_name": {
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]+$"
+    },
+    "executor_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "return_type": {
+      "enum": [
+        "CompletableFuture<Void>",
+        "CompletableFuture<T>",
+        "void"
+      ]
+    },
+    "task_decorator_installed": {
+      "type": "boolean",
+      "const": true
+    },
+    "shutdown_drain": {
+      "type": "boolean",
+      "const": true
+    },
+    "uncaught_handler_registered": {
+      "type": "boolean"
+    },
+    "transactional_on_method": {
+      "type": "boolean",
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "bean_name": "NotificationService",
+  "method_name": "sendOrderConfirmation",
+  "executor_name": "emailExecutor",
+  "return_type": "CompletableFuture<Void>",
+  "task_decorator_installed": true,
+  "shutdown_drain": true,
+  "uncaught_handler_registered": true,
+  "transactional_on_method": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "bean_name": "notification",
+  "method_name": "send",
+  "executor_name": "",
+  "return_type": "void",
+  "task_decorator_installed": false,
+  "shutdown_drain": false,
+  "transactional_on_method": true
+}
+]]></code>
+    <note>executor_name empty (bare @Async); transactional combined with async; no task decorator; bean_name not PascalCase.</note>
+  </example>
+  <forbidden>
+      <pattern id="bare-async">`@Async` annotation without an explicit executor bean name.</pattern>
+      <pattern id="self-invocation">Caller and @Async method in the same bean class.</pattern>
+      <pattern id="async-tx">@Async and @Transactional on the same method.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-java-spring-async.py">Validator script</reference>
 </text>

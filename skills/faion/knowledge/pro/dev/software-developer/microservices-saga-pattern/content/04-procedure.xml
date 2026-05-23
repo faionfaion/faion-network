@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Saga Pattern for Distributed Transactions Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure for designing and shipping a saga.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="model-steps-and-comps">
+      <input>Business operation spec.</input>
+      <action>List ordered (service, action, compensation) triples. For each step, define the local transaction + paired compensation. Mark idempotency mechanism per step.</action>
+      <output>Step table.</output>
+      <decision-gate>If any step has no compensation, STOP — the saga is not safe.</decision-gate>
+    </step>
+    <step n="2" name="choose-coordination">
+      <input>Step count + team boundaries.</input>
+      <action>Choreography for ≤3 steps + 1 team OR if event-driven culture is strong. Orchestration for &gt;3 steps OR cross-team OR debugging-heavy domain.</action>
+      <output>Coordination style decision.</output>
+    </step>
+    <step n="3" name="wire-outbox">
+      <input>Step list + DB schema.</input>
+      <action>Add `outbox` table to each service. Wrap step write + outbox insert in one local DB transaction. Wire Debezium CDC OR explicit outbox-poller publishing to Kafka.</action>
+      <output>Outbox table + CDC config.</output>
+      <decision-gate>If any step still does dual-write (db.save + broker.publish in code), STOP and refactor to outbox.</decision-gate>
+    </step>
+    <step n="4" name="implement-orchestrator-or-events">
+      <input>Coordination style.</input>
+      <action>Orchestration: write Temporal/Camunda workflow per saga; each step is an activity; failure triggers reverse-order compensations. Choreography: each service subscribes to predecessor's event, handles failure by publishing rollback event.</action>
+      <output>Saga state machine.</output>
+    </step>
+    <step n="5" name="chaos-test-and-document">
+      <input>Fault injection.</input>
+      <action>Inject failure at each step; verify all preceding compensations execute in reverse order. Verify duplicated events produce no double-effect. Document saga in /docs/sagas/place-order.md.</action>
+      <output>Chaos test green + saga doc committed.</output>
+    </step>
+
+  </section>
+</text>

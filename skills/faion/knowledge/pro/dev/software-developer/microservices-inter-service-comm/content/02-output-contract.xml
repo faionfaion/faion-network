@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="microservices-inter-service-comm Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Microservices Inter-Service Communication Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing one inter-service call decision record.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/microservices-inter-service-comm.json",
+  "type": "object",
+  "required": [
+    "call_name",
+    "caller",
+    "downstream",
+    "style",
+    "schema_registered_at",
+    "idempotency_key_supported"
+  ],
+  "properties": {
+    "call_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "caller": {
+      "type": "string"
+    },
+    "downstream": {
+      "type": "string"
+    },
+    "style": {
+      "enum": [
+        "rest",
+        "grpc",
+        "async-kafka",
+        "async-rabbitmq",
+        "async-sqs"
+      ]
+    },
+    "latency_budget_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "p99_downstream_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "schema_registered_at": {
+      "type": "string",
+      "format": "uri"
+    },
+    "idempotency_key_supported": {
+      "type": "boolean",
+      "const": true
+    },
+    "fan_out_consumers": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "call_name": "order-created-event",
+  "caller": "order-service",
+  "downstream": "billing,shipping,analytics",
+  "style": "async-kafka",
+  "latency_budget_ms": 60000,
+  "p99_downstream_ms": 100,
+  "schema_registered_at": "https://schema-registry.example.com/order-created/v1",
+  "idempotency_key_supported": true,
+  "fan_out_consumers": 3
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "call_name": "OrderCreatedEvent",
+  "caller": "order-service",
+  "downstream": "billing",
+  "style": "rest",
+  "latency_budget_ms": 100,
+  "p99_downstream_ms": 300,
+  "schema_registered_at": "inline-in-controller",
+  "idempotency_key_supported": false,
+  "fan_out_consumers": 3
+}
+]]></code>
+    <note>call_name PascalCase; sync REST chosen but latency_budget &lt; downstream p99; schema inline not in registry; idempotency unsupported; 3 consumers but using point-to-point REST.</note>
+  </example>
+  <forbidden>
+      <pattern id="inline-schema">Contract defined inline (Java DTO / Go struct) not in a registry.</pattern>
+      <pattern id="rest-fanout">Producer making N parallel HTTP calls to N downstreams instead of publishing one event.</pattern>
+      <pattern id="sync-budget-violation">Sync call where caller latency budget &lt; downstream p99.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-microservices-inter-service-comm.py">Validator script</reference>
 </text>

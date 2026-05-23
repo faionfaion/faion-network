@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="microservices-circuit-breaker Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for microservices-circuit-breaker. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Microservices Circuit Breaker Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for adding a circuit breaker to a cross-service call.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every outbound call to an external service MUST be wrapped in a circuit breaker. The circuit breaker MUST be configured with an explicit failure_threshold, recovery_timeout, and half_open_max_calls.</statement>
-      <rationale source="v1-source">Unconfigured or absent circuit breakers allow cascading failures. Explicit configuration makes failure policy visible and auditable.</rationale>
+
+    <rule id="breaker-per-downstream" testable="true" depth="essential">
+      <statement>Every cross-service network call MUST be wrapped in one named circuit breaker. Sharing a breaker across N downstream targets is forbidden.</statement>
+      <rationale source="Resilience4j reference">A shared breaker conflates failure signals — slow target A opens the breaker for fast target B.</rationale>
     </rule>
+    <rule id="explicit-thresholds" testable="true" depth="essential">
+      <statement>Breaker config MUST set explicit `failureRateThreshold`, `slidingWindowSize`, `minimumNumberOfCalls`, `slowCallRateThreshold`, and `waitDurationInOpenState`. Library defaults are forbidden in production.</statement>
+      <rationale source="Resilience4j reference; Polly reference">Defaults are tuned for synthetic benchmarks; production traffic profile demands explicit tuning.</rationale>
+    </rule>
+    <rule id="fallback-required" testable="true" depth="essential">
+      <statement>Every breaker-wrapped call MUST declare a fallback function. The fallback MUST return a valid response shape (cached value, sentinel, or degraded data).</statement>
+      <rationale source="Resilience4j reference — decorators">Without fallback the breaker just rethrows; caller still needs error handling everywhere.</rationale>
+    </rule>
+    <rule id="metrics-and-alert" testable="true" depth="essential">
+      <statement>Breaker MUST expose state transitions (closed/open/half-open) + failure rate as metrics; alert on open state &gt; 60s and on flapping (&gt;3 transitions/5min).</statement>
+      <rationale source="Resilience4j reference — metrics">Open breaker = degraded UX. Flapping = misconfigured thresholds.</rationale>
+    </rule>
+    <rule id="no-bare-retry-with-breaker" testable="true" depth="essential">
+      <statement>Retry MUST be inside the breaker (retry → call → breaker counts the final attempt) AND retry MUST have backoff + jitter + max-attempts. Naked retry around a breaker call is forbidden.</statement>
+      <rationale source="Resilience4j reference — composition order">Outer retry around breaker bypasses the open state and amplifies load on a struggling downstream.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

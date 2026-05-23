@@ -3,70 +3,97 @@ slug: microservices-observability
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Distributed tracing is the API for debugging microservices.
-content_id: "fc3bd4df0e8408a5"
-tags: [microservices, observability, distributed-tracing, schema-registry, opentelemetry]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Ship the 3 observability pillars (structured logs, RED/USE metrics, distributed tracing) with W3C trace-context propagation across every microservice.
+content_id: "dd9c0eb054b416b2"
+complexity: medium
+produces: spec
+est_tokens: 5200
+tags: [microservices, observability, tracing, metrics, logging, otel]
 ---
-# Microservices Observability and Boundary Integrity
+# Microservices Observability
 
 ## Summary
 
-**One-sentence:** Distributed tracing is the API for debugging microservices.
+**One-sentence:** Ship the 3 observability pillars (structured logs, RED/USE metrics, distributed tracing) with W3C trace-context propagation across every microservice.
 
-**One-paragraph:** Distributed tracing is the API for debugging microservices. Every inbound request opens a span; every outbound call propagates traceparent. Schema registry with compatibility checks is non-optional once event payloads become public APIs. A boundary lint script detects sync chains, missing timeouts, and shared-DB imports before they reach production.
+**One-paragraph:** Microservice observability rests on three pillars: structured logs (JSON with trace_id), RED metrics (rate/errors/duration per endpoint), and distributed tracing via OpenTelemetry with W3C trace-context propagation. Every inbound + outbound call must carry the trace header; every log must include the active trace_id. Skipping one pillar breaks the entire correlation story. The spec output is a service-level observability checklist + the OTel SDK + collector config.
+
+**Ефективно для:**
+
+- Полісервісні архітектури з ≥3 сервісами і необхідністю end-to-end debugging.
+- Migration з ad-hoc print-logging до структурованого JSON + trace correlation.
+- Wire-up OpenTelemetry (auto + manual instrumentation) для request flow tracing.
+- Define SLOs: RED metrics, error budget, alert policies.
 
 ## Applies If (ALL must hold)
 
-- Any microservices system in production where "which service caused this error?" is a real question.
-- Systems with more than two services publishing events that other services consume.
-- CI pipelines for any microservices codebase where boundary violations need automated detection.
-- Teams onboarding a new service: tracing and schema registry must be configured before the first production deploy.
+- Architecture has ≥3 services with inter-service calls.
+- Engineering team owns the deployment + can install agents/SDKs.
+- Observability backend available (Tempo + Grafana, Datadog APM, Honeycomb, Dynatrace).
+- Need SLO measurement against an error budget.
 
 ## Skip If (ANY kills it)
 
-- Single-service monoliths — standard logging and APM are sufficient; distributed tracing adds complexity without value.
-- Prototypes and throwaway experiments where operational overhead exceeds value.
+- Monolith — single-process tracing is overkill; structured logs + metrics suffice.
+- Strict compliance restricts log/trace export (offline-only environments) — see custom-flow methodology.
+- Hobby project with <100 req/day — instrumentation cost outweighs benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service inventory | list + ownership | service catalog |
+| Observability backend | OTLP endpoint + access tokens | platform |
+| Logging library | structured JSON logger (Logback JsonEncoder / pino / zap) | language ecosystem |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[microservices-inter-service-comm]] | Trace propagation rules depend on call style. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: three-pillars-required, w3c-trace-context, trace-id-in-logs, red-metrics-per-endpoint, no-pii-in-spans | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `install-otel-sdk` | sonnet | Templated agent installation per language. |
+| `design-slo-and-alerts` | opus | Error budget + alert tuning is high-judgment. |
+| `lint-println` | haiku | Mechanical grep for unstructured logging. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/observability-spec.md` | Service-level observability spec listing pillar status + SLO + alert rules |
+| `templates/otel-config.yaml` | OpenTelemetry Collector config: receivers + processors + exporters |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-microservices-observability.py` | Validate the observability spec artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[microservices-circuit-breaker]]
+- [[microservices-inter-service-comm]]
+- [[api-monitoring-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

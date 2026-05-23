@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Microservices Inter-Service Communication Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Decision tree mapping call attributes to a communication style rule.</summary>
+
+  <decision-tree>
+      <root-question id="q-durability">Does the call require durability (cannot be lost if downstream is down)?</root-question>
+
+        <branch when="durability_required == true">
+          <conclusion ref="async-for-event-fanout" verdict="publish to message broker (Kafka / RabbitMQ / SNS+SQS)"/>
+        </branch>
+        <branch when="durability_required == false">
+          <question id="q-fanout">Fan-out consumers &gt; 1?</question>
+          <branch when="fan_out &gt; 1">
+            <conclusion ref="async-for-event-fanout" verdict="publish event to topic — even if not durable"/>
+          </branch>
+          <branch when="fan_out == 1">
+            <question id="q-wait">Caller must wait for result?</question>
+            <branch when="caller_waits == true">
+              <question id="q-internal">Internal high-volume?</question>
+              <branch when="internal_typed == true">
+                <conclusion ref="grpc-when-internal-typed" verdict="use gRPC + protobuf"/>
+              </branch>
+              <branch when="internal_typed == false">
+                <conclusion ref="sync-only-if-can-wait" verdict="use REST + OpenAPI"/>
+              </branch>
+            </branch>
+            <branch when="caller_waits == false">
+              <conclusion ref="async-for-event-fanout" verdict="async fire-and-forget"/>
+            </branch>
+          </branch>
+        </branch>
+    </decision-tree>
+
+    <example trace="OrderCreated">
+      durability=true → async-kafka (event topic).
+    </example>
+</text>

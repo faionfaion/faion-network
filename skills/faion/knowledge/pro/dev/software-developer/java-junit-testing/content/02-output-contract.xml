@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-junit-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="JUnit 5 + Spring Boot Test Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a Spring Boot test-class spec.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/java-junit-testing.json",
+  "type": "object",
+  "required": ["test_class", "scope", "annotations", "uses_assertj"],
+  "properties": {
+    "test_class": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Test$"},
+    "scope": {"enum": ["controller", "service", "repository", "integration"]},
+    "annotations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^@[A-Z][A-Za-z0-9]+(\\([^)]*\\))?$"}
+    },
+    "uses_assertj": {"type": "boolean", "const": true},
+    "uses_mock_bean": {"type": "boolean"},
+    "uses_testcontainers": {"type": "boolean"},
+    "parametric_inputs_use_parameterized_test": {"type": "boolean", "const": true},
+    "uses_h2_for_relational": {"type": "boolean", "const": false}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "test_class": "OrdersControllerTest",
+  "scope": "controller",
+  "annotations": ["@WebMvcTest(OrdersController.class)", "@AutoConfigureMockMvc"],
+  "uses_assertj": true,
+  "uses_mock_bean": true,
+  "uses_testcontainers": false,
+  "parametric_inputs_use_parameterized_test": true,
+  "uses_h2_for_relational": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "test_class": "OrdersTest",
+  "scope": "controller",
+  "annotations": ["@SpringBootTest"],
+  "uses_assertj": false,
+  "uses_mock_bean": false,
+  "parametric_inputs_use_parameterized_test": false,
+  "uses_h2_for_relational": true
+}
+]]></code>
+    <note>controller scope with @SpringBootTest (full context); no AssertJ; no @ParameterizedTest for boundaries; H2 used for relational integration.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`scope == "controller"` AND `annotations` lacks `@WebMvcTest`.</description>
+      <reason>Violates `webmvctest-for-controllers` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`scope == "service"` AND `annotations` lacks `@ExtendWith(MockitoExtension.class)`.</description>
+      <reason>Violates `mockitoextension-for-services` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`scope == "repository"` AND `annotations` lacks `@DataJpaTest`.</description>
+      <reason>Violates `datajpatest-for-repo-slices` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`scope == "integration"` AND `uses_testcontainers == false`.</description>
+      <reason>Violates `testcontainers-for-integration` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`uses_h2_for_relational == true`.</description>
+      <reason>Forbidden for code that depends on relational invariants / vendor SQL.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-java-junit-testing.py">Validator script</reference>
 </text>

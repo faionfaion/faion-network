@@ -3,74 +3,100 @@ slug: java-spring-boot
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structure Spring Boot applications with clean architecture.
-content_id: "1dd8c718abed52c8"
-tags: [spring-boot, java, rest-api, layered-architecture, clean-architecture]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structure Spring Boot applications with clean layered Controller → Service → Repository architecture (JPA, Bean Validation, Actuator, declarative @Transactional).
+content_id: "9cffa129e4f166bc"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [spring-boot, java, layered-architecture, rest-api, jpa]
 ---
-# Spring Boot Patterns
+# Spring Boot Layered Architecture
 
 ## Summary
 
-**One-sentence:** Structure Spring Boot applications with clean architecture.
+**One-sentence:** Structure Spring Boot applications with clean layered Controller → Service → Repository architecture (JPA, Bean Validation, Actuator, declarative @Transactional).
 
-**One-paragraph:** Structure Spring Boot applications with clean architecture. Build enterprise Java services with the standard layered Controller → Service → Repository stack using Spring Data JPA, Bean Validation, dependency injection, declarative transactions, and Actuator-based observability. The patterns prevent subtle runtime bugs like lazy-load exceptions, N+1 queries, and proxy-based annotation failures.
+**One-paragraph:** Build enterprise Java services with the standard layered Controller → Service → Repository stack using Spring Data JPA, Bean Validation (Jakarta), dependency injection, declarative transactions, and Actuator-based observability. The patterns prevent subtle runtime bugs like lazy-load exceptions, N+1 queries, and proxy-based annotation failures.
+
+**Ефективно для:**
+
+- Зрілі Spring Boot 3.x монолітні API з REST-контролерами та реляційною БД.
+- Greenfield REST-сервіси з валідацією, transactional service-layer та health-checks.
+- Brownfield рефакторинг fat-controllers → service-layer з @Transactional на service-методах.
+- Стандартизація валідації (@Valid + @ControllerAdvice + ProblemDetail) у багатомодульних проєктах.
 
 ## Applies If (ALL must hold)
 
-- Greenfield enterprise Java services where the team standardises on a layered Controller → Service → Repository stack with Spring Data JPA + Bean Validation.
-- Migrating legacy Java EE / older Spring MVC apps onto Spring Boot 3.x (Jakarta EE 10, virtual threads, Native Image option).
-- Building REST APIs that already commit to dependency injection, AOP, declarative transactions, and Actuator-based observability.
-- Multi-module Gradle/Maven monorepos where you want a uniform skeleton (controller / service / mapper / dto / entity) generated per module.
-- Teams that are JVM-bound (JDK licensing, existing Kafka/Cassandra/Oracle drivers, internal Spring Cloud config server).
+- Spring Boot 3.x service exposing REST endpoints backed by a relational DB via JPA.
+- Team agreed on Controller → Service → Repository layering (no DDD/Hexagonal/CQRS).
+- Need consistent validation + @Transactional placement across modules.
+- Production observability via Spring Boot Actuator + Micrometer is mandatory.
 
 ## Skip If (ANY kills it)
 
-- Sub-200ms cold-start serverless (Lambda, Cloud Run min-instances=0). Spring Boot startup is heavy; pick Quarkus or Micronaut, or compile to GraalVM native — but then most Spring "magic" silently breaks.
-- Polyglot reactive pipelines where the dominant pattern is async streams; Spring WebFlux exists but most teams writing Boot apps default to blocking servlet stack which dilutes the win.
-- Tiny solo projects / scripts. The annotation surface and starter explosion (spring-boot-starter-*) is overkill for a CRUD <5 entities.
-- When the team has no Spring expertise — Boot's autoconfig debugging is a senior-Java skill (--debug + ConditionEvaluationReport reading).
-- Anywhere tight, predictable memory matters (embedded, edge). JVM + Spring is not the right footprint.
+- Reactive stack (WebFlux + R2DBC) — different concurrency model; this methodology assumes blocking servlet stack.
+- Microservice with DDD/Hexagonal architecture — use ddd-aggregates / clean-architecture instead.
+- Console-only batch app — Spring Batch methodology fits better.
+- Boot 3.2+ with virtual threads aggressively replacing thread-per-request — pool sizing rules differ.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Domain entity | Java class + DB table | domain model |
+| API contract | OpenAPI / endpoint list | product/BA |
+| Datasource config | application.yml spring.datasource.* | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[java-spring-boot-patterns]] | Bean wiring + DI conventions assumed. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: service-layer-transactions, constructor-injection-only, dto-not-entity, validation-on-controller, actuator-health-required | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-layer-stack` | sonnet | Templated generation of Controller + Service + Repository + DTO. |
+| `decide-tx-boundary` | opus | Transaction propagation choices are decision-heavy. |
+| `lint-layering` | haiku | Mechanical audit (spring-boot-layering-audit.sh). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/OrderController.java` | REST controller skeleton with @Valid + ResponseEntity + no @Transactional |
+| `templates/OrderService.java` | Service with @Transactional placement + entity↔DTO mapping |
+| `templates/OrderRepository.java` | Spring Data JPA interface with @EntityGraph |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-java-spring-boot.py` | Validate the Spring Boot layer-stack artefact against the schema | Pre-commit + CI |
+| `scripts/spring-boot-layering-audit.sh` | Lint @Transactional on controllers, entities crossing controller boundary, field injection | CI on every PR touching @RestController / @Service |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[java-spring-boot-patterns]]
+- [[java-spring-async]]
+- [[clean-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

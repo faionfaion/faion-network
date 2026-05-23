@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Microservices Circuit Breaker Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: wrap payment gateway POST /v1/charges with Resilience4j.</summary>
+
+  <section title="Worked example">
+    <example trace="payment-gateway breaker">
+      <context>Spring Boot service calling Stripe-equivalent gateway. p99 latency 1.5s; failure spikes during peak. Fallback: queue the charge for async retry + return 202 Accepted.</context>
+      <walk>Step 1: identify call = PaymentClient.charge(). Fallback = enqueue ChargeJob + return Accepted. Step 2: config — failureRate=50, slidingWindow=50, minCalls=10, slowCallDuration=3000ms, waitOpen=10000ms, halfOpenCalls=3. Step 3: decorator = Decorators.ofSupplier(() -&gt; client.charge(req)).withCircuitBreaker(paymentBreaker).withRetry(retry3WithBackoff).withFallback(ex -&gt; chargeQueue.enqueue(req)).decorate().get(). Step 4: Micrometer scrapes resilience4j.* metrics; alert on payment-gateway state=open &gt; 60s. Step 5: toxiproxy injects 503 to gateway for 30s → breaker opens at call #11 → fallback enqueues 40 charges → downstream recovers → breaker half-opens at t+10s → 3 probe calls succeed → breaker closes → fallback queue drained.</walk>
+      <output>p99 caller latency stays under SLO during downstream degradation; 0 customer-visible payment errors; queued charges drained automatically.</output>
+    </example>
+  </section>
+</text>

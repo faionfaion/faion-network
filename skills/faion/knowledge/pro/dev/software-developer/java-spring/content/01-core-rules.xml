@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spring Boot Layered Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Five testable rules for layered Spring Boot 3.x REST APIs.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="thin-controller" testable="true" depth="essential">
+      <statement>Controllers MUST accept HTTP requests, call exactly one service method, and return responses. `@Transactional`, repository access, business logic, or multi-service orchestration in a controller is forbidden.</statement>
+      <rationale source="Spring Boot layered architecture guide">Thin controllers make tests fast (`@WebMvcTest` + mock service) and prevent layer bleed.</rationale>
     </rule>
+
+    <rule id="transactional-on-service-only" testable="true" depth="essential">
+      <statement>`@Transactional` (or `@Transactional(readOnly=true)`) MUST live on `@Service` methods (or the class). It MUST NOT appear on controllers, repositories, or private methods.</statement>
+      <rationale source="Spring transaction docs">Transactions on controllers tie HTTP lifecycle to DB lifecycle (open-in-view all over again); private methods are bypassed by the proxy mechanism.</rationale>
+    </rule>
+
+    <rule id="record-dtos-with-validation" testable="true" depth="essential">
+      <statement>DTOs MUST be Java `record` (Java 17+). Request records carry Bean Validation annotations (`@NotNull`, `@Size`, `@Email`). Service public methods MUST accept/return DTOs, never JPA entities. MapStruct mappers handle entity↔DTO conversion.</statement>
+      <rationale source="Java 17 records spec + Bean Validation 3.x docs">Records give value semantics + immutability for free; validating at the boundary keeps domain logic clean.</rationale>
+    </rule>
+
+    <rule id="pageable-list-endpoints" testable="true" depth="essential">
+      <statement>List endpoints MUST accept `org.springframework.data.domain.Pageable` and return `Page&lt;T&gt;` (or `Slice&lt;T&gt;`). Bare `List&lt;T&gt; findAll()` exposed via a controller is forbidden.</statement>
+      <rationale source="Spring Data docs">Unpaged endpoints risk OOM under data growth; `Pageable` propagates sort + page metadata to clients.</rationale>
+    </rule>
+
+    <rule id="async-via-named-executor" testable="true" depth="essential">
+      <statement>`@Async` MUST live in a separate Spring bean from the caller (no self-invocation). The async method MUST specify an executor name (`@Async("emailExecutor")`) backed by a named `ThreadPoolTaskExecutor` bean with explicit core/max pool size + queue capacity.</statement>
+      <rationale source="Spring Async docs + observed self-invocation antipattern">Self-invocation skips the proxy and runs synchronously; default `SimpleAsyncTaskExecutor` spawns unbounded threads.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

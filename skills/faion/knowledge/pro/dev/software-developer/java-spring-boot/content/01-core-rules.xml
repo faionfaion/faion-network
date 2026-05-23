@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring-boot Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring-boot. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spring Boot Layered Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for a layered Spring Boot service. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="service-layer-transactions" testable="true" depth="essential">
+      <statement>Every database-modifying operation MUST run inside a `@Transactional` annotated public method on a @Service bean. Controllers MUST NOT carry `@Transactional`.</statement>
+      <rationale source="Spring Framework reference — transaction management">Service-layer @Transactional defines the transactional unit-of-work boundary; controller-level @Transactional leaks HTTP details into persistence concerns.</rationale>
     </rule>
+    <rule id="constructor-injection-only" testable="true" depth="essential">
+      <statement>Dependencies MUST be injected via constructor (final fields). Field injection (`@Autowired` on a field) is forbidden.</statement>
+      <rationale source="Spring Framework reference — IoC container">Constructor injection enables immutability, testability without Spring container, and makes circular dependencies visible at startup.</rationale>
+    </rule>
+    <rule id="dto-not-entity" testable="true" depth="essential">
+      <statement>Controller request/response payloads MUST be DTO/record types. JPA `@Entity` classes MUST NOT cross the controller boundary.</statement>
+      <rationale source="Spring Data JPA reference">Entities trigger lazy-load exceptions and N+1 issues when serialized; DTOs decouple API contract from schema evolution.</rationale>
+    </rule>
+    <rule id="validation-on-controller" testable="true" depth="essential">
+      <statement>Controller methods accepting request bodies MUST annotate `@Valid` and the DTO MUST use Jakarta Bean Validation annotations (@NotNull, @Size, @Email).</statement>
+      <rationale source="Jakarta Bean Validation 3.0 spec">Pushing validation to a `@ControllerAdvice` ProblemDetail handler gives consistent 400 responses without leaking into service logic.</rationale>
+    </rule>
+    <rule id="actuator-health-required" testable="true" depth="essential">
+      <statement>Every Spring Boot service MUST expose `/actuator/health` (liveness + readiness) and `/actuator/prometheus`. Sensitive endpoints MUST be secured.</statement>
+      <rationale source="Spring Boot Actuator reference">Kubernetes probes + Prometheus scrape are required for SLO measurement; unsecured actuator endpoints leak heap dump / env / beans.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

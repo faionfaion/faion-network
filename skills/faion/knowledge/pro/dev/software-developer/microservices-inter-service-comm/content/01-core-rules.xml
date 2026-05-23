@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="microservices-inter-service-comm Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for microservices-inter-service-comm. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Microservices Inter-Service Communication Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for picking inter-service communication style per call.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every synchronous service client MUST set an explicit timeout (e.g. httpx timeout=10.0). Clients without a timeout wait indefinitely and exhaust connection pools.</statement>
-      <rationale source="v1-source">Default "wait forever" behaviour means a slow dependency stalls all callers and exhausts the thread/connection pool under load.</rationale>
+
+    <rule id="sync-only-if-can-wait" testable="true" depth="essential">
+      <statement>A call MUST be sync (REST/gRPC) only if the caller's response depends on the result AND p99 latency budget exceeds downstream p99 latency by 3x.</statement>
+      <rationale source="Microservices Patterns (Richardson)">Sync calls couple caller availability to downstream availability; without a budget margin, one slow downstream blocks the user response.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every event class MUST carry schema_version, occurred_at, and aggregate_id. Events without these fields cannot be versioned, replayed, or debugged across service boundaries.</statement>
-      <rationale source="v1-source">Schema version enables consumers to handle breaking changes gracefully. occurred_at enables ordering and deduplication. aggregate_id enables correlation across the event log.</rationale>
+    <rule id="grpc-when-internal-typed" testable="true" depth="essential">
+      <statement>Service-to-service internal calls with high call volume + strict typing requirements MUST use gRPC (HTTP/2 + protobuf). REST MUST be used at the public/edge boundary.</statement>
+      <rationale source="gRPC reference; AWS prescriptive guidance">gRPC's protobuf gives compile-time type safety + smaller wire size; REST's loose JSON is appropriate for public APIs that change shape.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Service addresses MUST be resolved via a registry (Consul, Kubernetes DNS, ECS Service Connect) or environment-injected config, never hardcoded strings like http://order-service:8000.</statement>
-      <rationale source="v1-source">Hardcoded addresses prevent independent scaling, blue/green deployment, and service relocation. They also create a hidden dependency that fails silently when the target moves.</rationale>
+    <rule id="async-for-event-fanout" testable="true" depth="essential">
+      <statement>Notifications/events that &gt;1 downstream consumes MUST be published to a message broker (Kafka / SNS+SQS / RabbitMQ topic), not point-to-point HTTP.</statement>
+      <rationale source="Enterprise Integration Patterns (Hohpe)">Adding consumers to a topic is O(1) config; adding HTTP fan-out targets requires modifying the producer.</rationale>
     </rule>
+    <rule id="schema-registry-required" testable="true" depth="essential">
+      <statement>Every cross-service contract MUST live in a schema registry (protobuf for gRPC, OpenAPI for REST, Avro/JSON Schema for messages). Inline schemas in code are forbidden.</statement>
+      <rationale source="Confluent Schema Registry docs; OpenAPI spec">Without a registry, breaking changes ship undetected; consumer compatibility is impossible to verify.</rationale>
+    </rule>
+    <rule id="idempotency-key-on-writes" testable="true" depth="essential">
+      <statement>Every cross-service write call MUST accept an `Idempotency-Key` header (REST) or `idempotency_key` field (gRPC/messages). Server MUST de-duplicate replays.</statement>
+      <rationale source="Stripe API design; Microservices Patterns">Sync calls retry on transient failure; async messages may be redelivered. Without idempotency the caller cannot safely retry.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

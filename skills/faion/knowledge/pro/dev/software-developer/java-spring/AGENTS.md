@@ -3,72 +3,100 @@ slug: java-spring
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Spring Boot 3.
-content_id: "8a0a8ae87e66df63"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spring Boot 3.x layered architecture — thin @RestController → @Transactional @Service → narrow repository; record DTOs + Bean Validation; @Async via named executor; MapStruct DTOs.
+content_id: "307b348c7edc8303"
+complexity: medium
+produces: code
+est_tokens: 4400
 tags: [spring-boot, java, rest-api, layered-architecture, jpa]
 ---
 # Java Spring (Layered Architecture)
 
 ## Summary
 
-**One-sentence:** Spring Boot 3.
+**One-sentence:** Spring Boot 3.x layered architecture — thin @RestController → @Transactional @Service → narrow repository; record DTOs + Bean Validation; @Async via named executor; MapStruct DTOs.
 
-**One-paragraph:** Spring Boot 3.x layered architecture for REST APIs: @RestController → @Service → JpaRepository with Pageable, @Async with named executor beans, MapStruct DTO mapping, Bean Validation, and slice tests (@WebMvcTest, @DataJpaTest). Covers both the MVC/JPA stack and Spring Async patterns.
+**One-paragraph:** Spring Boot misuse — `@Transactional` on controllers, services returning JPA entities, `findAll()` without `Pageable`, `@Async` invoked via `this.foo()` (self-invocation), custom error envelopes — produces hard-to-reason-about apps. This methodology pins five rules: controllers are thin (no `@Transactional`, no repo access, no business logic); services own `@Transactional` boundaries; DTOs are records with Bean Validation; list endpoints accept `Pageable` and return `Page<T>`; `@Async` lives in a separate bean with a named executor. Output: layered feature spec (Controller + Service + DTOs + AsyncConfig) conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Spring Boot 3.x REST APIs with non-trivial domain.
+- Async workflows (`@Async`) needing named, sized executors.
+- DTO mapping via MapStruct with Lombok ordering pinned.
+- Bean Validation + RFC 7807 `ProblemDetail` error model.
+- Pageable list endpoints with deterministic ordering.
 
 ## Applies If (ALL must hold)
 
-- Greenfield REST APIs in Spring Boot 3.x, Java 17+, using JPA/Hibernate and constructor injection.
-- Adding async work via @Async with named ThreadPoolTaskExecutor beans per workload.
-- Migration from Spring Boot 2.x / Java EE — the patterns translate cleanly.
-- Full vertical slices: entity, repo, service, controller, mapper, DTOs, tests, Flyway migration in one diff.
+- Spring Boot 3.x + Java 17+ project.
+- Layered architecture (Controller/Service/Repository) is the chosen style.
+- MapStruct + Lombok are accepted in the build.
+- The team agrees no `@Transactional` outside services.
 
 ## Skip If (ANY kills it)
 
-- Reactive workloads — Spring WebFlux + R2DBC; servlet patterns deadlock in reactive context.
-- Lightweight microservices where JVM boot time / memory footprint hurts — Quarkus, Micronaut.
-- Functions/FaaS — cold start; use GraalVM native image with explicit config.
-- CQRS/event-sourced systems — service+JPA pattern fights write/read separation.
+- Reactive stack (WebFlux) — different patterns; apply WebFlux methodology.
+- Plain SE / non-Spring app — apply the relevant framework's methodology.
+- Single-package CRUD with no domain — Active Record is enough.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec | Markdown | spec |
+| Existing service layout | Maven/Gradle module | repo |
+| Bean Validation rules | spec | spec |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[java-jpa-hibernate]] | Repository + transactional service patterns this layer consumes. |
+| [[java-junit-testing]] | Test conventions for the layered tests. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: thin-controller, transactional-on-service-only, record-dtos-with-validation, pageable-list-endpoints, async-via-named-executor | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for layered feature spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: transactional-on-controller, async-self-invocation, service-returns-entity, custom-error-envelope | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on layer + concern → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-feature-package` | sonnet | Layered judgment. |
+| `write-controller-service` | sonnet | Scaffolding within rules. |
+| `wire-async-executor` | sonnet | Named bean + properties. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Controller.java` | Thin @RestController skeleton |
+| `templates/Service.java` | @Transactional service skeleton |
+| `templates/AsyncConfig.java` | Named ThreadPoolTaskExecutor + @Async |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-java-spring.py` | Validate layered feature spec | Pre-commit on spec artefact |
 
 ## Related
 
+- [[java-jpa-hibernate]]
+- [[java-junit-testing]]
+- [[csharp-dotnet]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (layer, async need, error contract) to a rule from `01-core-rules.xml`. Use it whenever adding a new feature to a Spring Boot app.

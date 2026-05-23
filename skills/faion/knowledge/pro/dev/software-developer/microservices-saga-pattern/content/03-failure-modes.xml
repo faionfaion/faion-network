@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="microservices-saga-pattern Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for microservices-saga-pattern as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Saga Pattern for Distributed Transactions Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real saga implementations.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="partial-compensation" severity="high">
+      <symptom>Order is cancelled but card not refunded; customer escalates; manual reconciliation required weekly.</symptom>
+      <root-cause source="Sagas (Garcia-Molina &amp; Salem)">Step 3 failed mid-saga; compensations 1+2 not triggered.</root-cause>
+      <fix>Add reverse-order compensation policy in orchestrator; ensure each step's compensation is idempotent + retry-safe.</fix>
+    </antipattern>
+
+    <antipattern id="dual-write-loss" severity="high">
+      <symptom>DB shows order created; downstream service never received OrderCreated event; customer sees stuck order.</symptom>
+      <root-cause source="Microservices Patterns — Transactional Outbox">Service does `db.save(order); kafka.publish(event)` without outbox; kafka publish failed silently after DB commit.</root-cause>
+      <fix>Insert event into transactional outbox table in same DB transaction; Debezium CDC publishes to Kafka asynchronously.</fix>
+    </antipattern>
+
+    <antipattern id="non-idempotent-comp" severity="high">
+      <symptom>Refund processed twice; customer credited twice; finance team alerts.</symptom>
+      <root-cause source="Microservices Patterns (Richardson)">Compensation retries on transient failure; not idempotent.</root-cause>
+      <fix>Add idempotency_key=(saga_id, step_id) on each compensation call; downstream dedups.</fix>
+    </antipattern>
+
+    <antipattern id="choreography-cycle" severity="high">
+      <symptom>Adding 5th service to choreography saga: nobody knows the full sequence; latency mystery.</symptom>
+      <root-cause source="Microservices Patterns (Richardson)">Choreography hides the saga; flow is implicit in event subscriptions.</root-cause>
+      <fix>If saga has &gt;4 steps OR business analyst needs to trace the flow, switch to orchestration (Temporal/Camunda) — saga becomes a visible state machine.</fix>
+    </antipattern>
+
   </section>
 </text>

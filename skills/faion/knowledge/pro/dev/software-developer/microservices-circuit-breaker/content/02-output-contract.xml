@@ -1,22 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="microservices-circuit-breaker Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Microservices Circuit Breaker Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing one circuit-breaker configuration artefact for one downstream call.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/microservices-circuit-breaker.json",
+  "type": "object",
+  "required": [
+    "breaker_name",
+    "downstream",
+    "failure_rate_threshold",
+    "sliding_window_size",
+    "wait_duration_open_ms",
+    "fallback_present"
+  ],
+  "properties": {
+    "breaker_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "downstream": {
+      "type": "string",
+      "minLength": 1
+    },
+    "failure_rate_threshold": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "sliding_window_size": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "minimum_number_of_calls": {
+      "type": "integer",
+      "minimum": 5
+    },
+    "slow_call_rate_threshold": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "slow_call_duration_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "wait_duration_open_ms": {
+      "type": "integer",
+      "minimum": 1000
+    },
+    "fallback_present": {
+      "type": "boolean",
+      "const": true
+    },
+    "shares_breaker_with_others": {
+      "type": "boolean",
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "breaker_name": "payment-gateway",
+  "downstream": "POST /v1/charges",
+  "failure_rate_threshold": 50,
+  "sliding_window_size": 50,
+  "minimum_number_of_calls": 10,
+  "slow_call_rate_threshold": 80,
+  "slow_call_duration_ms": 2000,
+  "wait_duration_open_ms": 10000,
+  "fallback_present": true,
+  "shares_breaker_with_others": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "breaker_name": "shared",
+  "downstream": "multiple",
+  "failure_rate_threshold": 50,
+  "sliding_window_size": 50,
+  "minimum_number_of_calls": 10,
+  "slow_call_rate_threshold": 80,
+  "slow_call_duration_ms": 2000,
+  "wait_duration_open_ms": 500,
+  "fallback_present": false,
+  "shares_breaker_with_others": true
+}
+]]></code>
+    <note>Shared breaker across downstreams; no fallback; wait_duration_open_ms too low (will flap).</note>
+  </example>
+  <forbidden>
+      <pattern id="shared-breaker">One breaker wrapping calls to &gt;1 downstream service.</pattern>
+      <pattern id="default-thresholds">No explicit failureRateThreshold / slidingWindowSize set; using library defaults.</pattern>
+      <pattern id="retry-around-breaker">Retry loop wrapping a breaker call (instead of inside).</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-microservices-circuit-breaker.py">Validator script</reference>
 </text>

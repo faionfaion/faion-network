@@ -1,42 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring-async Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring-async as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Async Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Spring Boot deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Self-invocation: calling this.asyncMethod() inside the same @Service class.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spring's @Async proxy is not engaged for internal method calls. The method runs synchronously on the caller's thread with no pooling, no error routing, no context propagation. The bug is silent — no exception is thrown, the method just blocks.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Bare @Async without a named executor: @Async with no argument or @Async("").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Falls back to SimpleAsyncTaskExecutor, which creates a new OS thread per invocation. Under sustained load, thread count grows without bound until the JVM or OS kills the process. No backpressure, no metrics, no pool reuse.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>void-returning @Async method with no AsyncUncaughtExceptionHandler registered in AsyncConfig.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Exceptions thrown by void @Async methods are silently discarded. Failures (email send errors, webhook rejections) produce no log, no metric, no alert. Operators have no visibility.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>@Transactional and @Async on the same method, expecting the caller's transaction to propagate.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The async thread is a different OS thread. Spring cannot propagate a JDBC connection (bound to a ThreadLocal) across threads. The async method reads uncommitted data or opens its own unrelated transaction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>ThreadPoolTaskExecutor without setWaitForTasksToCompleteOnShutdown(true).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>On JVM shutdown (during deploys), in-flight async tasks are killed immediately. Email sends, webhook deliveries, and audit log writes are silently dropped. Durable work must use a queue, but at minimum the shutdown hook must drain the in-flight pool.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Thread.sleep() in tests waiting for async completion.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Produces flaky tests: too short on slow CI, too long on fast hardware. Use Awaitility's await().atMost().untilAsserted() which polls until the condition is met or times out.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Using @Async for work that requires durability: charging cards, sending invoices, triggering external state transitions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>@Async tasks live in JVM memory. A JVM restart (crash, OOM, deploy) permanently loses in-flight tasks. Durable work requires a persistent queue (SQS, RabbitMQ, Kafka) with at-least-once delivery.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="self-invocation" severity="high">
+      <symptom>Method annotated @Async appears to run synchronously; thread name matches caller; logs show no executor activity.</symptom>
+      <root-cause source="Spring Framework reference — AOP proxies">Caller calls `this.asyncMethod()` inside the same @Service class; proxy interception skipped.</root-cause>
+      <fix>Extract the async method to a dedicated @Service bean (e.g., AsyncEmailService); inject and call from the original class.</fix>
+    </antipattern>
+
+    <antipattern id="bare-async-executor" severity="high">
+      <symptom>Production thread count grows without bound; eventually JVM/OS thread limit hit; OOM-killer or RejectedExecutionException.</symptom>
+      <root-cause source="Spring Framework reference — task execution">@Async with no argument falls back to SimpleAsyncTaskExecutor — new OS thread per invocation.</root-cause>
+      <fix>Define a named ThreadPoolTaskExecutor bean with bounded pool + queue; reference by name in every @Async.</fix>
+    </antipattern>
+
+    <antipattern id="void-no-handler" severity="medium">
+      <symptom>Background tasks silently fail; no error metric, no log, customer sees missing email.</symptom>
+      <root-cause source="Spring Framework reference — async exception handling">void-returning @Async with no AsyncUncaughtExceptionHandler — exception path silenced.</root-cause>
+      <fix>Return CompletableFuture&lt;Void&gt; + log .exceptionally OR register AsyncUncaughtExceptionHandler that logs + increments Micrometer counter.</fix>
+    </antipattern>
+
+    <antipattern id="async-tx-combo" severity="high">
+      <symptom>Async method reads uncommitted data; intermittent ObjectOptimisticLockingFailureException; data inconsistency.</symptom>
+      <root-cause source="Spring Framework reference — transactional propagation">@Async + @Transactional on the same method — the async thread has no JDBC connection from the caller's tx.</root-cause>
+      <fix>Remove @Transactional from the async method; either caller commits before scheduling async, or async opens its own tx.</fix>
+    </antipattern>
+
+    <antipattern id="shutdown-loss" severity="medium">
+      <symptom>Deploys drop emails / webhook deliveries; tail of audit log is missing.</symptom>
+      <root-cause source="Spring Framework reference — graceful shutdown">ThreadPoolTaskExecutor lacks setWaitForTasksToCompleteOnShutdown(true) — pool killed immediately on SIGTERM.</root-cause>
+      <fix>Set setWaitForTasksToCompleteOnShutdown(true) + setAwaitTerminationSeconds(60); for durability, route to a queue.</fix>
+    </antipattern>
+
   </section>
 </text>

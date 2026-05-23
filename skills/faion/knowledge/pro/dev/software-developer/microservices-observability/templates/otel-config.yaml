@@ -1,0 +1,46 @@
+# purpose: OpenTelemetry Collector config: receivers + processors + exporters
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~350 tokens when loaded as context
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  attributes:
+    actions:
+      - key: http.user.email
+        action: hash
+      - key: http.user.phone
+        action: delete
+      - key: network.peer.address
+        action: update
+        value: "redacted"
+
+exporters:
+  otlphttp:
+    endpoint: https://tempo.example.com:4318
+    headers:
+      Authorization: "Bearer ${OTEL_TOKEN}"
+  prometheus:
+    endpoint: 0.0.0.0:9464
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes, batch]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

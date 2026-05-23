@@ -1,66 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Fork vs Fix — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `FixDecision` record per bug-blocking-upstream-library event.</summary>
+<text id="02-output-contract" title="Fork vs Fix — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a `FixDecision` record per bug-blocking-upstream-library event.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`decision_id` — UUID</item>
-      <item>`library` — object {name, ecosystem, current_version, bug_summary, repro_link}</item>
-      <item>`axes` — array of 5 `{name ∈ {urgency, blast, patch_size, upstream_responsiveness, strategic_dependency}, score 0-3, evidence}`</item>
-      <item>`total_score` — integer 0-15</item>
-      <item>`action` — enum {workaround, monkey_patch, upstream_pr, fork_pin, replace}</item>
-      <item>`action_playbook_url` — string</item>
-      <item>`strategic_override_applied` — boolean</item>
-      <item>`ban_list_blocked` — boolean (when monkey_patch was blocked by r5)</item>
-      <item>`sunset_criterion` — string (required for fork_pin)</item>
-      <item>`rollback_plan` — string</item>
-      <item>`decided_by` — engineer identifier</item>
-      <item>`decided_at` — ISO-8601</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/fork-vs-fix-decision-rule.json",
+  "type": "object",
+  "required": ["decision_id", "library", "axes", "total_score", "action", "strategic_override_applied", "ban_list_blocked", "rollback_plan"],
+  "properties": {
+    "decision_id": {"type": "string", "format": "uuid"},
+    "library": {
+      "type": "object",
+      "required": ["name", "ecosystem", "current_version", "bug_summary", "repro_link"],
+      "properties": {
+        "name": {"type": "string"},
+        "ecosystem": {"enum": ["npm", "pypi", "maven", "nuget", "go", "cargo", "rubygems", "other"]},
+        "current_version": {"type": "string"},
+        "bug_summary": {"type": "string", "minLength": 10},
+        "repro_link": {"type": "string", "format": "uri"}
+      }
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"type": "object", "required": ["name", "score"],
+        "properties": {
+          "name": {"enum": ["urgency", "blast", "patch_size", "upstream_responsiveness", "strategic_dependency"]},
+          "score": {"type": "integer", "minimum": 0, "maximum": 3},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "total_score": {"type": "integer", "minimum": 0, "maximum": 15},
+    "action": {"enum": ["workaround", "monkey_patch", "upstream_pr", "fork_pin", "replace"]},
+    "action_playbook_url": {"type": "string"},
+    "strategic_override_applied": {"type": "boolean"},
+    "ban_list_blocked": {"type": "boolean"},
+    "sunset_criterion": {"type": "string"},
+    "rollback_plan": {"type": "string", "minLength": 10},
+    "decided_by": {"type": "string"},
+    "decided_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "9b6c0a4e-3a44-4f3a-8a9d-1f0e1234ffff",
+  "library": {"name": "n8n", "ecosystem": "npm", "current_version": "1.42.0", "bug_summary": "custom node loader does not support python-via-child_process", "repro_link": "https://github.com/faionfaion/n8n/issues/1"},
+  "axes": [
+    {"name": "urgency", "score": 2, "evidence": "days, not hours"},
+    {"name": "blast", "score": 3, "evidence": "blocks entire product line"},
+    {"name": "patch_size", "score": 2, "evidence": "~40 LOC across 3 files"},
+    {"name": "upstream_responsiveness", "score": 2, "evidence": "median merge: 3 weeks; mixed"},
+    {"name": "strategic_dependency", "score": 3, "evidence": "n8n core forever for the automation product"}
+  ],
+  "total_score": 12,
+  "action": "fork_pin",
+  "action_playbook_url": "decisions/2026-05-23-n8n-fork.md",
+  "strategic_override_applied": true,
+  "ban_list_blocked": false,
+  "sunset_criterion": "when our upstream PR merges OR by 2027-Q1",
+  "rollback_plan": "drop the fork pin in package.json; revert to public n8n with workaround for python loader",
+  "decided_by": "ruslan@faion.net",
+  "decided_at": "2026-05-23T14:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "x",
+  "library": {"name": "next-auth", "ecosystem": "npm", "current_version": "5.0.0", "bug_summary": "tok exp 30s off", "repro_link": "n/a"},
+  "axes": [{"name": "urgency", "score": 5}],
+  "total_score": 4,
+  "action": "monkey_patch",
+  "strategic_override_applied": false,
+  "ban_list_blocked": false,
+  "rollback_plan": ""
+}
+]]></code>
+    <note>decision_id not UUID; only 1 axis; axis score out of range; security lib monkey-patched (ban-list violation); empty rollback plan.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
       <description>`action: fork_pin` AND `sunset_criterion` empty.</description>
-      <reason>Violates r4 fork hygiene.</reason>
+      <reason>Violates r4 fork-hygiene rule.</reason>
     </antipattern>
     <antipattern>
-      <description>`action: monkey_patch` AND library in security-critical / framework-core ban list.</description>
-      <reason>Violates r5.</reason>
+      <description>`action: monkey_patch` AND library on security-critical / framework-core ban list.</description>
+      <reason>Violates r5 monkey-patch-ban-list rule.</reason>
     </antipattern>
     <antipattern>
       <description>`axes.strategic_dependency.score == 3` AND `action ∈ {workaround, monkey_patch}`.</description>
-      <reason>Violates r3 strategic override.</reason>
+      <reason>Violates r3 strategic-override rule.</reason>
     </antipattern>
     <antipattern>
       <description>`total_score != sum(axes[*].score)`.</description>
       <reason>Arithmetic inconsistency.</reason>
     </antipattern>
     <antipattern>
-      <description>`action` does not match band per r2.</description>
+      <description>`action` does not match band per r2 (e.g., total_score=12 with action=monkey_patch).</description>
       <reason>Decision must follow the rule; deviations require an explicit override field with justification.</reason>
     </antipattern>
   </section>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Render decision as Markdown ADR alongside JSON for the repo's `decisions/` folder.</item>
-      <item>Encrypt evidence URLs if they reference private repros.</item>
-      <item>Aggregate by library across quarter for fork-audit dashboards.</item>
-    </list>
-  </section>
-
-  <reference path="templates/fix-decision.json">FixDecision JSON Schema.</reference>
+  <reference path="scripts/validate-fork-vs-fix-decision-rule.py">Validator script</reference>
+  <reference path="templates/fix-decision.json">FixDecision seed</reference>
   <reference path="templates/fork-pin-playbook.md">Fork-pin step-by-step.</reference>
   <reference path="templates/upstream-pr-template.md">Upstream PR description.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>5 axes scored with evidence.</item>
-      <item>Action matches band OR override justified.</item>
-      <item>Strategic override + ban list applied.</item>
-      <item>Fork sunset criterion present for fork_pin.</item>
-      <item>Rollback plan defined.</item>
-    </list>
-  </section>
 </text>
