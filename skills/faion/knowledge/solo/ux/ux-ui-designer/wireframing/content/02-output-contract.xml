@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="wireframing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Wireframing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid wireframe artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/wireframing.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "screens", "open_questions"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "variants", "annotations", "states", "mobile_notes"],
+        "properties": {
+          "name": {"type": "string"},
+          "variants": {"type": "array", "minItems": 3, "items": {"type": "string"}},
+          "annotations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["element", "behaviour", "conditional_states", "tech_requirement"],
+              "properties": {
+                "element": {"type": "string"},
+                "behaviour": {"type": "string"},
+                "conditional_states": {"type": "array", "items": {"type": "string"}},
+                "tech_requirement": {"type": "string"}
+              }
+            }
+          },
+          "states": {
+            "type": "object",
+            "required": ["default", "empty", "loading", "error", "success"],
+            "properties": {
+              "default": {"type": "string"},
+              "empty": {"type": "string"},
+              "loading": {"type": "string"},
+              "error": {"type": "string"},
+              "success": {"type": "string"},
+              "permission_gated": {"type": "string"}
+            }
+          },
+          "mobile_notes": {"type": "string"}
+        }
+      }
+    },
+    "open_questions": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "wireframe-checkout-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "screens": [{
+    "name": "checkout-review",
+    "variants": ["single-column stack", "two-column with sticky summary", "accordion sections"],
+    "annotations": [{"element": "pay-now button", "behaviour": "submit order; disable on click", "conditional_states": ["loading", "disabled-if-invalid"], "tech_requirement": "POST /orders; 3-state idempotent"}],
+    "states": {"default": "items + price summary visible", "empty": "redirect to /cart if empty", "loading": "skeleton review block", "error": "inline error above CTA", "success": "navigate to /confirmation"},
+    "mobile_notes": "Stack variants only at &lt; 600px; sticky bar holds CTA."
+  }],
+  "open_questions": ["Should taxes appear before or after shipping in the summary?"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "screens": [{"name": "x", "variants": ["one"], "annotations": [], "states": {"default": "a"}, "mobile_notes": ""}],
+  "open_questions": []
+}
+]]></code>
+    <note>Owner plural; variants below minItems 3; annotations empty; states missing required; mobile_notes empty; no open_questions.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="single-variant">Screen with `variants` length &lt; 3.</pattern>
+    <pattern id="missing-states">Screen with `states` missing any of default / empty / loading / error / success.</pattern>
+    <pattern id="empty-open-questions">Artefact with empty `open_questions` array.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-wireframing.py">Stdlib-only validator implementing this schema.</reference>
 </text>

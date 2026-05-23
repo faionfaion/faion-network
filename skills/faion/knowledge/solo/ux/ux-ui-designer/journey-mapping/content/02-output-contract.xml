@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="journey-mapping Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Journey Mapping Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid journey-map artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/journey-mapping.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "map_type", "persona", "scope", "stages"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "map_type": {"type": "string", "enum": ["current_state", "future_state", "day_in_life", "service_blueprint"]},
+    "persona": {"type": "string", "minLength": 3},
+    "scope": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "string"},
+        "end": {"type": "string"}
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["name", "actions", "touchpoints", "thoughts", "emotions", "pain_points", "opportunities"],
+        "properties": {
+          "name": {"type": "string"},
+          "actions": {"type": "array", "items": {"type": "object", "required": ["text", "evidence"], "properties": {"text": {"type": "string"}, "evidence": {"type": "string"}}}},
+          "touchpoints": {"type": "array", "items": {"type": "object", "required": ["text", "evidence"]}},
+          "thoughts": {"type": "array", "items": {"type": "object", "required": ["text", "evidence"]}},
+          "emotions": {"type": "object", "required": ["score", "label", "evidence"], "properties": {"score": {"type": "integer", "minimum": 1, "maximum": 5}, "label": {"type": "string"}, "evidence": {"type": "string"}}},
+          "pain_points": {"type": "array", "items": {"type": "object", "required": ["text", "evidence"]}},
+          "opportunities": {"type": "array", "items": {"type": "object", "required": ["text", "linked_backlog_id"]}}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "journey-shop-purchase-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "map_type": "current_state",
+  "persona": "Sarah, mid-market buyer",
+  "scope": {"start": "first ad impression", "end": "first product use"},
+  "stages": [
+    {
+      "name": "Discover",
+      "actions": [{"text": "Sees ad on Instagram", "evidence": "INT-04"}],
+      "touchpoints": [{"text": "Instagram", "evidence": "ANL-funnel-2026-05"}],
+      "thoughts": [{"text": "Is this for me?", "evidence": "INT-04"}],
+      "emotions": {"score": 3, "label": "curious", "evidence": "INT-04"},
+      "pain_points": [{"text": "no data", "evidence": "no data"}],
+      "opportunities": [{"text": "Tighten ad targeting", "linked_backlog_id": "BL-211"}]
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "the team",
+  "persona": "general user",
+  "map_type": "best_guess",
+  "scope": {"start": "somewhere"},
+  "stages": [{"name": "stuff"}]
+}
+]]></code>
+    <note>Owner plural; map_type not in enum; scope missing end; stages missing required components; below minItems.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="ungrounded-cell">Map cell with prose but no `evidence` field and not literal "no data".</pattern>
+    <pattern id="company-pipeline-stages">Stage names from CRM pipeline ("Lead", "Opportunity", "Closed") instead of user perspective.</pattern>
+    <pattern id="future-state-unmarked">`map_type == "future_state"` without explicit "Design Hypothesis" disclaimer in artefact header or scope.</pattern>
+    <pattern id="combined-personas">Multiple personas combined in one map.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-journey-mapping.py">Stdlib-only validator implementing this schema.</reference>
 </text>

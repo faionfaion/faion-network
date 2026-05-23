@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="user-control-freedom Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="User Control and Freedom Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid control-audit artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/user-control-freedom.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "actions", "focus_trap_verified"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "focus_trap_verified": {"type": "boolean"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["screen", "action", "reversibility", "undo_available", "cancel_available", "exit_mechanism", "recovery_method", "severity", "fix_direction"],
+        "properties": {
+          "screen": {"type": "string"},
+          "action": {"type": "string"},
+          "reversibility": {"type": "string", "enum": ["reversible", "soft-reversible", "irreversible"]},
+          "undo_available": {"type": "boolean"},
+          "cancel_available": {"type": "boolean"},
+          "exit_mechanism": {"type": "array", "items": {"type": "string", "enum": ["x-button", "escape-key", "click-outside", "back-button", "none"]}},
+          "recovery_method": {"type": "string"},
+          "severity": {"type": "integer", "minimum": 0, "maximum": 3},
+          "fix_direction": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "control-audit-settings-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "focus_trap_verified": true,
+  "actions": [
+    {
+      "screen": "/settings/account",
+      "action": "delete-account",
+      "reversibility": "irreversible",
+      "undo_available": false,
+      "cancel_available": true,
+      "exit_mechanism": ["x-button", "escape-key", "click-outside"],
+      "recovery_method": "support contact within 30 days",
+      "severity": 0,
+      "fix_direction": "OK (irreversible + confirmation + 30-day recovery)"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "we",
+  "focus_trap_verified": false,
+  "actions": [{"screen": "/x", "action": "delete-forever", "reversibility": "irreversible", "undo_available": false, "cancel_available": false, "exit_mechanism": ["none"], "recovery_method": "", "severity": 0, "fix_direction": "fine"}]
+}
+]]></code>
+    <note>Owner plural; focus_trap_verified=false but artefact still produced; irreversible-no-undo with severity 0 (must be 1).</note>
+  </example>
+
+  <forbidden>
+    <pattern id="irreversible-no-undo-no-confirm">An entry with `reversibility=irreversible` AND `undo_available=false` AND `cancel_available=false` MUST have severity 1.</pattern>
+    <pattern id="modal-missing-exit">A modal action with fewer than 3 entries in `exit_mechanism` (excluding "none").</pattern>
+    <pattern id="confirm-on-routine">A reversible routine action with "confirmation" recovery_method (confirmation fatigue).</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-user-control-freedom.py">Stdlib-only validator implementing this schema.</reference>
 </text>

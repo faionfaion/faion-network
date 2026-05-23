@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: scaffold a minimal HTML click-through prototype repo
+# consumes: feature-name + screen count
+# produces: directory ready for clickable-fidelity testing
+# depends-on: templates/prototype-plan.md (in_scope flows)
+# token-budget-impact: external tool; no LLM token cost
+#
 # scaffold-prototype.sh — create a minimal HTML click-through prototype
 # Usage: bash scaffold-prototype.sh <feature-name> <num-screens>
 # Example: bash scaffold-prototype.sh checkout 5

@@ -1,22 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="usability-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Usability Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid usability-test artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/usability-testing.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "scope", "segments", "tasks", "findings"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "scope": {"type": "string"},
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "n"],
+        "properties": {"name": {"type": "string"}, "n": {"type": "integer", "minimum": 0}}
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["scenario", "success_criterion"],
+        "properties": {"scenario": {"type": "string"}, "success_criterion": {"type": "string"}}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["observation", "inference", "task_ref", "participants_blocked", "participants_observed", "severity", "human_reviewed"],
+        "properties": {
+          "observation": {"type": "string"},
+          "inference": {"type": "string"},
+          "task_ref": {"type": "string"},
+          "participants_blocked": {"type": "integer", "minimum": 0},
+          "participants_observed": {"type": "integer", "minimum": 1},
+          "severity": {"type": "integer", "minimum": 1, "maximum": 4},
+          "human_reviewed": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "usab-checkout-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "scope": "Mobile checkout v3 pre-launch validation",
+  "segments": [{"name": "mid-market buyer", "n": 5}, {"name": "first-time buyer", "n": 5}],
+  "tasks": [
+    {"scenario": "You decided to buy a gift card. Get it ready to email to your friend.", "success_criterion": "reaches confirmation"},
+    {"scenario": "You realised your card on file is expired.", "success_criterion": "updates payment method"},
+    {"scenario": "You want a refund for last week's order.", "success_criterion": "submits refund request"}
+  ],
+  "findings": [{
+    "observation": "Participants tap 'Pay' twice when no loading state appears.",
+    "inference": "Missing loading state causes double-submission.",
+    "task_ref": "task-1",
+    "participants_blocked": 4,
+    "participants_observed": 5,
+    "severity": 1,
+    "human_reviewed": true
+  }]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "we",
+  "segments": [{"name": "users", "n": 5}],
+  "tasks": [{"scenario": "Click the blue button"}],
+  "findings": [{"observation": "stuff", "severity": 9}]
+}
+]]></code>
+    <note>Owner plural; task is instruction-based + missing success_criterion; severity out of range; findings missing required.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="instruction-task">Task scenario contains "click X" or "navigate to Y" instead of situation + goal.</pattern>
+    <pattern id="severity1-unreviewed">Finding with severity 1 and `human_reviewed == false`.</pattern>
+    <pattern id="cross-segment-low-n">A segment with `n &lt; 5` carrying findings that reference cross-segment patterns.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-usability-testing.py">Stdlib-only validator implementing this schema.</reference>
 </text>

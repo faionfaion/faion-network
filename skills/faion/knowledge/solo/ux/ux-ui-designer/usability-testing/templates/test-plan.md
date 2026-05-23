@@ -1,3 +1,10 @@
+<!--
+purpose: usability test plan skeleton (scope + segments + tasks + success criteria)
+consumes: feature spec + recruitment pool
+produces: a usability-testing artefact validating against scripts/validate-usability-testing.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # Usability Test Plan: [Product/Feature]
 
 **Version:** [X.X]

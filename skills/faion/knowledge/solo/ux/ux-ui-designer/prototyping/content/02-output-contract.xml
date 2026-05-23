@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="prototyping Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Prototyping Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid prototype-plan artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/prototyping.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "learning_objectives", "fidelity", "in_scope", "out_of_scope", "tasks", "decision_rule"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "learning_objectives": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "fidelity": {"type": "string", "enum": ["paper", "clickable", "high-fi", "code"]},
+    "in_scope": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "out_of_scope": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["item", "reason"], "properties": {"item": {"type": "string"}, "reason": {"type": "string"}}}},
+    "tasks": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["scenario", "goal", "success_criterion", "review_status"],
+        "properties": {
+          "scenario": {"type": "string"},
+          "goal": {"type": "string"},
+          "success_criterion": {"type": "string"},
+          "review_status": {"type": "string", "enum": ["agent-draft", "human-reviewed"]}
+        }
+      }
+    },
+    "decision_rule": {"type": "string"}
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "proto-onboarding-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "learning_objectives": ["Can users complete onboarding without help?", "Which step has highest drop-off?"],
+  "fidelity": "clickable",
+  "in_scope": ["welcome screen", "account creation", "payment"],
+  "out_of_scope": [{"item": "settings page", "reason": "not on critical path"}],
+  "tasks": [
+    {"scenario": "You just downloaded the app. Get to a point where you can start using it.", "goal": "complete onboarding", "success_criterion": "reaches Home tab", "review_status": "human-reviewed"},
+    {"scenario": "You decide to upgrade to paid.", "goal": "upgrade", "success_criterion": "reaches confirmation", "review_status": "human-reviewed"},
+    {"scenario": "You forgot your password mid-onboarding.", "goal": "recover password", "success_criterion": "reaches reset", "review_status": "human-reviewed"}
+  ],
+  "decision_rule": "Move to dev if &gt;=4/5 participants finish unassisted AND no severity-1 finding."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "the team",
+  "fidelity": "shiny",
+  "learning_objectives": [],
+  "tasks": [{"scenario": "click the blue button"}]
+}
+]]></code>
+    <note>Owner plural; fidelity not in enum; objectives empty; task is instruction-based; minItems violated.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="instruction-based-task">Task scenario contains "click X" or "navigate to Y" instead of situation + goal.</pattern>
+    <pattern id="agent-draft-without-review">Any task with `review_status == "agent-draft"` shipped to participants.</pattern>
+    <pattern id="missing-out-of-scope">Empty `out_of_scope` array — out-of-scope items must be named explicitly.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-prototyping.py">Stdlib-only validator implementing this schema.</reference>
 </text>

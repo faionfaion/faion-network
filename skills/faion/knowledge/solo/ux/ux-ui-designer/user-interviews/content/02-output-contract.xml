@@ -1,22 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="user-interviews Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="User Interviews Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid user-interview artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/user-interviews.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "segments", "research_questions", "guide", "insights", "transcripts_sanitised"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "transcripts_sanitised": {"type": "boolean"},
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["name", "n"], "properties": {"name": {"type": "string"}, "n": {"type": "integer", "minimum": 0}}}
+    },
+    "research_questions": {"type": "array", "minItems": 5, "maxItems": 10, "items": {"type": "string"}},
+    "guide": {
+      "type": "object",
+      "required": ["questions", "neutrality_reviewed"],
+      "properties": {
+        "questions": {"type": "array", "items": {"type": "string"}},
+        "neutrality_reviewed": {"type": "boolean"}
+      }
+    },
+    "insights": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["statement", "evidence"],
+        "properties": {
+          "statement": {"type": "string"},
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "object", "required": ["participant_id", "quote"], "properties": {"participant_id": {"type": "string"}, "quote": {"type": "string"}}}
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "interview-onboarding-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "transcripts_sanitised": true,
+  "segments": [{"name": "first-time buyer", "n": 6}],
+  "research_questions": ["What blocks completion?", "Where do users hesitate?", "What language do users use?", "What expectations carry over from competitors?", "Where do users seek help?"],
+  "guide": {"questions": ["Walk me through the last time you tried to onboard a new app.", "What were you trying to accomplish?", "Tell me what you remembered most."], "neutrality_reviewed": true},
+  "insights": [{
+    "statement": "First-time buyers expect a single-screen review before final confirmation.",
+    "evidence": [{"participant_id": "P3", "quote": "I wanted one place to see everything before I press the button."}]
+  }]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "we",
+  "transcripts_sanitised": false,
+  "segments": [{"name": "users", "n": 6}],
+  "research_questions": ["What blocks completion?"],
+  "guide": {"questions": ["Would you click here if it was blue?"], "neutrality_reviewed": false},
+  "insights": [{"statement": "users want it easier"}]
+}
+]]></code>
+    <note>Owner plural; transcripts not sanitised; research_questions below minItems; guide leading + not neutrality reviewed; insight has no evidence.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="insight-without-evidence">Insight whose `evidence` array is empty.</pattern>
+    <pattern id="guide-not-reviewed">Artefact with `guide.neutrality_reviewed == false` AND insights present.</pattern>
+    <pattern id="raw-transcripts">`transcripts_sanitised == false` when insights cite quotes (PII risk).</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-user-interviews.py">Stdlib-only validator implementing this schema.</reference>
 </text>

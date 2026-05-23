@@ -1,3 +1,10 @@
+<!--
+purpose: single-stage deep-dive template for one row of a journey map
+consumes: corresponding row from journey-map.md plus citations
+produces: a stage detail artefact (sub-component of the journey-mapping artefact)
+depends-on: templates/journey-map.md, content/02-output-contract.xml
+token-budget-impact: ~200-500 tokens per stage
+-->
 # Stage Detail: [Stage Name]
 
 **Journey:** [Parent journey name]

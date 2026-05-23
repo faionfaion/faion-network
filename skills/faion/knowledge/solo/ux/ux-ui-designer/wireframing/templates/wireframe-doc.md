@@ -1,3 +1,10 @@
+<!--
+purpose: wireframe document skeleton (layout + annotations + states + open questions)
+consumes: feature spec + content inventory + technical constraints
+produces: a wireframing artefact validating against scripts/validate-wireframing.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # Wireframe: [Page/Screen Name]
 
 **Version:** [X.X]

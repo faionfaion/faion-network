@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tailwind-design-tokens Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Tailwind Design Tokens Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid token-config bundle manifest. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/tailwind-design-tokens.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "tailwind_major", "primitives", "semantics", "dark_mode", "rgb_channel_colors", "safelist"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "tailwind_major": {"type": "integer", "enum": [3, 4]},
+    "primitives": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "semantics": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "pattern": "^var\\(--[a-z0-9-]+\\)$"}
+    },
+    "dark_mode": {
+      "type": "object",
+      "required": ["strategy", "tokens"],
+      "properties": {
+        "strategy": {"type": "string", "enum": ["data-attribute", "media-query", "class", "none"]},
+        "tokens": {"type": "object"}
+      }
+    },
+    "rgb_channel_colors": {"type": "array", "items": {"type": "string"}},
+    "safelist": {"type": "array", "items": {"type": "string"}}
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "tw-tokens-acme-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "tailwind_major": 3,
+  "primitives": {"--color-blue-500": "26 115 232", "--space-4": "1rem"},
+  "semantics": {"color.action.primary": "var(--color-blue-500)", "spacing.md": "var(--space-4)"},
+  "dark_mode": {"strategy": "data-attribute", "tokens": {"--color-action-primary": "96 165 250"}},
+  "rgb_channel_colors": ["--color-blue-500", "--color-action-primary"],
+  "safelist": ["bg-action-primary", "bg-action-primary/50"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "tailwind_major": 99,
+  "primitives": {},
+  "semantics": {"primary": "#1A73E8"},
+  "dark_mode": {},
+  "rgb_channel_colors": [],
+  "safelist": []
+}
+]]></code>
+    <note>Owner plural; tailwind_major not in enum; semantics value is hex not `var(...)`; dark_mode missing required.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="hex-in-semantics">A `semantics.*` value is a literal hex string instead of `var(--...)`.</pattern>
+    <pattern id="opacity-without-channel">An opacity-modifier class in safelist (e.g. `bg-x/50`) whose token is NOT in `rgb_channel_colors`.</pattern>
+    <pattern id="cross-major-tokens">`tailwind_major == 4` AND any `tailwind.config.js`-shaped semantics block (v4 must use `@theme`).</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-tailwind-design-tokens.py">Stdlib-only validator implementing this schema.</reference>
 </text>

@@ -1,3 +1,8 @@
+# purpose: convert funnel analytics CSV to stage summaries for journey-map ingest
+# consumes: funnel CSV (stage, sessions, drop_off_pct, avg_time_sec)
+# produces: JSON array of stage summary dicts feeding the journey-map prompt
+# depends-on: content/02-output-contract.xml (stages structure)
+# token-budget-impact: ~200-800 tokens of structured input depending on funnel length
 """
 Convert funnel analytics CSV to stage summaries for agent journey map ingestion.
 

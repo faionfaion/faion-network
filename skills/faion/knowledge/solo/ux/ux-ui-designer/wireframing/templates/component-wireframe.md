@@ -1,3 +1,10 @@
+<!--
+purpose: single-component wireframe template
+consumes: design-system component definition
+produces: per-component wireframe entry inside the wireframing artefact
+depends-on: templates/wireframe-doc.md
+token-budget-impact: ~200-500 tokens per component
+-->
 # Component: [Name]
 
 ## Purpose

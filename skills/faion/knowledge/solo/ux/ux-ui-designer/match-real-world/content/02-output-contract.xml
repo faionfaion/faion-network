@@ -1,22 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="match-real-world Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Match Real World Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid language-audit artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/match-real-world.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "product_surface", "findings"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "product_surface": {"type": "string", "enum": ["web", "mobile", "email", "docs", "multi"]},
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["string_id", "current", "category", "rewrite", "evidence", "consistency_check"],
+        "properties": {
+          "string_id": {"type": "string"},
+          "current": {"type": "string"},
+          "category": {"type": "string", "enum": ["jargon", "inconsistency", "locale-blind", "over-simplified-domain-term", "icon-only", "system-centric"]},
+          "rewrite": {"type": "string"},
+          "evidence": {"type": "string", "minLength": 1},
+          "consistency_check": {"type": "string", "enum": ["passes", "needs-cross-surface-update"]}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "language-audit-app-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "product_surface": "multi",
+  "findings": [
+    {
+      "string_id": "settings.email.smtp_label",
+      "current": "Configure SMTP parameters for outbound mail relay",
+      "category": "jargon",
+      "rewrite": "Set up email sending",
+      "evidence": "TKT-9182: 'I just want to send email, no idea what SMTP is'",
+      "consistency_check": "needs-cross-surface-update"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "product_surface": "stuff",
+  "findings": [{"current": "fix this", "rewrite": "better"}]
+}
+]]></code>
+    <note>Owner plural; product_surface not in enum; finding missing string_id, category, evidence, consistency_check.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="rewrite-without-evidence">Finding with `rewrite` filled but `evidence` empty.</pattern>
+    <pattern id="category-not-enum">`category` outside the enum.</pattern>
+    <pattern id="inconsistency-ignored">Finding tagged `inconsistency` but `consistency_check` set to `passes`.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-match-real-world.py">Stdlib-only validator implementing this schema.</reference>
 </text>

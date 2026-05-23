@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: batch-transcribe + sanitise interview recordings (local whisper)
+# consumes: directory of consented audio recordings
+# produces: sanitised transcripts (participant names → IDs) feeding the user-interviews artefact
+# depends-on: content/01-core-rules.xml (r8-sanitise-before-llm)
+# token-budget-impact: external tool; downstream LLM cost scales with transcript size
+#
 # transcribe-sessions.sh — batch-transcribe interview recordings with OpenAI Whisper
 # Requires: whisper (pip install openai-whisper), ffmpeg
 # Usage: bash transcribe-sessions.sh ./recordings/

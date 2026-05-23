@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="visibility-of-system-status Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Visibility of System Status Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid status-audit artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/visibility-of-system-status.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "actions"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["screen", "action", "duration_class", "loading_state", "success_state", "error_state", "trigger_disabled", "aria_live", "severity", "fix_direction"],
+        "properties": {
+          "screen": {"type": "string"},
+          "action": {"type": "string"},
+          "duration_class": {"type": "string", "enum": ["instant", "short", "medium", "long"]},
+          "loading_state": {"type": "string", "enum": ["spinner", "skeleton", "progress-indeterminate", "progress-determinate", "none"]},
+          "success_state": {"type": "boolean"},
+          "error_state": {"type": "object", "required": ["present", "auto_dismiss"], "properties": {"present": {"type": "boolean"}, "auto_dismiss": {"type": "boolean"}}},
+          "trigger_disabled": {"type": "boolean"},
+          "aria_live": {"type": "string", "enum": ["polite", "assertive", "off", "status", "none"]},
+          "severity": {"type": "integer", "minimum": 0, "maximum": 3},
+          "fix_direction": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "status-audit-checkout-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "actions": [{
+    "screen": "/checkout",
+    "action": "pay-now",
+    "duration_class": "medium",
+    "loading_state": "spinner",
+    "success_state": true,
+    "error_state": {"present": true, "auto_dismiss": false},
+    "trigger_disabled": true,
+    "aria_live": "polite",
+    "severity": 0,
+    "fix_direction": "OK"
+  }]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "actions": [{"screen": "/x", "action": "y", "duration_class": "medium", "loading_state": "none", "success_state": false, "error_state": {"present": true, "auto_dismiss": true}, "trigger_disabled": false, "aria_live": "assertive", "severity": 0, "fix_direction": "fine"}]
+}
+]]></code>
+    <note>Owner plural; medium duration with loading_state=none + trigger_disabled=false → severity must be 1; error_state auto_dismiss=true is forbidden; aria_live=assertive on non-critical is wrong.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="error-auto-dismiss">`error_state.present == true` AND `error_state.auto_dismiss == true`.</pattern>
+    <pattern id="medium-long-without-loading">`duration_class in [medium, long]` with `loading_state == none`.</pattern>
+    <pattern id="active-trigger-on-async">`duration_class != instant` with `trigger_disabled == false`.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-visibility-of-system-status.py">Stdlib-only validator implementing this schema.</reference>
 </text>

@@ -1,3 +1,10 @@
+<!--
+purpose: control audit report skeleton (Nielsen H#3)
+consumes: action inventory + DOM snapshots + Playwright verification output
+produces: a user-control-freedom artefact validating against scripts/validate-user-control-freedom.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # User Control Audit: [Feature]
 
 **Reviewer:** [Name]

@@ -1,3 +1,10 @@
+<!--
+purpose: per-session testing notes skeleton
+consumes: completed prototype + session video / observation
+produces: per-session notes feeding the prototyping artefact
+depends-on: templates/prototype-plan.md
+token-budget-impact: ~200-500 tokens per session
+-->
 # Prototype Testing Notes
 
 **Participant:** [ID]

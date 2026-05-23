@@ -1,3 +1,10 @@
+<!--
+purpose: finding entry format skeleton with severity + frequency
+consumes: session observations + inferences
+produces: findings entries inside the usability-testing artefact
+depends-on: content/02-output-contract.xml (findings shape)
+token-budget-impact: ~100-300 tokens per finding
+-->
 # Usability Test Finding Format
 
 ## Summary Table

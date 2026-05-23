@@ -1,3 +1,9 @@
+// purpose: Playwright spec verifying loading / success / error states + latency
+// consumes: live build URL with action inventory
+// produces: pass/fail signals + observed latency feeding the visibility-of-system-status artefact
+// depends-on: content/01-core-rules.xml (r1-feedback-thresholds, r3-three-states)
+// token-budget-impact: external tool; no LLM token cost
+//
 // loading-state.spec.ts — Playwright tests for system status visibility
 // Tests: submit button loading state, file upload progress indicator
 // Usage: npx playwright test loading-state.spec.ts

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: flatten i18n JSON to key:value list for language-audit input
+# consumes: i18n catalogue JSON (en.json etc.)
+# produces: audit input feed for match-real-world artefact
+# depends-on: content/02-output-contract.xml (findings shape)
+# token-budget-impact: input scales with catalogue size
 """
 extract-strings.py — flatten i18n JSON to key:value list for batch language audit.
 

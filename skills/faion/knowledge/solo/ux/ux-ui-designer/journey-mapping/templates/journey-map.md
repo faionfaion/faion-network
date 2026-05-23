@@ -1,3 +1,10 @@
+<!--
+purpose: full journey map skeleton (stage × row matrix)
+consumes: persona definition + cited research artefacts
+produces: a journey-mapping artefact validating against scripts/validate-journey-mapping.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # Customer Journey Map: [Journey Name]
 
 **Persona:** [Persona name]

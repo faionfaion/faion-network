@@ -1,3 +1,10 @@
+<!--
+purpose: interview guide skeleton with neutrality checklist
+consumes: research objectives + user-segment profile
+produces: interview guide feeding the user-interviews artefact
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~400-1000 tokens once filled
+-->
 # User Interview Guide: [Research Topic]
 
 **Project:** [Project name]

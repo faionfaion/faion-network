@@ -1,3 +1,9 @@
+// purpose: Tailwind v3 theme skeleton referencing CSS custom properties
+// consumes: tokens.css primitives + semantic mapping
+// produces: a tailwind-design-tokens config validating against scripts/validate-tailwind-design-tokens.py
+// depends-on: templates/tokens.css, content/02-output-contract.xml
+// token-budget-impact: ~300-800 tokens once filled
+//
 // tailwind.config.js — design token integration example
 // All values reference CSS custom properties defined in tokens.css
 // No hardcoded hex, px, or raw values in this file

@@ -1,3 +1,10 @@
+<!--
+purpose: usability session script skeleton (neutral phrasing)
+consumes: test plan + tasks
+produces: per-session script feeding the usability-testing artefact
+depends-on: templates/test-plan.md
+token-budget-impact: ~300-700 tokens once filled
+-->
 # Usability Test Script
 
 ## Introduction (5 min)

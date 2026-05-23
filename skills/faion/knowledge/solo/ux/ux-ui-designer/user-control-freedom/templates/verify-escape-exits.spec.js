@@ -1,3 +1,9 @@
+// purpose: Playwright spec verifying Escape + outside-click + back-button exits
+// consumes: live build URL with modal inventory
+// produces: focus_trap_verified boolean feeding the user-control-freedom artefact
+// depends-on: content/01-core-rules.xml (rule r3-modal-three-exits)
+// token-budget-impact: external tool; no LLM token cost
+//
 // verify-escape-exits.spec.js — verify Escape key closes all modals
 // Requires: Playwright (npm install -D playwright)
 // Usage: npx playwright test verify-escape-exits.spec.js

@@ -1,3 +1,9 @@
+// purpose: Style Dictionary build config (W3C DTCG → CSS vars + Tailwind theme)
+// consumes: tokens/**/*.json
+// produces: tokens.css + tailwind-tokens.js feeding the tailwind-design-tokens artefact
+// depends-on: templates/tokens.css, templates/tailwind.config.js
+// token-budget-impact: external tool; no LLM token cost
+//
 // sd.config.js — Style Dictionary: W3C DTCG token JSON → Tailwind config + CSS variables
 // Run: node sd.config.js
 // Input:  tokens/**/*.json (W3C DTCG format)

@@ -1,3 +1,10 @@
+<!--
+purpose: status audit report skeleton (Nielsen H#1)
+consumes: action inventory + Playwright traces / session recordings
+produces: a visibility-of-system-status artefact validating against scripts/validate-visibility-of-system-status.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # System Status Audit: [Feature / Page]
 
 **Date:** [Date]

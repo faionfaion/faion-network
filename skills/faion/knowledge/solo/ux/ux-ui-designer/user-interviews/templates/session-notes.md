@@ -1,3 +1,10 @@
+<!--
+purpose: per-session notes skeleton with observation vs inference split
+consumes: live interview session
+produces: notes feeding the user-interviews artefact
+depends-on: templates/interview-guide.md
+token-budget-impact: ~300-700 tokens per session
+-->
 # Interview Notes — Participant [ID]
 
 **Date:** [Date]

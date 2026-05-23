@@ -1,3 +1,10 @@
+<!--
+purpose: recognition audit report skeleton (Nielsen H#6)
+consumes: UI surface inventory + icon allowlist + clickable prototype
+produces: a recognition-over-recall artefact validating against scripts/validate-recognition-over-recall.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # Recognition Audit: [Feature / Screen]
 
 **Date:** [Date]

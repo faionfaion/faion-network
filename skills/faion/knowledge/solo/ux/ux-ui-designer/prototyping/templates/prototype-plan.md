@@ -1,3 +1,10 @@
+<!--
+purpose: prototype plan skeleton (objectives + fidelity + scope + tasks + decision rule)
+consumes: design brief + open questions
+produces: a prototyping artefact validating against scripts/validate-prototyping.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # Prototype Plan: [Feature/Product]
 
 **Version:** [X.X]

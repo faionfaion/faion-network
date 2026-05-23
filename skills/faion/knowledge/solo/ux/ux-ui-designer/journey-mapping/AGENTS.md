@@ -2,73 +2,101 @@
 slug: journey-mapping
 tier: solo
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Visualize the complete experience a user has with a product over time — stages, actions, touchpoints, thoughts, emotions, pain points, and opportunities.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generate a current-state customer journey map (stage × row matrix with persona, actions, touchpoints, thoughts, emotions, pain points, opportunities) grounded in cited research evidence.
 content_id: "99fdb72061ea1207"
+complexity: medium
+produces: report
+est_tokens: 3800
 tags: [journey-mapping, user-experience, touchpoint-analysis, pain-points, emotional-arc]
 ---
 # Customer Journey Mapping
 
 ## Summary
 
-**One-sentence:** Visualize the complete experience a user has with a product over time — stages, actions, touchpoints, thoughts, emotions, pain points, and opportunities.
+**One-sentence:** Generate a current-state customer journey map (stage × row matrix with persona, actions, touchpoints, thoughts, emotions, pain points, opportunities) grounded in cited research evidence.
 
-**One-paragraph:** Visualize the complete experience a user has with a product over time — stages, actions, touchpoints, thoughts, emotions, pain points, and opportunities. Use to find cross-channel friction and align stakeholders on the current-state experience before designing improvements. Always ground every map cell in cited research; "no data" is a valid value.
+**One-paragraph:** Visualise the complete experience a user has with a product over time. Inputs: persona definition + cited research artefacts (interview IDs, support tickets, analytics events). Output: a stage × row matrix covering all eight components (persona, stages, actions, touchpoints, thoughts, emotions, pain points, opportunities), every cell either citing an evidence ID or marked "no data". Use to find cross-channel friction and align stakeholders on the current-state experience before designing improvements.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Designing or redesigning a multi-step flow (onboarding, checkout, support, offboarding)
-- After collecting user interviews or analytics data revealing cross-touchpoint pain points
-- Before a product discovery sprint to align stakeholders on the current-state experience
-- Evaluating a new feature's impact on the broader experience, not just its own screen
+- Designing or redesigning a multi-step flow (onboarding, checkout, support, offboarding).
+- Research data exists (interviews, observation, analytics, support tickets, surveys).
+- A specific persona and journey scope (start point + end point) can be named.
 
 ## Skip If (ANY kills it)
 
-- No research data exists — a purely imagined journey map creates false consensus
-- Single, isolated interaction with no multi-step journey
-- Need to understand why users behave a certain way — use user interviews or usability testing instead
-- Stakeholders want quantitative evidence — journey maps are qualitative synthesis, not metrics
+- No research data exists — a purely imagined map creates false consensus.
+- Single isolated interaction with no multi-step journey.
+- Stakeholders want quantitative evidence; journey maps are qualitative synthesis, not metrics.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Persona definition (specific, research-based) | doc | UX research |
+| Cited research artefacts (interview IDs, ticket IDs, analytics events) | spreadsheet or doc | research / ops |
+| Journey scope (start + end point + persona) | one-paragraph | PM / UX |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/user-interviews` | Map cells must cite interview IDs. |
+| `solo/ux/ux-ui-designer/usability-testing` | Pain points often surface in usability findings. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + skip-this-methodology fallback | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the journey-map artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 7-step procedure: scope → research → stages → rows → emotions → pain → opportunities | ~700 |
+| `content/05-examples.xml` | medium | Worked e-commerce purchase journey end-to-end | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `synthesise-map` | sonnet | Stage × row matrix composition from structured research. |
+| `extract-evidence` | haiku | Mechanical pull of interview IDs / ticket IDs from corpus. |
+| `score-emotional-arc` | opus | Identify sharp dips vs smooth averages; rejects LLM smoothing. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/journey-map.md` | Full journey map: stage × row matrix. |
+| `templates/stage-detail.md` | Single-stage deep-dive template. |
+| `templates/prompt-map.txt` | Agent prompt skeleton for journey-map synthesis. |
+| `templates/funnel-to-stages.py` | Convert funnel CSV to stage summaries for ingest. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-journey-mapping.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[user-interviews]]
+- [[usability-testing]]
+- [[wireframing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named persona + scope, research evidence reachable) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

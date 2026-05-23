@@ -2,72 +2,100 @@
 slug: wireframing
 tier: solo
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Low-fidelity representations of UI structure, layout, and functionality without visual design details.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produce a wireframe document (layout description + annotation table + state checklist + open questions) covering ≥3 layout variants per key screen and ALL states (default, empty, loading, error, success, permission-gated) without visual styling.
 content_id: "149f32cedf514639"
+complexity: medium
+produces: spec
+est_tokens: 3700
 tags: [wireframing, ux-design, layout, prototyping, low-fidelity]
 ---
 # Wireframing
 
 ## Summary
 
-**One-sentence:** Low-fidelity representations of UI structure, layout, and functionality without visual design details.
+**One-sentence:** Produce a wireframe document (layout description + annotation table + state checklist + open questions) covering ≥3 layout variants per key screen and ALL states (default, empty, loading, error, success, permission-gated) without visual styling.
 
-**One-paragraph:** Low-fidelity representations of UI structure, layout, and functionality without visual design details. Use to validate information hierarchy and interaction patterns before committing to high-fidelity design. Produce layout descriptions, annotation tables, and state checklists — then hand off to a Figma session, not as the final deliverable.
+**One-paragraph:** Low-fidelity representations of UI structure, layout, and functionality without visual design details. Inputs: feature spec + content inventory + technical constraints. Output: a wireframe doc per screen (layout description + annotated element table + state checklist + open questions). Use to validate hierarchy and interaction patterns before committing to high-fi design. Hand off to a Figma session — never as the final deliverable.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Exploring multiple layout concepts before committing to one direction.
-- Generating a wireframe document (ASCII layout + annotation table + states) from a feature spec.
-- Reviewing a wireframe against acceptance criteria to flag missing states or interactions.
-- Creating component wireframe templates (card, form, modal) from a design system definition.
+- Exploring layout concepts before committing to one direction.
+- A feature spec + acceptance criteria exist.
+- Wireframe output will be reviewed by humans before high-fi design.
 
 ## Skip If (ANY kills it)
 
-- Generating visual design — wireframes are intentionally lo-fi; skipping to polished mockups bypasses structural validation.
-- When stakeholders need pixel-precise layouts for developer handoff — wireframes are for alignment, not spec.
-- Replacing collaborative sketching sessions where team buy-in is the goal, not an artifact.
+- Need polished mockups for developer handoff — wireframes are not specs.
+- Replacing collaborative sketching when team buy-in is the goal (not the artefact).
+- Visual design phase — wireframes are intentionally lo-fi.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec + acceptance criteria | doc | PM |
+| Content inventory (real product names, plausible data) | list | content / PM |
+| Technical constraints (component library, viewport) | doc | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/prototyping` | Wireframes become clickable prototypes downstream. |
+| `solo/ux/ux-ui-designer/mobile-ux` | Mobile breakpoint notes required per screen. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the wireframe doc + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure: inputs → variants → annotate → states → open-questions | ~600 |
+| `content/05-examples.xml` | medium | Worked example for a single screen with 3 layout variants + states | ~500 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `layout-variants` | sonnet | Generate 3+ layout options per screen. |
+| `annotate-elements` | sonnet | Per-element behaviour + states table. |
+| `surface-questions` | opus | Flag ambiguity / missing acceptance criteria. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wireframe-doc.md` | Wireframe document skeleton. |
+| `templates/component-wireframe.md` | Single-component wireframe template. |
+| `templates/prompt-wireframe.txt` | Agent prompt skeleton for wireframe generation. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-wireframing.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[prototyping]]
+- [[mobile-ux]]
+- [[recognition-over-recall]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, spec available, ≥3 variants required) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

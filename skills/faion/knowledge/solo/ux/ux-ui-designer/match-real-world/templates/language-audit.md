@@ -1,3 +1,10 @@
+<!--
+purpose: language audit report skeleton (Nielsen H#2)
+consumes: UI string corpus + user-vocabulary corpus (tickets/transcripts/search logs)
+produces: a match-real-world artefact validating against scripts/validate-match-real-world.py
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: ~600-1500 tokens once filled
+-->
 # Language Audit: [Feature / Product Area]
 
 **Date:** [Date]

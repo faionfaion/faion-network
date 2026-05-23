@@ -2,73 +2,99 @@
 slug: user-control-freedom
 tier: solo
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Nielsen's Usability Heuristic #3: every interface must provide clearly marked "emergency exits" — undo, cancel, back, close, and reset — so users can recover from mistakes without going through extended processes.
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produce a User Control Audit — per-action table covering undo, cancel, exit, recovery — flagging missing emergency exits and confirmation-overuse with severity and fix direction (Nielsen Heuristic #3).
 content_id: "e4904fae94ae0b47"
+complexity: medium
+produces: report
+est_tokens: 3700
 tags: [user-control, undo, heuristics, accessibility, modal-design]
 ---
 # User Control and Freedom
 
 ## Summary
 
-**One-sentence:** Nielsen's Usability Heuristic #3: every interface must provide clearly marked "emergency exits" — undo, cancel, back, close, and reset — so users can recover from mistakes without going through extended processes.
+**One-sentence:** Produce a User Control Audit — per-action table covering undo, cancel, exit, recovery — flagging missing emergency exits and confirmation-overuse with severity and fix direction (Nielsen Heuristic #3).
 
-**One-paragraph:** Nielsen's Usability Heuristic #3: every interface must provide clearly marked "emergency exits" — undo, cancel, back, close, and reset — so users can recover from mistakes without going through extended processes. Prefer undo over confirmation dialogs for reversible actions; reserve confirmation only for irreversible, high-stakes operations.
+**One-paragraph:** Every interface must provide clearly marked emergency exits (undo, cancel, back, close, reset). Inputs: action inventory + DOM snapshots / Playwright traces. Output: an audit table with one row per user-facing action covering undo availability, cancel availability, exit mechanism, recovery method, and severity (irreversible-no-undo = severity 1).
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Heuristic audit of a feature spec or UI for missing undo/cancel/exit mechanisms
-- Generating a User Control Audit report (action table with undo/cancel/exit columns)
-- Code review: checking that destructive backend actions have soft-delete or undo hooks
-- Accessibility review: verifying keyboard escape paths and focus management in modal flows
-- Design review of multi-step wizards or onboarding flows for trapped-user patterns
+- Heuristic audit of a feature spec or live UI for missing exits.
+- Action inventory (every user-facing destructive or state-changing action) is reachable.
+- Accessibility tooling (axe-core / pa11y / Playwright) is available for focus-trap verification.
 
 ## Skip If (ANY kills it)
 
-- As a substitute for actual usability testing — structural absence of controls is detectable, but whether users feel trapped requires behavioral data
-- Complex undo architecture in database-backed systems — engineering judgment on consistency and rollback scope is required
-- When the system genuinely cannot support undo (sent emails, executed financial transactions) — the design solution (clear warnings) needs human decision
+- Substitute for usability testing — structural audit detects absence, not user feeling.
+- System cannot support undo (sent email, executed finance transaction); design solution requires human decision.
+- Complex DB-undo architecture decisions — engineering judgement required, not heuristic.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Action inventory (route → action → reversibility) | list | engineering / PM |
+| DOM snapshots OR Playwright trace | file | engineering |
+| Modal / dialog inventory | list | UX |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/usability-testing` | Validates whether structurally present exits actually feel reachable. |
+| `solo/ux/ux-ui-designer/visibility-of-system-status` | Loading states pair with undo affordances. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the control-audit + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure: inventory → control-check → focus-trap-test → severity → fix-direction | ~600 |
+| `content/05-examples.xml` | medium | Worked audit example for a settings page + a delete-account modal | ~500 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `static-audit` | sonnet | Action-table composition from inventory. |
+| `playwright-verify` | haiku | Mechanical execution of Escape / outside-click / Ctrl-Z. |
+| `severity-rate` | opus | Edge-case judgement on reversibility tier. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/control-audit.md` | Control audit report skeleton. |
+| `templates/verify-escape-exits.spec.js` | Playwright spec verifying Escape + outside-click + back-button. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-user-control-freedom.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[usability-testing]]
+- [[visibility-of-system-status]]
+- [[recognition-over-recall]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, action inventory reachable, undo-supportable) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

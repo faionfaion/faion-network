@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: Lighthouse mobile audit + Core Web Vitals summary
+# consumes: a public URL of the mobile build
+# produces: Lighthouse JSON + LCP/FID/CLS/TTI summary feeding mobile-audit-report
+# depends-on: content/02-output-contract.xml (vitals section)
+# token-budget-impact: external tool; output ~200-500 tokens once summarised
+#
 # mobile-audit.sh — Lighthouse mobile performance audit
 # Usage: bash mobile-audit.sh https://example.com
 # Requires: lighthouse (npm install -g lighthouse), jq

@@ -1,22 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="recognition-over-recall Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Recognition Over Recall Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid recognition-audit artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/recognition-over-recall.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "audit_scope", "icon_allowlist", "findings"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "owner": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "audit_scope": {"type": "string", "enum": ["static-wireframe", "live-build", "clickable-prototype"]},
+    "icon_allowlist": {"type": "array", "items": {"type": "string"}},
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["screen", "element", "category", "observed", "severity", "fix_direction"],
+        "properties": {
+          "screen": {"type": "string"},
+          "element": {"type": "string"},
+          "category": {"type": "string", "enum": ["icon-only", "hidden-option", "no-context-carry-over", "no-autocomplete", "stale-recents", "tooltip-too-long"]},
+          "observed": {"type": "string"},
+          "severity": {"type": "integer", "minimum": 0, "maximum": 3},
+          "fix_direction": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "recognition-audit-app-2026-05-23",
+  "owner": "Maria Yuskiv <maria@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "audit_scope": "clickable-prototype",
+  "icon_allowlist": ["search-magnifier", "close-x", "back-chevron"],
+  "findings": [
+    {
+      "screen": "/editor",
+      "element": "toolbar.format",
+      "category": "icon-only",
+      "observed": "8 icons, no labels, none on allowlist",
+      "severity": 2,
+      "fix_direction": "Pair each icon with a 1-2 word label; collapse to icon-only at narrow breakpoint with tooltip."
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "audit_scope": "guess",
+  "findings": [{"screen": "/x", "severity": 5}]
+}
+]]></code>
+    <note>Owner plural; audit_scope not in enum; finding missing required + severity out of range.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="cross-screen-on-static">Finding category `no-context-carry-over` on `audit_scope == static-wireframe` (cannot detect cross-screen without prototype).</pattern>
+    <pattern id="severity-on-allowlisted-icon">Finding category `icon-only` with severity ≥1 when the icon appears in icon_allowlist.</pattern>
+    <pattern id="missing-fix-direction">Finding without a concrete fix_direction string.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-recognition-over-recall.py">Stdlib-only validator implementing this schema.</reference>
 </text>
