@@ -4,77 +4,102 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structured-logging spec: required JSON fields, PII redaction policy, trace correlation, per-environment log levels, ingestion contract validated in CI, owner signed.
 content_id: "2dd4698e7c38c958"
-summary: "Structured Logging As Code: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Make Production Readiness a PR-Level Concern'."
-tags: [structured-logging-as-code, dev, solo]
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: [logging, structured-logs, pii, tracing, observability]
 ---
-# Structured Logging As Code
+# Structured Logging as Code
 
 ## Summary
 
-**One-sentence:** Structured Logging As Code: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Make Production Readiness a PR-Level Concern'.
+**One-sentence:** Structured-logging spec: required JSON fields, PII redaction policy, trace correlation, per-environment log levels, ingestion contract validated in CI, owner signed.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-software-developer/Make Production Readiness a PR-Level Concern': `logging-patterns` exists but is generic. Need explicit guidance: required fields, PII redaction, trace correlation, log levels by environment. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a structured logging as code artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Generic logging-patterns guidance leaves teams shipping prose logs with PII leaks, missing trace ids, and per-env volume blowups. This methodology produces a logging spec: required JSON shape (ts, level, msg, request_id, user_id_hashed), PII redaction rules (denylist + regex), trace correlation (OpenTelemetry trace_id + span_id propagation), per-environment level matrix (dev=DEBUG, staging=INFO, prod=INFO with SAMPLED DEBUG), and an ingestion contract (parser fixture) that CI validates. Result: logs that humans can read, machines can index, and lawyers can defend.
+
+**Ефективно для:**
+
+- First production deploy - закрити PII leak в access log одразу.
+- Перехід з f-string logs на structured JSON - зафіксувати baseline.
+- Post-incident коли trace_id губиться між сервісами - впровадити propagation.
+- Compliance audit (GDPR / CCPA) - продемонструвати redaction policy.
+- Log volume blow-up - впровадити per-env sampling + level matrix.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-developer/Make Production Readiness a PR-Level Concern' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Service runs in at least one non-dev environment.
+- Logs are aggregated to a queryable destination (Loki, ELK, Datadog, CloudWatch).
+- Team can deploy code that controls the log shape (no fully managed black-box).
+- PII may pass through the service (user identifiers, emails, payment tokens).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working structured logging as code artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Pure CLI tool with no remote log destination.
+- Service has zero PII surface and zero compliance burden.
+- Logging already standardised at a platform layer the team cannot modify.
+- Pre-MVP prototype with no users - delay until launch.
 
 ## Prerequisites
 
-- recent context for the 'role-software-developer/Make Production Readiness a PR-Level Concern' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Log destination | URL + index + retention | platform |
+| PII inventory | list of fields with sensitivity | product/legal |
+| Trace context | OpenTelemetry SDK or vendor equivalent | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/dev` | parent domain group — provides operating context for Structured Logging As Code |
+| [[security-testing]] | PII / regulatory context the redaction policy plugs into. |
+| [[rest-api-design]] | request_id propagation contract this spec relies on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: required-fields, PII redaction, trace correlation, per-env levels, CI parser fixture, skip-gate | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: shape, redaction, trace, levels, CI fixture | ~800 |
+| `content/05-examples.xml` | essential | Worked example: FastAPI service with OTel + denylist + Loki | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals to a rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-required-fields` | haiku | Mechanical field list per the spec. |
+| `design-redaction-policy` | sonnet | Per-service PII inventory plus regex authoring. |
+| `wire-trace-correlation` | sonnet | OTel context propagation across boundaries. |
+| `compliance-review` | opus | Stakes high; missed redaction = privacy incident. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/structured-logging-as-code.json` | JSON schema for the Structured Logging As Code output contract |
-| `templates/structured-logging-as-code.md` | Markdown skeleton with the required fields |
+| `templates/logging-spec.md` | Markdown skeleton for the logging spec (fields + redaction + levels). |
+| `templates/redaction-config.yaml` | YAML denylist + regex rules for the redaction layer. |
+| `templates/logger.py` | Python structured logger with OTel + redaction adapter. |
+| `templates/_smoke-test.json` | Filled-in minimum viable logging spec for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-structured-logging-as-code.py` | Enforce Structured Logging As Code output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-structured-logging-as-code.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-software-developer/Make Production Readiness a PR-Level Concern`
-- solo/dev/role-software-developer
+- [[security-testing]]
+- [[rest-api-design]]
+- [[spec-driven-debugging]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree checks preconditions, then PII surface, then trace propagation, then per-env levels, then CI fixture. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default for pre-MVP or no-PII services.

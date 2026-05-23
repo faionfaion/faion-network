@@ -4,68 +4,102 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Supabase-specific patterns: Auth + RLS + Storage + Realtime + Edge Functions wired as a coherent MVP stack.
-content_id: "8be443df5004f21e"
-tags: [supabase-mvp-stack, dev, solo]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Supabase MVP stack spec: RLS default-on, explicit non-permissive policies, versioned migrations, bucket policies private-by-default, Realtime payload review, edge-function audit.
+content_id: "4406639d2aa34566"
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: [supabase, postgres, rls, auth, storage, realtime]
 ---
-
 # Supabase MVP Stack
 
 ## Summary
 
-**One-sentence:** Supabase-specific patterns: Auth + RLS + Storage + Realtime + Edge Functions wired as a coherent MVP stack.
+**One-sentence:** Supabase MVP stack spec: RLS default-on, explicit non-permissive policies, versioned migrations, bucket policies private-by-default, Realtime payload review, edge-function audit.
 
-**One-paragraph:** Supabase is the modal database for indie SaaS MVPs in 2026. faion has no Supabase-specific methodology despite covering Postgres heavily. Output: stack layout + RLS policy template + auth flow + migration discipline.
+**One-paragraph:** Solo SaaS on Supabase ships fast but leaks easily. RLS off by default leaks rows; permissive policies (`TO public USING (true)`) collapse access control; manual schema changes in the dashboard orphan dev environments; storage buckets default to public; Realtime over-broadcasts PII. This methodology produces a Supabase stack spec: per-table RLS posture, scoped policies, migration discipline, bucket privacy policy, Realtime payload review, and a per-edge-function permission audit, signed by a named owner.
+
+**Ефективно для:**
+
+- Перший Supabase проект - зафіксувати baseline (RLS-on + scoped policies + migrations).
+- Audit після RLS-off table - перейти на default-on policy + ревью існуючих policies.
+- Migration drift між dashboard і кодом - зафіксувати repo-only migrations.
+- Storage bucket public-by-default leak - перейти на signed URLs + bucket policy.
+- Realtime broadcast з PII - впровадити payload review + per-row policy.
 
 ## Applies If (ALL must hold)
 
-- indie hacker building MVP
-- needs auth + DB + storage in one stack
-- team size 1-2
+- Backend uses Supabase (Postgres + Auth + Storage + Realtime + Edge Functions).
+- Team controls the Supabase project (admin access for migrations + policy edits).
+- At least one user-facing app reads/writes Supabase data.
+- Project has user-scoped data (auth.uid()-keyed rows).
 
 ## Skip If (ANY kills it)
 
-- team ≥5 with dedicated DB ops (different stack)
-- regulated workload requiring HSM / on-prem (Supabase Pro+ may not be sufficient)
-- high-throughput analytics workload (use dedicated DWH)
+- Backend is plain Postgres or another BaaS (Firebase, Hasura) - use that stack's guide.
+- Internal-only Supabase project with no public client - lighter guidance sufficient.
+- Greenfield prototype with synthetic data - delay hardening to launch.
+- Enterprise managed-Postgres alternative is already in flight - migrate instead of hardening.
 
 ## Prerequisites
 
-- Supabase project created
-- schema sketch (≥3 tables)
-- decision on auth providers (email, OAuth)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Supabase project | URL + service role key in secret manager | platform |
+| Migration tool | supabase CLI installed locally + in CI | engineering |
+| Bucket inventory | list of buckets + intended privacy | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent skill — provides operating context for this methodology |
-| `solo/dev/api-developer` | peer methodology — produces inputs or consumes outputs |
-| `solo/dev/lean-stack-bootstrapper-blueprint` | peer methodology — produces inputs or consumes outputs |
+| [[security-testing]] | wider security context (auth + audit) the stack plugs into. |
+| [[sql-optimization]] | Postgres performance methodology this stack relies on at scale. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: RLS-on, scoped policies, versioned migrations, bucket privacy, Realtime payload review, skip-gate | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: RLS audit, policy review, migrations, bucket policy, Realtime | ~800 |
+| `content/05-examples.xml` | essential | Worked example: a 2-tenant SaaS on Supabase passing audit | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals to a rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `audit-rls-state` | haiku | Mechanical SELECT on pg_class + pg_policies. |
+| `design-policies` | sonnet | Per-table scoping with auth.uid() / role. |
+| `scope-migrations` | sonnet | Cadence + naming + review-gate per team. |
+| `review-realtime-payloads` | opus | Stakes high; PII in Realtime is a public leak. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rls-audit.sql` | SQL query: list tables with RLS off + their owner. |
+| `templates/policy-template.sql` | Policy templates scoped to auth.uid() and role. |
+| `templates/supabase-stack.md` | Markdown spec listing posture per surface. |
+| `templates/_smoke-test.json` | Filled-in minimum viable stack spec for validator smoke-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-supabase-mvp-stack.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- peer methodology: `solo/dev/api-developer`
-- peer methodology: `solo/dev/lean-stack-bootstrapper-blueprint`
-- peer methodology: `free/dev/backend-developer`
-- external: https://supabase.com/docs; https://supabase.com/docs/guides/auth/row-level-security
+- [[sql-optimization]]
+- [[security-testing]]
+- [[rest-api-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree checks preconditions, then RLS posture, then policy permissiveness, then migration discipline, then bucket / Realtime privacy. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default for non-Supabase stacks.

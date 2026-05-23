@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Supabase MVP Stack Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="preconditions">Are preconditions satisfied: Supabase backend, admin access, user-scoped data, user-facing app?</root-question>
+      <branch when="preconditions == no">
+        <conclusion ref="skip-this-methodology" verdict="missing preconditions; non-Supabase or internal-only project; route to alternate methodology"/>
+      </branch>
+      <branch when="preconditions == yes">
+        <question id="rls-on-all-tables">Is RLS enabled on every table?</question>
+        <branch when="rls == off_on_any">
+          <conclusion ref="rls-default-on" verdict="enable RLS; add scoped policies; rotate keys if exposure suspected"/>
+        </branch>
+        <branch when="rls == on_everywhere">
+          <question id="policies-scoped">Are policies scoped to auth.uid() / role (no `TO public USING (true)`)?</question>
+          <branch when="policy == permissive">
+            <conclusion ref="scoped-non-permissive-policies" verdict="replace permissive with scoped; test as anon vs authenticated"/>
+          </branch>
+          <branch when="policy == scoped">
+            <question id="migrations-repo">Are schema changes all in supabase/migrations/?</question>
+            <branch when="migrations == drift">
+              <conclusion ref="versioned-migrations-only" verdict="restore via `supabase migration new`; ban dashboard edits"/>
+            </branch>
+            <branch when="migrations == ok">
+              <conclusion ref="realtime-payload-review" verdict="per-channel payload review; drop PII columns from public channels"/>
+            </branch>
+          </branch>
+        </branch>
+      </branch>
+  </decision-tree>
+  <example trace="preconditions=yes -&gt; rls=on_everywhere -&gt; policy=scoped -&gt; migrations=ok -&gt; realtime-payload-review.">Worked path from root-question to conclusion.</example>
+</text>

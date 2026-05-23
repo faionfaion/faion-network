@@ -1,3 +1,8 @@
+// purpose: TS WebSocket client wrapper: backoff reconnect + heartbeat + envelope.
+// consumes: see content/02-output-contract.xml inputs for websocket-design
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 /**
  * TypeScript WebSocket client with reconnect, message queue, and heartbeat.
  * Usage: const ws = new WebSocketClient('wss://api.example.com/ws/user123');

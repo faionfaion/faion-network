@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Stripe Webhook Hardening Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Step-by-step procedure to apply Stripe Webhook Hardening end-to-end. Each step lists input, action, output, and an optional decision gate.</summary>
+  <section title="Procedure">
+    <step n="1" name="bound-tolerance">
+      <input>Stripe SDK call site.</input>
+      <action>Set tolerance argument to 300s (5 minutes); verify clock-drift is below that.</action>
+      <output>timestamp_tolerance_sec field set.</output>
+      <decision-gate>Reject tolerances &gt; 300s.</decision-gate>
+    </step>
+    <step n="2" name="schedule-rotation">
+      <input>Secret manager + runbook.</input>
+      <action>Document rotation cadence (&lt;=90 days) and the dual-secret rotation runbook in the repo.</action>
+      <output>rotation_cadence_days + runbook link.</output>
+      <decision-gate>Reject cadence &gt; 90 days or undocumented runbook.</decision-gate>
+    </step>
+    <step n="3" name="verify-raw-body">
+      <input>Route handler.</input>
+      <action>Read raw bytes before any parser touches the body; pass to construct_event.</action>
+      <output>raw_body_verified=true.</output>
+      <decision-gate>Reject if framework body parser runs before verify.</decision-gate>
+    </step>
+    <step n="4" name="configure-edge">
+      <input>Edge layer.</input>
+      <action>Set rate limit + (when feasible) IP allowlist for Stripe-published ranges; return 429 with retry-after on burst.</action>
+      <output>edge_rate_limit_rpm + ip_allowlist fields.</output>
+      <decision-gate>Reject if no rate limit configured.</decision-gate>
+    </step>
+    <step n="5" name="wire-audit">
+      <input>Logger + destination.</input>
+      <action>On every failed verification emit a structured event (timestamp, IP, reason); retain &gt;=90 days.</action>
+      <output>audit_log_destination field set; sample log line shown.</output>
+      <decision-gate>Reject if no audit destination.</decision-gate>
+    </step>
+  </section>
+</text>

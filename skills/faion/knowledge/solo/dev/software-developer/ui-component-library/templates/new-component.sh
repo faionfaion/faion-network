@@ -1,3 +1,8 @@
+# purpose: Bash scaffolder: new library component (story + spec + changeset stub).
+# consumes: see content/02-output-contract.xml inputs for ui-component-library
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-700 tokens when loaded as context
 #!/usr/bin/env bash
 # Usage: ./new-component.sh <layer> <ComponentName>
 # Example: ./new-component.sh primitives Toast

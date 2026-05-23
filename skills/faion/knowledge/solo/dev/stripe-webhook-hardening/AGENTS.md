@@ -4,77 +4,102 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Stripe webhook hardening report: secret rotation cadence, timestamp tolerance, raw-body integrity, IP and rate limits, audit log of forged-event attempts, signed off by a named owner.
 content_id: "af330e78321b533b"
-summary: "Stripe Webhook Hardening: produces a versioned, owner-signed artefact that closes the gap 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production'."
-tags: [stripe-webhook-hardening, dev, solo]
+complexity: medium
+produces: report
+est_tokens: 5200
+tags: [stripe, webhook, hardening, security, rotation]
 ---
 # Stripe Webhook Hardening
 
 ## Summary
 
-**One-sentence:** Stripe Webhook Hardening: produces a versioned, owner-signed artefact that closes the gap 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production'.
+**One-sentence:** Stripe webhook hardening report: secret rotation cadence, timestamp tolerance, raw-body integrity, IP and rate limits, audit log of forged-event attempts, signed off by a named owner.
 
-**One-paragraph:** Addresses the gap surfaced by 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production': Existing solo/launch-operations/stripe-integration-basics is a happy-path setup playbook. Missing: signature verification, idempotency keys, replay-attack defence, webhook retry semantics. Skipping these breaks billing in production. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a stripe webhook hardening artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Builds on the handler pattern with hardening focused on attack surface and forensics. Covers Stripe-Signature timestamp tolerance (replay-window cap), webhook secret rotation procedure, raw-body integrity (no JSON.parse before verify), rate limits at the edge, IP allowlist when feasible, and an audit log of failed verifications. Produces a hardening report that pins each control to an observable check plus a remediation SLA.
+
+**Ефективно для:**
+
+- Pre-launch hardening - закрити webhook attack surface перед першим billing event.
+- Post-incident після forged event - встановити audit + secret rotation.
+- Compliance audit (SOC 2 / PCI) - продемонструвати controls по webhook.
+- Перехід з shared secret на per-endpoint - впровадити cadence rotation.
+- Аудит rate limits після brute-force - підняти hard cap + alerting.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Stripe webhook handler is in production (at least one live event consumed).
+- Team has secret manager (Vault, AWS Secrets Manager, 1Password CLI, etc.).
+- Edge layer (CDN, API gateway, or reverse proxy) where rate-limit + IP rules can be applied.
+- Audit log destination (DB table, log aggregator) accepts the events.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working stripe webhook hardening artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Greenfield prototype with no production traffic - delay hardening until launch.
+- Test-mode webhook only - hardening cost not justified.
+- Compliance overrides this guidance (legal mandate) - defer to legal.
+- Already covered by an enterprise WAF + audit stack maintained by another team.
 
 ## Prerequisites
 
-- recent context for the 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Webhook handler in prod | endpoint URL + secret name | engineering |
+| Secret manager | rotation API + IAM role | platform |
+| Edge layer | ability to configure rate limit + IP allowlist | platform |
+| Audit destination | table or log stream with retention >= 90 days | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/dev` | parent domain group — provides operating context for Stripe Webhook Hardening |
+| [[stripe-webhook-handler-pattern]] | the base handler this hardens. |
+| [[security-testing]] | wider security context the hardening plugs into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: timestamp tolerance, secret rotation, raw-body integrity, edge rate limit, audit log, skip-gate | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: tolerance, rotation, raw-body, edge controls, audit | ~800 |
+| `content/05-examples.xml` | essential | Worked example: 90d rotation + 5min tolerance + WAF rate-limit | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals to a rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `audit-current-controls` | sonnet | Inventory of current controls plus gap analysis. |
+| `design-rotation-cadence` | sonnet | Cadence vs ops cost per-team judgement. |
+| `write-audit-rule` | haiku | Templated log-filter snippet. |
+| `review-attack-surface` | opus | Stakes high; cross-control synthesis decides launch. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/stripe-webhook-hardening.json` | JSON schema for the Stripe Webhook Hardening output contract |
-| `templates/stripe-webhook-hardening.md` | Markdown skeleton with the required fields |
+| `templates/hardening-report.md` | Markdown skeleton for the hardening report (controls + SLA + sign-off). |
+| `templates/rotation-runbook.md` | Webhook-secret rotation runbook with rollback plan. |
+| `templates/_smoke-test.json` | Filled-in minimum viable hardening report for validator smoke-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-stripe-webhook-hardening.py` | Enforce Stripe Webhook Hardening output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-stripe-webhook-hardening.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production`
-- solo/dev/p1-solo-saas-builder
+- [[stripe-webhook-handler-pattern]]
+- [[security-testing]]
+- [[structured-logging-as-code]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree checks preconditions, then timestamp tolerance, then rotation cadence, then edge controls, then audit destination. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default for pre-prod work.

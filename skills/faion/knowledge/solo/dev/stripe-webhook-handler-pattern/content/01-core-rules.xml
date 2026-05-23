@@ -1,38 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Stripe Webhook Handler Pattern Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Stripe Webhook Handler Pattern application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-
+<text id="01-core-rules" title="Stripe Webhook Handler Pattern Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Stripe Webhook Handler Pattern methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-
-    <rule id="r1-verify-signature-first" testable="true" depth="essential">
-      <statement>Verify Stripe-Signature header BEFORE any processing. Reject on mismatch with 400. Use Stripe SDK's verification helper.</statement>
-      <rationale source="Industry consensus + practitioner experience">Without verification, webhook endpoint is a public DoS + injection surface; verification is non-negotiable.</rationale>
+    <rule id="verify-signature-first" testable="true" depth="essential">
+      <statement>Handler MUST call the Stripe SDK signature verification helper BEFORE any business logic; verification failure MUST return 400 without leaking error detail.</statement>
+      <rationale source="Stripe webhooks docs - Signed events">Without verification the endpoint is a public DoS / injection surface; verification is non-negotiable.</rationale>
     </rule>
-
-    <rule id="r2-idempotency-by-event-id" testable="true" depth="essential">
-      <statement>Use event.id as idempotency key. Reject duplicate events from prior delivery.</statement>
-      <rationale source="Industry consensus + practitioner experience">Stripe retries on 5xx; without idempotency, duplicates re-process payments / fulfill orders multiple times.</rationale>
+    <rule id="idempotency-by-event-id" testable="true" depth="essential">
+      <statement>Handler MUST deduplicate by Stripe `event.id` against a persistent store (DB unique index or Redis SETNX); duplicates MUST be skipped, not re-processed.</statement>
+      <rationale source="Stripe webhooks docs - Retries">Stripe retries on 5xx and on slow 2xx; without idempotency duplicates re-process payments and double-fulfill orders.</rationale>
     </rule>
-
-    <rule id="r3-return-2xx-fast" testable="true" depth="essential">
-      <statement>Return 2xx within 5 seconds. Heavy work goes to a queue. Slow handlers cause Stripe retries + duplicates.</statement>
-      <rationale source="Industry consensus + practitioner experience">Stripe times out at 30s; slow handlers create retry storms + duplicate processing.</rationale>
+    <rule id="two-xx-fast" testable="true" depth="essential">
+      <statement>Handler MUST return 2xx within 5 seconds; heavy work MUST go to a queue (SQS / Celery / pg-boss) and return immediately.</statement>
+      <rationale source="Stripe webhooks docs - Timeouts">Stripe times out at 30s and retries; slow handlers create retry storms and duplicate processing.</rationale>
     </rule>
-
-    <rule id="r4-dead-letter-on-fail" testable="true" depth="essential">
-      <statement>Failed processing → dead-letter queue with manual review. Do NOT just 5xx and rely on Stripe retries (limited).</statement>
-      <rationale source="Industry consensus + practitioner experience">Stripe retries 3 days then gives up; without DLQ, failed events are lost.</rationale>
+    <rule id="dead-letter-on-fail" testable="true" depth="essential">
+      <statement>Failed processing MUST be written to a dead-letter queue or table with the full event payload; bare 5xx that relies on Stripe retries is rejected because Stripe gives up after 3 days.</statement>
+      <rationale source="Stripe webhooks docs - Retries">Stripe retries 3 days then gives up; without DLQ failed events are silently lost.</rationale>
     </rule>
-
-    <rule id="r5-replay-safe" testable="true" depth="essential">
-      <statement>Handler is replay-safe: re-processing the same event produces the same outcome. State checked before mutation.</statement>
-      <rationale source="Industry consensus + practitioner experience">Replay safety is the foundation of webhook reliability; without it, ops cannot safely re-deliver events.</rationale>
+    <rule id="replay-safe" testable="true" depth="essential">
+      <statement>Handler MUST be replay-safe: re-processing the same event id (after a manual replay) MUST converge to the same end state with no extra side effect.</statement>
+      <rationale source="engineering-rigour retro">Ops occasionally replay; non-replay-safe handlers diverge state and require hand reconciliation.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if every entry in `## Applies If` holds and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">Misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch.</rationale>
+    </rule>
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-  </see-also>
 </text>

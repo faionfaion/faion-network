@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Stripe Webhook Handler Pattern Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="preconditions">Are preconditions satisfied: Stripe is processor, webhook endpoint exposed, persistent store available?</root-question>
+      <branch when="preconditions == no">
+        <conclusion ref="skip-this-methodology" verdict="missing preconditions; route to processor-specific guide or polling pattern"/>
+      </branch>
+      <branch when="preconditions == yes">
+        <question id="verification-present">Does the handler verify Stripe-Signature before any business action?</question>
+        <branch when="verification == missing">
+          <conclusion ref="verify-signature-first" verdict="add Stripe SDK signature verification; rotate secret if endpoint was live without it"/>
+        </branch>
+        <branch when="verification == present">
+          <question id="idempotency-shape">Is dedup by event.id backed by a persistent store with atomic write?</question>
+          <branch when="idempotency == missing_or_inmem">
+            <conclusion ref="idempotency-by-event-id" verdict="switch to DB unique index or Redis SETNX"/>
+          </branch>
+          <branch when="idempotency == persistent">
+            <question id="processing-budget">Is p95 handler processing within 5s of returning 2xx?</question>
+            <branch when="budget == over">
+              <conclusion ref="two-xx-fast" verdict="offload heavy work to queue; return 2xx immediately after dedup write"/>
+            </branch>
+            <branch when="budget == under">
+              <conclusion ref="dead-letter-on-fail" verdict="ensure DLQ wired so failures do not silently drop"/>
+            </branch>
+          </branch>
+        </branch>
+      </branch>
+  </decision-tree>
+  <example trace="preconditions=yes -&gt; verification=present -&gt; idempotency=persistent -&gt; budget=under -&gt; dead-letter-on-fail.">Worked path from root-question to conclusion.</example>
+</text>

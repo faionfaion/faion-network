@@ -1,3 +1,8 @@
+# purpose: Python connection-manager: presence map + heartbeat + room broadcast.
+# consumes: see content/02-output-contract.xml inputs for websocket-design
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-700 tokens when loaded as context
 """
 FastAPI WebSocket ConnectionManager.
 Manages user connections, channel subscriptions, and broadcast.

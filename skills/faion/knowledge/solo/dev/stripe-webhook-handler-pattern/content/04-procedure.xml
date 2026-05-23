@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Stripe Webhook Handler Pattern Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Step-by-step procedure to apply Stripe Webhook Handler Pattern end-to-end. Each step lists input, action, output, and an optional decision gate.</summary>
+  <section title="Procedure">
+    <step n="1" name="verify-signature">
+      <input>Raw webhook body + Stripe-Signature header.</input>
+      <action>Call Stripe SDK helper to verify; on failure return 400 with no detail.</action>
+      <output>verification_method field populated.</output>
+      <decision-gate>Reject handler without verification call.</decision-gate>
+    </step>
+    <step n="2" name="dedup-on-event-id">
+      <input>Verified event.</input>
+      <action>INSERT event.id into idempotency table (unique constraint); on conflict return 200 with no work.</action>
+      <output>idempotency_store field populated.</output>
+      <decision-gate>Reject handler without dedup write before any business action.</decision-gate>
+    </step>
+    <step n="3" name="offload-to-queue">
+      <input>Dedup-write success.</input>
+      <action>If processing budget > 1s, enqueue work and return 2xx; else process inline within budget.</action>
+      <output>processing_path field populated.</output>
+      <decision-gate>Reject sync handlers exceeding 5s on p95.</decision-gate>
+    </step>
+    <step n="4" name="wire-dead-letter">
+      <input>Worker.</input>
+      <action>On exception, push event to DLQ with full payload + error; do not throw 5xx back to Stripe past 1 retry.</action>
+      <output>dead_letter_url field populated.</output>
+      <decision-gate>Reject handler without a configured DLQ target.</decision-gate>
+    </step>
+    <step n="5" name="replay-safety-test">
+      <input>End-to-end handler.</input>
+      <action>Write a test that replays a stored event twice; assert state converges without extra side effects.</action>
+      <output>replay_safety_test field populated with a test path or id.</output>
+      <decision-gate>Reject spec missing the replay test.</decision-gate>
+    </step>
+  </section>
+</text>

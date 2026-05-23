@@ -85,6 +85,8 @@ tags: [websocket, realtime, heartbeat, reconnect, backpressure]
 |------|---------|
 | `templates/envelope.schema.json` | JSON Schema for the WS envelope + 1 example message type. |
 | `templates/client.ts` | Client reconnect + heartbeat skeleton with exponential backoff + full jitter. |
+| `templates/connection-manager.py` | Python connection-manager: presence map + heartbeat + room broadcast. |
+| `templates/ws-client.ts` | TS WebSocket client wrapper: backoff reconnect + heartbeat + envelope. |
 | `templates/_smoke-test.json` | Minimum viable WS spec for validator smoke-test. |
 
 ## Scripts

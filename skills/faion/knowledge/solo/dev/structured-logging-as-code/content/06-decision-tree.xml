@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Structured Logging as Code Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="preconditions">Are preconditions satisfied: non-dev environment, aggregated logs, controllable shape, PII surface present?</root-question>
+      <branch when="preconditions == no">
+        <conclusion ref="skip-this-methodology" verdict="missing preconditions; CLI-only or no-PII service; delay or use minimal logger"/>
+      </branch>
+      <branch when="preconditions == yes">
+        <question id="shape-is-json">Are logs emitted as JSON with the required fields?</question>
+        <branch when="shape == prose">
+          <conclusion ref="required-fields" verdict="switch to structured JSON logger; populate required fields"/>
+        </branch>
+        <branch when="shape == json">
+          <question id="pii-redacted">Are PII fields routed through a redaction layer?</question>
+          <branch when="pii == raw">
+            <conclusion ref="pii-redaction" verdict="wire redaction layer; codify rules; cover exception path"/>
+          </branch>
+          <branch when="pii == redacted">
+            <question id="trace-correlation-present">Do request-scoped logs carry trace_id and span_id?</question>
+            <branch when="trace == missing">
+              <conclusion ref="trace-correlation" verdict="inject OTel context into log adapter; propagate into workers"/>
+            </branch>
+            <branch when="trace == present">
+              <conclusion ref="ci-parser-fixture" verdict="ship CI fixture that asserts schema + redaction + trace"/>
+            </branch>
+          </branch>
+        </branch>
+      </branch>
+  </decision-tree>
+  <example trace="preconditions=yes -&gt; shape=json -&gt; pii=redacted -&gt; trace=present -&gt; ci-parser-fixture.">Worked path from root-question to conclusion.</example>
+</text>

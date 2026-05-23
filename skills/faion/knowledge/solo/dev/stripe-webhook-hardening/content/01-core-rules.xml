@@ -1,38 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Stripe Webhook Hardening Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Stripe Webhook Hardening application MUST enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-
+<text id="01-core-rules" title="Stripe Webhook Hardening Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Stripe Webhook Hardening methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Stripe Webhook Hardening only to a single instance of &apos;p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production&apos;. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="gap-analysis 2026-05-17">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="timestamp-tolerance-bounded" testable="true" depth="essential">
+      <statement>Signature verification MUST cap the Stripe-Signature timestamp tolerance at 5 minutes; longer windows enable replay attacks of captured events.</statement>
+      <rationale source="Stripe webhooks docs - Replay attacks">Default SDK tolerance is 5 minutes; making it bigger to mask clock drift opens a replay window.</rationale>
     </rule>
-
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="gap-analysis 2026-05-17">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="secret-rotation-cadence" testable="true" depth="essential">
+      <statement>Webhook secret MUST be rotated on a documented cadence (&lt;=90 days) or on any suspected exposure; the rotation runbook MUST land in the repo.</statement>
+      <rationale source="OWASP - secret rotation">Long-lived secrets are the most common leak source; rotation + runbook makes recovery routine.</rationale>
     </rule>
-
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No &apos;team&apos; or &apos;we&apos; as owner.</statement>
-      <rationale source="gap-analysis 2026-05-17">RACI / single-throat-to-choke. Plural ownership = no ownership; future readers need a named human to chase.</rationale>
+    <rule id="raw-body-integrity" testable="true" depth="essential">
+      <statement>Verification MUST run against the raw request body bytes; JSON.parse or framework body-parsing before verify is rejected.</statement>
+      <rationale source="Stripe webhooks docs - Signature verification">Re-serialised JSON changes whitespace + key order, breaking signature; verify on raw bytes is the only correct path.</rationale>
     </rule>
-
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) are flagged on read.</statement>
-      <rationale source="gap-analysis 2026-05-17">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="edge-rate-limit" testable="true" depth="essential">
+      <statement>Edge layer (CDN/API gateway) MUST cap webhook endpoint at 200 req/min per source IP; bursts above MUST 429 with retry-after.</statement>
+      <rationale source="OWASP - rate limiting; Stripe IP allowlist guidance">Brute-force / forge-attempts saturate the verify path; edge cap protects compute + idempotency store.</rationale>
     </rule>
-
-    <rule id="r5-grounded-in-rationale" testable="true" depth="essential">
-      <statement>Every section of the artefact cites the specific gap it closes: &apos;Existing solo/launch-operations/stripe-integration-basics is a happy-path setup playbook. Missing: signature verificatio&apos;.</statement>
-      <rationale source="gap-analysis 2026-05-17">Without grounding, the artefact becomes generic boilerplate. The cited gap is the falsifiability anchor.</rationale>
+    <rule id="audit-failed-verifications" testable="true" depth="essential">
+      <statement>Every failed verification MUST emit a structured audit log (timestamp, source IP, error reason) with &gt;=90 days retention.</statement>
+      <rationale source="SOC 2 control practice">Forged-event attempts are early warning; without an audit they go unnoticed until a real breach.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if every entry in `## Applies If` holds and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">Misrouted methodology produces wrong-shape output; explicit skip rule is the universal default branch.</rationale>
+    </rule>
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-  </see-also>
 </text>

@@ -85,6 +85,7 @@ tags: [xp, tdd, pairing, ci, refactoring]
 |------|---------|
 | `templates/adoption-plan.md` | Markdown 4-week XP adoption plan with metrics gates. |
 | `templates/ci-config-snippet.yaml` | Example GitHub Actions snippet sharding tests to keep CI <10min. |
+| `templates/pre-commit-xp.yaml` | Pre-commit hooks enforcing TDD-friendly gates. |
 | `templates/_smoke-test.json` | Minimum viable XP adoption plan for validator smoke-test. |
 
 ## Scripts

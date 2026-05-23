@@ -1,38 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Structured Logging As Code Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Structured Logging As Code application MUST enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-
+<text id="01-core-rules" title="Structured Logging as Code Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Structured Logging as Code methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
-
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Structured Logging As Code only to a single instance of &apos;role-software-developer/Make Production Readiness a PR-Level Concern&apos;. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="gap-analysis 2026-05-17">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="required-fields" testable="true" depth="essential">
+      <statement>Every log line MUST be JSON with the required fields {ts, level, msg, service, env, request_id}; prose / unstructured lines are rejected by the ingestion contract.</statement>
+      <rationale source="OpenTelemetry logs spec; industry consensus">Indexable logs require a stable shape; prose lines force grep + regex, which collapses under volume.</rationale>
     </rule>
-
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="gap-analysis 2026-05-17">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="pii-redaction" testable="true" depth="essential">
+      <statement>PII fields (email, phone, full name, payment token, IP) MUST pass through a redaction layer before serialization; unredacted fields are rejected by the CI parser fixture.</statement>
+      <rationale source="GDPR / CCPA practice">Logs are a backup PII source; unredacted logs make every audit a discovery event.</rationale>
     </rule>
-
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No &apos;team&apos; or &apos;we&apos; as owner.</statement>
-      <rationale source="gap-analysis 2026-05-17">RACI / single-throat-to-choke. Plural ownership = no ownership; future readers need a named human to chase.</rationale>
+    <rule id="trace-correlation" testable="true" depth="essential">
+      <statement>Every log line in a request scope MUST carry `trace_id` and `span_id` from the OTel context; missing trace context on request-scoped logs is rejected.</statement>
+      <rationale source="OpenTelemetry logs spec">Without trace correlation cross-service debugging falls back to timestamp matching which is unreliable past 100 req/s.</rationale>
     </rule>
-
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) are flagged on read.</statement>
-      <rationale source="gap-analysis 2026-05-17">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="per-env-levels" testable="true" depth="essential">
+      <statement>Log levels MUST follow the matrix: dev=DEBUG, staging=INFO with SAMPLED DEBUG, prod=INFO with SAMPLED DEBUG (1%); broad DEBUG in prod is rejected.</statement>
+      <rationale source="log-volume retro">DEBUG-in-prod blows cost + masks signal; sampled DEBUG keeps the diagnostic path open without burning budget.</rationale>
     </rule>
-
-    <rule id="r5-grounded-in-rationale" testable="true" depth="essential">
-      <statement>Every section of the artefact cites the specific gap it closes: &apos;`logging-patterns` exists but is generic. Need explicit guidance: required fields, PII redaction, trace correlation, log&apos;.</statement>
-      <rationale source="gap-analysis 2026-05-17">Without grounding, the artefact becomes generic boilerplate. The cited gap is the falsifiability anchor.</rationale>
+    <rule id="ci-parser-fixture" testable="true" depth="essential">
+      <statement>CI MUST run a parser fixture that consumes sample log lines, validates the JSON Schema, and asserts redaction; regressions block merge.</statement>
+      <rationale source="shift-left observability practice">Without a parser fixture, log shape silently drifts and breaks downstream queries; CI gate keeps the contract stable.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if every entry in `## Applies If` holds and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">Misrouted methodology produces wrong-shape output; explicit skip rule is the universal default branch.</rationale>
+    </rule>
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-  </see-also>
 </text>

@@ -1,39 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Structured Logging As Code Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Structured Logging As Code output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/structured-logging-as-code.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Structured Logging as Code Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/structured-logging-as-code.json",
+  "type": "object",
+  "required": [
+    "required_fields",
+    "redaction_rules",
+    "trace_correlation",
+    "per_env_levels",
+    "ci_parser_fixture",
+    "owner"
+  ],
+  "properties": {
+    "required_fields": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "field_or_regex",
+          "policy"
+        ],
+        "properties": {
+          "field_or_regex": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "drop",
+              "hash",
+              "mask"
+            ]
+          }
+        }
+      }
+    },
+    "trace_correlation": {
+      "type": "string",
+      "enum": [
+        "otel",
+        "vendor",
+        "manual"
+      ]
+    },
+    "per_env_levels": {
+      "type": "object",
+      "required": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "properties": {
+        "dev": {
+          "type": "string"
+        },
+        "staging": {
+          "type": "string"
+        },
+        "prod": {
+          "type": "string"
+        }
+      }
+    },
+    "ci_parser_fixture": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "required_fields": [
+    "ts",
+    "level",
+    "msg",
+    "service",
+    "env",
+    "request_id",
+    "trace_id"
+  ],
+  "redaction_rules": [
+    {
+      "field_or_regex": "user.email",
+      "policy": "hash"
+    },
+    {
+      "field_or_regex": "card_number",
+      "policy": "drop"
+    },
+    {
+      "field_or_regex": "(?i)password|secret|token",
+      "policy": "drop"
+    }
+  ],
+  "trace_correlation": "otel",
+  "per_env_levels": {
+    "dev": "DEBUG",
+    "staging": "INFO+SAMPLED-DEBUG",
+    "prod": "INFO+SAMPLED-DEBUG-1pct"
+  },
+  "ci_parser_fixture": "tests/test_log_parser.py::test_redaction_and_schema",
+  "owner": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "required_fields": [
+    "msg"
+  ],
+  "redaction_rules": [],
+  "trace_correlation": "none",
+  "per_env_levels": {
+    "prod": "DEBUG"
+  },
+  "ci_parser_fixture": "",
+  "owner": "team"
+}
+]]></code>
+    <note>required_fields too short (minItems=4); redaction_rules empty; trace_correlation not in enum; per_env_levels missing dev/staging; DEBUG in prod; ci_parser_fixture empty; owner plural.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/structured-logging-as-code.json</item>
+      <pattern id="prose-logs">log lines as prose strings rather than JSON.</pattern>
+      <pattern id="unredacted-pii">user identifiers / payment tokens shipped raw.</pattern>
+      <pattern id="missing-trace-id">request-scoped logs lacking trace_id.</pattern>
+      <pattern id="debug-in-prod">broad DEBUG level in production; cost + signal both lost.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-structured-logging-as-code.py">Validator script (see scripts/).</reference>
 </text>

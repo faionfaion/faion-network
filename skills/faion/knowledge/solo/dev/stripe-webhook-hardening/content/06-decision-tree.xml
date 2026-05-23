@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Stripe Webhook Hardening Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals onto a conclusion that references a rule id from 01-core-rules.xml.</summary>
+  <decision-tree>
+    <root-question id="preconditions">Are preconditions satisfied: webhook in prod, secret manager available, edge controls configurable, audit destination exists?</root-question>
+      <branch when="preconditions == no">
+        <conclusion ref="skip-this-methodology" verdict="missing preconditions; delay hardening until launch or route to enterprise WAF playbook"/>
+      </branch>
+      <branch when="preconditions == yes">
+        <question id="tolerance-bounded">Is timestamp tolerance &lt;= 300s?</question>
+        <branch when="tolerance &gt; 300">
+          <conclusion ref="timestamp-tolerance-bounded" verdict="lower tolerance to 5 minutes; fix clock drift at infra"/>
+        </branch>
+        <branch when="tolerance &lt;= 300">
+          <question id="rotation-cadence">Is secret rotation cadence &lt;= 90 days with a documented runbook?</question>
+          <branch when="rotation &gt; 90 or missing_runbook">
+            <conclusion ref="secret-rotation-cadence" verdict="schedule rotation; land runbook in repo"/>
+          </branch>
+          <branch when="rotation &lt;= 90">
+            <question id="edge-controls">Is edge layer rate-limited at the endpoint?</question>
+            <branch when="edge == open">
+              <conclusion ref="edge-rate-limit" verdict="configure rate limit at 200 rpm per IP"/>
+            </branch>
+            <branch when="edge == limited">
+              <conclusion ref="audit-failed-verifications" verdict="wire audit log for failed verifications"/>
+            </branch>
+          </branch>
+        </branch>
+      </branch>
+  </decision-tree>
+  <example trace="preconditions=yes -&gt; tolerance&lt;=300 -&gt; rotation&lt;=90 -&gt; edge=limited -&gt; audit-failed-verifications.">Worked path from root-question to conclusion.</example>
+</text>

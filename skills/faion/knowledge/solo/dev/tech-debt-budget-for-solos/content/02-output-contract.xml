@@ -1,39 +1,140 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Tech Debt Budget For Solos Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Tech Debt Budget For Solos output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/tech-debt-budget-for-solos.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Tech-Debt Budget for Solos Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. The validator script enforces required keys plus per-field constraints; forbidden patterns enumerate shapes the agent must never emit.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/tech-debt-budget-for-solos.json",
+  "type": "object",
+  "required": [
+    "cycle_length_days",
+    "cap_percent",
+    "items",
+    "owner",
+    "last_signed_utc"
+  ],
+  "properties": {
+    "cycle_length_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 90
+    },
+    "cap_percent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "impact",
+          "interest",
+          "decision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "interest": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ship",
+              "pay",
+              "monitor"
+            ]
+          }
+        }
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "last_signed_utc": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "cycle_length_days": 14,
+  "cap_percent": 20,
+  "items": [
+    {
+      "id": "td-001",
+      "title": "extract auth middleware",
+      "impact": 4,
+      "interest": 3,
+      "decision": "pay"
+    },
+    {
+      "id": "td-002",
+      "title": "rewrite settings module",
+      "impact": 2,
+      "interest": 1,
+      "decision": "monitor"
+    },
+    {
+      "id": "td-003",
+      "title": "drop legacy v1 API",
+      "impact": 5,
+      "interest": 4,
+      "decision": "pay"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "last_signed_utc": "2026-05-15T10:00:00Z"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "cycle_length_days": 14,
+  "cap_percent": 60,
+  "items": [
+    {
+      "id": "td-x",
+      "title": "fix later",
+      "impact": 0,
+      "interest": 9,
+      "decision": "defer"
+    }
+  ],
+  "owner": "team",
+  "last_signed_utc": ""
+}
+]]></code>
+    <note>cap_percent > 20; impact below minimum; interest above maximum; decision not in enum; owner plural; last_signed_utc empty.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/tech-debt-budget-for-solos.json</item>
+      <pattern id="over-cap">cap_percent > 20 without an explicit policy exception.</pattern>
+      <pattern id="unscored-items">items without impact + interest scores.</pattern>
+      <pattern id="defer-without-decision">items deferred indefinitely with no ship / pay / monitor decision.</pattern>
+      <pattern id="missing-sign-off">ledger without monthly owner sign-off.</pattern>
     </list>
   </section>
+  <reference path="scripts/validate-tech-debt-budget-for-solos.py">Validator script (see scripts/).</reference>
 </text>
