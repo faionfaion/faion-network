@@ -1,57 +1,204 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelancer Discovery Call Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Freelancer Discovery Call Template artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Freelancer Discovery Call Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/freelancer-discovery-call.json",
+  "type": "object",
+  "required": [
+    "prospect",
+    "sections",
+    "scorecard",
+    "proposal_seed"
+  ],
+  "properties": {
+    "prospect": {
+      "type": "object",
+      "required": [
+        "name",
+        "company",
+        "role"
+      ]
+    },
+    "sections": {
+      "type": "object",
+      "required": [
+        "context",
+        "pain",
+        "success_criteria",
+        "budget_signals",
+        "decision_process"
+      ],
+      "properties": {
+        "context": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pain": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "success_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "budget_signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "decision_process": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scorecard": {
+      "type": "object",
+      "required": [
+        "fit",
+        "urgency",
+        "budget",
+        "decision_power",
+        "vibes",
+        "total"
+      ],
+      "properties": {
+        "fit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "urgency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "budget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "decision_power": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "vibes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 25
+        }
+      }
+    },
+    "proposal_seed": {
+      "type": "object",
+      "required": [
+        "problem",
+        "approach",
+        "scope",
+        "price",
+        "timeline"
+      ]
+    },
+    "operator_word_share": {
+      "type": "number",
+      "maximum": 0.3
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "prospect": {
+    "name": "Carlos R.",
+    "company": "BrewLab",
+    "role": "Founder"
+  },
+  "sections": {
+    "context": [
+      "Walk me through what your team does today.",
+      "How did you find me?"
+    ],
+    "pain": [
+      "What's slowing you down most this quarter?",
+      "Tell me about the last time it broke."
+    ],
+    "success_criteria": [
+      "What would 'done' look like in 90 days?",
+      "How will you measure it?"
+    ],
+    "budget_signals": [
+      "What are you spending on this today?",
+      "What budget have you allocated?"
+    ],
+    "decision_process": [
+      "Who else weighs in?",
+      "What's your timeline to start?"
+    ]
+  },
+  "scorecard": {
+    "fit": 4,
+    "urgency": 4,
+    "budget": 3,
+    "decision_power": 5,
+    "vibes": 4,
+    "total": 20
+  },
+  "proposal_seed": {
+    "problem": "BrewLab loses 6h/week reconciling SKU spreadsheets.",
+    "approach": "Replace manual reconciliation with Airtable + automation; 2 weeks build.",
+    "scope": "Setup, data migration, 2 trainings.",
+    "price": "\u20ac4,500 fixed.",
+    "timeline": "Start within 2 weeks; deliver 14 days; 30-day post-launch support."
+  },
+  "operator_word_share": 0.22
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "prospect": {
+    "name": "x"
+  },
+  "sections": {},
+  "scorecard": {
+    "total": 30
+  }
+}
+]]></code>
+    <note>missing sections; scorecard total out of range; missing proposal_seed.</note>
+  </example>
+
   <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
     <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
+      <item>sections missing any of the 5 required keys.</item>
+      <item>scorecard.total &gt; 25.</item>
+      <item>operator_word_share &gt; 0.30.</item>
     </list>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <reference path="scripts/validate-freelancer-discovery-call-template.py">Validator script</reference>
 </text>

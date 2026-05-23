@@ -1,3 +1,9 @@
+<!-- purpose: Markdown session plan skeleton with Osborn's 4 rules pre-printed -->
+<!-- consumes: Problem + technique + participants -->
+<!-- produces: Session plan -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200 tokens when loaded -->
+
 # Brainstorm: [TOPIC]
 
 Date: [DATE]

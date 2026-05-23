@@ -1,22 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="active-listening Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Active Listening Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the RASA interview-script artefact. Validator enforces required keys, open-question discipline, and reflective-formula presence.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/active-listening.json",
+  "type": "object",
+  "required": ["goal", "interviewee_profile", "receive_opener", "appreciate_phrases", "summarize_starters", "ask_questions", "reflective_prompts", "silence_cue"],
+  "properties": {
+    "goal": {"type": "string", "minLength": 10, "maxLength": 200},
+    "interviewee_profile": {"type": "string", "minLength": 10, "maxLength": 300},
+    "receive_opener": {"type": "string", "minLength": 10},
+    "appreciate_phrases": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 5},
+    "summarize_starters": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 5},
+    "ask_questions": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^(What|How|Tell me|Walk me|Describe|Help me understand|In what way)"},
+      "minItems": 5,
+      "maxItems": 8
+    },
+    "reflective_prompts": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "(sounds like|seems like|I hear that)"},
+      "minItems": 1
+    },
+    "silence_cue": {"type": "string", "minLength": 10},
+    "channel": {"enum": ["live-voice", "live-video", "async-text"]}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "goal": "Understand why deployment process takes 4 hours.",
+  "interviewee_profile": "DevOps lead, 5 years on the team, skeptical of new tooling.",
+  "receive_opener": "I'll close the laptop for the next 30 minutes. Take whatever space you need.",
+  "appreciate_phrases": ["I see.", "Go on.", "That makes sense."],
+  "summarize_starters": [
+    "So if I understand you, the bottleneck is...",
+    "What I'm hearing is that the manual step...",
+    "Let me play that back: the data export..."
+  ],
+  "ask_questions": [
+    "Walk me through what happens after the export.",
+    "How does the current process affect your team's morning?",
+    "What does a good day with this look like?",
+    "Tell me about the last time it broke.",
+    "In what way would you change it if you had a free week?"
+  ],
+  "reflective_prompts": ["It sounds like you're frustrated because the same step breaks every Monday."],
+  "silence_cue": "Pause 3-5 seconds after each answer before asking the next question.",
+  "channel": "live-video"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "goal": "Get info",
+  "ask_questions": ["Is the system slow?", "Do you like it?"]
+}
+]]></code>
+    <note>Closed openers (Is, Do) forbidden; missing receive_opener, summarize_starters, reflective_prompts, silence_cue.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Any ask_question opening with Is, Do, Did, Are, Were, Will, Would.</item>
+      <item>Reflective prompt without the "sounds like / seems like / I hear that" anchor.</item>
+      <item>Missing silence_cue in async-text channel (substitute prompt required).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-active-listening.py">Validator script</reference>
 </text>

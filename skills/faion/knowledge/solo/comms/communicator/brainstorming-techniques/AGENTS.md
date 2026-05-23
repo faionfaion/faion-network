@@ -3,73 +3,102 @@ slug: brainstorming-techniques
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Brainstorming techniques structure group ideation to maximize quantity and diversity of ideas while preventing dominant voices and premature evaluation.
-content_id: "0bb9e2cbe0b3916b"
-tags: [brainstorming, group-facilitation, ideation, diverge-converge, facilitation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a facilitated brainstorm session plan (Classic, 6-3-5, Round Robin, or Reverse) with Osborn's 4 rules enforced and a scored idea shortlist.
+content_id: "3ec5dd38eb03f9d3"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [brainstorming, facilitation, ideation, 6-3-5, osborn]
 ---
 # Brainstorming Techniques
 
 ## Summary
 
-**One-sentence:** Brainstorming techniques structure group ideation to maximize quantity and diversity of ideas while preventing dominant voices and premature evaluation.
+**One-sentence:** Generates a facilitated brainstorm session plan (Classic, 6-3-5, Round Robin, or Reverse) with Osborn's 4 rules enforced and a scored idea shortlist.
 
-**One-paragraph:** Brainstorming techniques structure group ideation to maximize quantity and diversity of ideas while preventing dominant voices and premature evaluation. Four core techniques: Classic Brainstorming (open verbal, 4-8 people), Brainwriting 6-3-5 (written rotation, 6 people, 108 ideas in 30 min), Round Robin (enforced equal turns, 4-10 people), and Reverse Brainstorming (invert the problem to surface risks and unobvious solutions). All four follow Osborn's 4 rules: defer judgment, go for quantity, encourage wild ideas, build on others' ideas.
+**One-paragraph:** Brainstorming techniques structure group ideation to maximize quantity and diversity of ideas while preventing dominant voices and premature evaluation. Four core techniques — Classic (open verbal, 4-8 people), Brainwriting 6-3-5 (written rotation, 6 people, 108 ideas in 30 min), Round Robin (enforced equal turns, 4-10 people), Reverse Brainstorming (invert the problem) — all follow Osborn's 4 rules: defer judgment, go for quantity, encourage wild ideas, build on others'. The methodology emits a session plan, a generation prompt, and a clustering/scoring sheet.
+
+**Ефективно для:**
+
+- Facilitated group ideation where dominant voices kill diversity.
+- Time-boxed product-team workshops needing >50 ideas in 30 min.
+- Surfacing risks via Reverse Brainstorming before a launch.
+- Mixed-seniority groups where rank-anchoring kills junior input.
 
 ## Applies If (ALL must hold)
 
-- Generating a large idea set for a well-defined problem (product name, feature list, risk audit)
-- Running async remote ideation where participants write before discussing (Brainwriting works in shared docs)
-- Breaking a creative block with structured diverge → converge cycles
-- Exploring risks via Reverse Brainstorming when stakeholders are too polite to surface problems directly
-- Ensuring equal participation from introverts and senior-junior mixed groups
+- Group of 4-10 participants available for a synchronous session.
+- Problem statement is open-ended enough for >20 candidate ideas.
+- Facilitator has 30-60 min uninterrupted to run the session.
+- Output is meant to be clustered and shortlisted, not selected live.
 
 ## Skip If (ANY kills it)
 
-- Convergence and decision-making — brainstorming is divergent only; run a separate evaluation step after
-- Solo ideation with a single narrow constraint; SCAMPER or direct prompting works better
-- When the "problem" is actually a predefined requirement masquerading as an open question
-- Time-critical triage where idea quantity is irrelevant
+- Solo ideation — use `ideation-methods` (SCAMPER, Mind Mapping) instead.
+- Group already has 2+ candidate options and needs evaluation, not generation.
+- Single decision-maker present who will override the group — pointless theatre.
+- Async-only context — use brainwriting-by-doc instead of synchronous brainstorm.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Problem statement | single sentence, open-ended | facilitator / PM |
+| Participant list | 4-10 names + roles | session owner |
+| Tool | whiteboard / Miro / FigJam / paper | logistics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[stakeholder-communication]] | mode-selection — Brainstorm is one of the 5 dialogue modes |
+| [[ideation-methods]] | fallback for solo or follow-up structured ideation |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `technique-selection` | sonnet | Light judgement on group + problem fit. |
+| `session-plan-generation` | sonnet | Phase planning + time-boxing. |
+| `dedup-cluster` | haiku | Mechanical similarity grouping. |
+| `score-impact-effort` | sonnet | Calibration judgement, bounded inputs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/prompt-generate.txt` | Prompt to run the generation phase for a chosen technique |
+| `templates/prompt-cluster.txt` | Prompt to dedup + cluster a raw idea list into 3-7 themes |
+| `templates/session-plan.md` | Markdown session plan skeleton with Osborn's 4 rules pre-printed |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-brainstorming-techniques.py` | Validate brainstorming-techniques artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
+- [[ideation-methods]]
+- [[brainstorming-ideation]]
+- [[stakeholder-communication]]
+- [[feedback]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts with problem shape (generate vs risk-surface), then routes by group profile (dominance risk, written comfort) to one of the four techniques.

@@ -1,22 +1,236 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="vui-market-context Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="vui-market-context Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the artefact produced by the vui-market-context methodology. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/vui-market-context.json",
+  "type": "object",
+  "required": [
+    "__faion_header__",
+    "decision_date",
+    "use_case",
+    "scoring",
+    "recommendation"
+  ],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": [
+        "methodology",
+        "version",
+        "produces"
+      ],
+      "properties": {
+        "methodology": {
+          "const": "vui-market-context"
+        },
+        "version": {
+          "type": "string"
+        },
+        "produces": {
+          "const": "decision-record"
+        }
+      }
+    },
+    "decision_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "use_case": {
+      "enum": [
+        "smart-home",
+        "app-embedded",
+        "ivr",
+        "kiosk"
+      ]
+    },
+    "scoring": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "platform",
+          "install_base",
+          "developer_access",
+          "distribution",
+          "evidence_sources"
+        ],
+        "properties": {
+          "platform": {
+            "enum": [
+              "alexa",
+              "google-assistant",
+              "siri",
+              "bixby",
+              "custom-llm",
+              "matter",
+              "home-assistant"
+            ]
+          },
+          "install_base": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "developer_access": {
+            "enum": [
+              "open",
+              "partial",
+              "restricted",
+              "closed"
+            ]
+          },
+          "distribution": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "evidence_sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "required": [
+        "primary",
+        "fallback",
+        "rationale",
+        "lock_in_risk_notes"
+      ],
+      "properties": {
+        "primary": {
+          "enum": [
+            "alexa",
+            "google-assistant",
+            "siri",
+            "bixby",
+            "custom-llm",
+            "matter",
+            "home-assistant"
+          ]
+        },
+        "fallback": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 40
+        },
+        "lock_in_risk_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {
+    "methodology": "vui-market-context",
+    "version": "1.1.0",
+    "produces": "decision-record"
+  },
+  "decision_date": "2026-05-23",
+  "use_case": "smart-home",
+  "scoring": [
+    {
+      "platform": "matter",
+      "install_base": 4,
+      "developer_access": "open",
+      "distribution": 5,
+      "evidence_sources": [
+        "Matter spec 1.3 (2025)",
+        "CSA 2025 update"
+      ]
+    },
+    {
+      "platform": "alexa",
+      "install_base": 5,
+      "developer_access": "restricted",
+      "distribution": 3,
+      "evidence_sources": [
+        "Amazon 2025 dev portal"
+      ]
+    },
+    {
+      "platform": "home-assistant",
+      "install_base": 3,
+      "developer_access": "open",
+      "distribution": 4,
+      "evidence_sources": [
+        "HA 2025 release notes"
+      ]
+    }
+  ],
+  "recommendation": {
+    "primary": "matter",
+    "fallback": [
+      "home-assistant"
+    ],
+    "rationale": "Matter is consumed by Alexa/Google/Apple; primary gives multi-vendor reach with open access. Home Assistant fallback covers prosumers.",
+    "lock_in_risk_notes": [
+      "Matter v1.x ecosystem still maturing; expect feature gaps for advanced devices."
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "decision_date": "2026-05-23",
+  "use_case": "smart-home",
+  "scoring": [
+    {
+      "platform": "alexa",
+      "install_base": 5,
+      "developer_access": "open",
+      "distribution": 3,
+      "evidence_sources": [
+        "2022 Alexa stats"
+      ]
+    }
+  ],
+  "recommendation": {
+    "primary": "alexa"
+  }
+}
+]]></code>
+    <note>Missing __faion_header__; only 1 platform scored; pre-2024 evidence; smart-home without Matter or Home Assistant; recommendation missing fallback + rationale + lock_in_risk_notes.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Single-platform scoring.</item>
+      <item>evidence_sources containing only pre-2024 references.</item>
+      <item>Smart-home use_case without `matter` or `home-assistant` in scoring or fallback.</item>
+      <item>Empty `lock_in_risk_notes` when developer_access is restricted/closed.</item>
     </list>
   </section>
+
+  <reference path="templates/decision-record.md">Skeleton voice-platform decision record</reference>
+  <reference path="scripts/validate-vui-market-context.py">Validator script</reference>
 </text>

@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="brainstorming-ideation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for brainstorming-ideation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Brainstorming Ideation (Agentic Pipeline) Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the same agent that generated the ideas to also dot-vote or rank them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The generating agent has higher confidence in ideas it produced with higher certainty in the first pass. Self-scoring compounds this into a self-reinforcing ranking with no independent judgment.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Including evaluation language ("good idea because...", "this works better than option B") in the generation prompt.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The model self-censors and produces fewer, safer ideas. The generation pass becomes a mixed pass that produces a filtered list masquerading as a brainstorm.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Accepting cluster assignments without human review, particularly when two conceptually distinct approaches share domain vocabulary.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cosine similarity clusters by word overlap. "Automate onboarding email sequence" and "Automate onboarding task assignment" may cluster together despite being architecturally different solutions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Passing a list of 50+ ideas to a scoring prompt in a single call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Ideas in positions 1-15 receive systematically higher scores than identical ideas in positions 35-50 due to positional bias in LLM attention. The first batch is not comparable to the last batch.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="single-persona-collapse" severity="high">
+      <symptom>Pipeline run with one persona produces a 30-idea list that all read like the operator's own voice.</symptom>
+      <root-cause source="Internal — pipeline audit 2025">Persona injection step skipped or used only one persona.</root-cause>
+      <fix>Enforce ≥3 personas; reject pipeline runs with fewer at validation step.</fix>
+    </antipattern>
+
+    <antipattern id="string-dedup-inflation" severity="high">
+      <symptom>Shortlist contains 'magic link login' and 'passwordless email login' as separate entries — clear paraphrases.</symptom>
+      <root-cause source="Internal — embedding audits">Dedup used exact string match, not semantic similarity.</root-cause>
+      <fix>Replace string dedup with embedding similarity ≥ 0.85 → merge; log merged-from list.</fix>
+    </antipattern>
+
+    <antipattern id="over-cluster" severity="medium">
+      <symptom>Output has 15 clusters with 1-2 ideas each — no signal, no prioritisation.</symptom>
+      <root-cause source="Internal — cluster-quality audits">Cluster algorithm not capped at 3-7 themes.</root-cause>
+      <fix>Cap k=7 in clustering; if below 3, recluster broader; if above 7, merge similar.</fix>
+    </antipattern>
+
+    <antipattern id="silent-drop" severity="medium">
+      <symptom>Pipeline drops 20 ideas in dedup/cluster without recording them; provenance broken.</symptom>
+      <root-cause source="Internal — audit trail policy">Dropping logic did not log to provenance.</root-cause>
+      <fix>Persist 'dropped_for_similarity_to=&lt;idea_id&gt;' as part of provenance; never silent drops.</fix>
+    </antipattern>
+
   </section>
 </text>

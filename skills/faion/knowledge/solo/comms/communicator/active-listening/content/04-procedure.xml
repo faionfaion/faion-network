@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Active Listening Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4-step procedure: scope the session → generate RASA script → review for assumptions → post-pass annotate transcript.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scope-the-session">
+      <input>Session goal + interviewee profile + channel (live-voice / live-video / async-text)</input>
+      <action>Capture one-sentence goal and 1-paragraph interviewee context. Decide stakes (low / medium / high). High stakes → require Level 5 prompt in the script.</action>
+      <output>Scope record: {goal, profile, channel, stakes}</output>
+      <decision-gate>If channel == async-text, replace silence_cue with explicit "Is there anything you'd like to add?" prompt.</decision-gate>
+    </step>
+
+    <step n="2" name="generate-rasa-script">
+      <input>Scope record + `templates/prompt-rasa-question-flow.txt`</input>
+      <action>Run the prompt template via sonnet. Output must include receive_opener, ≥2 appreciate_phrases, ≥3 summarize_starters, ≥5 ask_questions (all open), ≥1 reflective_prompts, silence_cue.</action>
+      <output>RASA script JSON conforming to `02-output-contract.xml`</output>
+    </step>
+
+    <step n="3" name="review-for-assumptions">
+      <input>RASA script JSON</input>
+      <action>Run `scripts/validate-active-listening.py --file script.json`. Manually scan each ask_question for embedded assumptions ("What problems did X cause" → reformat). Re-run validator.</action>
+      <output>validation_passed boolean + assumption-clean script</output>
+      <decision-gate>If validator returns violations, regenerate the failing fields and re-run.</decision-gate>
+    </step>
+
+    <step n="4" name="annotate-transcript">
+      <input>Post-conversation transcript (speaker-labeled) + `templates/prompt-transcript-annotation.txt`</input>
+      <action>Run annotation prompt via haiku. Apply `templates/speaker-ratio.py` to flag windows where interviewer word-share > 20%. Flag missing Summarize labels.</action>
+      <output>Annotated transcript with RASA labels + dominance flags + skipped-step list</output>
+    </step>
+
+  </section>
+</text>

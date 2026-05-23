@@ -3,80 +3,95 @@ slug: claude-code-and-cursor-at-solo-tier
 tier: solo
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Claude Code And Cursor At Solo Tier: codified ai practice that turns the recurring 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' decision into a repeatable, auditable artefact.
-content_id: "d98c1cc2240944e3"
-tags: [claude-code-and-cursor-at-solo-tier, ai, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a solo-developer AI-pair-coding loop spec: model + IDE choice, repo conventions, prompt budget, and a spec-driven workflow for Claude Code and Cursor.
+content_id: "4216e88b51f72390"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [claude-code, cursor, ai-pair-coding, solo-saas, workflow]
 ---
-# Claude Code And Cursor At Solo Tier
+# Claude Code & Cursor at Solo Tier
 
 ## Summary
 
-**One-sentence:** Claude Code And Cursor At Solo Tier: codified ai practice that turns the recurring 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' decision into a repeatable, auditable artefact.
+**One-sentence:** Generates a solo-developer AI-pair-coding loop spec: model + IDE choice, repo conventions, prompt budget, and a spec-driven workflow for Claude Code and Cursor.
 
-**One-paragraph:** Claude Code And Cursor At Solo Tier addresses the gap surfaced by 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)'. STRUCTURAL: faion's `ai` group exists only under geek/. That gates the entire AI-coding workflow behind $99, while the persona explicitly codes with Claude/Cursor at $19. The taxonomy must be fixed — either (a) split a `solo/ai` group with Claude Code / Cursor basics + MCP minimum viable usage, or (b) move 30% of geek/ai/claude-code into solo. Without this, faion is not actually useful to its own persona at the tier the persona pays for. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** At the Solo tier the developer codes with Claude Code or Cursor against their own SaaS. This methodology codifies the AI-pair-coding loop: model selection (Opus for design/creative; Sonnet for routine), IDE choice (Claude Code for terminal-native; Cursor for inline edit), repo conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md), prompt-budget discipline (≤2K tokens of context per task), and the spec-driven workflow that prevents 'AI wrote 800 LOC nobody understands'. Output: a per-repo Solo AI-pair config + a workflow checklist.
+
+**Ефективно для:**
+
+- Solo SaaS builder adopting Claude Code or Cursor for the first time.
+- Migrating off GitHub Copilot's vanilla inline-only flow.
+- Configuring repo conventions so AI sessions stay consistent.
+- Cap-discipline: keep monthly LLM spend on prompts predictable.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Operator codes solo (no team workflow to coordinate).
+- Repo is small to medium (≤200K LOC).
+- Operator has a Claude or Cursor subscription on the Solo plan.
+- Operator has authority to add CLAUDE.md / AGENTS.md to the repo.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Team of ≥3 — coordination overhead requires Pro-tier methodologies.
+- Pre-revenue exploration phase where structure is premature.
+- Operator using a sealed enterprise IDE that cannot run Claude Code / Cursor.
+- Operator's repo has no convention surface (Python notebook scratchpads only).
 
 ## Prerequisites
 
-- recent context for the 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo root access | ability to add CLAUDE.md / AGENTS.md | operator |
+| Active subscription | Claude or Cursor Solo-tier active | operator |
+| Primary task type | what kind of tasks dominate (refactor / new feature / bug fix) | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/ai/` | parent group — provides the operating context for this methodology |
+| [[freelancer-discovery-call-template]] | BA discipline before building |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-instance judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/claude-code-and-cursor-at-solo-tier.json` | JSON schema for the Claude Code And Cursor At Solo Tier output contract |
-| `templates/claude-code-and-cursor-at-solo-tier.md` | Markdown skeleton with the required fields |
+| `templates/claude-code-and-cursor-at-solo-tier.json` | JSON skeleton for the Solo AI-pair-config artefact |
+| `templates/claude-code-and-cursor-at-solo-tier.md` | Markdown checklist for the workflow |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-claude-code-and-cursor-at-solo-tier.py` | Enforce Claude Code And Cursor At Solo Tier output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-claude-code-and-cursor-at-solo-tier.py` | Validate claude-code-and-cursor-at-solo-tier artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/ai/`
-- upstream playbook: `p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)`
-- methodology family: `solo/ai/` (gap-p2 batch, F-059-063)
+- [[freelancer-discovery-call-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Gates on convention-file presence first; without it the loop produces token-burn. Otherwise routes by task type to model + context-budget rule.

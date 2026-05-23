@@ -3,78 +3,98 @@ slug: vpat-acr-template
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "55e7c0b45dfbe7f9"
-summary: "Vpat Acr Template: produces a versioned, owner-signed artefact that closes the gap 'role-ux-ui-designer/Accessibility audit and remediation program (6 weeks)'."
-tags: [vpat-acr-template, ux, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a VPAT 2.5 Accessibility Conformance Report with per-criterion status, evaluation method, and remarks suitable for procurement and ADA documentation.
+content_id: "e36e4ce1488a55ed"
+complexity: medium
+produces: report
+est_tokens: 4200
+tags: [vpat, acr, section-508, wcag, procurement]
 ---
-# Vpat Acr Template
+# VPAT / ACR Template
 
 ## Summary
 
-**One-sentence:** Vpat Acr Template: produces a versioned, owner-signed artefact that closes the gap 'role-ux-ui-designer/Accessibility audit and remediation program (6 weeks)'.
+**One-sentence:** Generates a VPAT 2.5 Accessibility Conformance Report with per-criterion status, evaluation method, and remarks suitable for procurement and ADA documentation.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-ux-ui-designer/Accessibility audit and remediation program (6 weeks)': Regulatory deliverables (VPAT/ACR) are evidence packaging for legal/ADA — no faion methodology covers the artifact format. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a vpat acr template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** A VPAT (Voluntary Product Accessibility Template) ACR (Accessibility Conformance Report) is the standard evidence packaging required by US Section 508 procurement and increasingly by EU EN 301 549. The current version is VPAT 2.5 (ITI, 2024). This methodology generates a structured ACR with per-success-criterion conformance status (Supports / Partially Supports / Does Not Support / Not Applicable), evaluation method, scope, and remarks per row. The output is consumable by procurement teams and forms the evidence base for an ADA / Section 508 compliance claim.
+
+**Ефективно для:**
+
+- Responding to a procurement RFP that requires a VPAT.
+- Documenting WCAG 2.2 conformance for Section 508 / EN 301 549.
+- Building the public 'accessibility' page evidence.
+- Coordinating remediation: ACR rows that are 'partial' become the backlog.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-ux-ui-designer/Accessibility audit and remediation program (6 weeks)' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Underlying WCAG 2.2 audit data is available (per-SC results).
+- Author has authority to publish a public-facing conformance document.
+- Product is publicly available or sold to government / enterprise.
+- There is a named accessibility lead who signs off the ACR.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working vpat acr template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- WCAG 2.2 audit not yet run — produce the audit first (`wcag-22-compliance`).
+- Internal-only product not sold via procurement — public ACR overkill.
+- Author has no sign-off authority — escalate first.
+- Earlier ACR from same version still current (≤6 months) — update, do not duplicate.
 
 ## Prerequisites
 
-- recent context for the 'role-ux-ui-designer/Accessibility audit and remediation program (6 weeks)' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| WCAG 2.2 audit | per-SC sc_results JSON | wcag-22-compliance methodology |
+| Product scope | what's in/out of conformance scope | PM |
+| Accessibility lead | named owner who signs off | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/ux` | parent domain group — provides operating context for Vpat Acr Template |
+| [[wcag-22-compliance]] | upstream — provides per-SC results |
+| [[w3c-design-tokens-standard]] | background — contrast tokens feed multiple SC rows |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `import-audit` | haiku | Mechanical mapping. |
+| `synthesize-remarks` | sonnet | Plain-language summarisation. |
+| `review-for-compliance` | opus | Cross-row consistency requires synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/vpat-acr-template.json` | JSON schema for the Vpat Acr Template output contract |
-| `templates/vpat-acr-template.md` | Markdown skeleton with the required fields |
+| `templates/vpat-acr-template.md` | Markdown VPAT 2.5 ACR skeleton |
+| `templates/vpat-acr-template.json` | JSON skeleton matching the output schema |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-vpat-acr-template.py` | Enforce Vpat Acr Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-vpat-acr-template.py` | Validate vpat-acr-template artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ux/`
-- upstream playbook: `role-ux-ui-designer/Accessibility audit and remediation program (6 weeks)`
-- pro/ux/role-ux-ui-designer
+- [[wcag-22-compliance]]
+- [[w3c-design-tokens-standard]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree gates on upstream audit availability, VPAT edition, and signature presence. Any gate failure halts publication.

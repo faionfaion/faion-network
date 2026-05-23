@@ -1,3 +1,9 @@
+# purpose: Embedding-based dedup utility with cosine threshold
+# consumes: raw_ideas + embedding endpoint
+# produces: deduplicated_ideas + merge log
+# depends-on: stdlib + embedding client
+# token-budget-impact: 0 (runs locally + remote embedding call)
+
 """
 Semantic deduplication for brainstorming idea lists.
 Removes near-duplicate ideas using sentence-transformers cosine similarity.

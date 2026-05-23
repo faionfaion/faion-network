@@ -3,73 +3,102 @@ slug: active-listening
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured listening practice (RASA: Receive, Appreciate, Summarize, Ask) that ensures the speaker feels understood before the listener responds.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a RASA-structured interview question flow plus transcript annotation that ensures speakers feel understood before any response.
 content_id: "f164ee2ae0f5bedf"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [listening, rasa, empathy, requirements-gathering, communication]
 ---
 # Active Listening
 
 ## Summary
 
-**One-sentence:** A structured listening practice (RASA: Receive, Appreciate, Summarize, Ask) that ensures the speaker feels understood before the listener responds.
+**One-sentence:** Generates a RASA-structured interview question flow plus transcript annotation that ensures speakers feel understood before any response.
 
-**One-paragraph:** A structured listening practice (RASA: Receive, Appreciate, Summarize, Ask) that ensures the speaker feels understood before the listener responds. Combines paraphrasing, mirroring, open questions, and empathic reflection to reach Level 5 empathic listening — understanding both content and emotion.
+**One-paragraph:** Active listening (RASA: Receive, Appreciate, Summarize, Ask) is a structured reactive practice that produces two artefacts: a pre-conversation script (open-only questions, paraphrase starters, silence cues) and a post-conversation annotated transcript (RASA labels, dominance flags, skipped-step markers). Output target is Level 5 empathic listening where both content and emotional register are captured. Agents do not execute the conversation live — they scaffold the script and analyze the transcript afterwards.
+
+**Ефективно для:**
+
+- Requirements gathering with skeptical stakeholders who withhold detail when not heard.
+- Customer discovery calls where embedded assumptions in closed questions kill signal.
+- Conflict de-escalation prep where the listener needs a reflective formula before going in.
+- Post-session coaching reviews that surface where Summarize was skipped or interviewer dominated.
 
 ## Applies If (ALL must hold)
 
-- Requirements gathering sessions with stakeholders or clients
-- 1-on-1 meetings where trust or engagement is at risk
-- Customer discovery interviews (especially with skeptical interviewees)
-- Conflict situations where one party feels misunderstood
-- Performance discussions or coaching conversations
+- Requirements gathering sessions with stakeholders or clients.
+- 1-on-1 meetings where trust or engagement is at risk.
+- Customer discovery interviews (especially with skeptical interviewees).
+- Conflict situations where one party feels misunderstood.
+- Performance discussions or coaching conversations.
 
 ## Skip If (ANY kills it)
 
-- Real-time agent conversations — agents cannot perform empathic listening live; they can scaffold it but not execute it
-- High-stakes interpersonal conflicts — a script-driven approach risks feeling mechanical and backfiring
-- Situations where a direct answer is needed and the other party is not emotionally engaged
-- Asynchronous text threads where silence and pace cues are absent
+- Real-time agent conversations — agents cannot perform empathic listening live; they can scaffold it but not execute it.
+- High-stakes interpersonal conflicts — a script-driven approach risks feeling mechanical and backfiring.
+- Situations where a direct answer is needed and the other party is not emotionally engaged.
+- Asynchronous text threads where silence and pace cues are absent.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Conversation goal | one-sentence brief | session owner |
+| Interviewee profile | role + context paragraph | CRM / session owner |
+| Transcript (post-pass only) | speaker-labeled text | recorder / Fireflies / Otter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[stakeholder-communication]] | upstream — defines who and why before script generation |
+| [[mom-test]] | upstream — bias-free interview discipline that pairs with RASA |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: rasa-full-cycle, open-question-discipline, level-5-target, reflective-formula, mirror-only-no-interpretation, silence-3-to-5s | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for RASA script + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 4-step procedure (scope → generate → review → annotate) | 700 |
+| `content/05-examples.xml` | essential | Worked RASA script for a slow-deployment stakeholder session | 400 |
+| `content/06-decision-tree.xml` | essential | Routes by signal (live vs prep, conflict vs requirements) to a rule | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `generate-rasa-script` | sonnet | Light judgement on phrasing + assumption checks. |
+| `annotate-transcript` | haiku | Mechanical label + word-count flags. |
+| `coach-skip-summarize` | sonnet | Tone-sensitive reflection, not mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/prompt-rasa-question-flow.txt` | Prompt to generate a RASA-structured interview script for a given goal |
+| `templates/prompt-transcript-annotation.txt` | Prompt to annotate a transcript with RASA labels and quality flags |
+| `templates/speaker-ratio.py` | Python snippet to measure interviewer word-share from a transcript |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-active-listening.py` | Validate the RASA script artefact against the output schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
+- [[stakeholder-communication]]
+- [[mom-test]]
+- [[conflict-resolution]]
+- [[feedback]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts with "is this a live conversation or pre/post analysis", then routes by stakes and conflict level to either a script generation rule, a transcript annotation rule, or a skip conclusion when the methodology cannot apply (live execution).

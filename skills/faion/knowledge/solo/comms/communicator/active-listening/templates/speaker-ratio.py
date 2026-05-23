@@ -1,3 +1,10 @@
+# purpose: measure interviewer word-share + flag dominance windows
+# consumes: transcript = list of {"speaker": str, "text": str}
+# produces: dict[speaker, ratio] + list of dominated window start indices
+# depends-on: stdlib only
+# token-budget-impact: 0 (runs locally, no LLM call)
+
+
 def speaker_ratio(transcript: list[dict]) -> dict[str, float]:
     """
     Measure word-share per speaker from a labeled transcript.

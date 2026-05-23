@@ -1,39 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Vpat Acr Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Vpat Acr Template output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="VPAT / ACR Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/vpat-acr.json",
+  "type": "object",
+  "required": [
+    "product",
+    "version",
+    "vpat_edition",
+    "scope",
+    "rows",
+    "signed_by"
+  ],
+  "properties": {
+    "product": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "vpat_edition": {
+      "type": "string",
+      "pattern": "^2\\.5"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sc",
+          "status",
+          "evaluation_method",
+          "remarks"
+        ],
+        "properties": {
+          "sc": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "Supports",
+              "Partially Supports",
+              "Does Not Support",
+              "Not Applicable"
+            ]
+          },
+          "evaluation_method": {
+            "type": "string"
+          },
+          "remarks": {
+            "type": "string"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "signed_by": {
+      "type": "object",
+      "required": [
+        "name",
+        "role",
+        "date"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "product": "FaionApp",
+  "version": "2.4.0",
+  "vpat_edition": "2.5 INT 2024",
+  "scope": "Marketing site + authenticated dashboard; mobile web only.",
+  "rows": [
+    {
+      "sc": "1.4.3 Contrast (Minimum)",
+      "status": "Supports",
+      "evaluation_method": "automated (axe-core) + manual",
+      "remarks": "All text meets 4.5:1; large text 3:1."
+    },
+    {
+      "sc": "2.4.11 Focus Not Obscured (Minimum)",
+      "status": "Supports",
+      "evaluation_method": "manual keyboard + 1.4x zoom",
+      "remarks": "Sticky header does not clip focus."
+    },
+    {
+      "sc": "2.5.8 Target Size (Minimum)",
+      "status": "Partially Supports",
+      "evaluation_method": "manual + automated layout audit",
+      "remarks": "Compare-table checkbox 20\u00d720px; fix scheduled for v2.4.1."
+    },
+    {
+      "sc": "3.3.8 Accessible Authentication (Minimum)",
+      "status": "Supports",
+      "evaluation_method": "manual + AT (NVDA)",
+      "remarks": "Passkey + magic-link alternatives provided."
+    }
+  ],
+  "signed_by": {
+    "name": "Olena Z.",
+    "role": "Accessibility Lead",
+    "date": "2026-05-15"
+  }
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "product": "x",
+  "vpat_edition": "2.3"
+}
+]]></code>
+    <note>vpat_edition below 2.5; missing scope, rows, signed_by.</note>
+  </example>
 
-    <schema-reference path="templates/vpat-acr-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/vpat-acr-template.json</item>
+      <item>vpat_edition below 2.5.</item>
+      <item>Row status outside the 4-option set.</item>
+      <item>ACR without signed_by.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-vpat-acr-template.py">Validator script</reference>
 </text>
