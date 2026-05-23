@@ -3,78 +3,100 @@ slug: freelancer-weekly-report-template
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "859655f26bd9f0ce"
-summary: "Freelancer Weekly Report Template — testable methodology for scripts, written cadences, stakeholder updates. Outcome-first weekly report template optimized for non-technical clients. Faion's pm/communications-management is too process-heavy for a solo's 10-min Friday recap."
-tags: [comms, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: One-page weekly stakeholder report for solo freelancers: shipped / next / risks / asks, anchored to verifiable evidence per row, posted on a fixed cadence so the client never has to chase.
+content_id: "59fa303c70f368da"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [comms, solo, freelancing, weekly-report, stakeholder-update, cadence]
 ---
 # Freelancer Weekly Report Template
 
 ## Summary
 
-**One-sentence:** Freelancer Weekly Report Template — testable methodology for scripts, written cadences, stakeholder updates. Outcome-first weekly report template optimized for non-technical clients. Faion's pm/communications-management is too process-heavy for a solo's 10-min Friday recap.
+**One-sentence:** One-page weekly stakeholder report for solo freelancers: shipped / next / risks / asks, anchored to verifiable evidence per row, posted on a fixed cadence so the client never has to chase.
 
-**One-paragraph:** Freelancer Weekly Report Template closes a known gap in comms practice: Outcome-first weekly report template optimized for non-technical clients. Faion's pm/communications-management is too process-heavy for a solo's 10-min Friday recap. The methodology is anchored to the recurring activity 'Friday weekly client report (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelancers either over-report (Friday War-and-Peace email) or under-report (silence + monthly invoice). The template fixes a four-block weekly shape: shipped (with PR links), next (with explicit unknowns), risks (with proposed mitigations), asks (with named recipient). Output is the filled report conforming to the schema; the cadence is part of the rule set, not the artefact. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- Freelancer Weekly Report Template — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Friday weekly client report (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
+- The triggering activity for `freelancer-weekly-report-template` appears in the operator's workload at least once per cycle.
 - The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
 - A named consumer exists for the output — either a human reviewer or a downstream agent.
 - An auditable source-of-truth is available for the inputs this methodology requires.
+- Active engagement of ≥2 weeks duration with a single named client.
+- Operator commits to a fixed weekly cadence (day-of-week + time).
 
 ## Skip If (ANY kills it)
 
 - One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Engagement length <2 weeks — a single closeout report is enough.
+- Client explicitly opts out of weekly cadence — fall back to milestone-based reports.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/comms/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[communicator]] | Parent skill — shared comms vocabulary and tone discipline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_weekly_report_template_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_weekly_report_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_weekly_report_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-freelancer-weekly-report-template-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-freelancer-weekly-report-template.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-weekly-report-template.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/comms/` (see neighbouring methodologies)
-- triggering activity: `Friday weekly client report (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelancer-inbound-reply-template]]
+- [[freelancer-scope-change-script-library]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Decides full-cycle report vs short-update vs skip. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

@@ -3,78 +3,100 @@ slug: ai-prompt-patterns-test-ideation
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Prompt Patterns Test Ideation: codified engineering practice that turns the recurring 'role-qa-engineer/Review and trust AI-generated tests' decision into a repeatable, auditable artefact.
-content_id: "56192c23afeb49ef"
-tags: [ai-prompt-patterns-test-ideation, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Three reusable prompt patterns (boundary, oracle, mutation) that turn an AI pair into a test-case generator instead of a test-code typist.
+content_id: "52ca9517ebae8569"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: [dev, solo, ai-pairing, testing, test-ideation, prompt-patterns]
 ---
-# Ai Prompt Patterns Test Ideation
+# AI Prompt Patterns for Test Ideation
 
 ## Summary
 
-**One-sentence:** Ai Prompt Patterns Test Ideation: codified engineering practice that turns the recurring 'role-qa-engineer/Review and trust AI-generated tests' decision into a repeatable, auditable artefact.
+**One-sentence:** Three reusable prompt patterns (boundary, oracle, mutation) that turn an AI pair into a test-case generator instead of a test-code typist.
 
-**One-paragraph:** Ai Prompt Patterns Test Ideation addresses the gap identified by the role-qa-engineer/Review and trust AI-generated tests playbook: Today the testing-folder llm-prompts.md files are one-shot generate-tests stubs. There is no methodology for prompt patterns that systematically tease out edge cases, boundary conditions, equivalence classes, property invariants, and adversarial inputs. A QA engineer in 2026 lives in prompt design; faion treats it as an afterthought. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Solo devs treat AI as a test-code typist — 'write tests for this function' — and get happy-path mirrors of the implementation. The methodology fixes three prompt patterns: boundary (enumerate edge cases first, then code), oracle (state the property, then ask for tests that violate it), and mutation (mutate the implementation, ask which tests catch the mutation). Output is the per-function ideation checklist conforming to the schema. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- AI Prompt Patterns for Test Ideation — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-qa-engineer/Review and trust AI-generated tests OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- The triggering activity for `ai-prompt-patterns-test-ideation` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Solo dev writing tests for a non-trivial function (≥3 branches OR ≥1 invariant).
+- Operator wants generated tests to catch realistic mutations, not mirror the implementation.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Bounded property tests already cover the function (Hypothesis / fast-check) — no ideation needed.
+- One-line getter/setter — overhead exceeds value.
 
 ## Prerequisites
 
-- recent context for the role-qa-engineer/Review and trust AI-generated tests task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[ai-pairing-decision-tree]] | Decides when AI pairing fits; this methodology guides the testing slice |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding, r5-detector-first | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-ai-prompt-patterns-test-ideation-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-prompt-patterns-test-ideation.json` | JSON schema for the Ai Prompt Patterns Test Ideation output contract |
-| `templates/ai-prompt-patterns-test-ideation.md` | Markdown skeleton with the required fields |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-ai-prompt-patterns-test-ideation.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-prompt-patterns-test-ideation.py` | Enforce Ai Prompt Patterns Test Ideation output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-prompt-patterns-test-ideation.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-qa-engineer/Review and trust AI-generated tests`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[ai-pairing-decision-tree]]
+- [[ai-prompt-as-commit-artifact]]
+- [[ai-over-reliance-self-audit]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes the dev to one or more of the three patterns based on function shape (branches, invariants, side-effects). Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

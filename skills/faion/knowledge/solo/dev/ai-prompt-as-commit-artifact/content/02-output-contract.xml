@@ -1,39 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai Prompt As Commit Artifact Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai Prompt As Commit Artifact output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI Prompt as Commit Artefact Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid AI Prompt as Commit Artefact artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ai-prompt-as-commit-artifact.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-prompt-as-commit-artifact.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-prompt-as-commit-artifact.json",
+  "title": "AI Prompt as Commit Artefact",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "commit_sha",
+    "prompt",
+    "model",
+    "context_refs",
+    "verifier",
+    "author",
+    "status",
+    "evidence",
+    "owner",
+    "last_touched",
+    "template_version"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date or UUID",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    },
+    "status": {
+      "type": "string",
+      "description": "draft|ready_for_review|approved|archived",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "description": "{source, citation} pairs anchoring non-trivial fields",
+      "minItems": 1
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "git short SHA of the commit being annotated",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "description": "verbatim prompt sent to the agent",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "description": "model id (e.g. claude-opus-4-7, gpt-5)",
+      "minLength": 1
+    },
+    "context_refs": {
+      "type": "array",
+      "description": "list of file paths + line ranges the agent read",
+      "minItems": 1
+    },
+    "verifier": {
+      "type": "string",
+      "description": "tests/lints/manual-check that confirmed the diff before commit",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "description": "named human who reviewed and committed",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ai-prompt-as-commit-artifact-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "evidence": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "commit_sha": "draft",
+  "prompt": "draft",
+  "model": "draft",
+  "context_refs": [
+    "draft-item"
+  ],
+  "verifier": "draft",
+  "author": "draft"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched. Used as the `--self-test` fixture by `scripts/validate-ai-prompt-as-commit-artifact.py`.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence array — rejected by `validate-ai-prompt-as-commit-artifact.py` with exit 1.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+    <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "everyone", "design", "engineering").</pattern>
+    <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter at write time.</pattern>
+    <pattern id="f4">`evidence` array empty for any non-trivial field declared in the schema.</pattern>
+    <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a named human reviewer distinct from the producing agent.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-ai-prompt-as-commit-artifact.py">Schema validator (stdlib only). Exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

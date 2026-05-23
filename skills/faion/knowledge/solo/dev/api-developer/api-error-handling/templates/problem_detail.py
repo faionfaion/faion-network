@@ -1,3 +1,8 @@
+# purpose: Template helper for API Error Handling (problem_detail.py).
+# consumes: see content/02-output-contract.xml inputs for api-error-handling
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 # ProblemDetail Pydantic model and FastAPI exception handler wiring.
 # RFC 7807 Problem Details for HTTP APIs.
 import uuid

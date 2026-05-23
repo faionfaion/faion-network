@@ -1,3 +1,9 @@
+<!-- purpose: Pixar case-study skeleton -->
+<!-- consumes: Customer outcome + journey -->
+<!-- produces: Pixar case study -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens when loaded -->
+
 ## Challenge
 [What problem did the customer/team face? Be specific — name the metric or pain.]
 

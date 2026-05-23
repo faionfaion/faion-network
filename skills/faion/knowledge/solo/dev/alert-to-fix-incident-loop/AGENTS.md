@@ -3,78 +3,101 @@ slug: alert-to-fix-incident-loop
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Alert to Fix Incident Loop: codified engineering practice that turns the recurring 'role-software-developer/Sentry/Datadog alert → bugfix → ship' decision into a repeatable, auditable artefact.
-content_id: "38f8ab6000507b53"
-tags: [alert-to-fix-incident-loop, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Closed-loop run-of-play for solo on-call: from alert fired → triage → mitigate → fix → write postmortem → close alert quality gap, with each step's artefact named and validated.
+content_id: "b07d8ba422a59a26"
+complexity: deep
+produces: playbook-step
+est_tokens: 4200
+tags: [dev, solo, incident-response, alerting, postmortem, on-call]
 ---
-# Alert to Fix Incident Loop
+# Alert-to-Fix Incident Loop
 
 ## Summary
 
-**One-sentence:** Alert to Fix Incident Loop: codified engineering practice that turns the recurring 'role-software-developer/Sentry/Datadog alert → bugfix → ship' decision into a repeatable, auditable artefact.
+**One-sentence:** Closed-loop run-of-play for solo on-call: from alert fired → triage → mitigate → fix → write postmortem → close alert quality gap, with each step's artefact named and validated.
 
-**One-paragraph:** Alert to Fix Incident Loop addresses the gap identified by the role-software-developer/Sentry/Datadog alert → bugfix → ship playbook: api-monitoring-* methodologies live at pro tier and are observability-focused. A solo-tier 'one alert end-to-end' playbook is missing — this is daily work in P4/P6. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Solo devs lose 30+ minutes per page on rediscovery (where is the dashboard, which on-call rotation, what was the last similar incident). The methodology fixes the loop: alert → triage record → mitigation step → root-cause hypothesis → fix PR → postmortem → alert-quality patch. Each step's artefact is required; skipping the postmortem is the failure mode the loop exists to prevent. Output is the incident artefact conforming to the schema. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- Alert-to-Fix Incident Loop — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-developer/Sentry/Datadog alert → bugfix → ship OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- The triggering activity for `alert-to-fix-incident-loop` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Production system has triggered an alert (page, ticket, automatic rollback).
+- Solo dev is the named on-call respondent OR is the only person reachable.
+- Operator wants a recurring loop, not an ad-hoc response per incident.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Alert is a known false positive scheduled for muting — skip + ticket the mute, do not run the loop.
+- Multi-team major incident — escalate to a coordinated incident commander, not a solo loop.
 
 ## Prerequisites
 
-- recent context for the role-software-developer/Sentry/Datadog alert → bugfix → ship task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[server-craft]] | Parent skill — infra & ops vocabulary |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-blameless | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-alert-to-fix-incident-loop-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/alert-to-fix-incident-loop.json` | JSON schema for the Alert to Fix Incident Loop output contract |
-| `templates/alert-to-fix-incident-loop.md` | Markdown skeleton with the required fields |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-alert-to-fix-incident-loop.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-alert-to-fix-incident-loop.py` | Enforce Alert to Fix Incident Loop output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-alert-to-fix-incident-loop.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-software-developer/Sentry/Datadog alert → bugfix → ship`
-- external: [Allspaw 2012](https://www.kitchensoap.com/2012/10/25/on-being-a-senior-engineer/) · [Google SRE Postmortem chapter](https://sre.google/sre-book/postmortem-culture/)
+- [[ai-pairing-decision-tree]]
+- [[api-monitoring]]
+- [[api-contract-pattern-selection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes the responder by severity + observable signal quality to one of {full loop, fast-mitigate-then-loop, escalate-to-coordinated-incident}. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

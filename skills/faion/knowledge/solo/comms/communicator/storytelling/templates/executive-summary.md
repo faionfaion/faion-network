@@ -1,3 +1,9 @@
+<!-- purpose: Pyramid executive memo skeleton -->
+<!-- consumes: Central claim + 3 supports -->
+<!-- produces: Pyramid exec memo -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200 tokens when loaded -->
+
 ## Recommendation
 [One sentence: what you recommend and why]
 

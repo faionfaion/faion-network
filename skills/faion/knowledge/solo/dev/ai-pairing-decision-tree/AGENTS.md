@@ -3,79 +3,100 @@ slug: ai-pairing-decision-tree
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Decision tree that decides per task whether to defer to the AI agent, co-drive, or override it before changes land.
-content_id: "8f08362a48dafb60"
-tags: [ai-pairing-decision-tree, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-task decision record routing the work to one of {solo-dev, AI-pair, full-agent} based on stakes, reversibility, novelty, and supervision budget.
+content_id: "67ffaddd4c5bfe33"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
+tags: [dev, solo, ai-pairing, decision-tree, task-routing]
 ---
-# Ai Pairing Decision Tree
+# AI Pairing Decision Tree
 
 ## Summary
 
-**One-sentence:** Decision tree that decides per task whether to defer to the AI agent, co-drive, or override it before changes land.
+**One-sentence:** Per-task decision record routing the work to one of {solo-dev, AI-pair, full-agent} based on stakes, reversibility, novelty, and supervision budget.
 
-**One-paragraph:** Solo devs spend 60-80% of coding time with an AI agent (Cursor/Claude Code/aider) but have no explicit rubric for WHEN the agent is allowed to drive vs when the human must take the wheel. This methodology gives a 6-axis scoring tree (reversibility, blast radius, novelty, test coverage, regulatory exposure, fatigue) that maps to one of four modes: AGENT-DRIVES, AGENT-DRAFTS, AGENT-ASSISTS, HUMAN-ONLY. Mechanism: assign each axis 0-3, sum, route via threshold table. Primary output: mode decision + rationale + override-trigger conditions logged into the PR description.
+**One-paragraph:** Defaulting every task to AI pairing burns context and produces sloppy commits on irreversible work; defaulting every task to solo writing burns hours on boilerplate. The decision tree asks four observable questions (stakes, reversibility, novelty-to-the-codebase, supervision-budget) and routes the task; the artefact is the per-task decision record so the choice is auditable. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- AI Pairing Decision Tree — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- task_type ∈ {code_change, refactor, infra_change, schema_change}
-- AI agent integrated into the dev loop (Cursor / Claude Code / aider / Windsurf)
-- Repo has at least one CI gate (lint / typecheck / tests)
-- Solo or pair workflow — no separate code reviewer immediately downstream
+- The triggering activity for `ai-pairing-decision-tree` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Solo dev evaluating an upcoming task and choosing the writing mode.
+- Task is non-trivial: ≥30 min of focused work or ≥1 file changed.
 
 ## Skip If (ANY kills it)
 
-- Pure pairing with another human — human review supersedes
-- Greenfield prototype with no production users — speed > safety
-- Compliance-bound change (PCI, HIPAA, GDPR deletion) — always HUMAN-ONLY
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- One-off throwaway script with no commit — pick whatever is fastest.
+- Task is bounded boilerplate the IDE template handles — no decision needed.
 
 ## Prerequisites
 
-- AI agent available with repo context loaded
-- Reversibility classification known for the change (revert-safe vs not)
-- Last 30-day defect log available to estimate novelty
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer/code-review-self` | consumes the self-review checklist as input |
-| `solo/dev/software-developer/pre-commit-hooks` | depends on baseline CI gates being green |
+| [[software-developer]] | Baseline dev discipline — what 'solo writing' means |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-six-axes, r2-fatigue-veto, r3-threshold-table, r4-override-trigger, r5-pr-record | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `score_axes` | haiku | Template fill with bounded 0-3 ranges |
-| `propose_mode` | haiku | Threshold lookup; no judgment |
-| `draft_override_triggers` | sonnet | Need to read change diff and write specific signals |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-ai-pairing-decision-tree-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pairing-mode.json` | JSON schema for the rubric block |
-| `templates/pr-pairing-block.md` | Markdown snippet pasted into PR description |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-ai-pairing-decision-tree.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pairing-block.py` | Enforce the rubric appears in PR description | Pre-merge CI check |
+| `scripts/validate-ai-pairing-decision-tree.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- peer methodology: `code-review-self`
-- external: [Cursor docs](https://cursor.sh/docs) · [Claude Code docs](https://docs.anthropic.com/en/docs/claude-code)
+- [[ai-over-reliance-self-audit]]
+- [[ai-prompt-as-commit-artifact]]
+- [[ai-prompt-patterns-test-ideation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (stakes, reversibility, novelty, supervision_budget) → solo / ai-pair / full-agent. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

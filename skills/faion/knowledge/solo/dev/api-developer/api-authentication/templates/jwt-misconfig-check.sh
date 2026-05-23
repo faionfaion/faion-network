@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template helper for API Authentication (jwt-misconfig-check.sh).
+# consumes: see content/02-output-contract.xml inputs for api-authentication
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
 # jwt-misconfig-check.sh — CI smoke test for JWT misconfiguration.
 # Fails if the API accepts alg:none tokens or tokens with wrong audience.
 # Requires: jwt-cli (mike-engel/jwt-cli) and JWT_SECRET env var.

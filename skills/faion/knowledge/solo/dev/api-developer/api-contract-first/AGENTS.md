@@ -3,79 +3,104 @@ slug: api-contract-first
 tier: solo
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design the OpenAPI spec before writing any implementation code.
-content_id: "f1552678fa2df930"
-tags: [contract-first, openapi, code-generation, api-design, specification]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Workflow spec: write OpenAPI 3.1 before code, review the spec like a PR, generate server stubs + SDKs, validate the implementation against the spec at runtime; the spec is the single source of truth.
+content_id: "3b66652d93b80901"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [api-developer, contract-first, openapi, code-generation, spectral]
 ---
-# API Contract-First Development
+# API Contract-First Workflow
 
 ## Summary
 
-**One-sentence:** Design the OpenAPI spec before writing any implementation code.
+**One-sentence:** Workflow spec: write OpenAPI 3.1 before code, review the spec like a PR, generate server stubs + SDKs, validate the implementation against the spec at runtime; the spec is the single source of truth.
 
-**One-paragraph:** Design the OpenAPI spec before writing any implementation code. The spec is reviewed like a PR, then used to generate server stubs, typed client SDKs, and contract test scaffolding via openapi-generator. CI lints the spec with Spectral on every change and validates the running implementation against the spec with openapi-core. The spec is the single source of truth, reviewed before any code exists, making breaking changes visible at design time.
+**One-paragraph:** Code-first APIs drift: the served shape diverges from the documented shape, SDKs lag, and consumer teams hit silent breaking changes. Contract-first inverts the loop — spec is written and reviewed first, the server is generated from the spec, runtime validation rejects responses that drift. Output is the contract-first workflow spec naming the OpenAPI document, the generator, the CI gate, and the runtime validator. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- API Contract-First Workflow — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- New APIs where frontend and backend are developed in parallel (spec enables frontend to mock immediately)
-- APIs that will be versioned and shared with external consumers
-- Multi-team / multi-language platforms where producers and consumers develop in parallel from a shared OpenAPI / AsyncAPI / Protobuf contract
-- B2B partner integrations where the contract is a published, versioned artifact subject to change-management
-- LLM-driven backend authoring where agents thrive on a strict spec; codegen + contract tests catch drift before merge
-- Migration projects (legacy → modular monolith → microservices) where the spec freezes external behavior while internals change
-- SDK-distribution products where TypeScript / Python / Go clients must regenerate from one source on every release
-- Teams that want spec-driven SDK generation to avoid hand-written client code
-- When breaking change detection is required in CI
+- The triggering activity for `api-contract-first` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Greenfield API OR pre-launch service where the contract style is still open.
+- ≥2 consumer teams or external SDKs depend on the API.
+- Operator has CI capacity to enforce contract checks on every PR.
 
 ## Skip If (ANY kills it)
 
-- Internal scripts or glue APIs used only by one service—spec overhead is disproportionate
-- Rapidly evolving prototypes where the contract changes every day—lock it down first
-- Solo prototypes / spike code where the API is volatile and round-trip codegen overhead exceeds the design value
-- Teams without OpenAPI / Protobuf fluency—premature contracts written by non-fluent authors produce worse APIs than code-first iteration
-- Domains where the contract genuinely cannot be predicted (research / ML scoring with evolving outputs)
-- GraphQL APIs—use SDL as the contract instead of OpenAPI
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Internal one-team API with a single Python caller — contract overhead exceeds value.
+- Existing code-first API >6mo old — migration cost likely exceeds drift cost; gate breaking changes instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[api-openapi-spec]] | How to author the OpenAPI document itself |
+| [[api-rest-design]] | REST baseline the contract describes |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-api-contract-first-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-api-contract-first.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-contract-first.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/api-developer/`
+- [[api-openapi-spec]]
+- [[api-rest-design]]
+- [[api-documentation]]
+- [[api-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes (greenfield vs brownfield, consumer count, CI capacity) to full contract-first / partial contract-first / skip-and-gate-breaking-changes. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

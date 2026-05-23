@@ -1,3 +1,9 @@
+<!-- purpose: SCQA worksheet -->
+<!-- consumes: Situation / Complication -->
+<!-- produces: SCQA worksheet -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
+
 ## Situation
 [2-3 sentences: stable context the audience accepts as true. No tension yet.]
 

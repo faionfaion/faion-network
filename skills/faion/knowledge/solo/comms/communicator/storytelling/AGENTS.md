@@ -3,73 +3,103 @@ slug: storytelling
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: People remember stories 22x better than facts alone.
-content_id: "d0cae283761f9440"
-tags: [storytelling, narrative, business-writing, presentations, executive-communication]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Pyramid / SCQA / Pixar structured business narrative (case study, exec memo, or presentation outline) that leads with conclusion and passes the so-what test.
+content_id: "1ee60d5116a72d3c"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [storytelling, pyramid, scqa, pixar, case-study]
 ---
-# Business Storytelling
+# Business Storytelling (Pyramid / SCQA / Pixar)
 
 ## Summary
 
-**One-sentence:** People remember stories 22x better than facts alone.
+**One-sentence:** Generates a Pyramid / SCQA / Pixar structured business narrative (case study, exec memo, or presentation outline) that leads with conclusion and passes the so-what test.
 
-**One-paragraph:** People remember stories 22x better than facts alone. Business storytelling uses three complementary frameworks—Pyramid Principle for logic-driven decisions, SCQA for narrative tension, and Pixar for case studies—to lead with conclusions and support with evidence. Every claim must pass the "so what" test: a fact without an implication is incomplete.
+**One-paragraph:** People remember stories 22x better than facts alone. Business storytelling uses three complementary frameworks — Pyramid Principle for logic-driven decisions, SCQA for narrative tension, Pixar for case studies — to lead with conclusions and support with evidence. Every claim must pass the 'so what' test: a fact without an implication is incomplete. This methodology emits a case study, executive memo, or presentation outline depending on the goal, each with mandatory answer-first ordering.
+
+**Ефективно для:**
+
+- Case study lead summary that must fit in 3 sentences.
+- Pixar-arc story for a customer-success narrative.
+- Presentation outline that needs a tension arc.
+- Memo that must persuade in a 30-second skim.
 
 ## Applies If (ALL must hold)
 
-- Drafting executive summaries, board updates, or investor pitches that must lead with a recommendation
-- Rewriting data-heavy reports that list facts without explaining implications
-- Structuring product launch announcements or case studies for technical or non-technical audiences
-- Preparing presentations where hook, problem, and call-to-action must be clearly separated
-- Writing SCQA narrative for a strategy document, quarterly review, or proposal
+- Narrative arc is appropriate (vs. raw data dump).
+- Audience is busy; 30s skim is the default.
+- There is a single central claim or outcome.
+- Evidence is available to back the claim.
 
 ## Skip If (ANY kills it)
 
-- Purely operational documents (runbooks, incident postmortems, API docs) where narrative adds no value
-- Legal or compliance documents where completeness and precision override persuasive flow
-- Internal technical specs read by developers who need depth, not narrative arc
-- High-context cultures (Japan, Korea) where "answer first" structure may read as presumptuous—adapt framing
+- Pure technical doc — reference structure beats narrative.
+- Status report without a decision — bullet list is fine.
+- Internal Slack < 3 sentences — over-engineered.
+- Reactive support reply — wrong context.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Central claim | one sentence | author |
+| Audience profile | role + time budget | session owner |
+| Evidence | facts + numbers + sources | research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[business-storytelling]] | sister methodology focused on Pyramid for executive comms |
+| [[selling-ideas]] | pitch-flavored applications |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `framework-selection` | sonnet | Judgment on goal fit. |
+| `draft-causal-chain` | sonnet | Pixar arc needs craft. |
+| `so-what-pass` | haiku | Mechanical: append implications. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/case-study.md` | Pixar case-study skeleton |
+| `templates/executive-summary.md` | Pyramid executive memo skeleton |
+| `templates/presentation-outline.md` | SCQA presentation outline skeleton |
+| `templates/prompt-case-study.txt` | Prompt to generate a Pixar case study |
+| `templates/prompt-pyramid.txt` | Prompt to generate a Pyramid executive memo |
+| `templates/scqa.md` | SCQA worksheet |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-storytelling.py` | Validate storytelling artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `solo/comms/communicator/`
+- [[business-storytelling]]
+- [[selling-ideas]]
+- [[stakeholder-communication]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes by narrative goal (decision / tension / outcome-story) to one of the three frameworks.

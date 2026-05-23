@@ -3,78 +3,101 @@ slug: ai-prompt-as-commit-artifact
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Prompt As Commit Artifact: codified engineering practice that turns the recurring 'role-software-developer/Merge AI-Generated Code Without Bleeding' decision into a repeatable, auditable artefact.
-content_id: "230386ffe55d5307"
-tags: [ai-prompt-as-commit-artifact, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Captures the AI prompt + model + context refs in the commit trailer so any AI-assisted commit is reproducible and reviewable months later.
+content_id: "10ebb3628abdde98"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [dev, solo, ai-pairing, commit-discipline, audit-trail, prompt-engineering]
 ---
-# Ai Prompt As Commit Artifact
+# AI Prompt as Commit Artefact
 
 ## Summary
 
-**One-sentence:** Ai Prompt As Commit Artifact: codified engineering practice that turns the recurring 'role-software-developer/Merge AI-Generated Code Without Bleeding' decision into a repeatable, auditable artefact.
+**One-sentence:** Captures the AI prompt + model + context refs in the commit trailer so any AI-assisted commit is reproducible and reviewable months later.
 
-**One-paragraph:** Ai Prompt As Commit Artifact addresses the gap identified by the role-software-developer/Merge AI-Generated Code Without Bleeding playbook: Treating the prompt as part of the commit makes the change re-runnable and auditable, but there is no convention for this. Conventional-commits methodology stops at title format. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Without the prompt in the commit, reviewers cannot tell whether the diff came from a one-sentence question or a multi-paragraph brief — the failure modes differ. The methodology fixes commit trailer fields (Faion-Prompt, Faion-Model, Faion-Context, Faion-Verifier) and a pre-commit hook that requires them on commits touching files the agent edited. Output is the prompt-artefact spec conforming to the schema. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- AI Prompt as Commit Artefact — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-developer/Merge AI-Generated Code Without Bleeding OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- The triggering activity for `ai-prompt-as-commit-artifact` appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Commit was produced with AI pairing (autocomplete, chat, agent edit).
+- Repo policy or operator's discipline expects an audit trail for AI-assisted work.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Throwaway prototype branch that will never merge — overhead exceeds value.
+- Commit is a tiny formatting fix the AI did not author — false signal.
 
 ## Prerequisites
 
-- recent context for the role-software-developer/Merge AI-Generated Code Without Bleeding task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[ai-pairing-decision-tree]] | Decides when AI pairing fits; this methodology captures the trail when it does |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-ai-prompt-as-commit-artifact-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-prompt-as-commit-artifact.json` | JSON schema for the Ai Prompt As Commit Artifact output contract |
-| `templates/ai-prompt-as-commit-artifact.md` | Markdown skeleton with the required fields |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-ai-prompt-as-commit-artifact.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-prompt-as-commit-artifact.py` | Enforce Ai Prompt As Commit Artifact output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-prompt-as-commit-artifact.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- upstream playbook: `role-software-developer/Merge AI-Generated Code Without Bleeding`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[ai-pairing-decision-tree]]
+- [[ai-over-reliance-self-audit]]
+- [[ai-prompt-patterns-test-ideation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Decides whether the commit needs the trailer, a reduced trailer (chat-only autocomplete), or no trailer (manual commit). Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.

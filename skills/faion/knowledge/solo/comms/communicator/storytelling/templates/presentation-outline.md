@@ -1,3 +1,9 @@
+<!-- purpose: SCQA presentation outline skeleton -->
+<!-- consumes: Audience + S-C-Q-A -->
+<!-- produces: Presentation outline -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens when loaded -->
+
 # Presentation Outline
 
 ## 1. Hook (1 slide)

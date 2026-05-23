@@ -3,78 +3,100 @@ slug: freelancer-inbound-reply-template
 tier: solo
 group: comms
 domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9465aa3f1a0d2bca"
-summary: "Freelancer Inbound Reply Template — testable methodology for scripts, written cadences, stakeholder updates. First-touch reply template for LinkedIn / email inbound that qualifies AND warms in 4 lines. Distinct from cold outbound; faion's growth-copywriting covers outbound but not inbound triage."
-tags: [comms, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Four-line first-touch reply template for LinkedIn/email inbound that qualifies fit AND warms the lead without long-form pitch.
+content_id: "9e8791820f78b796"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [comms, solo, freelancing, inbound, qualification, templates]
 ---
 # Freelancer Inbound Reply Template
 
 ## Summary
 
-**One-sentence:** Freelancer Inbound Reply Template — testable methodology for scripts, written cadences, stakeholder updates. First-touch reply template for LinkedIn / email inbound that qualifies AND warms in 4 lines. Distinct from cold outbound; faion's growth-copywriting covers outbound but not inbound triage.
+**One-sentence:** Four-line first-touch reply template for LinkedIn/email inbound that qualifies fit AND warms the lead without long-form pitch.
 
-**One-paragraph:** Freelancer Inbound Reply Template closes a known gap in comms practice: First-touch reply template for LinkedIn / email inbound that qualifies AND warms in 4 lines. Distinct from cold outbound; faion's growth-copywriting covers outbound but not inbound triage. The methodology is anchored to the recurring activity 'Cold lead reply (LinkedIn / email inbound) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Cold outbound has its own playbook; inbound triage does not. Without a fixed shape, freelancers either over-write (cold-outbound voice in a warm-lead context) or under-qualify (no scope / budget / timing signal returned). The template fixes four moves: acknowledge specifically, name the smallest qualifier needed (scope OR budget OR deadline), surface one trust signal, propose a single next step. Output is a filled reply that conforms to the schema below. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals; the validator script enforces the output contract before the orchestrator accepts the artefact.
+
+**Ефективно для:**
+
+- Freelancer Inbound Reply Template — fits when the triggering activity recurs and the artefact needs to be auditable.
+- Solo operator who wants a fixed template instead of improvising under pressure.
+- Downstream consumer (human reviewer or agent) who must sign off without re-deriving the reasoning.
+- Recurring cycle (sprint, weekly, per-incident) rather than a one-off task.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Cold lead reply (LinkedIn / email inbound) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
+- The triggering activity for `freelancer-inbound-reply-template` appears in the operator's workload at least once per cycle.
 - The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
 - A named consumer exists for the output — either a human reviewer or a downstream agent.
 - An auditable source-of-truth is available for the inputs this methodology requires.
+- LinkedIn/email inbound from a previously unknown contact mentioning project work or hire.
+- Operator wants to qualify fit in <60 seconds without writing a custom reply each time.
 
 ## Skip If (ANY kills it)
 
 - One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
+- Inbound is from an existing client — use the project channel, not a fresh-lead template.
+- Recruiter mass-message clearly outside the freelancer's stack — silent skip is faster.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/comms/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| [[communicator]] | Parent skill — shared comms vocabulary and tone discipline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_inbound_reply_template_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_inbound_reply_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_inbound_reply_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-freelancer-inbound-reply-template-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-freelancer-inbound-reply-template.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-inbound-reply-template.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/comms/` (see neighbouring methodologies)
-- triggering activity: `Cold lead reply (LinkedIn / email inbound) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[freelancer-scope-change-script-library]]
+- [[freelancer-weekly-report-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (recognised sender, scope clarity, trust ask) onto either a full reply, a shortened qualifier-only reply, or skip. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.
