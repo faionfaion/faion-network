@@ -3,69 +3,98 @@ slug: secrets-rotation-end-to-end
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Rotation lifecycle (cadence, dual-secret window, app-side reload, audit trail) — what secrets-management covers storage of but not rotation of.
-content_id: "063dc8efd3f2ff6a"
-tags: [secrets-rotation-end-to-end, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Secrets rotation end-to-end: full lifecycle (cadence, dual-secret window, app-side reload, audit trail) that secrets-management storage docs assume but never spell out.
+content_id: "76bf9da9eddfe38e"
+complexity: deep
+produces: playbook-step
+est_tokens: 4700
+tags: [infra, pro, secrets, rotation, lifecycle]
 ---
-
 # Secrets Rotation End-to-End
 
 ## Summary
 
-**One-sentence:** Rotation lifecycle (cadence, dual-secret window, app-side reload, audit trail) — what secrets-management covers storage of but not rotation of.
+**One-sentence:** Secrets rotation end-to-end: full lifecycle (cadence, dual-secret window, app-side reload, audit trail) that secrets-management storage docs assume but never spell out.
 
-**One-paragraph:** secrets-management methodologies cover storage but not rotation lifecycle. Only cicd-cert-rotation-pipeline exists and that's TLS-only. Output: rotation calendar + dual-secret window + app-side reload spec + audit.
+**One-paragraph:** Secrets Rotation End-to-End pins the discipline that turns secrets rotation lifecycle from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- production system with managed secrets (API keys, DB passwords, signing keys)
-- compliance requirement OR explicit security policy mandates rotation
-- team can enforce code-level secret-reload
+- The team operates the system the methodology targets (`secrets-rotation-end-to-end` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- static config never accessed externally
-- secrets stored in deprecated systems with no rotation plan — fix storage first
-- regulated context requiring HSM + dedicated rotation tooling (defer to those)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де secrets rotation lifecycle жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- current secrets inventory with last-rotated dates
-- secrets manager (Vault, AWS Secrets Manager, Doppler, 1Password)
-- app-side secret-reload capability
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent skill — provides operating context for this methodology |
-| `pro/sec/secrets-management` | peer methodology — produces inputs or consumes outputs |
-| `pro/infra/cicd-cert-rotation-pipeline` | peer methodology — produces inputs or consumes outputs |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/secrets-rotation-end-to-end.md` | Working skeleton for the `secrets-rotation-end-to-end` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-secrets-rotation-end-to-end.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodology: `pro/sec/secrets-management`
-- peer methodology: `pro/infra/cicd-cert-rotation-pipeline`
-- peer methodology: `pro/infra/incident-response-blameless-playbook`
-- external: https://owasp.org/www-community/vulnerabilities/Use_of_Hard-coded_Cryptographic_Key; https://www.vaultproject.io/docs/secrets
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

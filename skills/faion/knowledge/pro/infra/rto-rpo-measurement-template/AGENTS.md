@@ -3,57 +3,99 @@ slug: rto-rpo-measurement-template
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: RTO/RPO Measurement Template: turns DR drills from theatre into a measurable observation by defining the log format and timestamp checkpoints that produce actual RTO/RPO numbers.
-content_id: "eca37e0c581ca39c"
-tags: [rto-rpo-measurement-template, infra, pro]
+summary: RTO/RPO measurement template: log-format + timestamp-checkpoint schema that turns DR drills from theatre into recorded recovery-time / recovery-point numbers comparable across drills.
+content_id: "27ef1011b2dd48c3"
+complexity: medium
+produces: spec
+est_tokens: 4600
+tags: [infra, pro, rto, rpo, dr, measurement]
 ---
 # RTO/RPO Measurement Template
 
 ## Summary
 
-**One-sentence:** A typed log format with mandatory timestamp checkpoints that turns a DR drill into a measured RTO/RPO observation, comparable to the committed paper number and to prior drills.
+**One-sentence:** RTO/RPO measurement template: log-format + timestamp-checkpoint schema that turns DR drills from theatre into recorded recovery-time / recovery-point numbers comparable across drills.
 
-**One-paragraph:** Most teams know their committed RTO/RPO and have run drills, yet cannot tell you the actual observed RTO from last quarter's drill within ±30 minutes. That is because nobody captured the timestamps as the drill unfolded — they captured a narrative. This methodology defines the eight mandatory checkpoints (drill-start, failure-injected, detection-recognised, decision-to-failover, failover-begin, primary-traffic-restored, data-loss-window-measured, drill-closed), the time source policy (one authoritative clock, UTC), and the post-drill reconciliation that produces signed RTO and RPO observations. Output is a per-drill measurement record that can be charted across drills and compared against the committed numbers.
+**One-paragraph:** RTO/RPO Measurement Template pins the discipline that turns RTO/RPO measurement from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- a DR drill (tabletop, partial, or full failover) is being planned or run
-- the team has a committed RTO/RPO target to measure against
-- a single named drill conductor is appointed
-- tier == pro or higher
+- The team operates the system the methodology targets (`rto-rpo-measurement-template` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the drill is purely communications (no actual failover) — use a tabletop log, not this measurement template
-- the system has no defined failover path (RTO/RPO is undefined; fix that first)
-- the drill is shorter than the system's natural detection latency — measurement would be invalid
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де RTO/RPO measurement жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- committed RTO and RPO numbers per system in scope
-- single authoritative time source (NTP server, or one operator's monotonic clock) declared before drill start
-- drill conductor + at least one independent observer (not part of the failover team)
-- prior measurement record (if any) for trend comparison
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/dr-drill-script-template` | the drill structure these timestamps annotate |
-| `pro/infra/dr-drill-scenario-library` | upstream scenario catalog |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: eight-checkpoints, one-clock, independent-observer, data-loss-windowed, post-drill-reconciliation, target-vs-actual-delta | ~1200 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked end-to-end example showing required fields filled | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rto-rpo-measurement-template.md` | Working skeleton for the `rto-rpo-measurement-template` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-rto-rpo-measurement-template.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer`
-- upstream playbook: `role-devops-engineer/Disaster-recovery drill + plan refresh (4 weeks)`
-- companion methodology: `pro/infra/rto-rpo-tracking-board`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

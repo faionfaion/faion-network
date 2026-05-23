@@ -3,69 +3,98 @@ slug: release-strategy-canary-blue-green-feature-flag
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Picks between blue/green vs canary vs feature-flag vs ring deploys per service shape — the higher-level methodology k8s-canary-progressive misses.
-content_id: "ab8a9a995f0c8999"
-tags: [release-strategy-canary-blue-green-feature-flag, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Release strategy decision record: picks between canary, blue-green, feature-flag, or ring deploy per service shape with observation window, rollback trigger, and cleanup policy.
+content_id: "7bf6182ae0c02fa4"
+complexity: medium
+produces: decision-record
+est_tokens: 4500
+tags: [infra, pro, release, canary, blue-green, feature-flag]
 ---
-
 # Release Strategy: Canary / Blue-Green / Feature-Flag
 
 ## Summary
 
-**One-sentence:** Picks between blue/green vs canary vs feature-flag vs ring deploys per service shape — the higher-level methodology k8s-canary-progressive misses.
+**One-sentence:** Release strategy decision record: picks between canary, blue-green, feature-flag, or ring deploy per service shape with observation window, rollback trigger, and cleanup policy.
 
-**One-paragraph:** k8s-canary-progressive is a single tactic. A higher-level methodology that picks between strategies per service shape is missing. Output: decision matrix + rollback policy + observation window.
+**One-paragraph:** Release Strategy: Canary / Blue-Green / Feature-Flag pins the discipline that turns release strategy from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- production service with ≥1 release/week
-- team has authority to introduce or change release strategy
-- observability sufficient to compare canary vs baseline
+- The team operates the system the methodology targets (`release-strategy-canary-blue-green-feature-flag` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- single deploy per quarter (over-engineered)
-- stateless static site (canary irrelevant)
-- team without observability (build observability first)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де release strategy жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- service map: stateless/stateful, traffic profile
-- current deploy tooling (Argo Rollouts, Spinnaker, custom)
-- feature-flag service if any
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent skill — provides operating context for this methodology |
-| `pro/infra/cicd-engineer` | peer methodology — produces inputs or consumes outputs |
-| `geek/sdlc-ai/k8s-canary-progressive` | peer methodology — produces inputs or consumes outputs |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/release-strategy-canary-blue-green-feature-flag.md` | Working skeleton for the `release-strategy-canary-blue-green-feature-flag` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-release-strategy-canary-blue-green-feature-flag.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodology: `pro/infra/cicd-engineer`
-- peer methodology: `geek/sdlc-ai/k8s-canary-progressive`
-- peer methodology: `pro/infra/incident-response-blameless-playbook`
-- external: https://martinfowler.com/bliki/BlueGreenDeployment.html; https://martinfowler.com/articles/feature-toggles.html; https://argo-rollouts.readthedocs.io/
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

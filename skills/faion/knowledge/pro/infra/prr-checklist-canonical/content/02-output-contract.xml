@@ -1,44 +1,189 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="PRR Checklist Canonical — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A pause-point structured checklist (5–9 items per pause-point), each item with named executor and completion artefact, owned and quarterly-reviewed.</summary>
+<text id="02-output-contract" title="PRR Checklist Canonical Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the checklist artefact this methodology produces. The stdlib validator enforces required keys, per-field constraints, and forbidden patterns.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>header.owner</item>
-      <item>header.mode (READ-DO or DO-CONFIRM per pause-point)</item>
-      <item>header.last_reviewed (≤ 90 days)</item>
-      <item>item.executor (role)</item>
-      <item>item.artefact (link / screenshot / sign-off id)</item>
-      <item>item.killer_anchor (incident_id / policy / postmortem) for every item</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/prr-checklist-canonical.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "produced_at",
+    "evidence",
+    "version",
+    "last_reviewed",
+    "items"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 3
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "in-review",
+        "active",
+        "deprecated"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "statement",
+          "executor",
+          "artefact"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 3
+          },
+          "executor": {
+            "type": "string",
+            "minLength": 2
+          },
+          "artefact": {
+            "type": "string",
+            "minLength": 2
+          },
+          "not_applicable": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "prr-checklist-canonical",
+  "title": "PRR Checklist Canonical",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z",
+  "evidence": [
+    {
+      "claim": "baseline captured",
+      "link": "https://wiki.example.com/baseline"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "status": "active",
+  "items": [
+    {
+      "id": "step-01",
+      "statement": "Confirm preconditions hold per AGENTS.md.",
+      "executor": "lead-engineer",
+      "artefact": "https://wiki.example.com/precheck"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "team"
+}
+]]></code>
+    <note>Required fields missing. Slug is upper-case (must match ^[a-z][a-z0-9-]+$). Owner is a string, not the required {name, role} object.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
-      <description>items without a killer-anchor</description>
-      <reason>Decorative items rot the checklist.</reason>
+      <description>owner = team handle, channel handle, or empty string</description>
+      <reason>Anonymous artefacts rot; named human required.</reason>
     </antipattern>
     <antipattern>
-      <description>pause-point &gt; 9 items</description>
-      <reason>Working memory cap exceeded; items get skipped.</reason>
+      <description>evidence array empty while non-empty conclusions are present</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
     </antipattern>
     <antipattern>
-      <description>anonymous items</description>
-      <reason>Owner-less items become &apos;somebody else&apos;s job&apos;.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing or stale last_reviewed</description>
-      <reason>Drift from operating reality.</reason>
+      <description>last_reviewed older than the published staleness window (default 90 days)</description>
+      <reason>Stale artefacts drift from operating reality; treat as suspect on read.</reason>
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Mode (READ-DO / DO-CONFIRM) named at header.</item>
-      <item>Each pause-point sized 5–9 items.</item>
-      <item>Every item ties to an executor + artefact + killer-anchor.</item>
-      <item>Owner + last_reviewed populated and current.</item>
-      <item>Quarterly review scheduled.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-prr-checklist-canonical.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

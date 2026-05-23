@@ -3,69 +3,98 @@ slug: regulated-incident-response-protocol
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Incident comms under PCI/HIPAA/GDPR breach-notification clocks (72h GDPR, 60d HIPAA) — for outsource specialists in regulated client engagements.
-content_id: "7d5b8ea867d7e2ea"
-tags: [regulated-incident-response-protocol, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Regulated incident response protocol: clock-aware playbook that orders isolation, compliance-officer first-call, pre-approved comm templates, and counsel-reviewed postmortem under PCI/HIPAA/GDPR clocks.
+content_id: "9a2c77e67042d81c"
+complexity: deep
+produces: playbook-step
+est_tokens: 4700
+tags: [infra, pro, incident-response, compliance, gdpr, hipaa, pci]
 ---
-
 # Regulated Incident Response Protocol
 
 ## Summary
 
-**One-sentence:** Incident comms under PCI/HIPAA/GDPR breach-notification clocks (72h GDPR, 60d HIPAA) — for outsource specialists in regulated client engagements.
+**One-sentence:** Regulated incident response protocol: clock-aware playbook that orders isolation, compliance-officer first-call, pre-approved comm templates, and counsel-reviewed postmortem under PCI/HIPAA/GDPR clocks.
 
-**One-paragraph:** When a regulated system has a P1, the dev is in the loop with client SOC + compliance officer + sometimes regulator. faion has nothing on incident comms under regulated breach clocks. High-stakes gap. Output: regulated incident playbook + comm templates + clock tracker.
+**One-paragraph:** Regulated Incident Response Protocol pins the discipline that turns regulated incident response from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- system handling PCI / HIPAA / GDPR / SOC2-regulated data
-- dev role includes incident response touching that data
-- client expects external regulator notifications may be required
+- The team operates the system the methodology targets (`regulated-incident-response-protocol` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- non-regulated systems
-- client handles all compliance internally (no dev role)
-- system already has dedicated SOC team — defer to their playbook
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де regulated incident response жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- regulatory scope documented
-- BAA / DPA / equivalent agreements in place
-- client's compliance officer + outside counsel contact list
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent skill — provides operating context for this methodology |
-| `pro/infra/incident-response-blameless-playbook` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/ai-governance-compliance` | peer methodology — produces inputs or consumes outputs |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/regulated-incident-response-protocol.md` | Working skeleton for the `regulated-incident-response-protocol` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-regulated-incident-response-protocol.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodology: `pro/infra/incident-response-blameless-playbook`
-- peer methodology: `geek/ai/ai-governance-compliance`
-- peer methodology: `pro/sec/data-classification`
-- external: https://gdpr.eu/article-33-data-breach-notification/; https://www.hhs.gov/hipaa/for-professionals/breach-notification/; https://www.pcisecuritystandards.org/document_library/
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

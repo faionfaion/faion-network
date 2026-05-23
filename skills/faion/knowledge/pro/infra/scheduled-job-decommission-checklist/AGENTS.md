@@ -3,57 +3,98 @@ slug: scheduled-job-decommission-checklist
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Scheduled-Job Decommission Checklist: a structured cron / scheduled-task retirement procedure that prevents orphan-job sprawl found during monthly cron audits.
-content_id: "1ccecef97937fcd3"
-tags: [scheduled-job-decommission-checklist, infra, pro]
+summary: Scheduled-job decommission checklist: structured cron / scheduled-task retirement procedure with consumer-impact survey, parallel-run window, and evidence of clean stop.
+content_id: "c5bed5fe1a2e9111"
+complexity: medium
+produces: checklist
+est_tokens: 4500
+tags: [infra, pro, cron, decommission, checklist]
 ---
 # Scheduled-Job Decommission Checklist
 
 ## Summary
 
-**One-sentence:** A typed checklist that retires a cron / scheduled job in a verifiable order — disable in scheduler, archive code, verify no consumer reads its output, drop downstream tables / queues, remove monitoring — so the audit trail proves the job is actually gone, not "probably gone".
+**One-sentence:** Scheduled-job decommission checklist: structured cron / scheduled-task retirement procedure with consumer-impact survey, parallel-run window, and evidence of clean stop.
 
-**One-paragraph:** Dead-job cleanup during the monthly cron audit is usually informal: someone comments out the schedule and moves on. Months later the job is still present in the code, still has a dashboard panel, still writes to an empty table that costs storage, and may still be re-enabled by accident. This methodology defines the five-stage decommission (disable, observe, archive code, drop dependencies, remove signals) with checkpoint evidence at each stage, plus the 30-day observation window that proves no caller noticed. Output is a typed decommission record per job that can be cited if anything depending on the job surfaces later.
+**One-paragraph:** Scheduled-Job Decommission Checklist pins the discipline that turns job decommission from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- a scheduled job has been identified for retirement (during monthly audit, or post-replacement)
-- there is at least one writable scheduler interface (cron file, k8s CronJob, GitHub Actions schedule, etc.)
-- the team has observability covering the job's prior outputs (logs, downstream tables, queues)
-- tier == pro or higher
+- The team operates the system the methodology targets (`scheduled-job-decommission-checklist` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the job is a one-off scaffolded script never wired into a scheduler (just delete the file)
-- the job is part of a packaged third-party app whose update path replaces it — defer to the upgrade
-- a deletion freeze is active (audit window, ongoing incident) — schedule for after the freeze
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де job decommission жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- the job's identifier (scheduler name + code path)
-- list of downstream consumers (tables, files, queues, dashboards, alerts)
-- access to disable the schedule and archive the code
-- a named owner who attests the job is no longer needed
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/cronjob-overrun-monitoring` | observability assumed for the observation window |
-| `pro/infra/devops-engineer` | parent role skill |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: five-stage-order, owner-attestation, 30-day-observation, downstream-removal, archive-not-delete | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/scheduled-job-decommission-checklist.md` | Working skeleton for the `scheduled-job-decommission-checklist` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-scheduled-job-decommission-checklist.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer`
-- upstream playbook: `role-devops-engineer/Cron / scheduled-job audit (monthly)`
-- companion methodology: `pro/infra/deprecated-api-sweeper-recipe`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

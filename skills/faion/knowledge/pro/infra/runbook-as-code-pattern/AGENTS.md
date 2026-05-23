@@ -3,56 +3,98 @@ slug: runbook-as-code-pattern
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Runbook as Code Pattern: the pro-tier infra practice of keeping runbooks in the service repo, tested in CI, and deep-linked from alerts — independent of the geek-tier AI-input format.
-content_id: "a84ddb716d4bc342"
-tags: [runbook-as-code-pattern, infra, pro]
+summary: Runbook-as-code pattern: keep runbooks in the service repo, version them, test them in CI, and deep-link from alerts so stale or wrong steps fail loudly before an incident.
+content_id: "f01c932321bf8947"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [infra, pro, runbook, as-code, ci]
 ---
 # Runbook as Code Pattern
 
 ## Summary
 
-**One-sentence:** Treat each runbook as a versioned file in the service repo, with CI checks for link rot and command syntax, and a stable URL/anchor that every alert deep-links to so on-call lands on the exact step that matches the firing rule.
+**One-sentence:** Runbook-as-code pattern: keep runbooks in the service repo, version them, test them in CI, and deep-link from alerts so stale or wrong steps fail loudly before an incident.
 
-**One-paragraph:** The geek-tier methodology `inc-runbook-as-markdown-tagged-steps` exists but is framed as an AI-input format. The baseline "runbook lives in the repo, is reviewed with the service, is tested in CI, is deep-linked from alerts" practice is foundational pro-tier infra and should not be gated to geek. This methodology codifies that baseline: repo location convention, mandatory front-matter for alert-to-anchor mapping, CI checks (link rot, dead command references, anchor uniqueness), and the alert-rule field that must carry the runbook URL. Output is a per-service runbook file that lives next to the code it operates, is reviewed like code, and is unreachable from production alerts only when something is wrong.
+**One-paragraph:** Runbook as Code Pattern pins the discipline that turns runbook as code from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- the service emits production alerts that page humans (Pagerduty, Opsgenie, etc.)
-- the service has a code repo where the runbook can co-live
-- the team has CI for the repo
-- tier == pro or higher
+- The team operates the system the methodology targets (`runbook-as-code-pattern` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- runbooks must live in a separate runbook-store-of-record (regulated environments where on-call docs are managed in a GRC tool)
-- the service is in pre-production with no paging alerts
-- the team has already adopted `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps` and that adoption covers the same baseline — that methodology supersedes this one for AI-driven on-call
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де runbook as code жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- alerting platform that supports a `runbook_url` field per rule
-- repo with CI capacity to run a fast (< 60s) link/anchor check
-- the service team owns both code and alerts (no separate "ops team writes our runbooks")
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill |
-| `pro/infra/alert-triage-decision-tree` | the upstream alert pattern this runbook structure complements |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: repo-colocation, anchor-per-alert, ci-link-and-anchor-check, alert-rule-carries-url, review-with-code | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/runbook-as-code-pattern.yaml` | Working skeleton for the `runbook-as-code-pattern` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.yaml` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-runbook-as-code-pattern.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer`
-- upstream playbook: `role-devops-engineer/Design SLOs + error budgets before first deploy`
-- geek-tier specialisation: `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

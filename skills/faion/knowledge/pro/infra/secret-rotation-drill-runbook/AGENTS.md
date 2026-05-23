@@ -3,67 +3,98 @@ slug: secret-rotation-drill-runbook
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: "Quarterly secret-rotation drill and breakglass runbook producing audit-grade evidence that satisfies SOC2 / ISO 27001 / PCI DSS rotation controls."
-content_id: "d64136e54622f994"
-tags: [secret-rotation-drill-runbook, infra, pro]
+summary: Secret rotation drill runbook: quarterly rotation + breakglass exercise that produces audit-grade evidence satisfying SOC2 / ISO27001 / PCI rotation controls without scrambling on the day.
+content_id: "f5c373a3db7e3c75"
+complexity: deep
+produces: playbook-step
+est_tokens: 4700
+tags: [infra, pro, secrets, rotation, drill, runbook]
 ---
 # Secret Rotation Drill Runbook
 
 ## Summary
 
-**One-sentence:** A scheduled drill that exercises secret rotation end-to-end against a non-prod environment and emits a signed evidence pack auditors accept.
+**One-sentence:** Secret rotation drill runbook: quarterly rotation + breakglass exercise that produces audit-grade evidence satisfying SOC2 / ISO27001 / PCI rotation controls without scrambling on the day.
 
-**One-paragraph:** Faion's `secrets-rotation-end-to-end` covers the backend mechanics (Vault, KMS, SOPS), but auditors don't ask "can you rotate?" — they ask "show me you have rotated, recently, with no production loss." This methodology fills that gap with a 6-rule drill protocol: pre-drill freeze window, simulated rotation against a clone environment, breakglass path verification (what if the rotation system itself is down), MTTR measurement, post-drill restoration check, and a signed evidence artefact (`drill-record.yaml` + timeline). Output is replayed quarterly and stored in the compliance evidence vault.
+**One-paragraph:** Secret Rotation Drill Runbook pins the discipline that turns rotation drill from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- you are in a regulated context (SOC2, ISO 27001, HIPAA, PCI DSS) OR have a customer demanding rotation evidence
-- you have a non-production clone environment that mirrors prod's secret consumers
-- a quarterly cadence is acceptable to your auditor
-- tier == pro or higher
+- The team operates the system the methodology targets (`secret-rotation-drill-runbook` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- a real rotation incident happened in the last 90 days with full evidence (the real event counts as the drill)
-- the organisation has no production secrets (early prototype, no customers)
-- compliance regime explicitly requires a different drill template (defer to legal)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де rotation drill жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- a current consumer registry (see `secret-consumer-discovery`)
-- non-prod clone reachable from drill operator
-- breakglass credentials stored OUT-of-band (paper safe, separate KMS, etc.)
-- prior rotation runbook tested at least once for real
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/secrets-rotation-end-to-end` | mechanics this drill exercises |
-| `pro/infra/secret-consumer-discovery` | input registry the drill uses |
-| `pro/infra/dr-drill-script-template` | sibling pattern for disaster-recovery drills |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable drill rules + 1 evidence-pack example | ~950 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pre_drill_checklist` | haiku | template fill from runbook |
-| `narrate_drill_timeline` | sonnet | bounded narration of operator actions |
-| `assemble_evidence_pack` | sonnet | merge logs + screenshots + sign-offs |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/secret-rotation-drill-runbook.md` | Working skeleton for the `secret-rotation-drill-runbook` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-secret-rotation-drill-runbook.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/`
-- `pro/infra/secrets-rotation-end-to-end`
-- `pro/infra/secret-consumer-discovery`
-- upstream playbook: `role-devops-engineer/Secrets-management migration: Vault / KMS / SOPS (4 weeks)`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

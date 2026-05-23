@@ -1,44 +1,188 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Secrets Rotation End-to-End Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Secrets Rotation End-to-End output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Secrets Rotation End-to-End Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces. The stdlib validator enforces required keys, per-field constraints, and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="secrets_inventory" type="list" required="true">[{secret_id, type, blast_radius, last_rotated, next_due}]</field>
-      <field name="cadence_table" type="object" required="true">{type: days}</field>
-      <field name="dual_secret_window_hours" type="integer" required="true">24-72</field>
-      <field name="reload_mechanism" type="string" required="true">file-watch|signal|sdk|other</field>
-      <field name="audit_trail_url" type="string" required="true">immutable log location</field>
-      <field name="emergency_runbook_url" type="string" required="true">link</field>
-      <field name="owner" type="string" required="true">named SRE / security engineer</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">rotation requires restart for any secret</pattern>
-      <pattern id="f2">audit trail mutable</pattern>
-      <pattern id="f3">dual_secret_window &lt; 1h</pattern>
-      <pattern id="f4">emergency_runbook absent</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/secrets-rotation-end-to-end.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>secrets_inventory populated with a typed value</item>
-      <item>cadence_table populated with a typed value</item>
-      <item>dual_secret_window_hours populated with a typed value</item>
-      <item>reload_mechanism populated with a typed value</item>
-      <item>audit_trail_url populated with a typed value</item>
-      <item>emergency_runbook_url populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/secrets-rotation-end-to-end.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "produced_at",
+    "evidence",
+    "version",
+    "last_reviewed",
+    "steps"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 3
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "in-review",
+        "active",
+        "deprecated"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "n",
+          "name",
+          "action"
+        ],
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "secrets-rotation-end-to-end",
+  "title": "Secrets Rotation End-to-End",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z",
+  "evidence": [
+    {
+      "claim": "baseline captured",
+      "link": "https://wiki.example.com/baseline"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "status": "active",
+  "steps": [
+    {
+      "n": 1,
+      "name": "scope-check",
+      "action": "Verify Applies-If preconditions.",
+      "owner": "lead-engineer"
+    },
+    {
+      "n": 2,
+      "name": "execute",
+      "action": "Run the playbook body.",
+      "owner": "lead-engineer"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "team"
+}
+]]></code>
+    <note>Required fields missing. Slug is upper-case (must match ^[a-z][a-z0-9-]+$). Owner is a string, not the required {name, role} object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>owner = team handle, channel handle, or empty string</description>
+      <reason>Anonymous artefacts rot; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>evidence array empty while non-empty conclusions are present</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+    <antipattern>
+      <description>last_reviewed older than the published staleness window (default 90 days)</description>
+      <reason>Stale artefacts drift from operating reality; treat as suspect on read.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-secrets-rotation-end-to-end.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

@@ -3,82 +3,98 @@ slug: prr-checklist-canonical
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "639072193a498c80"
-summary: PRR Checklist Canonical — pinned checklist for the DevOps engineer: fixed shape + named owner + evidence anchors + outcome review, so production-readiness hardening sweep (6 weeks) stops being folklore and starts being a reviewable operating tool.
-tags: [infra, pro, checklist, prr, canonical]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PRR (production-readiness review) checklist: fixed-shape, owner-signed, evidence-anchored, quarterly-reviewed gate run before any new service goes to production.
+content_id: "64014a470a864d46"
+complexity: medium
+produces: checklist
+est_tokens: 4600
+tags: [infra, pro, prr, checklist, release-gate]
 ---
 # PRR Checklist Canonical
 
 ## Summary
 
-**One-sentence:** PRR Checklist Canonical — pinned checklist for the DevOps engineer: fixed shape + named owner + evidence anchors + outcome review, so production-readiness hardening sweep (6 weeks) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** PRR (production-readiness review) checklist: fixed-shape, owner-signed, evidence-anchored, quarterly-reviewed gate run before any new service goes to production.
 
-**One-paragraph:** In infrastructure and DevOps, the DevOps engineer runs production-readiness hardening sweep (6 weeks) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Production-readiness reviews are core to DevOps but there's no canonical checklist methodology in faion. Every team reinvents one. `prr-checklist-canonical` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the DevOps engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored checklist committed to the team's knowledge space.
+**One-paragraph:** PRR Checklist Canonical pins the discipline that turns PRR checklist from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-devops-engineer/Production-readiness hardening sweep (6 weeks)`
-- the DevOps engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- The team operates the system the methodology targets (`prr-checklist-canonical` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де PRR checklist жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the DevOps engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
 | `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
 | `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/prr-checklist-canonical.md` | Working skeleton for the `prr-checklist-canonical` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-prr-checklist-canonical.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

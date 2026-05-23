@@ -3,77 +3,98 @@ slug: per-client-credential-isolation-pattern
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Per Client Credential Isolation Pattern: codified infra practice that turns the recurring 'p4-outsource-specialist/New-project machine setup (laptop + desktop)' decision into a repeatable, auditable artefact.
-content_id: "4195343757949f2e"
-tags: [per-client-credential-isolation-pattern, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-client credential isolation pattern: pinned config artefact that separates SSH/GPG/cloud credentials per client engagement so a leak in one engagement cannot cascade to others.
+content_id: "1dfa564c80a3d03a"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [infra, pro, credentials, isolation, outsource]
 ---
-# Per Client Credential Isolation Pattern
+# Per-Client Credential Isolation Pattern
 
 ## Summary
 
-**One-sentence:** Per Client Credential Isolation Pattern: codified infra practice that turns the recurring 'p4-outsource-specialist/New-project machine setup (laptop + desktop)' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-client credential isolation pattern: pinned config artefact that separates SSH/GPG/cloud credentials per client engagement so a leak in one engagement cannot cascade to others.
 
-**One-paragraph:** Per Client Credential Isolation Pattern addresses the gap identified by the p4-outsource-specialist/New-project machine setup (laptop + desktop) playbook: Outsource specialist juggles 1-3 clients with strict no-cross-leakage rules. No faion methodology covers per-client SSH/GPG/cloud credential separation pattern. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Per-Client Credential Isolation Pattern pins the discipline that turns credential isolation from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/New-project machine setup (laptop + desktop) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The team operates the system the methodology targets (`per-client-credential-isolation-pattern` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де credential isolation жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/New-project machine setup (laptop + desktop) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/per-client-credential-isolation-pattern.json` | JSON schema for the Per Client Credential Isolation Pattern output contract |
-| `templates/per-client-credential-isolation-pattern.md` | Markdown skeleton with the required fields |
+| `templates/per-client-credential-isolation-pattern.yaml` | Working skeleton for the `per-client-credential-isolation-pattern` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.yaml` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-per-client-credential-isolation-pattern.py` | Enforce Per Client Credential Isolation Pattern output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-per-client-credential-isolation-pattern.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `p4-outsource-specialist/New-project machine setup (laptop + desktop)`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

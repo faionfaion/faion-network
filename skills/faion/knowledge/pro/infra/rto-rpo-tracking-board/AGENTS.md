@@ -3,57 +3,99 @@ slug: rto-rpo-tracking-board
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: RTO/RPO Tracking Board: defines the standing surface that keeps observed vs. contractual RTO/RPO visible per system across drills and incidents.
-content_id: "cf54231a8102ef5c"
-tags: [rto-rpo-tracking-board, infra, pro]
+summary: RTO/RPO tracking board: standing surface that pairs contractual RTO/RPO targets with observed values per system across drills and real incidents.
+content_id: "6dc2a189c2624139"
+complexity: medium
+produces: report
+est_tokens: 4500
+tags: [infra, pro, rto, rpo, tracking, board]
 ---
 # RTO/RPO Tracking Board
 
 ## Summary
 
-**One-sentence:** A standing visualisation surface (board, dashboard, or wiki page) that keeps observed RTO/RPO per system visible against the contractual target across drills and real incidents, so drift is detected before the next audit.
+**One-sentence:** RTO/RPO tracking board: standing surface that pairs contractual RTO/RPO targets with observed values per system across drills and real incidents.
 
-**One-paragraph:** Without a standing surface, observed RTO/RPO numbers from drills and real incidents live in scattered reports nobody re-opens. Six months later the team cannot tell whether the contractual 1-hour RTO is being met. This methodology defines the row schema (per-system × per-period), the data sources it must pull from (rto-rpo-measurement-template records, incident postmortems, backup-verification logs), the staleness rules, and the visualisation defaults (target band as horizontal line; observed dots above/below; trend arrow per system). Output is a continuously-refreshed board referenced from the SLO doc and reviewed each quarter.
+**One-paragraph:** RTO/RPO Tracking Board pins the discipline that turns RTO/RPO tracking from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- the org has committed RTO/RPO targets per system (via rpo-rto-negotiation-guide or contract)
-- at least one drill or real incident measurement record exists per tracked system
-- the team has weekly backup-verification or DR drill cadence
-- tier == pro or higher
+- The team operates the system the methodology targets (`rto-rpo-tracking-board` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- only one system is in scope and one record exists — a board is overhead, use a single linked record
-- existing observability platform already renders target-vs-actual SLO bands and ingests drill records — extend it, do not build a parallel board
-- there is no contractual or stakeholder-signed target to compare against (build that first via rpo-rto-negotiation-guide)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де RTO/RPO tracking жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- list of systems with contractual RTO/RPO targets
-- record links: drill measurements (rto-rpo-measurement-template), incident postmortems, backup verifications
-- a hosting surface (Grafana, Notion, wiki, Linear board, etc.) that supports updates
-- named board-owner who is accountable for staleness
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/rto-rpo-measurement-template` | source records this board aggregates |
-| `pro/infra/devops-engineer` | parent role skill |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: standing-surface, row-schema, source-record-link, staleness-policy, breach-flag | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked end-to-end example showing required fields filled | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rto-rpo-tracking-board.md` | Working skeleton for the `rto-rpo-tracking-board` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-rto-rpo-tracking-board.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer`
-- upstream playbook: `role-devops-engineer/Backup verification (weekly)`
-- companion methodology: `pro/infra/rto-rpo-measurement-template`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

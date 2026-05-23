@@ -3,42 +3,99 @@ slug: shared-infra-capacity-board
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Shared Infra Capacity Board — a weekly cross-team artefact that surfaces upcoming demand on shared Kafka, Redis, DB, and similar resources before it becomes a fight.
-content_id: "801b390f3067ccc5"
-tags: [shared-infra-capacity-board, infra, pro]
+summary: Shared infra capacity board: weekly cross-team surface that pairs upcoming demand on shared Kafka/Redis/DB with current headroom so capacity fights are scheduled, not surprised.
+content_id: "d5b144ec095a29b9"
+complexity: medium
+produces: report
+est_tokens: 4500
+tags: [infra, pro, capacity, shared, board]
 ---
 # Shared Infra Capacity Board
 
 ## Summary
 
-**One-sentence:** A weekly board (Confluence page, Notion DB, or simple repo file) where every team posts its 4-week demand projection for shared infra resources, so the architects' sync turns capacity fights into priority decisions with data.
+**One-sentence:** Shared infra capacity board: weekly cross-team surface that pairs upcoming demand on shared Kafka/Redis/DB with current headroom so capacity fights are scheduled, not surprised.
 
-**One-paragraph:** Cross-team architects routinely fight over shared infra — Kafka topics, Redis memory, primary DB connections, K8s node groups — because each team plans capacity in isolation and only discovers the conflict at deploy time. The shared-infra-capacity-board codifies a weekly surfacing ritual: every team posts (a) the resource they will lean on, (b) the projected delta, (c) the date they need it, (d) the owner. The board feeds the weekly architecture sync; conflicts surface a week in advance, not at incident time.
+**One-paragraph:** Shared Infra Capacity Board pins the discipline that turns capacity board from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- ≥3 teams share at least one piece of infrastructure (Kafka, Redis, DB cluster, K8s node pool, search cluster, etc.)
-- a weekly architecture sync (or equivalent ceremony) exists and is attended by team leads or architects
-- teams have rough numerical projections of demand (RPS, topic count, connection count, memory)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The team operates the system the methodology targets (`shared-infra-capacity-board` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the org runs one team per resource — no sharing means no contention to surface
-- shared infra has auto-scaling capacity well beyond projected demand (the board adds bureaucracy without value)
-- there is no weekly forum to feed; without a decision-making consumer the board rots
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
 
-## Content
+**Ефективно для:**
 
-| File | What's inside |
-|------|---------------|
-| `content/01-core-rules.xml` | 5 testable rules: required fields, weekly cadence, owner accountability, conflict-resolution path, archive policy |
+- Команд, де capacity board жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked end-to-end example showing required fields filled | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/shared-infra-capacity-board.md` | Working skeleton for the `shared-infra-capacity-board` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-shared-infra-capacity-board.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- upstream playbook: `role-software-architect/Cross-team architecture sync (weekly)`
-- parent skill: `pro/infra/`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

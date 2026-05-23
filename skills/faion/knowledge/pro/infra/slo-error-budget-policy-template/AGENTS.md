@@ -3,43 +3,98 @@ slug: slo-error-budget-policy-template
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: SLO Error Budget Policy Template — a one-page policy artefact mapping error-budget state (healthy / yellow / red / exhausted) to concrete actions (ship / freeze / focus / escalate).
-content_id: "393bdce7c187e8e0"
-tags: [slo-error-budget-policy-template, infra, pro]
+summary: SLO error budget policy: one-page artefact mapping budget state (healthy / yellow / red / exhausted) to concrete actions (ship / freeze / focus / escalate) with a named owner.
+content_id: "28da221ba33fcf09"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [infra, pro, slo, error-budget, policy]
 ---
 # SLO Error Budget Policy Template
 
 ## Summary
 
-**One-sentence:** A one-page, signed policy artefact mapping error-budget state to action — ship freely while healthy, slow when yellow, freeze when red, escalate when exhausted — so the burn-rate alert turns into a pre-agreed decision instead of a re-litigation.
+**One-sentence:** SLO error budget policy: one-page artefact mapping budget state (healthy / yellow / red / exhausted) to concrete actions (ship / freeze / focus / escalate) with a named owner.
 
-**One-paragraph:** Faion has burn-rate alerting and SLO design content, but the policy artefact that maps budget state → action (ship / freeze / focus) is missing. Teams keep re-litigating "should we freeze releases?" each time the budget burns; the policy template ends that by pre-committing the answer in writing, signed jointly by engineering and product before the budget ever hits red.
+**One-paragraph:** SLO Error Budget Policy Template pins the discipline that turns error budget policy from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- at least one SLO with a defined error budget exists for the service
-- burn-rate alerting is wired to a usable channel
-- product and engineering have a shared decision-maker (founder, head of product, GM) who can sign the policy
-- tier == pro or higher (gating enforced by tier-manifest)
+- The team operates the system the methodology targets (`slo-error-budget-policy-template` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- no SLO exists yet — design one first (see `slo-design-from-user-journeys`)
-- the team already has a signed error-budget policy — extend, don't rewrite
-- the org has no concept of release-velocity decisions to gate (single-person hobby project)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
 
-## Content
+**Ефективно для:**
 
-| File | What's inside |
-|------|---------------|
-| `content/01-core-rules.xml` | 5 testable rules: four states, signed by product+eng, action per state, exit criterion, named decision-maker |
+- Команд, де error budget policy жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/slo-error-budget-policy-template.yaml` | Working skeleton for the `slo-error-budget-policy-template` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.yaml` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-slo-error-budget-policy-template.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- upstream playbook: `role-devops-engineer/SLO error-budget burn review`
-- parent skill: `pro/infra/`
-- related methodologies: `pro/infra/burn-rate-multi-window-alerting`, `pro/infra/error-budget-policy-and-freeze-rules`, `pro/infra/slo-design-from-user-journeys`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

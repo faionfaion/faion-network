@@ -3,58 +3,98 @@ slug: rotation-evidence-template
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Rotation Evidence Template: defines the audit-grade record shape SOC-2 / ISO27001 require for each secret-rotation event so auditors get traceability, not screenshots.
-content_id: "aca7a39cbefee452"
-tags: [rotation-evidence-template, infra, pro]
+summary: Rotation evidence template: audit-grade record shape (who/what/when/old-fingerprint/new-fingerprint/consumers-notified) SOC2/ISO27001/PCI auditors accept in lieu of screenshots.
+content_id: "fe59f021a719075f"
+complexity: medium
+produces: checklist
+est_tokens: 4500
+tags: [infra, pro, rotation, evidence, soc2, audit]
 ---
 # Rotation Evidence Template
 
 ## Summary
 
-**One-sentence:** A typed, audit-grade record shape for every secret-rotation event (DB password, API key, signing key, cert) that SOC-2 / ISO27001 auditors can accept as evidence without follow-up questions.
+**One-sentence:** Rotation evidence template: audit-grade record shape (who/what/when/old-fingerprint/new-fingerprint/consumers-notified) SOC2/ISO27001/PCI auditors accept in lieu of screenshots.
 
-**One-paragraph:** SOC-2 / ISO27001 demand evidence that secrets rotate on policy and that the rotation was both completed and verified. Most teams produce ad-hoc Slack threads or ticket comments that fail audit because they miss one of: cause (scheduled vs incident-triggered), prior-secret-decommission timestamp, dual-control attestation, or downstream-system reconciliation. This methodology defines the seven required fields, the allowed source-of-truth pointers (HashiCorp Vault audit log id, AWS KMS rotation event ARN, etc.), and the verification step that closes the record. Output is a single immutable rotation-evidence record per event, link-able from the rotation runbook and the audit response binder.
+**One-paragraph:** Rotation Evidence Template pins the discipline that turns rotation evidence from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in 02-output-contract drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- a secret in scope for a compliance framework (SOC-2 CC6, ISO27001 A.10.1, PCI-DSS 3.6, etc.) is being rotated
-- there is an authoritative system of record (Vault, KMS, secrets-manager) emitting an event id for the rotation
-- the team performing the rotation has dual-control or named-approver capability
-- tier == pro or higher
+- The team operates the system the methodology targets (`rotation-evidence-template` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- the secret is out-of-scope for any compliance framework AND not customer-facing (use a lighter ops log instead)
-- rotation is automated end-to-end and the system-of-record already emits a fully-typed audit event covering the seven fields — link it, do not duplicate
-- the rotation is part of an active incident response — record minimally now, fill in evidence post-incident under r6
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator mandates a different shape — use the regulator's template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Команд, де rotation evidence жив досі у головах SRE / DevOps, а не в репозиторії.
+- Регулярного quarterly review зі стабільним owner і review cadence.
+- Audit-ready артефактів під SOC2 / ISO27001 / GDPR без паніки за тиждень до аудиту.
+- Onboarding нових інженерів — артефакт замість усної традиції.
 
 ## Prerequisites
 
-- rotation runbook reference (path + version)
-- system-of-record event id for the rotation operation
-- prior-secret identifier (last-4 or hash, never the plaintext)
-- named approver(s) per dual-control policy
-- list of downstream systems that consumed the prior secret
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo or wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/external-secrets-operator-recipe` | upstream rotation mechanism this evidence covers |
-| `pro/infra/devops-engineer` | parent role skill |
+| `pro/infra/devops-engineer` | Parent role skill — operating context for this methodology. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: seven-required-fields, immutable-after-close, dual-control-attestation, downstream-reconciliation, prior-secret-decommission, incident-mode-flag | ~1200 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rotation-evidence-template.md` | Working skeleton for the `rotation-evidence-template` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-rotation-evidence-template.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer`
-- upstream playbook: `role-devops-engineer/Secret rotation execution`
-- sibling methodology: `pro/infra/cve-exception-template`
+- [[capacity-safety-floor-policy]]
+- [[prr-checklist-canonical]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
