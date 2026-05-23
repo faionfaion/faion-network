@@ -1,79 +1,103 @@
 ---
 slug: use-case-modeling
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use case modeling captures WHO interacts with a system, WHAT they do with it, and WHY — as a sequence of actor-system interactions that yields observable value.
-content_id: "a8b8106842b7d773"
-tags: [use-case-modeling, requirements, uml, specifications, enterprise-ba]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Defines actor-goal-scenario use cases — main success path, alternate flows, exception flows, preconditions, postconditions — that downstream teams turn into stories, tests, and screens.
+content_id: "a3ebedf043b095d1"
+complexity: medium
+produces: spec
+est_tokens: 2800
+tags: [use-case, actor, scenario, requirements, modeling]
 ---
 # Use Case Modeling
 
 ## Summary
 
-**One-sentence:** Use case modeling captures WHO interacts with a system, WHAT they do with it, and WHY — as a sequence of actor-system interactions that yields observable value.
+**One-sentence:** A structured actor-goal-scenario spec with main success path, alternates, exceptions, and pre/postconditions consumed by story-mapping, testing, and UI design.
 
-**One-paragraph:** Use case modeling captures WHO interacts with a system, WHAT they do with it, and WHY — as a sequence of actor-system interactions that yields observable value. Each use case has a name (Verb + Noun), a primary actor, a main flow (5-9 steps), at least one alternative flow, and at least one exception flow. The deliverable is a UC spec plus a UC diagram showing actor-system boundaries. Use-case-driven BA is contractual: the UC catalog becomes the apples-to-apples grid for vendor evaluation and the traceability anchor for regulated-industry audits.
+**One-paragraph:** Use cases beat free-form requirements when behaviour matters more than data. This methodology produces a use-case spec with: named actor, goal, preconditions, main success scenario (numbered steps), alternate flows, exception flows, postconditions, frequency. The output feeds user-story mapping, test design, and UI flow design. Every step references an actor + system response.
+
+**Ефективно для:**
+
+- Behaviour-heavy systems (workflows, approvals, transactions).
+- Pre-build phase when test design is starting.
+- Cross-team alignment when one team writes stories and another writes tests.
+- Audit-relevant flows where exception paths drive compliance.
 
 ## Applies If (ALL must hold)
 
-- Enterprise kickoffs requiring a UML UC diagram + UC specs as SoW deliverables (SAP, Salesforce, Dynamics rollouts, banking core upgrades)
-- RFP/RFI authoring — UC catalog is the vendor evaluation grid
-- RUP-style use-case-driven projects in regulated or government contexts where iterations are scoped to UC sets
-- Regulated industries where UCs anchor actor goal → step → commit → test → audit evidence
-- Legacy migration (mainframe, Oracle Forms) where reverse-engineering screens into UCs is the safe path to a greenfield spec
-- Outsourced delivery where step-level UC specs replace ambient context the offshore team lacks
-- Stakeholder alignment workshops bridging executive outcomes and engineering features
+- the system has identifiable actors with goals
+- behaviour matters more than entity structure for the slice in question
+- downstream consumer is story-mapping / test design / UI design
+- named approver exists
 
 ## Skip If (ANY kills it)
 
-- Lean/startup contexts — JTBD, Opportunity Solution Trees, or story mapping deliver faster discovery without SoW UC obligations
-- Data/analytics platforms — DFDs and dimensional models better expose the meaningful structure
-- Internal tools with a single actor and fewer than 10 transactions — a one-page acceptance-criteria sheet suffices
-- ML/LLM surfaces with probabilistic responses — UC main flows assume deterministic system responses and mislead
-- Event-sourced/reactive architectures — event storming better exposes the structure
-- Teams already running smoothly on user stories + acceptance criteria — layering UCs duplicates work
+- the requirement is pure data-shape — use a data model instead
+- the requirement is a single screen with no flow — use a wireframe
+- team prefers BDD-only and use cases would duplicate effort
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| business-need spec | MD / wiki | strategy-analysis-business-need |
+| actor list | CSV / wiki | stakeholder-analysis |
+| named approver | org chart | PM / BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[stakeholder-analysis]] | Source of named actors with goals. |
+| [[strategy-analysis-business-need]] | Anchors the use case to a measurable outcome. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: actor-goal-scenario, numbered steps, named preconditions, ≥1 alternate flow, ≥1 exception flow | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for use-case spec: actor, goal, preconditions, main + alternate + exception flows, postconditions, frequency | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: actor = system, narrative prose instead of steps, missing exceptions, frequency unset, unowned approval | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: identify actor + goal → main path → alternates → exceptions → review with actor | 700 |
+| `content/05-examples.xml` | essential | Worked example: customer login + 2FA exception flow | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on behaviour vs data + actor clarity + downstream consumer | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `actor_extraction` | sonnet | Extract actor list from prerequisites. |
+| `main_path_draft` | sonnet | Numbered steps for happy path. |
+| `exception_enumeration` | sonnet | Identify likely exceptions per step. |
+| `review_with_actor` | haiku | Mechanical readback transcription. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/use-case.md` | Markdown skeleton with all required sections. |
+| `templates/exception-flows.csv` | Header for exception-flow rows. |
+| `templates/_smoke-test.md` | Minimum viable use case. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-use-case-modeling.py` | Validates use-case spec against the JSON Schema. | Before approver sign-off; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[user-story-mapping]]
+- [[stakeholder-analysis]]
+- [[strategy-analysis-business-need]]
+- [[definition-of-done-library]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

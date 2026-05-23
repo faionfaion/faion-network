@@ -3,80 +3,99 @@ slug: client-control-id-mapping
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Client Control Id Mapping: codified ba practice that turns the recurring 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)' decision into a repeatable, auditable artefact.
-content_id: "5fcb3db60ac26665"
-tags: [client-control-id-mapping, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Maps client-supplied compliance control IDs (HIPAA, PCI, SOX) to internal requirements + tests so an auditor can trace any control to passing evidence on demand.
+content_id: "eb36cf2bf2930070"
+complexity: medium
+produces: config
+est_tokens: 2400
+tags: [compliance, control-mapping, fintech, hipaa, pci, audit]
 ---
-# Client Control Id Mapping
+# Client Control ID Mapping
 
 ## Summary
 
-**One-sentence:** Client Control Id Mapping: codified ba practice that turns the recurring 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)' decision into a repeatable, auditable artefact.
+**One-sentence:** A bi-directional map between client-supplied compliance control IDs and internal requirements + tests, queryable by auditor in < 5 minutes.
 
-**One-paragraph:** Client Control Id Mapping addresses the gap surfaced by 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)'. Every regulated client carries an internal control catalogue (CCnn, ITGCnn). BA work today (requirements-traceability) traces to acceptance criteria, not to client control IDs. Outsource specialist needs the linkage explicit to defend changes during audit. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Auditors arrive with a control list and demand 'show me evidence for control X-12'. Hand-maintained spreadsheets rot; engineers refactor tests and break the link silently. This methodology installs a versioned mapping with: (a) source-of-truth client control list, (b) internal requirement / test IDs per control, (c) evidence URL per pairing, (d) named owner per control, (e) broken-link detector. Output: a YAML/JSON mapping + auditor query CLI.
+
+**Ефективно для:**
+
+- Regulated builds (HIPAA, PCI, SOX, ISO 27001, SOC 2).
+- Pre-audit hardening (4–8 weeks before audit).
+- Vendor onboarding where the buyer dictates control IDs.
+- Multi-tenant SaaS with per-tenant compliance overlay.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- client provides a discrete control list (IDs not free-form text)
+- internal requirements + tests are ID-addressable
+- named owner accepts maintenance of the mapping
+- evidence is queryable (logs / CI / dashboards)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- no client control list — request one first
+- internal IDs are not stable across releases — fix the ID system first
+- no auditor will ever query this — premature compliance
 
 ## Prerequisites
 
-- recent context for the 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| client control list | CSV / PDF | client / regulator |
+| internal requirement IDs | ALM export | BA |
+| test ID list with evidence URLs | CI artefact | QA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[traceability-auto-maintenance]] | Provides the daily job rebuilding the mapping. |
+| [[compliance-checklist-by-domain]] | Source of compliance-domain context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: bound scope, typed input, named owner, versioned record, detector-first | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for control-mapping record: control_id, internal_ids, evidence_urls, owner, last_reviewed | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: inputs invented, owner collapsed to team, post-hoc rationale, version frozen, scope creep | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: import client list → match internal IDs → attach evidence → assign owner | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on client list discreteness + internal ID stability + audit horizon | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation. |
+| `synthesize_decision` | sonnet | Per-control mapping judgment. |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/client-control-id-mapping.json` | JSON schema for the Client Control Id Mapping output contract |
-| `templates/client-control-id-mapping.md` | Markdown skeleton with the required fields |
+| `templates/client-control-id-mapping.json` | JSON skeleton for the control-mapping record. |
+| `templates/client-control-id-mapping.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable control mapping. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-client-control-id-mapping.py` | Enforce Client Control Id Mapping output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-client-control-id-mapping.py` | Validates the control-mapping record against the JSON Schema. | After mapping update; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- upstream playbook: `p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)`
-- methodology family: `pro/ba/` (gap-p2 batch, F-059-063)
+- [[compliance-checklist-by-domain]]
+- [[traceability-auto-maintenance]]
+- [[definition-of-done-library]]
+- [[cr-impact-memo-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

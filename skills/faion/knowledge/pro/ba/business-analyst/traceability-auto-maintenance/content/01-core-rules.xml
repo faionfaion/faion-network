@@ -1,90 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Traceability Auto-Maintenance — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules that keep the traceability matrix synchronised with the tracker without giving the LLM write authority.</summary>
+<text id="01-core-rules" title="Traceability Auto-Maintenance — Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules every application of Traceability Auto-Maintenance must enforce.</summary>
 
-  <section title="The five rules">
-
-    <rule id="r1-tracker-source-of-truth" testable="true">
-      <statement>The tracker (Jira / Linear / GitHub) is the SOURCE OF TRUTH for ticket existence and titles. The matrix MIRRORS the tracker; never the reverse. If they disagree, the tracker wins and the matrix is reconciled.</statement>
-      <rationale source="ISO/IEC/IEEE 29148:2018 + Karl Wiegers — Software Requirements">Two competing sources of truth produce two answers. The tracker is where engineers act; the matrix is where the BA reports. Aligning them on tracker-as-source eliminates the drift class.</rationale>
+  <section title="Rule set">
+    <rule id="r1-daily-refresh" testable="true" depth="essential">
+      <statement>The traceability graph rebuilds daily (≤24h freshness).</statement>
+      <rationale source="control-cadence practice">Graphs older than a day mislead engineers and BAs into decisions on stale links.</rationale>
     </rule>
-
-    <rule id="r2-weekly-drift-detection" testable="true">
-      <statement>Drift detector runs WEEKLY (default Monday 09:00). It compares every matrix link `(req_id → ticket_id)` to current tracker state and classifies into: VALID (ticket exists, title unchanged), RENAMED (exists, title changed), DELETED (ticket gone), MOVED (ticket migrated to new ID).</statement>
-      <rationale source="Empirical sprint-cadence research (Atlassian Jira analytics 2023)">Weekly cadence matches sprint rhythm. Daily is noise; monthly accumulates drift past human reconciliation capacity. Monday 09:00 surfaces drift before sprint planning.</rationale>
+    <rule id="r2-source-of-truth-not-derived" testable="true" depth="essential">
+      <statement>Inputs come from systems-of-record (ticket-system, git, CI), not from spreadsheets or copies.</statement>
+      <rationale source="data-pipeline practice">Derived data drifts from reality; only SoR inputs guarantee accuracy.</rationale>
     </rule>
-
-    <rule id="r3-ai-suggester-not-actor" testable="true">
-      <statement>LLM proposes REPAIRS as suggestions; it MUST NOT directly write to the matrix. Every repair suggestion lands in a queue + PR awaiting BA approval. Auto-merge is forbidden even for "obvious" repairs.</statement>
-      <rationale source="Requirements engineering integrity (INCOSE) / regulated-industry audit trails">Auto-edited requirements artifacts lose audit trail and create compliance exposure (FDA, EASA, SOC-2). BA-in-the-loop is the only legally defensible pattern.</rationale>
+    <rule id="r3-named-alert-owner" testable="true" depth="essential">
+      <statement>Alerts on broken links route to a single named owner with an SLA.</statement>
+      <rationale source="alerting practice">Anonymous alerts go to a shared channel and are ignored.</rationale>
     </rule>
-
-    <rule id="r4-link-type-discipline" testable="true">
-      <statement>Every matrix link MUST declare a `link_type` from a closed list: IMPLEMENTS, VERIFIED-BY, DEPENDS-ON, REFINES, DERIVES-FROM. Repair suggestions preserve the original link_type — LLM may not "fix" by changing the link semantics.</statement>
-      <rationale source="ReqIF / IBM DOORS / OSLC RM standards">Untyped links lose the audit story (test coverage vs implementation vs dependency). Repair that changes semantics quietly corrupts compliance reports.</rationale>
+    <rule id="r4-no-silent-failure" testable="true" depth="essential">
+      <statement>If any connector fails, the job emits 'graph stale' with the failure cause; no silent fallback to yesterday's data.</statement>
+      <rationale source="fail-loud principle">Silent fallback means the team trusts a snapshot that may be days old.</rationale>
     </rule>
-
-    <rule id="r5-audit-log" testable="true">
-      <statement>Every drift detection AND every repair MUST emit an audit event with: timestamp, matrix path, tracker state hash, repair suggestions, BA approver, approval timestamp. Audit log persists for ≥ 7 years (FDA / EASA standard).</statement>
-      <rationale source="21 CFR Part 11 / FDA software validation guidance">Traceability matrices are evidence. Without an audit log of changes, the matrix's value to compliance reviewers collapses. 7 years matches FDA's record-retention rule.</rationale>
+    <rule id="r5-schema-versioned-graph" testable="true" depth="essential">
+      <statement>The graph artefact carries a schema_version that bumps on every schema change.</statement>
+      <rationale source="schema-evolution practice">Consumers downstream break silently on schema drift; explicit version prevents this.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Drift classification examples">
-
-    <example type="good" title="Renamed ticket repair flow">
-      <code lang="text"><![CDATA[
-Matrix row:
-  R-042 (Login MFA) → JIRA-2381 ("Implement MFA")
-  link_type: IMPLEMENTS
-
-Tracker state (week 14):
-  JIRA-2381 → title now "Implement MFA + WebAuthn"
-
-Detector verdict: RENAMED (same ID, title evolved)
-Repair suggestion: NONE NEEDED. Log title change in audit.
-Note in matrix: "title drift acknowledged 2026-W14".
-      ]]></code>
-      <note>Renamed is the common, harmless case. Detector logs it; no PR needed.</note>
-    </example>
-
-    <example type="good" title="Deleted ticket repair flow">
-      <code lang="text"><![CDATA[
-Matrix row:
-  R-067 (Audit export CSV) → JIRA-3104
-  link_type: VERIFIED-BY
-
-Tracker state: JIRA-3104 → 404 (deleted by sprint cleanup)
-
-Detector verdict: DELETED
-LLM suggestion:
-  Search tracker for "audit", "export", "csv" tickets created
-  in the last 60 days. Top candidate: JIRA-3210
-  ("Compliance report CSV export"), confidence 0.78.
-
-Output: repair-suggestion PR with side-by-side diff.
-BA reviews: approves → PR merged → audit event logged.
-      ]]></code>
-      <note>r3 + r4: LLM suggests, BA approves, link_type unchanged.</note>
-    </example>
-
-    <example type="bad" title="Auto-merge repair (r3 violation)">
-      <code lang="text"><![CDATA[
-LLM detects DELETED → finds match with 0.78 confidence → auto-edits
-the matrix file. Commits to main without review.
-
-2 sprints later: compliance review. Auditor asks "why does R-067
-point to JIRA-3210?". No one knows. Audit log shows no human approval.
-Compliance finding raised.
-      ]]></code>
-      <note>Violates r3. Auto-merge destroys the audit chain.</note>
-    </example>
-
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

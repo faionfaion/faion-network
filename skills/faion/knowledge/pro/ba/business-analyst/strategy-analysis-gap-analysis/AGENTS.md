@@ -1,73 +1,103 @@
 ---
 slug: strategy-analysis-gap-analysis
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Gap analysis identifies what must change by joining current-state measurements with future-state targets for each area.
-content_id: "a8eb0e9cda87e1d4"
-tags: [strategy-analysis, gap-analysis, babok, prioritization, measurement]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identifies the delta between current and future state — capability gaps, process gaps, system gaps — with severity and remediation owner, feeding the change strategy.
+content_id: "a7e12576ab3b1f84"
+complexity: medium
+produces: report
+est_tokens: 2500
+tags: [strategy-analysis, gap-analysis, capability-gap, delta, remediation]
 ---
-# Strategy Analysis: Gap Analysis
+# Strategy Analysis — Gap Analysis
 
 ## Summary
 
-**One-sentence:** Gap analysis identifies what must change by joining current-state measurements with future-state targets for each area.
+**One-sentence:** A documented delta between current and future state with capability + process + system gaps, severity, and named remediation owner per gap.
 
-**One-paragraph:** Gap analysis identifies what must change by joining current-state measurements with future-state targets for each area. Every gap row carries: area, current metric value, future metric target, gap size, gap unit, priority (H/M/L), and an evidence URL. Gaps without numeric deltas cannot be prioritized and must be returned for re-measurement. A dependency DAG identifies which gaps block others so prioritization is not popularity-weighted.
+**One-paragraph:** With current + future specs in hand, gap analysis names exactly what is missing or different. Each gap is typed (capability / process / system / data / skill / regulatory), severity-scored (blocker / major / minor), and owned. The output feeds `strategy-analysis-change-strategy` for option comparison and the requirements backlog for build sequencing.
+
+**Ефективно для:**
+
+- Post-vision phase before kicking off requirements work.
+- M&A integration where two organisations' as-is collides with one target.
+- Vendor selection where fit-gap scoring drives the decision.
+- Compliance gap audits.
 
 ## Applies If (ALL must hold)
 
-- After current-state assessment is signed off AND future state is locked by the exec sponsor — both inputs are required; running gap analysis on unsigned inputs produces gaps that shift when the inputs shift.
-- Any initiative requiring a change strategy: the gap analysis is the prioritized input to option evaluation.
-- Portfolio planning: gap analysis across N initiatives establishes a shared prioritization surface — which gaps are shared, which are blocking, which are independent.
-- Regulatory-driven change: the gap between the regulator's future-state requirements and the org's current state is the compliance gap; each row carries the regulatory citation as evidence_url.
+- current-state spec exists
+- future-state spec exists
+- remediation owners can be named per gap type
+- named decision-maker exists for prioritisation
 
 ## Skip If (ANY kills it)
 
-- Before future state is locked — gaps computed against a draft future state will change when the future state is finalized; the work is wasted.
-- Before current-state assessment is complete — gaps without a measured current-state baseline are guesses, not analysis.
-- Single-area tactical changes with an obvious and agreed gap — overhead exceeds value; a two-line ADR is sufficient.
+- current or future state spec missing — produce them first
+- the future-state target is so close to current that gaps are trivial
+- the organisation has no capacity to remediate (gap analysis without action = decoration)
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| current-state spec | MD / wiki | strategy-analysis-current-state |
+| future-state spec | MD / wiki | strategy-analysis-future-state |
+| severity rubric | MD | BA team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[strategy-analysis-current-state]] | Source of as-is rows. |
+| [[strategy-analysis-future-state]] | Source of to-be rows. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: typed gaps, severity-rubric-bound, owner per gap, no overlap with adjacent gaps, traceability to current + future rows | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for gap-analysis report: gaps[] with type, severity, owner, rationale, source | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: untyped gaps, severity drift, anonymous owners, overlap with adjacent gaps, no remediation owner | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure: align rows → identify deltas → score severity → assign owners | 600 |
+| `content/05-examples.xml` | essential | Worked example: 6-gap excerpt from a CRM consolidation gap analysis | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on spec freshness + remediation capacity + decision-maker availability | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `row_alignment` | haiku | Mechanical match of current-state rows to future-state rows. |
+| `delta_identification` | sonnet | Identify deltas between aligned rows. |
+| `severity_scoring` | sonnet | Apply severity rubric per gap. |
+| `owner_assignment` | sonnet | Assign named remediation owner per gap. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gap-analysis-report.md` | Markdown skeleton with gaps[] section. |
+| `templates/gap-row.csv` | Header for gap rows (type, severity, owner, source). |
+| `templates/_smoke-test.md` | Minimum viable gap-analysis report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-strategy-analysis-gap-analysis.py` | Validates gap-analysis report against the JSON Schema. | After gap-scoring round; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[strategy-analysis-current-state]]
+- [[strategy-analysis-future-state]]
+- [[strategy-analysis-change-strategy]]
+- [[strategy-analysis-business-need]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

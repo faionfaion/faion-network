@@ -3,81 +3,100 @@ slug: decision-options-memo-template
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3624f920e0dd6eac"
-summary: Standardized "options memo" template BAs use to escalate decisions — option framing, cost-value-risk per option, recommendation, dissent acknowledgement, decision-required-by date.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Standardised options memo BAs use to escalate decisions: option framing, cost-value-risk per option, recommendation, dissent acknowledgement, decision-required-by date.
+content_id: "7b12bcf1cac9e20f"
+complexity: medium
+produces: spec
+est_tokens: 2400
 tags: [business-analyst, decision-memo, options-memo, escalation, requirements-baseline]
 ---
 # Decision Options Memo Template
 
 ## Summary
 
-**One-sentence:** A standardized BA decision-options memo — three named options, cost-value-risk per option, recommendation with dissent acknowledged, and a decision-required-by date — replacing the per-project improvised escalation document.
+**One-sentence:** A standardised options memo BAs use to escalate decisions with cost-value-risk per option, recommendation, dissent acknowledgement, and a decision-required-by date.
 
-**One-paragraph:** BAs repeatedly write "options memos" to escalate decisions to product owners, sponsors, or steering committees. Each BA invents the format, the rigor varies, and the receiving decision-maker has to re-orient every time. The result: decisions delayed, follow-up rounds for missing context, or hasty commitments based on a one-option framing that hid the trade-off. This methodology pins the format: exactly three options (or N + a "why exactly three" justification), structured cost/value/risk per option, recommendation with explicit "why not the other two," dissenting-view acknowledgement (named), and a hard decision-required-by date. Output: decision-memo-NNN.md that the decision-maker can act on in 10 minutes.
+**One-paragraph:** Decisions that linger because there is no forcing function rot the program. Options-memo gives the decision a deadline, frames the options, captures dissent, and lands on a recommendation. Output: a Markdown memo attached to the decision record + escalated through the agreed channel.
+
+**Ефективно для:**
+
+- Cross-functional decisions where no one owns the call.
+- Architectural decisions that cross team boundaries.
+- Re-baselining decisions where stakes are high.
+- Vendor selection decisions.
 
 ## Applies If (ALL must hold)
 
-- BA has identified a decision that requires escalation (cannot be made within the project team).
-- More than one viable option exists (single-option memos are not decision memos — they are recommendations).
-- A named decision-maker is available within the required timeframe.
-- The decision affects scope, schedule, budget, or quality (the four classic levers).
+- ≥2 viable options exist
+- named decision-maker exists
+- decision-required-by date is agreed
+- the BA / PM has standing to escalate
 
 ## Skip If (ANY kills it)
 
-- Decision is purely technical and within the engineering team's authority — use ADR.
-- Decision is reversible and low-impact — escalate via Slack with one line.
-- Stakeholder is unwilling or unable to read a 2-page memo — switch to verbal + meeting minutes.
-- The "options" are all variations of one approach — re-frame; that's a recommendation, not a decision.
+- decision can be made by a single role inline — no memo needed
+- no viable options — escalate as 'no-option' memo
+- decision-maker absent — escalate to next-up first
 
 ## Prerequisites
 
-- The decision is well-framed: what is being decided, by when, by whom.
-- Each option has been at least sketched (not necessarily costed) by the BA.
-- Stakeholders consulted to surface dissent.
-- A target decision-maker identified.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| decision context | MD | BA / PM |
+| ≥2 viable options | MD | BA |
+| named decision-maker + deadline | calendar | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst/stakeholder-analysis` | Dissent acknowledgement requires the named-stakeholder map. |
-| `pro/ba/business-analyst/risk-analysis` | Per-option risk uses the standard risk register format. |
+| [[cr-options-matrix-template]] | CR-specific specialisation of this pattern. |
+| [[decision-rationale-capture]] | Captures the resulting rationale. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 3-option floor, structured C/V/R, recommendation with why-not, dissent named, decision-by date | ~900 |
-| `content/02-output-contract.xml` | essential | Memo shape, required sections, length cap | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: straw-man options, hidden recommendation, missing dissent | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: ≥2 options, scored on cost-value-risk, named decision-maker, decision-required-by date, dissent acknowledged | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for options memo: options[], scores, recommendation, dissent, decision_maker, deadline | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: single-option theatre, anonymous decision-maker, missing deadline, dissent suppressed, post-hoc rationale | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: frame options → score → capture dissent → recommend + escalate | 600 |
+| `content/05-examples.xml` | essential | Worked example: vendor-selection memo with 3 options, dissent noted, recommendation | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on option count + decision-maker availability + dissent presence | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `option-cost-value-risk-fill` | sonnet | Bounded fill per option from inputs |
-| `dissent-summary` | sonnet | Synthesize named-stakeholder objections |
-| `recommendation-rationale` | opus | Cross-option synthesis + trade articulation |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-option scoring + recommendation. |
+| `review_for_compliance` | opus | High-stakes architectural / vendor decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-memo.md` | Skeleton with all required sections |
-| `templates/cvr-table.md` | Cost-Value-Risk table per option |
+| `templates/decision-options-memo-template.json` | JSON skeleton for the options memo. |
+| `templates/decision-options-memo-template.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable options memo. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/memo-completeness-check.py` | Verifies all required sections populated; flags template-default lines | Pre-send |
+| `scripts/validate-decision-options-memo-template.py` | Validates the options memo against the JSON Schema. | Before escalation; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodology: `stakeholder-analysis`, `risk-analysis`, `change-impact-assessment`
-- external: [Amazon 6-page memo culture](https://www.businessinsider.com/jeff-bezos-meeting-amazon-rules-2018-4) · [BABOK §10.21 Decision Analysis](https://www.iiba.org/career-resources/babok/)
+- [[decision-rationale-capture]]
+- [[cr-options-matrix-template]]
+- [[cr-impact-memo-template]]
+- [[definition-of-done-library]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

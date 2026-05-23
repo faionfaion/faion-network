@@ -3,80 +3,98 @@ slug: compliance-checklist-by-domain
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "804391fddc66f319"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Domain-indexed compliance checklist (GDPR / HIPAA / PSD2 / SOC2 / WCAG) BAs apply during requirements validation to catch missing non-functional and regulatory items before sign-off.
-tags: [compliance, gdpr, hipaa, psd2, soc2, accessibility, requirements-validation]
+content_id: "e55e93094c221123"
+complexity: medium
+produces: checklist
+est_tokens: 2400
+tags: [compliance, gdpr, hipaa, psd2, soc2, wcag, requirements-validation]
 ---
 # Compliance Checklist by Domain
 
 ## Summary
 
-**One-sentence:** A domain-indexed compliance checklist (per-regulation, per-feature-type) the BA applies during requirements validation to catch the regulatory and non-functional requirements AI-generated user stories routinely miss.
+**One-sentence:** A domain-indexed compliance checklist BAs apply during requirements validation to surface missing non-functional and regulatory items before sign-off.
 
-**One-paragraph:** AI-generated user stories are good at "user wants to log in" and terrible at "user is in the EU and has GDPR Article 17 erasure rights, and the system must reflect deletion in &lt;= 30 days, and the audit log must persist a deletion event." Compliance items are non-obvious to the average LLM because they live in regulations the model wasn't tuned to cite. This methodology gives the BA a five-step process: (1) classify the feature by data and jurisdiction, (2) pull the regulation-by-feature-type matrix, (3) check each required clause against the requirements, (4) flag misses as MUST-fix or MAY-fix, (5) document the BA's sign-off. The matrix covers the five regulations most frequently encountered in P4 outsource work plus accessibility. Output: a compliance-gate annotation per feature.
+**One-paragraph:** Requirements sign-off without a compliance checklist routinely misses non-functional items (data residency, retention, audit logging, accessibility). This methodology indexes checklists by compliance domain (GDPR / HIPAA / PSD2 / SOC2 / WCAG) so a BA can pick the relevant domain(s) and walk the checklist. Each item carries: rationale, evidence-required, owner, source-clause. Output: a checked checklist + gap list feeding the requirements backlog.
+
+**Ефективно для:**
+
+- Pre-sign-off requirements validation on regulated builds.
+- Domain-onboarding BAs new to GDPR / HIPAA / PSD2.
+- Pre-audit gap-finding (4–8 weeks before audit).
+- Vendor RFP-response compliance section.
 
 ## Applies If (ALL must hold)
 
-- Requirements being validated come from a feature touching: personal data, payments, health data, financial data, or user-facing UI.
-- Project operates in (or sells to) a jurisdiction with regulation (EU / UK / US / regulated industry).
-- BA is on the validation pass — after initial requirements drafting, before sign-off.
-- AI was involved in drafting requirements (or the team is small enough that the BA is the only compliance pass).
+- the engagement touches at least one regulatory domain (GDPR / HIPAA / PSD2 / SOC2 / WCAG)
+- named owner accepts the checked checklist
+- a draft requirements set exists to validate against
+- compliance scope is bounded (not 'all of EU')
 
 ## Skip If (ANY kills it)
 
-- Internal admin tools with no PII and no external users — most clauses are N/A.
-- Pure infrastructure work (DB migration, caching layer) where compliance applies upstream, not at this feature.
-- Project already has a dedicated compliance officer/legal team validating each feature — this methodology defers to them.
-- Single-jurisdiction free product with no payments / health / financial data — apply only accessibility section.
+- no regulatory domain applies — skip the checklist entirely
+- the engagement is purely internal with no PII / payments
+- compliance team owns this artefact already — defer
 
 ## Prerequisites
 
-- Requirements document or user-story set under review.
-- Feature classification: data types involved, user jurisdiction, payment processing yes/no, health yes/no.
-- The compliance matrix (templates/compliance-matrix.csv).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| draft requirements set | MD / wiki / ALM | BA |
+| regulatory scope statement | MD | compliance / legal |
+| named owner | org chart | BA / compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst/requirements-documentation` | Output of validation references the existing requirements doc structure. |
-| `pro/ba/business-analyst/non-functional-requirements` | NFR taxonomy assumed as context. |
+| [[client-control-id-mapping]] | Maps checked items to client controls if a client list exists. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: classify-first, matrix-driven, MUST/MAY flagging, jurisdiction explicit, sign-off required | ~900 |
-| `content/02-output-contract.xml` | essential | Compliance-gate annotation shape; per-clause coverage; sign-off | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes including wishful "we're not in scope" and unwritten jurisdiction | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: domain-indexed selection, every item has source clause + evidence required, named owner, no checklist without rationale, ≤ 50 items per domain pass | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for checked checklist: items[], domain, owner, last_reviewed, gap_count | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: tick-the-box drift, missing source clause, anonymous owner, scope drift, stale checklist | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: select domains → walk items → record evidence → emit gap list | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on regulatory scope + audit horizon + checklist freshness | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `classify-feature-by-data-type` | sonnet | Bounded judgment from feature description |
-| `pull-applicable-clauses` | haiku | Lookup against matrix |
-| `cross-check-requirements` | opus | Compare clauses against existing requirements text |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-item evidence-check. |
+| `review_for_compliance` | opus | Cross-domain synthesis on high-stakes audits. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/compliance-matrix.csv` | Per-(regulation, feature-type) clause list with MUST/MAY |
-| `templates/compliance-gate.md` | Annotation skeleton per feature |
+| `templates/compliance-checklist-by-domain.json` | JSON skeleton for the checked checklist. |
+| `templates/compliance-checklist-by-domain.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable checked checklist. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/clauses-not-met.py` | Compare matrix vs requirements doc; report uncovered clauses | Before sign-off |
+| `scripts/validate-compliance-checklist-by-domain.py` | Validates the checked checklist against the JSON Schema. | Before sign-off; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodology: `requirements-documentation`, `non-functional-requirements`, `risk-analysis`
-- external: [GDPR Articles 6, 17, 32](https://gdpr-info.eu/) · [HIPAA Security Rule](https://www.hhs.gov/hipaa/) · [PSD2 SCA](https://www.eba.europa.eu/) · [SOC 2 Trust Services](https://www.aicpa-cima.com/) · [WCAG 2.2](https://www.w3.org/WAI/standards-guidelines/wcag/)
+- [[client-control-id-mapping]]
+- [[definition-of-done-library]]
+- [[cr-impact-memo-template]]
+- [[scope-drift-early-warning-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

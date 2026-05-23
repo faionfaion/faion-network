@@ -3,80 +3,101 @@ slug: cr-options-matrix-template
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cr Options Matrix Template: codified ba practice that turns the recurring 'role-business-analyst/Major change-request impact assessment + re-baseline' decision into a repeatable, auditable artefact.
-content_id: "eca98264fe5165c6"
-tags: [cr-options-matrix-template, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Major-CR options matrix: ≥2 viable responses (accept / reduce / defer / re-baseline) with cost / value / risk per option, recommendation, and approver routing.
+content_id: "9ae04e8482735385"
+complexity: medium
+produces: spec
+est_tokens: 2400
+tags: [change-request, options-matrix, re-baseline, ba, decision]
 ---
-# Cr Options Matrix Template
+# CR Options Matrix Template
 
 ## Summary
 
-**One-sentence:** Cr Options Matrix Template: codified ba practice that turns the recurring 'role-business-analyst/Major change-request impact assessment + re-baseline' decision into a repeatable, auditable artefact.
+**One-sentence:** An options matrix for major Change Requests scoring ≥2 viable responses on cost / value / risk and routing the recommended option to the named approver.
 
-**One-paragraph:** Cr Options Matrix Template addresses the gap surfaced by 'role-business-analyst/Major change-request impact assessment + re-baseline'. Recurring artefact for change-request decisions. Needs a templated matrix structure (option / scope-delta / cost-delta / schedule-delta / risk-delta / value-delta / recommendation). Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Major CRs need option comparison, not just an impact memo. This template forces ≥2 viable response options (accept-as-is / reduce-scope / defer / re-baseline), scores each on cost / value / risk, names the recommendation, and routes it via `change-request-impact-rubric`. Output: a Markdown options matrix attached to the CR record.
+
+**Ефективно для:**
+
+- Major CRs (bin L per change-request-impact-rubric).
+- Re-baselining decisions on multi-quarter programs.
+- Steering-committee submissions where option theatre is forbidden.
+- Programs with a track record of single-option recommendations failing.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-business-analyst/Major change-request impact assessment + re-baseline' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- the CR is bin L (major) per change-request-impact-rubric
+- the program has capacity to enumerate ≥2 viable options
+- named approver exists
+- scoring rubric for cost / value / risk is agreed
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- CR is bin S or M — use cr-impact-memo-template instead
+- single-option forced (regulatory mandate) — escalate as no-option memo
+- no scoring rubric — agree one first
 
 ## Prerequisites
 
-- recent context for the 'role-business-analyst/Major change-request impact assessment + re-baseline' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| CR record + impact rubric bin | JSON | change-request-impact-rubric |
+| scoring rubric (cost/value/risk) | MD | PM / BA |
+| named approver | org chart | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[change-request-impact-rubric]] | Source of bin classification. |
+| [[cr-impact-memo-template]] | Companion artefact for impact framing. |
+| [[decision-options-memo-template]] | Generic options-memo pattern this specialises. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: ≥2 viable options, scored on cost/value/risk, named approver, recommendation backed by rationale, no single-option theatre | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for options matrix: options[], scores, recommendation, approver, version | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: single-option theatre, anonymous owner, score drift, post-hoc rationale, scope creep | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: enumerate options → score → recommend → review → route to approver | 700 |
+| `content/05-examples.xml` | essential | Worked example: major CR with 3 options (accept / reduce / defer) and recommendation | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on bin + option count + approver availability | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-option scoring + recommendation. |
+| `review_for_compliance` | opus | High-stakes re-baseline decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cr-options-matrix-template.json` | JSON schema for the Cr Options Matrix Template output contract |
-| `templates/cr-options-matrix-template.md` | Markdown skeleton with the required fields |
+| `templates/cr-options-matrix-template.json` | JSON skeleton for the options matrix. |
+| `templates/cr-options-matrix-template.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable options matrix. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-cr-options-matrix-template.py` | Enforce Cr Options Matrix Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-cr-options-matrix-template.py` | Validates the options matrix against the JSON Schema. | Before approver review; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- upstream playbook: `role-business-analyst/Major change-request impact assessment + re-baseline`
-- methodology family: `pro/ba/` (gap-p2 batch, F-059-063)
+- [[change-request-impact-rubric]]
+- [[cr-impact-memo-template]]
+- [[decision-options-memo-template]]
+- [[decision-rationale-capture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

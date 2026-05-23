@@ -3,77 +3,99 @@ slug: change-request-impact-rubric
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Change Request Impact Rubric: codified business-analysis practice that turns the recurring 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture' decision into a repeatable, auditable artefact.
-content_id: "d599f5e3588cffea"
-tags: [change-request-impact-rubric, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Scores a Change Request by blast radius (requirements / AC / tests / regulatory clauses / dependent stories touched) and routes it to the correct approver (BA / PO / steering committee).
+content_id: "20b66103954a53f5"
+complexity: medium
+produces: rubric
+est_tokens: 2400
+tags: [change-request, impact-rubric, blast-radius, approval-route, ba]
 ---
 # Change Request Impact Rubric
 
 ## Summary
 
-**One-sentence:** Change Request Impact Rubric: codified business-analysis practice that turns the recurring 'role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture' decision into a repeatable, auditable artefact.
+**One-sentence:** A scored Change Request impact rubric that bins a CR by blast radius and routes it to BA, PO, or steering-committee approval.
 
-**One-paragraph:** Change Request Impact Rubric addresses the gap identified by the role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture playbook: pro/ba-core/ba-requirements-mgmt covers requirement maintenance and change impact at the definitional level. Missing: concrete rubric to score a CR by blast radius (requirement count touched, AC count touched, test count touched, regulatory-clause count touched, dependent stories), with a recommended approval route (BA approves / PO approves / steering committee). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** CRs that should be a 10-minute BA decision end up in the steering committee, and CRs that should escalate end up rubber-stamped. This rubric scores a CR on five blast-radius dimensions (requirements touched, AC touched, tests touched, regulatory clauses touched, dependent stories touched) into a S/M/L bin with a deterministic approval route per bin. Output: a CR impact record with score, bin, approver, owner, and rationale.
+
+**Ефективно для:**
+
+- Engagements with formal change-control gates.
+- Regulated programs where the approval route matters legally.
+- High-volume CR programs needing triage automation.
+- Engagements with mixed CR severities and overloaded steering committees.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- a change-control process exists (even informal)
+- traceability data is current (requirements ↔ AC ↔ tests ↔ stories)
+- approval routes (BA / PO / steering) are defined
+- named owner accepts the rubric output
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- no change-control process at all — fix that first
+- traceability data missing — rubric inputs are inferred
+- single CR per quarter — rubric overhead > value
 
 ## Prerequisites
 
-- recent context for the role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| traceability graph | JSON / CSV | traceability-auto-maintenance |
+| approval-route policy | MD / wiki | PM |
+| CR record (description + affected ids) | ticket | submitter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[traceability-auto-maintenance]] | Source of dependency data. |
+| [[cr-impact-memo-template]] | Downstream artefact this rubric feeds. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-detector-first | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: bound scope, typed input, named owner, versioned record, detector-first | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for CR impact record: artefact_id, owner, decision, rationale, inputs_used, version, last_reviewed, bin | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: inputs invented, owner collapsed to team, post-hoc rationale, version frozen, scope creep | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: collect inputs → score dimensions → bin → assign approver | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on traceability freshness + bin score + regulatory context | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation. |
+| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs. |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/change-request-impact-rubric.json` | JSON schema for the Change Request Impact Rubric output contract |
-| `templates/change-request-impact-rubric.md` | Markdown skeleton with the required fields |
+| `templates/change-request-impact-rubric.json` | JSON skeleton for the CR impact record. |
+| `templates/change-request-impact-rubric.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable rubric record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-change-request-impact-rubric.py` | Enforce Change Request Impact Rubric output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-change-request-impact-rubric.py` | Validates the rubric record against the JSON Schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- upstream playbook: `role-business-analyst/Stakeholder-conflict facilitation and decision rationale capture`
+- [[cr-impact-memo-template]]
+- [[cr-options-matrix-template]]
+- [[traceability-auto-maintenance]]
+- [[decision-rationale-capture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

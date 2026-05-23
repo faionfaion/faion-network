@@ -1,74 +1,102 @@
 ---
 slug: strategy-analysis-current-state
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Before defining the future state, the BA must systematically inventory where the organization is today across six areas: business processes, organization structure, technology landscape, people and skills, data and information, and external factors.
-content_id: "8a9dac3e6c6fc939"
-tags: [strategy-analysis, current-state, swot, pestle, capability-mapping]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Documents the as-is environment — processes, systems, capabilities, pain points, constraints — with named owners and evidence so future-state and gap analysis have a real baseline.
+content_id: "d0550412d2e1be53"
+complexity: medium
+produces: spec
+est_tokens: 2500
+tags: [strategy-analysis, current-state, as-is, process-map, capability]
 ---
-# Strategy Analysis: Current State Assessment
+# Strategy Analysis — Current State
 
 ## Summary
 
-**One-sentence:** Before defining the future state, the BA must systematically inventory where the organization is today across six areas: business processes, organization structure, technology landscape, people and skills, data and information, and external factors.
+**One-sentence:** A documented as-is environment (processes, systems, capabilities, pain points, constraints) with named owners and primary-source evidence per claim.
 
-**One-paragraph:** Before defining the future state, the BA must systematically inventory where the organization is today across six areas: business processes, organization structure, technology landscape, people and skills, data and information, and external factors. Each area requires evidence — not anecdote. A stakeholder coverage matrix gates sign-off: rows are the six areas, columns are stakeholder roles, cells confirm evidence exists and who provided it.
+**One-paragraph:** Future-state work is fantasy without a real current-state baseline. This methodology captures the as-is environment: process maps (BPMN or text), system inventory, capability assessment, pain points with frequency + impact, and constraints (regulatory, contractual, technical). Every claim is owned and evidenced. Output: a current-state spec that feeds `strategy-analysis-future-state` and `strategy-analysis-gap-analysis`.
+
+**Ефективно для:**
+
+- Pre-transformation discovery on legacy systems.
+- RFP authoring requiring an accurate as-is description.
+- Compliance audits demanding process documentation.
+- Re-engineering programs where the process is partially undocumented.
 
 ## Applies If (ALL must hold)
 
-- After the business need has been framed and signed by the sponsor — current-state work begins only then.
-- Digital transformation programs where the current state spans process, tech, people, and data simultaneously — the six-area inventory is the minimum coverage.
-- M&A integration: the acquired entity's current state must be mapped in all six areas before Day-1 / Day-100 / Day-365 gap analysis.
-- Regulatory-driven change: the regulator's audit will demand evidence for the current-state baseline, not assertions.
-- Whenever SWOT or PESTLE is requested — run these inside the current-state pass, not standalone, so findings feed the gap analysis.
+- the as-is environment is partially undocumented or contested
+- a future-state or gap analysis depends on this artefact
+- process / system owners are available for interviews
+- evidence sources (logs, screenshots, interviews) are accessible
 
 ## Skip If (ANY kills it)
 
-- Before the business need is signed off — current-state work done prematurely anchors the problem frame to the wrong starting point.
-- Single-area tactical changes where one area (e.g. only technology) is affected — scope the inventory to the relevant areas only, but still use the coverage matrix for that area.
-- Early-stage product discovery — use customer interviews and opportunity-solution-trees; current-state org assessment introduces premature structure.
+- the as-is is already well-documented (≤90 days old) — refresh selectively
+- the engagement is greenfield (no current-state exists) — produce future-state only
+- the project is too tactical to warrant a full as-is map
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| business-need spec | MD / wiki | strategy-analysis-business-need |
+| system inventory / CMDB extract | CSV / JSON | IT / ops |
+| process owners interview availability | calendar | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[strategy-analysis-business-need]] | Frames which slices of the as-is are relevant. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: every claim has an evidence source, named process/system owners, pain points quantified, constraints categorised, max depth 3 process levels | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for current-state spec: processes, systems, capabilities, pain-points, constraints | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: narrative without evidence, anonymous owners, infinite process depth, opinionated pain ranking, stale snapshot | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: scope → interview → document → quantify pain → review with owners | 600 |
+| `content/05-examples.xml` | essential | Worked example: customer-onboarding as-is spec excerpt | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on engagement type + as-is freshness + owner availability | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `interview_synthesis` | sonnet | Convert interview notes into structured spec rows. |
+| `evidence_audit` | haiku | Mechanical check that each claim has a source. |
+| `pain_quantification` | sonnet | Convert qualitative pain into frequency + impact. |
+| `constraint_categorisation` | sonnet | Categorise constraints into regulatory / contractual / technical / cultural. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/current-state-spec.md` | Markdown skeleton with all as-is sections. |
+| `templates/process-map.md` | Text-based process map (no ASCII art). |
+| `templates/_smoke-test.md` | Minimum viable current-state spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-strategy-analysis-current-state.py` | Validates current-state spec against the JSON Schema. | After interview round; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[strategy-analysis-business-need]]
+- [[strategy-analysis-future-state]]
+- [[strategy-analysis-gap-analysis]]
+- [[use-case-modeling]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

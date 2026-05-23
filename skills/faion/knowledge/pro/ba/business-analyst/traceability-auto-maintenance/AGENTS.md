@@ -1,88 +1,100 @@
 ---
 slug: traceability-auto-maintenance
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "2f766bc83892524e"
-summary: Keeps the requirements traceability matrix live as the backlog churns — tracker-API ingest, link-drift detection, weekly reconciliation, AI-assisted broken-link repair — so the matrix stays useful past sprint 4.
-tags: [traceability, requirements, ba, jira, ai-assisted-ba]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Automated traceability-graph maintenance: a daily job that scans tickets, commits, and tests; rebuilds the requirement-to-deliverable graph; emits broken-link alerts to a named owner.
+content_id: "411a2c210ffe3e4f"
+complexity: medium
+produces: config
+est_tokens: 2700
+tags: [traceability, automation, graph, ci, alerting]
 ---
-
-# Traceability Auto Maintenance
+# Traceability Auto-Maintenance
 
 ## Summary
 
-**One-sentence:** Keeps the requirements traceability matrix live as the backlog churns — tracker-API ingest, link-drift detection, weekly reconciliation, AI-assisted broken-link repair — so the matrix stays useful past sprint 4.
+**One-sentence:** A daily automated job that rebuilds the requirement-to-deliverable traceability graph from tickets / commits / tests and alerts a named owner on broken links.
 
-**One-paragraph:** Static traceability matrices die within 4 sprints because tickets get renamed, deleted, merged, or split, while the matrix lives in a different document. This methodology binds the matrix to a tracker (Jira / Linear / GitHub Issues) via API ingest, runs a weekly link-drift detector (compares matrix references to current tracker state), and routes broken links through an AI-assisted repair queue (LLM proposes the most likely replacement, BA approves). Output: `TraceabilityReport` with link-health metrics + auto-generated repair PRs against the matrix file.
+**One-paragraph:** Hand-maintained traceability matrices rot within weeks; engineers stop linking commits, BAs stop updating the matrix, the artefact becomes performative. This methodology installs a daily job that pulls source-of-truth data (tickets, commits, tests), reconstructs the graph, diffs against yesterday, and alerts a named owner on broken or missing links. Output: a versioned traceability-graph artefact + daily diff log + alert payload.
+
+**Ефективно для:**
+
+- Engagements ≥3 months with structured tickets + commit conventions.
+- Regulated builds where audit demands a current trace matrix.
+- Multi-team programs where no single human can hand-maintain links.
+- Re-engineering of stalled projects where the matrix rotted.
 
 ## Applies If (ALL must hold)
 
-- BA maintains a requirements traceability matrix (CSV, ReqIF, Confluence, Notion DB)
-- backlog lives in a tracker with REST/GraphQL API (Jira, Linear, GitHub, Azure DevOps)
-- AI assistance is permitted on requirements artifacts (some regulated orgs forbid)
-- matrix has ≥ 50 requirement rows with ≥ 1 link each (smaller doesn't need automation)
+- ticket-system + git + test-runner all expose IDs the job can join on
+- commit messages reference ticket IDs (enforced or near-100%)
+- a named owner accepts the daily alert payload
+- engagement is long enough that automation ROI > hand maintenance
 
 ## Skip If (ANY kills it)
 
-- requirements live entirely inside the tracker (no separate matrix) — use tracker's own coverage report
-- tracker has no stable IDs (e.g. unscoped spreadsheet) — fix tracker discipline first
-- regulated environment forbids LLM access to requirements — use the human-only `requirements-traceability` parent
-- &lt; 50 rows — manual maintenance is cheaper than automation
+- ticket-commit-test ID conventions are not in place — fix conventions first
+- single-developer engagement <2 months — hand-maintained matrix is cheaper
+- no named owner for alerts — alerts will be ignored
 
 ## Prerequisites
 
-- tracker API credentials (read + comment scope minimum)
-- matrix file under source control OR API access
-- canonical link types (e.g. "implements", "verified-by", "depends-on")
-- weekly review slot for BA to approve repair queue
+| Artefact | Format | Source |
+|----------|--------|--------|
+| ticket-system API + token | JSON over HTTPS | PM / ops |
+| git repo access + commit-message convention | git over SSH | engineering |
+| test-runner output with ticket-id tags | JUnit / JSON | QA / CI |
+| named owner + alert channel | email / Slack / TG | BA / PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/ba-core/requirements-traceability` | Defines matrix structure this methodology maintains |
-| `pro/ba/business-analyst/ai-assisted-requirements-discovery` | Provides the LLM context for repair suggestions |
-| `pro/pm/pm-traditional/change-management` | Consumes traceability impact analysis when backlog churns |
+| [[requirements-traceability-full-lifecycle]] | Defines the graph schema this job rebuilds. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: API source-of-truth, drift detection cadence, AI-as-suggester not actor, link-type discipline, audit log | ~1000 |
-| `content/02-output-contract.xml` | essential | `TraceabilityReport` + repair-suggestion schema | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: stale cache, wrong repair, link-type collapse, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: daily refresh, source-of-truth not derived, named alert owner, no silent failure, schema-versioned graph | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for graph artefact + alert payload + diff log | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: silent failure, alert-fatigue, ID-drift, stale graph, missing owner | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: configure connectors → run nightly job → diff → alert → persist graph | 700 |
+| `content/06-decision-tree.xml` | essential | Tree on convention compliance + owner + engagement length | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `tracker_api_ingest` | haiku | API call + parse |
-| `drift_detection_diff` | haiku | Set-diff |
-| `repair_candidate_search` | sonnet | Semantic + textual matching |
-| `impact_analysis_for_BA` | opus | Cross-requirement reasoning |
-| `repair_PR_assembly` | sonnet | File-edit + commit |
+| `graph_build` | n/a | Deterministic batch. |
+| `alert_drafting` | sonnet | Translate diff into actionable alert text. |
+| `convention_audit` | haiku | Mechanical check of commit-message conventions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/traceability-report.json` | Output schema |
-| `templates/repair-suggestion.json` | Per-link repair record |
+| `templates/traceability-job.yml` | GitHub Actions / cron job skeleton. |
+| `templates/alert-payload.json` | Alert payload schema with __faion_header__. |
+| `templates/_smoke-test.yml` | Minimum viable cron-job config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/drift-detect.py` | Weekly drift detection vs tracker | Cron Mon 09:00 |
-| `scripts/repair-queue.py` | Run LLM repair suggestions over broken links | After drift-detect |
+| `scripts/validate-traceability-auto-maintenance.py` | Validates the alert payload + graph artefact against the JSON Schema. | Post-job, pre-publish; pre-commit on the config repo. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodologies: `requirements-traceability`, `ai-assisted-requirements-discovery`
-- external: [ISO/IEC/IEEE 29148:2018 requirements engineering](https://www.iso.org/standard/72089.html) · [INCOSE Guide for Writing Requirements](https://www.incose.org/) · [Jira REST API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/) · [Karl Wiegers — Software Requirements (3rd ed.)](https://www.processimpact.com/)
+- [[requirements-traceability-full-lifecycle]]
+- [[scope-drift-early-warning-metrics]]
+- [[definition-of-done-library]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

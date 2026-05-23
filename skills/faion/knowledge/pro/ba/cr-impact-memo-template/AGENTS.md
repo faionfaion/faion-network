@@ -3,80 +3,100 @@ slug: cr-impact-memo-template
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cr Impact Memo Template: codified ba practice that turns the recurring 'role-business-analyst/Change-request impact assessment' decision into a repeatable, auditable artefact.
-content_id: "1df4e10e5b9fce27"
-tags: [cr-impact-memo-template, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Standardised Change Request impact memo: scope delta, cost delta, schedule delta, risk delta, recommendation — produced by BA, signed by approver, attached to the CR record.
+content_id: "c7124aff38b37929"
+complexity: medium
+produces: spec
+est_tokens: 2300
+tags: [change-request, memo, impact, ba, approval]
 ---
-# Cr Impact Memo Template
+# CR Impact Memo Template
 
 ## Summary
 
-**One-sentence:** Cr Impact Memo Template: codified ba practice that turns the recurring 'role-business-analyst/Change-request impact assessment' decision into a repeatable, auditable artefact.
+**One-sentence:** A standardised CR impact memo with scope / cost / schedule / risk deltas and a recommendation, produced by BA and signed by the approver from change-request-impact-rubric.
 
-**One-paragraph:** Cr Impact Memo Template addresses the gap surfaced by 'role-business-analyst/Change-request impact assessment'. Outsource BAs (P4) handle CRs constantly; a one-page memo template tied to gap analysis closes a frequent friction. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** CRs without an impact memo land in the steering committee as raw debate. Memos surface scope / cost / schedule / risk deltas with evidence per delta, plus a recommendation. Output: a structured Markdown memo attached to the CR record. Reads in <5 minutes; reviewed by the approver chosen by `change-request-impact-rubric`.
+
+**Ефективно для:**
+
+- Engagements with formal change-control gates.
+- Regulated programs where memo trail is audit evidence.
+- Steering-committee submissions needing concise framing.
+- Recurrent-CR programs where memo template reduces drafting time.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-business-analyst/Change-request impact assessment' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- a CR record exists with the affected IDs
+- impact rubric has bin and approver assigned
+- named author accepts memo ownership
+- approver named
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- no CR record — fix that first
+- impact rubric not run — run it first
+- CR is trivial (bin S) and can be approved inline
 
 ## Prerequisites
 
-- recent context for the 'role-business-analyst/Change-request impact assessment' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| CR record | ticket | submitter |
+| CR impact rubric output | JSON | change-request-impact-rubric |
+| traceability graph | JSON | traceability-auto-maintenance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[change-request-impact-rubric]] | Source of bin + approver decision. |
+| [[cr-options-matrix-template]] | Sibling artefact for option comparison. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: bound scope, typed input, named owner, versioned record, detector-first | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for CR impact memo: deltas[], recommendation, approver, owner, version | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: deltas without evidence, anonymous owner, post-hoc rationale, version frozen, scope creep | 900 |
+| `content/04-procedure.xml` | essential | 4-step procedure: pull rubric → quantify deltas → recommend → review with approver | 600 |
+| `content/05-examples.xml` | essential | Worked example: medium CR impact memo (scope + 3 stories, schedule +1 sprint) | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on rubric bin + traceability freshness + approver availability | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill. |
+| `synthesize_decision` | sonnet | Per-delta quantification. |
+| `review_for_compliance` | opus | High-stakes regulated CRs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cr-impact-memo-template.json` | JSON schema for the Cr Impact Memo Template output contract |
-| `templates/cr-impact-memo-template.md` | Markdown skeleton with the required fields |
+| `templates/cr-impact-memo-template.json` | JSON skeleton for the memo. |
+| `templates/cr-impact-memo-template.md` | Markdown skeleton with required fields. |
+| `templates/_smoke-test.md` | Minimum viable memo. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-cr-impact-memo-template.py` | Enforce Cr Impact Memo Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-cr-impact-memo-template.py` | Validates the CR impact memo against the JSON Schema. | Before approver review; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- upstream playbook: `role-business-analyst/Change-request impact assessment`
-- methodology family: `pro/ba/` (gap-p2 batch, F-059-063)
+- [[change-request-impact-rubric]]
+- [[cr-options-matrix-template]]
+- [[decision-options-memo-template]]
+- [[decision-rationale-capture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

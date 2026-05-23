@@ -1,76 +1,103 @@
 ---
 slug: user-story-mapping
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A two-dimensional arrangement of user stories along a horizontal user-journey axis (activities → tasks) and a vertical priority axis (essential → nice-to-have), producing a story map that reveals the complete user experience and enables slice-based release planning.
-content_id: "c615a84e28b6c652"
-tags: [user-stories, story-mapping, release-planning, requirements, babok]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Two-axis story map (user journey × release slices) producing a backlog with explicit walking-skeleton, MVP, and release-N horizons so teams ship value rather than features.
+content_id: "4b2597950ce82b41"
+complexity: medium
+produces: spec
+est_tokens: 2700
+tags: [user-story-mapping, backlog, mvp, release-planning, journey]
 ---
 # User Story Mapping
 
 ## Summary
 
-**One-sentence:** A two-dimensional arrangement of user stories along a horizontal user-journey axis (activities → tasks) and a vertical priority axis (essential → nice-to-have), producing a story map that reveals the complete user experience and enables slice-based release planning.
+**One-sentence:** A two-axis story map (user journey horizontal × release slices vertical) producing a backlog with walking-skeleton, MVP, and subsequent release horizons.
 
-**One-paragraph:** A two-dimensional arrangement of user stories along a horizontal user-journey axis (activities → tasks) and a vertical priority axis (essential → nice-to-have), producing a story map that reveals the complete user experience and enables slice-based release planning. The BA owns scope definition: turning the map into formal artifacts (BRD, BPMN, traceability matrix, JIRA epics).
+**One-paragraph:** Flat backlogs hide the user journey; teams build features in arbitrary order and miss the walking skeleton. Story mapping makes the journey explicit (horizontal) and the release slices visible (vertical). Output: a structured backlog with a named walking-skeleton release (smallest end-to-end usable path), an MVP release (smallest valuable path), and subsequent releases. Every story carries acceptance criteria + traceability to a use case.
+
+**Ефективно для:**
+
+- Pre-build backlog formation on greenfield products.
+- Re-baselining a stalled backlog where priority is unclear.
+- Cross-team alignment on release sequencing.
+- Stakeholder demo planning aligned to user journey.
 
 ## Applies If (ALL must hold)
 
-- Sprint-zero or pre-discovery session where the BA must convert a fuzzy idea into a stakeholder-signed release plan.
-- Brownfield project with a flat 200+ ticket backlog needing journey context before re-prioritization.
-- Compliance/regulated project where each story must trace to a process step, regulation clause, and acceptance criterion.
-- Vendor migration: the existing journey is the backbone, gap analysis fills the cells.
-- Stakeholder alignment with mixed business + IT audience who need to agree on a release slice.
+- a user journey or use-case set exists
+- team will work in iterations / sprints
+- PO or BA can own the map and review weekly
+- the engagement has ≥2 releases planned
 
 ## Skip If (ANY kills it)
 
-- Maintenance backlog of isolated bug fixes and tech debt — no journey, use WSJF or RICE instead.
-- Pure API/platform product with no end-user persona — model with C4 + use cases.
-- Team already on a stable release cadence with a healthy backlog and clear roadmap — rebuilding the map is sunk cost.
-- One-off internal automation (single user, single happy path) — a 5-step checklist beats a wall map.
-- Stakeholders cannot commit 2-4 contiguous hours — a half-attended map produces false consensus.
+- single-release engagement — flat backlog is fine
+- no journey definition yet — produce use cases first
+- team uses pure flow (Kanban) with no release concept
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| use-case spec or journey definition | MD / wiki | use-case-modeling |
+| named PO / owner | org chart | PM |
+| release cadence definition | wiki | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[use-case-modeling]] | Provides the journey backbone. |
+| [[stakeholder-analysis]] | Named actors anchor the journey. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: journey backbone first, walking-skeleton named, MVP named, every story has AC, traceability to use case | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for story-map artefact: journey, slices, stories, AC | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: feature-first map, missing walking skeleton, AC-less stories, lost traceability, stale map | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: lay journey → identify slices → name walking skeleton + MVP → write AC → review | 700 |
+| `content/05-examples.xml` | essential | Worked example: 3-step journey × 2-release map excerpt | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on release count + journey availability + PO availability | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `journey_layout` | sonnet | Convert use cases into journey backbone. |
+| `slice_drafting` | sonnet | Identify viable release slices. |
+| `ac_writing` | sonnet | Acceptance criteria per story. |
+| `traceability_audit` | haiku | Mechanical AC ↔ use-case link check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/story-map.md` | Markdown skeleton with journey + slices + stories. |
+| `templates/story-row.csv` | Header for individual story rows. |
+| `templates/_smoke-test.md` | Minimum viable story map. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-user-story-mapping.py` | Validates story map against the JSON Schema. | After story-writing session; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[use-case-modeling]]
+- [[stakeholder-analysis]]
+- [[definition-of-done-library]]
+- [[scope-drift-early-warning-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

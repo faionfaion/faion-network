@@ -1,56 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Compliance-Gate Annotation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>The output is a compliance-gate annotation block attached to (or referenced from) the feature's requirements. A feature without this block does not pass validation.</summary>
+<text id="02-output-contract" title="Compliance Checklist by Domain — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <section title="Required annotation structure">
-    <list>
-      <item><code>feature_id</code> — link to the requirement / user story.</item>
-      <item><code>classification</code>: data_types, jurisdiction[], system_role, payments_involved (per r1).</item>
-      <item><code>regulations</code>: list of applicable regulations selected from matrix.</item>
-      <item><code>must_clauses</code>: array of {clause_id, citation, status: met | not_met | n/a, evidence: req_id or note}.</item>
-      <item><code>may_clauses</code>: aggregate count + list of unmet ones with rationale.</item>
-      <item><code>open_actions</code>: per not-met MUST clause, a tracked action item.</item>
-      <item><code>signed_off_by</code> + ISO date.</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/compliance-checklist-by-domain.json",
+  "type": "object",
+  "required": [
+    "domain",
+    "items",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "domain": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_reviewed": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
 
-  <section title="Required regulations to consider (default set)">
-    <list>
-      <item>GDPR / UK-GDPR — when personal data of EU/UK users.</item>
-      <item>HIPAA — when health data of US persons.</item>
-      <item>PSD2 / SCA — when EU payment initiation.</item>
-      <item>SOC 2 — when service-org claims SOC2 attestation.</item>
-      <item>WCAG 2.2 AA — when public-facing UI (default).</item>
-      <item>State-specific (CCPA/CPRA, NYDFS, etc.) — when explicitly in scope.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": "valid example",
+  "domain": "sample-domain",
+  "items": [
+    {
+      "id": "x1"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Classification field "TBD" or empty.</description>
-      <reason>Violates r1. The downstream clause lookup cannot run; defaulting to broad matrices wastes review cycles.</reason>
-    </antipattern>
-    <antipattern>
-      <description>MUST clause marked N/A without a written reason citation.</description>
-      <reason>N/A is the most-abused status. A clause is N/A because of a specific scope decision; that reason must be auditable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Sign-off line filled by AI agent or template default.</description>
-      <reason>Violates r5. The annotation has no legal weight.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Jurisdiction = "global" or "worldwide" without a named regulation.</description>
-      <reason>Violates r4. "Global" is not jurisdictionally meaningful; pick the most restrictive applicable regulations explicitly.</reason>
-    </antipattern>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team"
+}
+]]></code>
+    <note>Missing required fields; owner = 'team' violates rule r3.</note>
+  </example>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Classification fields all populated (no TBD).</item>
-      <item>Jurisdictions explicitly listed.</item>
-      <item>Every MUST clause appears with status + evidence.</item>
-      <item>Every not-met MUST has an open action item with owner.</item>
-      <item>Sign-off line has a named human and ISO date.</item>
-    </list>
-  </section>
+  <output-contract>
+    <required>
+      <field name="domain"/>
+      <field name="items"/>
+      <field name="owner"/>
+      <field name="version"/>
+      <field name="last_reviewed"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
+      <pattern id="f2">rationale that does not reference any input by name</pattern>
+      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
+      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f5">item without source_clause OR evidence_required</pattern>
+      <pattern id="f6">items count &gt; 50 per domain pass</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Trim rationale to ≤500 chars, preserving numeric claims and named tools.</transformation>
+      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="scripts/validate-compliance-checklist-by-domain.py"/>
+  </output-contract>
 </text>

@@ -1,79 +1,102 @@
 ---
 slug: strategy-analysis-business-need
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Strategy Analysis starts by defining why change is needed.
-content_id: "7706876195b4be04"
-tags: [strategy-analysis, business-need, babok, problem-framing, requirements]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identifies and quantifies the business need behind an initiative — problem statement, evidence, success metric, and the question 'what if we do nothing?' — before any solutioning starts.
+content_id: "5aba8dedad189167"
+complexity: medium
+produces: spec
+est_tokens: 2600
+tags: [strategy-analysis, business-need, problem-statement, success-metric, discovery]
 ---
-# Strategy Analysis: Business Need Framing
+# Strategy Analysis — Business Need
 
 ## Summary
 
-**One-sentence:** Strategy Analysis starts by defining why change is needed.
+**One-sentence:** A pre-solution artefact pinning the business problem, evidence, success metric, and do-nothing baseline so downstream solutioning stays anchored to value.
 
-**One-paragraph:** Strategy Analysis starts by defining why change is needed. The business need must be outcome-shaped — not solution-shaped — and must carry drivers with primary-source evidence, a falsifiable consequence of inaction, a named decision-maker, a time horizon, and explicit traces to corporate strategic goals. A need frame signed by the sponsor is the gate to current-state work.
+**One-paragraph:** Initiatives drift into solutioning before the problem is named; everyone agrees on the solution, no one agrees on the problem. This methodology produces a business-need spec with: (1) problem statement with named affected stakeholders, (2) primary-source evidence (data, quote, ticket), (3) one quantified success metric, (4) do-nothing baseline, (5) named owner. It is the input to `strategy-analysis-future-state` and `strategy-analysis-gap-analysis`.
+
+**Ефективно для:**
+
+- Pre-kickoff discovery before any RFP / vendor brief.
+- Stalled initiatives where 'why are we doing this' is contested.
+- Funding requests demanding outcome-driven framing.
+- Annual planning cycles with bottom-up proposal review.
 
 ## Applies If (ALL must hold)
 
-- A new initiative is starting and a sponsor has handed the BA a vague mandate ("we need to fix customer service") — you need a defensible problem frame before any solution is proposed.
-- Annual or quarterly portfolio planning where N candidate initiatives compete for the same budget and each needs a one-pager linking to a strategic goal, gap, and capability.
-- Pre-RFP or pre-business-case work where the change strategy will gate a 7-figure spend; auditors and the steering committee will demand traceability from need to spend.
-- Digital transformation programs where the business need spans process, tech, people, and data simultaneously.
-- M&A integration: acquired entity current state vs. post-merger future state, with a gap analysis driving Day-1 / Day-100 / Day-365 plans.
-- Regulatory-driven change (SOX, GDPR, DORA, NIS2): the regulator defines the future state externally; the BA must produce the need frame and gap.
-- After a strategy refresh by leadership: each function translates the new corporate strategy into its own future-state and gap, and the BA agents help pull the workstreams onto a shared template.
+- no business-need artefact exists yet for the initiative
+- a named sponsor exists and is reachable
+- primary-source evidence (data, tickets, interview notes) is accessible
+- the initiative is not yet in build phase
 
 ## Skip If (ANY kills it)
 
-- Single-team, single-quarter, low-blast-radius work — a 5-line ADR plus a backlog item beats a strategy artifact.
-- The future state is already locked by an executive who is not interested in alternatives — document it as a directive instead; producing a "strategy analysis" becomes theatre.
-- Pure incident response or outage post-mortems — those use root-cause analysis, not future-state-vs-current-state framing.
-- Early-stage product discovery where customer pain is unproven — use opportunity-solution-trees, jobs-to-be-done, or lean-canvas first, then strategy analysis once the opportunity is validated.
-- Pure financial decisions with directly comparable cash flows — go to NPV / IRR; don't dress them as strategy analysis.
-- Operational hot-fixes with a known cause and known patch — overhead exceeds value.
+- a current (≤90-day) business-need artefact already exists — refresh it instead
+- the initiative is purely compliance-mandated with a fixed scope — go to requirements
+- no sponsor — block until one is named
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| initiative trigger (RFP, complaint, OKR) | email / wiki | sponsor |
+| primary-source evidence | data export / interview notes / tickets | BA / analyst |
+| named sponsor | org chart | executive |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | — |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: named problem owner, evidence-cited claims, single quantified success metric, do-nothing baseline, no solution language | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for business-need spec: problem, stakeholders, evidence, metric, baseline, sponsor | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: solution-first framing, anonymous problem, unmeasured metric, sponsorless artefact, baseline missing | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure: capture trigger → gather evidence → quantify metric → document baseline + sponsor sign-off | 600 |
+| `content/05-examples.xml` | essential | Worked example: customer-support backlog reduction business-need spec | 500 |
+| `content/06-decision-tree.xml` | essential | Tree on sponsor + evidence + existing artefact age | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `evidence_triangulation` | sonnet | Cross-check 2 independent evidence sources. |
+| `metric_quantification` | sonnet | Convert qualitative pain into a numeric metric. |
+| `baseline_capture` | haiku | Mechanical query of the do-nothing baseline. |
+| `spec_assembly` | sonnet | Light judgment compiling the spec. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/business-need-spec.md` | Markdown skeleton with problem/evidence/metric/baseline/sponsor. |
+| `templates/evidence-log.csv` | Header for evidence sources with type + retrieved_at. |
+| `templates/_smoke-test.md` | Minimum viable business-need spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-strategy-analysis-business-need.py` | Validates business-need spec against the JSON Schema. | Before sponsor sign-off; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[strategy-analysis-current-state]]
+- [[strategy-analysis-future-state]]
+- [[strategy-analysis-gap-analysis]]
+- [[stakeholder-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.

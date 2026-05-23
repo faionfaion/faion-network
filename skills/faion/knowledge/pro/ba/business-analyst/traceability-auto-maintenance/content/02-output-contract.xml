@@ -1,79 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Traceability — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a weekly `TraceabilityReport` and the per-link repair suggestions.</summary>
+<text id="02-output-contract" title="Traceability Auto-Maintenance — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <section title="TraceabilityReport required fields">
-    <list>
-      <item>`run_id` — UUID</item>
-      <item>`ran_at` — ISO-8601</item>
-      <item>`matrix_path` — string</item>
-      <item>`tracker` — object {type, base_url, sprint_ids_checked}</item>
-      <item>`links_total` — integer</item>
-      <item>`links_valid` — integer</item>
-      <item>`links_renamed` — integer</item>
-      <item>`links_deleted` — integer</item>
-      <item>`links_moved` — integer</item>
-      <item>`repair_suggestions` — array of suggestion objects (see below)</item>
-      <item>`approval_pr_url` — string (if PR was raised)</item>
-      <item>`audit_event_id` — string (link to ndjson event)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/traceability-auto-maintenance.json",
+  "type": "object",
+  "required": [
+    "graph_id",
+    "schema_version",
+    "refresh_at",
+    "owner",
+    "nodes",
+    "edges",
+    "diff_log",
+    "alerts"
+  ],
+  "properties": {
+    "graph_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "refresh_at": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "diff_log": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "alerts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
 
-  <section title="Repair suggestion required fields">
-    <list>
-      <item>`req_id` — requirement ID from matrix</item>
-      <item>`original_ticket_id` — broken / drifted ID</item>
-      <item>`suggested_ticket_id` — proposed replacement</item>
-      <item>`link_type` — unchanged from original</item>
-      <item>`confidence` — number 0-1 from LLM</item>
-      <item>`evidence` — array of `{tracker_field, value, similarity_score}`</item>
-      <item>`alternatives` — array of next-best ≤ 3 candidates</item>
-      <item>`approval_required: true` — always true per r3</item>
-      <item>`reviewed_by` — string (BA email, empty until approved)</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": "valid example",
+  "graph_id": "sample-graph_id",
+  "schema_version": "sample-schema_version",
+  "refresh_at": "sample-refresh_at",
+  "owner": "ruslan@faion.net",
+  "nodes": [
+    {
+      "id": "x1"
+    }
+  ],
+  "edges": [
+    {
+      "id": "x1"
+    }
+  ],
+  "diff_log": [
+    {
+      "id": "x1"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "x1"
+    }
+  ]
+}
+]]></code>
+  </example>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Repair suggestion with `approval_required: false` OR `reviewed_by` set by anything other than a human BA.</description>
-      <reason>Violates r3. LLM/agent identifiers are not valid BA approvers.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Repair suggestion changes `link_type`.</description>
-      <reason>Violates r4. Semantics must be preserved.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`TraceabilityReport` published without `audit_event_id`.</description>
-      <reason>Violates r5 audit-log requirement.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Suggestion with `confidence &gt; 0.9` AND only 1 alternative — risk of false high confidence.</description>
-      <reason>High confidence with no alternatives suggests the LLM matched too eagerly; require ≥ 2 alternatives or downgrade confidence.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Drift report emitted but matrix file unchanged AND repair suggestions ignored.</description>
-      <reason>Reports without action create reporting theatre. Drift must route to a queue.</reason>
-    </antipattern>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team"
+}
+]]></code>
+    <note>Missing required fields; owner = 'team' violates rule r3.</note>
+  </example>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Cache tracker responses for &lt; 24h with hash for diff stability.</item>
-      <item>Sort suggestions by descending confidence for BA review efficiency.</item>
-      <item>Roll up identical-cause drift (e.g. sprint cleanup deletes 12 tickets at once) into one repair set.</item>
-    </list>
-  </section>
+  <output-contract>
+    <required>
+      <field name="graph_id"/>
+      <field name="schema_version"/>
+      <field name="refresh_at"/>
+      <field name="owner"/>
+      <field name="nodes"/>
+      <field name="edges"/>
+      <field name="diff_log"/>
+      <field name="alerts"/>
+    </required>
 
-  <reference path="templates/traceability-report.json">TraceabilityReport JSON Schema.</reference>
-  <reference path="templates/repair-suggestion.json">Repair suggestion JSON Schema.</reference>
+    <forbidden>
+      <pattern id="f1">refresh_at older than 24h</pattern>
+      <pattern id="f2">alert without owner</pattern>
+      <pattern id="f3">graph derived from a copy (not SoR)</pattern>
+      <pattern id="f4">connector failure with no 'stale' flag</pattern>
+    </forbidden>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Tracker source hash captured in audit event.</item>
-      <item>All suggestions await BA approval.</item>
-      <item>link_type preserved in every suggestion.</item>
-      <item>Audit log entry written.</item>
-      <item>PR raised if any suggestion exists.</item>
-    </list>
-  </section>
+    <allowed-transformations>
+      <transformation>Add per-team alert routing for large engagements.</transformation>
+      <transformation>Tighten link-decay thresholds as conventions mature.</transformation>
+      <transformation>Add per-edge confidence tier for inferred links.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="scripts/validate-traceability-auto-maintenance.py"/>
+  </output-contract>
 </text>
