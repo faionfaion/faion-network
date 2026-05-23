@@ -1,88 +1,98 @@
 ---
 slug: architect-pr-review-checklist
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Tier-appropriate PR review checklist for the architectural surface — distinct from generic peer code review; also serves as the solo dev's self-review checklist for AI-generated code.
-content_id: "067ca0aab7729bf6"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tier-appropriate PR review checklist for the architectural surface; also serves as the solo dev's self-review checklist for AI-generated code.
+content_id: "12fd0fc53b07780c"
+complexity: medium
+produces: report
+est_tokens: 4500
 tags: [dev, architecture, code-review, pr-review, ai-generated-code, self-review]
 ---
-
 # Architect PR Review Checklist
 
 ## Summary
 
-**One-sentence:** A 6-section review checklist scoped to architectural surface (boundaries, contracts, data flow, failure modes, performance budget, security posture) that an architect runs in 10-15 min instead of either over-reviewing every line or rubber-stamping the PR.
+**One-sentence:** Tier-appropriate PR review checklist for the architectural surface; also serves as the solo dev's self-review checklist for AI-generated code.
 
-**One-paragraph:** Generic code-review checklists (free/code-quality) cover style, naming, test coverage. Architects need a different filter: does this PR honor the ADRs, stay within module boundaries, respect data-flow rules, leave failure-modes addressable, fit the perf budget, and maintain the security posture? Same checklist serves the solo SaaS builder doing self-review on AI-generated code — that mode is structurally identical to architect review (you're checking that the generator stayed within the system's invariants). Primary output: a per-PR architect-review record with annotated findings + a merge / changes-needed / escalate decision.
+**One-paragraph:** Six review sections every architectural PR MUST be checked against: contract, dependency direction, error model, observability, security, and ADR conformance. Caps review at 15 minutes per PR; if violations would take longer, escalate or split. Output is a PR review report referencing the rules from 01-core-rules.xml plus a ship/block verdict.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі 'architect PR review' — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф звіту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- repo has documented architectural decisions (ADRs) OR established module boundaries OR a constitution.md / design.md
-- PR touches more than a trivial file (>= 1 file with logic, not just typo / version-bump)
-- reviewer wears an architect hat (or is the solo author doing AI-self-review)
-- a generic code-review process already exists (peer review for style / tests); architect review is layered on top
+- PR touches architectural surface (public API, module boundary, ADR-relevant code).
+- Reviewer or author wants a structured rubric (especially for AI-generated code).
+- Repo has at least one ADR establishing constraints the PR may violate.
 
 ## Skip If (ANY kills it)
 
-- PR is a strictly mechanical change (formatter run, dependency version-only bump with no behavior change) — peer review handles it
-- repo has no architectural decisions documented yet — establish ADRs first (`solo/sdd/sdd/architecture-decision-records`)
-- reviewer is going to do a line-by-line read regardless — checklist becomes overhead, not focus
-- PR is a hotfix incident response — apply emergency-fix checklist instead (different scope)
+- PR is a typo/formatting-only change.
+- PR is auto-generated dependency bump with no architecture impact.
+- PR is a docs-only change to non-architectural docs.
 
 ## Prerequisites
 
-- ADRs accessible from the repo (linked or co-located)
-- module boundary definitions (visible in folder structure, imports, or explicit dependency rules)
-- perf budget per critical path documented (if perf is a concern for the project)
-- security posture documented (threat model, OWASP top 10 stance, data classification)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| PR diff | git diff | GitHub PR |
+| ADR index for the repo | directory listing | repo ADR folder |
+| Module boundary map | dependency graph or doc | architect |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/sdd/sdd/architecture-decision-records` | Reviewer checks PR against ADRs; consume ADR format |
-| `solo/sdd/sdd/code-review-cycle` | Generic code review runs in parallel; this methodology layers on top |
-| `solo/dev/software-architect/module-boundaries` | Defines the boundary rules the reviewer enforces |
+| `solo/dev/software-architect/architecture-decision-records` | Provides the ADRs the PR is checked against. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 6-section coverage, 15-min cap, escalate-not-stall, AI-generated-code-flagging, ADR-honoring | ~1000 |
-| `content/02-output-contract.xml` | essential | Review record schema + escalation contract + forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (rubber-stamp, scope-creep into style, AI-code-blindness, etc.) with detector + repair | ~1000 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the review report + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: classify → 6-section walk → block-or-ship → write report → escalate | ~700 |
+| `content/05-examples.xml` | medium | Worked example: a PR review report with block + 3 violations | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pr_diff_classification` | haiku | Identify section relevance (boundaries / contracts / data flow / perf / security) |
-| `adr_alignment_check` | sonnet | Match PR changes vs existing ADR claims |
-| `failure_mode_audit` | sonnet | Walk the changed code paths for unhandled failure modes |
-| `cross_module_synthesis` | opus | When PR spans modules — synthesis check across boundaries |
+| `walk-sections` | sonnet | Per-section rubric check. |
+| `draft-review-report` | sonnet | Template-driven report assembly. |
+| `cross-pr-trend-audit` | opus | Repeated-violation pattern detection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/review-record.json` | JSON Schema for one architect-review record per PR |
-| `templates/ai-self-review-card.md` | Printable card the solo author uses when self-reviewing AI-generated code |
-| `templates/escalation-template.md` | Format for escalating PR to broader architecture discussion |
+| `templates/pr-review-report.md` | Six-section PR review report with ship/block verdict. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/scope-pr.py` | Walks PR diff, classifies sections (boundary / contract / data flow / perf / security / style-only) | Before starting the architect review |
-| `scripts/audit-review-quality.py` | Audits past reviews for rubber-stamp pattern (review duration too short / no findings recorded) | Quarterly |
+| `scripts/validate-architect-pr-review-checklist.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
-- peer methodologies: `module-boundaries`, `architecture-decision-records`, `code-review-cycle`
-- external: [The Pragmatic Programmer — Review Patterns](https://pragprog.com/) · [Google Engineering Practices: Code Review](https://google.github.io/eng-practices/review/) · [Software Architecture: The Hard Parts (Richards / Ford)](https://www.oreilly.com/library/view/software-architecture-the/9781492086888/)
+- [[architecture-decision-records]]
+- [[adr-reversibility-tagging]]
+- [[c4-model]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

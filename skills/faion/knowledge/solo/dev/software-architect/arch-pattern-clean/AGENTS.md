@@ -1,75 +1,99 @@
 ---
 slug: arch-pattern-clean
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Dependencies point inward through concentric circles: Domain (Entities) at the center, then Application (Use Cases), then Interface Adapters, then Frameworks and Drivers at the outside.
-content_id: "37932c40b6da0f2d"
+content_id: "0e11c1225aa66d84"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [clean-architecture, domain-driven, dependency-inversion, layered-architecture, testability]
 ---
-# Clean Architecture (Uncle Bob)
+# Clean Architecture
 
 ## Summary
 
 **One-sentence:** Dependencies point inward through concentric circles: Domain (Entities) at the center, then Application (Use Cases), then Interface Adapters, then Frameworks and Drivers at the outside.
 
-**One-paragraph:** Dependencies point inward through concentric circles: Domain (Entities) at the center, then Application (Use Cases), then Interface Adapters, then Frameworks and Drivers at the outside. Inner circles know nothing about outer circles.
+**One-paragraph:** Clean Architecture (Uncle Bob, 2012) places the domain at the centre and arranges everything else in concentric circles, with the dependency rule: source-code dependencies can only point inward. Frameworks, UI, databases, and external services live at the outer ring as adapters. Output is a module layout plus an enforced import-direction lint, blocking the common drift of domain code importing infra.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі 'clean architecture layout' — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф імпорт-напрямку до того, як він потрапить у CI.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Domains with non-trivial business rules where leaking persistence or UI concerns into core logic will create technical debt within a year.
-- Projects that must support multiple UI surfaces (REST API + CLI + background workers) sharing the same business logic.
-- Long-lived applications where the framework or database is expected to change at least once during the product lifetime.
-- Teams that need comprehensive unit-test coverage of business logic without spinning up infrastructure.
-- Systems with heavy regulatory or audit requirements where invariants and policies must be clearly locatable.
+- Codebase has clear business logic separate from infrastructure (DB, HTTP, queues).
+- You expect the project to live > 12 months with ≥2 engineers.
+- You want to swap frameworks or persistence layer without rewriting the domain.
 
 ## Skip If (ANY kills it)
 
-- CRUD-only admin tools or internal scripts — the domain layer will be empty and layering adds overhead without benefit.
-- Prototypes or MVPs where V1 is intentionally throwaway — premature layering slows delivery.
-- Microservices where the entire domain fits in 200 lines — apply the pattern at the system boundary instead.
-- Languages or runtimes where dependency-injection cost is prohibitive (Python or JS without DI containers can simulate it, but the boilerplate is real).
+- Throwaway prototype or CRUD-only app with no domain logic.
+- Tiny script (< 500 LOC) with no test pyramid.
+- Team unfamiliar with DI; cost of indirection > benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Bounded context list | list | domain expert |
+| Use case list | list | PM/architect |
+| Lint tool that can enforce import direction | config | tooling team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/arch-pattern-hexagonal` | Ports-and-adapters is the implementation surface of Clean. |
+| `solo/dev/software-architect/arch-pattern-ddd` | Domain modelling for the centre ring. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the layout spec + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: identify entities → use cases → adapters → frameworks → enforce direction | ~700 |
+| `content/05-examples.xml` | medium | Worked example: e-commerce ordering with Clean Architecture layout | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-layout` | sonnet | Per-ring module assignment. |
+| `draft-import-lint` | sonnet | Tool-specific lint config (Python/Java/Go). |
+| `audit-existing-codebase` | opus | Detect violations in current import graph. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/clean-layout.md` | Clean Architecture module layout spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-arch-pattern-clean.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[arch-pattern-hexagonal]]
+- [[arch-pattern-onion]]
+- [[arch-pattern-ddd]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

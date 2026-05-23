@@ -1,22 +1,130 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-gateway-graphql Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="GraphQL Federation Gateway Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid config artefact for api-gateway-graphql. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-gateway-graphql.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "supergraph", "limits", "authentication"],
+  "properties": {
+  "artefact_id": {
+    "type": "string",
+    "minLength": 3
+  },
+  "owner": {
+    "type": "string",
+    "minLength": 3
+  },
+  "version": {
+    "type": "string",
+    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  },
+  "last_reviewed": {
+    "type": "string",
+    "format": "date"
+  },
+  "supergraph": {
+    "type": "object",
+    "required": [
+      "introspection",
+      "listen"
+    ],
+    "properties": {
+      "introspection": {
+        "type": "boolean"
+      },
+      "listen": {
+        "type": "string"
+      }
+    }
+  },
+  "limits": {
+    "type": "object",
+    "required": [
+      "max_depth",
+      "max_aliases",
+      "max_root_fields"
+    ],
+    "properties": {
+      "max_depth": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50
+      },
+      "max_aliases": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "max_root_fields": {
+        "type": "integer",
+        "minimum": 1
+      }
+    }
+  },
+  "authentication": {
+    "type": "object"
+  },
+  "persisted_queries": {
+    "type": "object"
+  }
+}
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "api-gateway-graphql-acme-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "supergraph": {
+    "introspection": false,
+    "listen": "0.0.0.0:4000"
+  },
+  "limits": {
+    "max_depth": 15,
+    "max_aliases": 30,
+    "max_root_fields": 20
+  },
+  "authentication": {
+    "router": {
+      "jwt": {
+        "header_name": "authorization"
+      }
+    }
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "supergraph": {
+    "introspection": true,
+    "listen": "0.0.0.0:4000"
+  },
+  "limits": {
+    "max_depth": 99
+  }
+}
+]]></code>
+    <note>Owner is plural pronoun; introspection enabled in production; max_depth above hard ceiling; missing required fields.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="introspection-enabled">`supergraph.introspection` is `true` in a config marked for production.</pattern>
+    <pattern id="max-depth-too-high">`limits.max_depth` &gt; 50.</pattern>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`).</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-api-gateway-graphql.py">Stdlib-only validator implementing this schema.</reference>
 </text>

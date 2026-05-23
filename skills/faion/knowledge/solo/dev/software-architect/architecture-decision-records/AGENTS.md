@@ -1,78 +1,98 @@
 ---
 slug: architecture-decision-records
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An Architecture Decision Record (ADR) is a short document capturing one architecturally significant decision: Context (why the decision was needed), Decision (what was decided), Consequences (trade-offs accepted), and Alternatives (options rejected with reasons).
-content_id: "e04a1ee4ff81d8de"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Captures one architecturally significant decision per ADR with Context, Decision, Consequences, Alternatives. Lock format; CI-enforce; treat as first-class artefacts.
+content_id: "115d2db9c2ade6a9"
+complexity: medium
+produces: decision-record
+est_tokens: 3900
 tags: [adr, architecture, decision-records, documentation, governance]
 ---
-# Architecture Decision Records
+# Architecture Decision Records (ADRs)
 
 ## Summary
 
-**One-sentence:** An Architecture Decision Record (ADR) is a short document capturing one architecturally significant decision: Context (why the decision was needed), Decision (what was decided), Consequences (trade-offs accepted), and Alternatives (options rejected with reasons).
+**One-sentence:** Captures one architecturally significant decision per ADR with Context, Decision, Consequences, Alternatives. Lock format; CI-enforce; treat as first-class artefacts.
 
-**One-paragraph:** An Architecture Decision Record (ADR) is a short document capturing one architecturally significant decision: Context (why the decision was needed), Decision (what was decided), Consequences (trade-offs accepted), and Alternatives (options rejected with reasons). ADRs are immutable once accepted — never delete or edit accepted content; create a new superseding ADR instead. Store in docs/adr/ under version control alongside the code they affect.
+**One-paragraph:** An ADR is a short document capturing one architecturally significant decision. Standard format (Nygard or MADR), locked in ADR-0001, enforced by CI. Output is an ADR file in `docs/adr/` plus an updated ADR index. Status fields (Proposed, Accepted, Deprecated, Superseded) demand periodic review; pair with `adr-staleness-audit` quarterly.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі 'architecture decision record' — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Any technology choice: language, framework, database, cloud provider
-- Architecture style decisions: monolith vs microservices, REST vs gRPC, sync vs async
-- Design pattern decisions at system scope: CQRS, Saga, Event Sourcing, API Gateway
-- Third-party service selection: auth provider, payment gateway, monitoring tool
-- Breaking changes: API versioning strategy, data migration approach
-- Security decisions: auth mechanism, encryption standard, compliance approach
-- Infrastructure decisions: container orchestration, CI/CD pipeline, deployment strategy
-- Bootstrapping a new repo: ADR-0001 documents the starting architecture
+- An architecturally significant decision is being made (technology, pattern, boundary).
+- More than one option was considered.
+- The decision will affect future work or be referenced by ≥2 people.
 
 ## Skip If (ANY kills it)
 
-- Trivial decisions (file naming, single-developer style choices) — overhead not justified
-- Reversible cheap changes (variable names, internal helpers)
-- Throwaway PoCs where decisions don't outlive the demo
-- Ultra-confidential decisions (M&A, vendor pricing) that cannot live in a public Git repo
+- Trivial implementation choice with no cross-cutting impact.
+- Reversible-without-cost dev-tooling tweak.
+- Same decision already documented in an existing ADR.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Decision context | problem statement | the deciding engineer |
+| Alternatives explored | ≥2 options | design discussion |
+| ADR-0001 (format lock) | ADR file | repo ADR folder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/adr-reversibility-tagging` | Optional pairing — tag reversibility on every ADR. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the ADR record + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: scope → alternatives → draft → review → merge | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-adr` | sonnet | Template-driven ADR composition. |
+| `synthesize-alternatives` | sonnet | Generate rejected options + reasons. |
+| `audit-adr-portfolio` | opus | Cross-ADR consistency and staleness audit. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/adr-nygard.md` | Nygard-format ADR template (Title, Status, Context, Decision, Consequences). |
+| `templates/adr-madr.md` | MADR-format ADR template (with Considered Options and Pros/Cons of the Decision). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-architecture-decision-records.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[adr-reversibility-tagging]]
+- [[architect-pr-review-checklist]]
+- [[decision-tree-architecture-style]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

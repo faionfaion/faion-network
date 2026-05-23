@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="caching-architecture Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Caching Architecture Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid spec artefact for caching-architecture. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/caching-architecture.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "data_classes", "single_flight", "jitter_pct"],
+  "properties": {
+  "artefact_id": {
+    "type": "string",
+    "minLength": 3
+  },
+  "owner": {
+    "type": "string",
+    "minLength": 3
+  },
+  "version": {
+    "type": "string",
+    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  },
+  "last_reviewed": {
+    "type": "string",
+    "format": "date"
+  },
+  "data_classes": {
+    "type": "array",
+    "minItems": 1,
+    "items": {
+      "type": "object",
+      "required": [
+        "class",
+        "pattern",
+        "ttl_seconds",
+        "invalidation"
+      ]
+    }
+  },
+  "single_flight": {
+    "type": "boolean"
+  },
+  "jitter_pct": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 50
+  }
+}
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "caching-policy-shop-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "data_classes": [
+    {
+      "class": "product-detail",
+      "pattern": "cache-aside",
+      "ttl_seconds": 300,
+      "invalidation": "on write"
+    }
+  ],
+  "single_flight": true,
+  "jitter_pct": 10
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "data_classes": [
+    {
+      "class": "product",
+      "pattern": "magic"
+    }
+  ],
+  "single_flight": false,
+  "jitter_pct": 60
+}
+]]></code>
+    <note>Owner plural; pattern not in canonical set; single_flight disabled; jitter > 50%.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="pattern-not-canonical">`data_classes[].pattern` not in `[cache-aside, read-through, write-through, write-behind, write-around, no-cache]`.</pattern>
+    <pattern id="single-flight-off-with-cache-aside">Any `pattern == cache-aside` AND `single_flight == false` — thundering herd guaranteed.</pattern>
+    <pattern id="jitter-too-high">`jitter_pct` &gt; 50 — TTL randomness too high; defeats the cache.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-caching-architecture.py">Stdlib-only validator implementing this schema.</reference>
 </text>

@@ -1,3 +1,8 @@
+# purpose: Lint accepted ADRs for format and required sections.
+# consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+# produces: a architecture-decision-records artefact validating against scripts/validate-architecture-decision-records.py
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~400-1500 tokens once filled
 #!/usr/bin/env bash
 # adr-lint.sh — validate ADR files in docs/adr/
 # Usage: ./adr-lint.sh [--dir docs/adr]

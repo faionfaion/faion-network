@@ -1,33 +1,33 @@
-# ADR-NNNN: {Short title in sentence case}
-
-**Date:** YYYY-MM-DD
-**Status:** Draft | Proposed | Accepted | Rejected | Deprecated | Superseded by ADR-XXXX
-
+# purpose: Nygard ADR template.
+# consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+# produces: a architecture-decision-records artefact validating against scripts/validate-architecture-decision-records.py
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~400-1500 tokens once filled
+---
+artefact_id: adr-<short-slug>-<NNN>
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+adr_id: NNN
+title: <decision title>
+status: Proposed
+date: 2026-05-23
 ---
 
 ## Context
 
-<!-- What is the issue motivating this decision? What forces are at play?
-     Include: team constraints, quality attribute requirements, deadline pressures,
-     existing system state. Be factual; avoid advocating for the decision here. -->
+<one paragraph: forces, constraints, what triggered the decision>
 
 ## Decision
 
-<!-- What was decided. State it clearly in 1-3 sentences.
-     Example: "We will use PostgreSQL 16 as the primary data store for all
-     transactional data." -->
+<one paragraph: what was decided>
 
 ## Consequences
 
-<!-- What are the trade-offs accepted with this decision?
-     List positive consequences first, then negative. Be honest about the downsides.
+<bullets: trade-offs accepted, both positive and negative>
 
-     Positive:
-     - ...
+## Alternatives Rejected
 
-     Negative:
-     - ...
-
-     Risks:
-     - ...
--->
+| Option | Reason rejected |
+|--------|-----------------|
+| <option> | <reason> |

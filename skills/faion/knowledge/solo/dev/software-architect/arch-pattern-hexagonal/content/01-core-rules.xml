@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="arch-pattern-hexagonal Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for arch-pattern-hexagonal. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Hexagonal Architecture (Ports and Adapters) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every arch-pattern-hexagonal application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
+
     <rule id="r1" testable="true" depth="essential">
       <statement>The application core MUST depend only on port interfaces, never on adapter implementations. All inbound ports (use-case interfaces) and outbound ports (repository, service interfaces) MUST live inside core/ports/, NOT inside the adapters directory.</statement>
       <rationale source="v1-source">If the core imports an adapter directly, swapping the adapter requires modifying the core — this breaks the pattern's fundamental guarantee. Port interfaces decouple the hexagon from its surroundings.</rationale>
     </rule>
+
     <rule id="r2" testable="true" depth="essential">
       <statement>Core services MUST be tested with in-memory adapter implementations of all outbound ports, never against real databases or HTTP services. This keeps the core test suite fast (&lt;1s) and environment-independent.</statement>
       <rationale source="v1-source">If core service tests require a database, every developer needs a local DB, CI needs it, and tests become flaky on network timeouts. In-memory adapters eliminate the dependency entirely.</rationale>
     </rule>
+
+    <rule id="r3-port-per-direction" testable="true" depth="essential">
+      <statement>Define an inbound port per use-case family and an outbound port per external concern. Adapters implement ports; ports never import adapters.</statement>
+      <rationale source="Cockburn - Hexagonal (2005)">Without per-direction ports, the application core leaks runtime concerns and loses testability.</rationale>
+    </rule>
+
+    <rule id="r4-acl-on-driven" testable="true" depth="essential">
+      <statement>Driven adapters MUST translate third-party DTOs/types into domain types at the adapter boundary; the port signature MUST NOT expose external SDK types.</statement>
+      <rationale source="Cockburn; DDD anti-corruption-layer">Without an ACL, third-party API changes ripple into the domain and force a rewrite.</rationale>
+    </rule>
+
+    <rule id="r5-lint-enforced" testable="true" depth="essential">
+      <statement>An import-direction lint MUST run in CI and block domain.* imports of adapters.* or framework code.</statement>
+      <rationale source="Operational rigour">Without lint enforcement the pattern decays in 1-2 quarters.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-23 chunk-00 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

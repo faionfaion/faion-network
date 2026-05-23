@@ -1,0 +1,43 @@
+# purpose: Gateway security config with TLS, JWT auth, authz rules, secure headers, WAF.
+# consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+# produces: a api-gateway-security artefact validating against scripts/validate-api-gateway-security.py
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~400-1500 tokens once filled
+artefact_id: api-gateway-security-<client>-2026-05-23
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+tls:
+  min_version: "1.2"
+  cipher_suites:
+    - TLS_AES_128_GCM_SHA256
+    - TLS_AES_256_GCM_SHA384
+  hsts_max_age: 31536000
+
+authentication:
+  jwt:
+    issuer: https://identity.example.com
+    audience: api.example.com
+    jwks_url: https://identity.example.com/.well-known/jwks.json
+    algorithms: [RS256]
+    leeway_seconds: 30
+
+authorization:
+  default: deny
+  rules:
+    - route: /api/v1/checkout
+      methods: [POST]
+      require_scopes: [checkout:write]
+
+headers:
+  strict_transport_security: max-age=31536000; includeSubDomains
+  x_content_type_options: nosniff
+  x_frame_options: DENY
+  referrer_policy: strict-origin-when-cross-origin
+  content_security_policy: "default-src 'self'"
+
+waf:
+  provider: cloudflare
+  rule_set: owasp-core-3.3
+  paranoia_level: 1

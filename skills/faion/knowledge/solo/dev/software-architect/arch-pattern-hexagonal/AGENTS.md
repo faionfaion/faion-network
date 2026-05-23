@@ -1,74 +1,98 @@
 ---
 slug: arch-pattern-hexagonal
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The application core is isolated from the outside world through ports (interfaces) and adapters (implementations).
-content_id: "9092f73e01f54887"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Application core is isolated from the outside world through ports (interfaces) and adapters (implementations); both inbound and outbound concerns are pluggable.
+content_id: "5b440101990673d2"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [hexagonal-architecture, ports-and-adapters, dependency-inversion, adapter-pattern, testability]
 ---
 # Hexagonal Architecture (Ports and Adapters)
 
 ## Summary
 
-**One-sentence:** The application core is isolated from the outside world through ports (interfaces) and adapters (implementations).
+**One-sentence:** Application core is isolated from the outside world through ports (interfaces) and adapters (implementations); both inbound and outbound concerns are pluggable.
 
-**One-paragraph:** The application core is isolated from the outside world through ports (interfaces) and adapters (implementations). Primary adapters drive the core (REST, CLI, gRPC); secondary adapters are driven by the core (database, email, payment gateway). All external interactions follow the same symmetric contract.
+**One-paragraph:** Hexagonal Architecture (Cockburn, 2005) lets the application be driven by users, programs, automated tests, or batch scripts equally, and lets it work in isolation from runtime devices and databases. The application defines ports (inbound and outbound interfaces); adapters implement them. Output is a layout spec with explicit ports + adapters and a CI lint blocking direct cross-imports.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Multi-interface systems: REST API + CLI + gRPC + scheduled jobs + message-queue consumers all sharing the same core logic.
-- Applications with several outbound dependencies (database, cache, email, payment gateway, third-party APIs) where each needs a testable seam.
-- Projects requiring symmetric treatment of inputs and outputs via explicit port contracts.
-- Systems where new input channels or output adapters are likely to be added frequently.
+- Application has at least one inbound driver (HTTP, CLI, queue) and at least one outbound dependency (DB, external API).
+- You want to drive the application from tests without spinning up the whole stack.
+- You expect to swap one adapter (e.g., DB or messaging) within the next 24 months.
 
 ## Skip If (ANY kills it)
 
-- CRUD-only admin tools — ports add interface overhead with no business logic to protect.
-- Single-channel applications (REST only, simple domain) — Clean Architecture is sufficient and less verbose.
-- Microservices that are already small enough that the entire domain fits in 200 lines.
-- Prototypes — the boilerplate of ports + adapters + mappers is real; start simple and extract later.
+- Prototype or single-test-only code path.
+- Pure library with no inbound drivers.
+- Team unfamiliar with DI; cost of ports exceeds benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Driver inventory (HTTP, CLI, queue) | list | tech lead |
+| Driven inventory (DB, external API, file system) | list | tech lead |
+| Import-direction lint tool | config | tooling team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/arch-pattern-clean` | Clean rings map directly onto hexagonal layers. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the layout spec + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: drivers → driven → ports → adapters → lint | ~700 |
+| `content/05-examples.xml` | medium | Worked example: HTTP+CLI inbound, Postgres+Stripe outbound | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-ports` | sonnet | Per-port interface synthesis. |
+| `draft-adapters` | sonnet | Per-port adapter scaffolding. |
+| `audit-imports` | opus | Cross-module import graph audit. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/hex-layout.md` | Hexagonal layout spec with driving + driven ports and adapters. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-arch-pattern-hexagonal.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[arch-pattern-clean]]
+- [[arch-pattern-onion]]
+- [[arch-pattern-ddd]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

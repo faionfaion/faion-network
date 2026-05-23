@@ -1,3 +1,8 @@
+// purpose: Structurizr DSL workspace skeleton.
+// consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+// produces: a c4-model artefact validating against scripts/validate-c4-model.py
+// depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+// token-budget-impact: ~400-1500 tokens once filled
 workspace "{System Name}" "{Short system description}" {
 
     model {

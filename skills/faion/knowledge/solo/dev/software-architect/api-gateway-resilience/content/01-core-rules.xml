@@ -1,31 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-gateway-resilience Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-gateway-resilience. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="API Gateway Resilience Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every api-gateway-resilience application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
+
     <rule id="r1" testable="true" depth="essential">
       <statement>Apply rate limits at multiple levels: global (all traffic ceiling), per-API (endpoint-level), per-consumer (API key or user), per-route (expensive operations). Enforce per-consumer first (cheapest check), then per-route, then global.</statement>
       <rationale source="v1-source">Single-level rate limiting is easy to abuse — a consumer can exhaust global limits. Multi-level limits protect both the gateway and individual service backends.</rationale>
     </rule>
+
     <rule id="r2" testable="true" depth="essential">
       <statement>Configure rate limit response headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset) and return HTTP 429 with Retry-After header when limits are exceeded. Use Redis or cluster storage for distributed enforcement in multi-node deployments.</statement>
       <rationale source="v1-source">Without response headers, API consumers cannot implement polite backoff. Without distributed storage, per-node counters allow N times the intended rate in an N-node cluster.</rationale>
     </rule>
+
     <rule id="r3" testable="true" depth="essential">
       <statement>Configure per-service circuit breakers with distinct thresholds, timeouts, and fallback responses. A circuit breaker opening on one backend MUST NOT open the circuit for other independent backends.</statement>
       <rationale source="v1-source">A shared circuit breaker across all backends means one failing service takes down all traffic. Per-service breakers isolate failures.</rationale>
     </rule>
+
     <rule id="r4" testable="true" depth="essential">
       <statement>Set per-service timeout overrides for long-running operations (uploads, exports, reports). Never apply a single global timeout that is high enough for the slowest operation — it will hide latency issues in all other services.</statement>
       <rationale source="v1-source">A 300s global timeout masks latency regressions in services that should respond in 100ms. Per-service timeouts surface regressions precisely.</rationale>
     </rule>
+
     <rule id="r5" testable="true" depth="essential">
       <statement>Only retry on 5xx errors, network errors, and connection failures. Never retry POST/PATCH/DELETE unless the backend explicitly guarantees idempotency. Always use exponential backoff with jitter to prevent thundering herd on recovery.</statement>
       <rationale source="v1-source">Retrying non-idempotent operations creates duplicate side effects (duplicate orders, double charges). Thundering herd after a backend recovers can immediately re-trigger the failure.</rationale>
     </rule>
+
     <rule id="r6" testable="true" depth="essential">
       <statement>Every circuit breaker configuration MUST specify an explicit fallback response or fallback endpoint. "Let it fail with 503" is acceptable only for critical write paths where partial data is worse than no data.</statement>
       <rationale source="v1-source">Clients receiving raw 503 cannot distinguish gateway misconfiguration from backend outage from network partition. Structured fallback responses enable clients to degrade gracefully.</rationale>
     </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-23 chunk-00 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,75 +1,99 @@
 ---
 slug: api-gateway-resilience
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Resilience at the gateway layer means applying multi-level rate limiting to prevent abuse, circuit breakers to stop cascading failures, retries with exponential backoff to absorb transient errors, and tiered timeouts matched to backend SLAs.
-content_id: "30b3abaca31cd7d1"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Multi-level rate limiting, circuit breakers, exponential-backoff retries with idempotency, and tiered timeouts at the gateway layer.
+content_id: "e4fc17a6e1c5775f"
+complexity: deep
+produces: config
+est_tokens: 4200
 tags: [api-gateway, resilience, rate-limiting, circuit-breaker, reliability]
 ---
-# API Gateway Resilience: Rate Limiting, Circuit Breakers, Retries, and Timeouts
+# API Gateway Resilience
 
 ## Summary
 
-**One-sentence:** Resilience at the gateway layer means applying multi-level rate limiting to prevent abuse, circuit breakers to stop cascading failures, retries with exponential backoff to absorb transient errors, and tiered timeouts matched to backend SLAs.
+**One-sentence:** Multi-level rate limiting, circuit breakers, exponential-backoff retries with idempotency, and tiered timeouts at the gateway layer.
 
-**One-paragraph:** Resilience at the gateway layer means applying multi-level rate limiting to prevent abuse, circuit breakers to stop cascading failures, retries with exponential backoff to absorb transient errors, and tiered timeouts matched to backend SLAs. Each mechanism protects the backend from overload and the client from opaque failures.
+**One-paragraph:** Defines gateway resilience as four coordinated controls: rate limiting per-consumer + per-route, circuit breakers per upstream with half-open probes, retries with exponential backoff guarded by Idempotency-Key, and tiered timeouts matched to backend SLAs. Output is a gateway resilience config artefact plus a chaos test plan to validate the controls under load.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі 'API gateway resilience' — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф конфігу до того, як він потрапить у CI.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Configuring multi-level rate limits (global / per-API / per-consumer / per-route).
-- Adding circuit breakers for all backend upstreams.
-- Designing retry policies with exponential backoff and jitter.
-- Setting connection, read, write, and overall request timeouts.
-- Planning fallback responses and graceful degradation for backend failures.
-- Implementing adaptive rate limiting based on error rates, latency, or backend health.
+- Gateway routes traffic to ≥3 upstreams with different SLA contracts.
+- You have observed at least one cascading-failure incident OR you want to prevent one before launch.
+- Backend SLAs and per-route latency budgets are known.
+- You have a load test harness or plan to add one within the quarter.
 
 ## Skip If (ANY kills it)
 
-- Circuit breakers on health-check upstreams — wiring breakers on /health polls causes self-inflicted outages. Exclude health endpoints from the circuit.
-- Retries on non-idempotent operations (POST, PATCH, DELETE with side effects) — retrying creates duplicate transactions. Only retry GET and safe/idempotent operations unless the backend is explicitly idempotent-safe.
-- Rate limiting with local (non-distributed) storage in a multi-node gateway deployment — local mode does not share counters across nodes; force redis or cluster mode.
+- Single upstream with single SLA — gateway resilience adds complexity without benefit.
+- Read-only static traffic with no rate-limit needs.
+- Backends already enforce these controls and gateway would just duplicate them.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Per-upstream SLA | p95 latency + availability target | platform team |
+| Per-route traffic profile | RPS + percentiles | observability backend |
+| Idempotency-Key support audit | list of mutating routes + idempotency capability | service owners |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/api-gateway-patterns` | Defines the gateway role this config layers controls onto. |
+| `solo/dev/software-architect/api-gateway-observability` | Provides the metrics that drive circuit-breaker decisions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + skip-this-methodology fallback | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the resilience config + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | deep | 5-step procedure: profile traffic → rate limits → circuit breakers → retries → timeouts | ~900 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-resilience-config` | sonnet | Template fill from SLAs. |
+| `design-chaos-test` | sonnet | Per-control failure injection plan. |
+| `cross-upstream-budget-audit` | opus | Verify aggregated retry/rate-limit budgets do not exceed backend capacity. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/resilience.yaml` | Gateway resilience config: rate limits, breakers, retries, timeouts. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-gateway-resilience.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[api-gateway-patterns]]
+- [[api-gateway-observability]]
+- [[api-gateway-security]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

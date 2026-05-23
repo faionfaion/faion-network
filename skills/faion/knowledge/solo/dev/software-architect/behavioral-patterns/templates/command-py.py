@@ -1,3 +1,8 @@
+# purpose: Command pattern template (Python).
+# consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+# produces: a behavioral-patterns artefact validating against scripts/validate-behavioral-patterns.py
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~400-1500 tokens once filled
 """
 Command pattern in Python with undo/redo Invoker.
 

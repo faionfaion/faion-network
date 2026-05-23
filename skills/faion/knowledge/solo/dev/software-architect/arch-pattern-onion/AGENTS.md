@@ -1,74 +1,99 @@
 ---
 slug: arch-pattern-onion
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Jeffrey Palermo (2008) formalised Onion Architecture: all coupling points toward the center.
-content_id: "e78d0cea8f3a3248"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: All coupling points toward the center: Domain Model -> Domain Services -> Application Services -> Infrastructure / UI / Tests at the outermost layer.
+content_id: "d9c4608cf7e15ae4"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [onion-architecture, domain-driven, layered-architecture, enterprise-patterns, dotnet]
 ---
 # Onion Architecture
 
 ## Summary
 
-**One-sentence:** Jeffrey Palermo (2008) formalised Onion Architecture: all coupling points toward the center.
+**One-sentence:** All coupling points toward the center: Domain Model -> Domain Services -> Application Services -> Infrastructure / UI / Tests at the outermost layer.
 
-**One-paragraph:** Jeffrey Palermo (2008) formalised Onion Architecture: all coupling points toward the center. The Domain Model (entities, value objects, repository interfaces) occupies the innermost ring with zero outward dependencies. Domain Services wrap cross-entity logic. Application Services orchestrate use cases. Infrastructure sits at the outermost ring.
+**One-paragraph:** Onion Architecture (Jeffrey Palermo, 2008) formalises a four-layer onion with the dependency rule: all coupling points inward. Domain Model + Domain Services live in the inner core; Application Services depend on the core; Infrastructure / UI / Tests are at the outermost. Output is a module layout spec + import-direction lint, blocking infra leaking inward.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Enterprise .NET applications (C#, F#) where the Onion vocabulary is well established and tooling (Project References, .NET solution structure) maps naturally to layers.
-- Applications where domain services as a separate layer is conceptually meaningful — e.g., a pricing engine that spans Product, Customer, and Promotion aggregates.
-- Teams familiar with the Onion naming convention (Domain, Domain.Services, Application, Infrastructure) who want consistency across projects.
-- Complex enterprise apps where the domain must be completely independent of UI, database, and framework choices.
+- .NET-shaped or DDD-leaning codebase where Palermo's terminology is familiar.
+- Codebase has clear domain logic separate from infrastructure.
+- You expect the project to live > 12 months with ≥2 engineers.
 
 ## Skip If (ANY kills it)
 
-- Simple domains without meaningful cross-entity business logic — the Domain.Services layer will be empty and adds confusion.
-- Non-.NET stacks where teams are more familiar with Clean or Hexagonal vocabulary — use whichever fits the team's shared mental model.
-- Prototypes or scripts — overhead of multiple projects/layers exceeds value.
-- Microservices where the domain fits in 200 lines — the four-layer split is overhead.
+- Throwaway prototype or CRUD-only app.
+- Team prefers Clean or Hexagonal naming — pick one to avoid double terminology.
+- Pure library with no UI/infra concerns.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Domain model draft | doc/UML | domain expert |
+| Service inventory | list | tech lead |
+| Import-direction lint tool | config | tooling team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/arch-pattern-clean` | Clean rings are equivalent layers under different names. |
+| `solo/dev/software-architect/arch-pattern-ddd` | Domain model + domain services come from DDD. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the layout spec + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: model → domain services → app services → infra/ui → lint | ~700 |
+| `content/05-examples.xml` | medium | Worked example: .NET-style onion for an Ordering bounded context | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-layout` | sonnet | Layer assignment per module. |
+| `draft-import-lint` | sonnet | Tool-specific lint config. |
+| `audit-existing-codebase` | opus | Detect violations in current import graph. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/onion-layout.md` | Onion Architecture layout spec with four layers and lint contract. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-arch-pattern-onion.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[arch-pattern-clean]]
+- [[arch-pattern-hexagonal]]
+- [[arch-pattern-ddd]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

@@ -1,22 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="c4-model Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="C4 Model for Architecture Visualization Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid spec artefact for c4-model. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/c4-model.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "toolchain", "levels", "sync_policy"],
+  "properties": {
+  "artefact_id": {
+    "type": "string",
+    "minLength": 3
+  },
+  "owner": {
+    "type": "string",
+    "minLength": 3
+  },
+  "version": {
+    "type": "string",
+    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  },
+  "last_reviewed": {
+    "type": "string",
+    "format": "date"
+  },
+  "toolchain": {
+    "type": "string",
+    "enum": [
+      "structurizr",
+      "mermaid",
+      "plantuml"
+    ]
+  },
+  "levels": {
+    "type": "array",
+    "minItems": 3,
+    "items": {
+      "type": "object",
+      "required": [
+        "level",
+        "path"
+      ]
+    }
+  },
+  "sync_policy": {
+    "type": "string",
+    "minLength": 20
+  }
+}
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "c4-pack-shop-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "toolchain": "structurizr",
+  "levels": [
+    {
+      "level": 1,
+      "path": "docs/architecture/c4/01-context.dsl"
+    },
+    {
+      "level": 2,
+      "path": "docs/architecture/c4/02-containers.dsl"
+    },
+    {
+      "level": 3,
+      "path": "docs/architecture/c4/03-components-api.dsl"
+    }
+  ],
+  "sync_policy": "Diagrams updated in every PR that adds/removes a container or external system; CI lint compares L2 against deploy manifest."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "toolchain": "drawio",
+  "levels": [
+    {
+      "level": 1
+    }
+  ]
+}
+]]></code>
+    <note>Owner plural; toolchain not in enum; levels missing required keys; sync_policy absent.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="toolchain-not-enum">`toolchain` not in `[structurizr, mermaid, plantuml]`.</pattern>
+    <pattern id="levels-too-few">`levels` contains fewer than 3 entries (L1, L2, L3 required).</pattern>
+    <pattern id="no-sync-policy">`sync_policy` empty — diagrams without sync policy stale within 1 quarter.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-c4-model.py">Stdlib-only validator implementing this schema.</reference>
 </text>

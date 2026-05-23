@@ -1,0 +1,42 @@
+# purpose: Gateway resilience config with rate limits, circuit breakers, retries, timeouts.
+# consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+# produces: a api-gateway-resilience artefact validating against scripts/validate-api-gateway-resilience.py
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~400-1500 tokens once filled
+artefact_id: api-gateway-resilience-<client>-2026-05-23
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+rate_limits:
+  - scope: consumer
+    requests_per_minute: 600
+    burst: 60
+  - scope: route
+    route: /api/v1/checkout
+    requests_per_minute: 1000
+    burst: 100
+
+circuit_breakers:
+  - upstream: payment-service
+    failure_threshold_pct: 50
+    minimum_requests: 20
+    open_for_seconds: 30
+    half_open_probes: 3
+
+retries:
+  - method: GET
+    max_attempts: 3
+    base_backoff_ms: 100
+    max_backoff_ms: 1000
+  - method: POST
+    max_attempts: 2
+    base_backoff_ms: 200
+    max_backoff_ms: 1000
+    require_idempotency_key: true
+
+timeouts:
+  default_ms: 5000
+  per_upstream:
+    payment-service: 8000
+    search-service: 2000

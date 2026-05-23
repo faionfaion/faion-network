@@ -1,65 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ADR Reversibility Tagging Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the ADR frontmatter additions and the review-gate routing schema.</summary>
+<text id="02-output-contract" title="ADR Reversibility Tagging Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid decision-record artefact for adr-reversibility-tagging. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="adr_frontmatter_additions">
-        <subfield name="reversibility" enum="two_way_door,partial_two_way,one_way_door_costly,one_way_door_irrevocable"/>
-        <subfield name="rollback_estimate" required_keys="engineering_weeks,dollars_contract_exit,customers_affected"/>
-        <subfield name="rollback_estimate.engineering_weeks" type="number" min="0"/>
-        <subfield name="rollback_estimate.dollars_contract_exit" type="number" min="0"/>
-        <subfield name="rollback_estimate.customers_affected" enum="none,internal_only,subset,all_active"/>
-      </field>
-      <field name="pre_mortem" required_if="reversibility IN [one_way_door_costly, one_way_door_irrevocable]">
-        <subfield name="failure_scenarios" min_items="2"/>
-        <subfield name="reversal_triggers" min_items="2"/>
-        <subfield name="trigger_review_window_months" type="integer" min="3" max="24"/>
-      </field>
-      <field name="approval_record">
-        <subfield name="reversibility" type="string"/>
-        <subfield name="required_approvers" min_items="1"/>
-        <subfield name="cool_off_hours" type="integer" min="0"/>
-        <subfield name="approvers_signed_at" type="iso_datetime"/>
-      </field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">reversibility field missing — CI must reject</pattern>
-      <pattern id="f2">reversibility value not in the 4-tier enum (no custom values)</pattern>
-      <pattern id="f3">one_way_door_* tag without pre_mortem section</pattern>
-      <pattern id="f4">rollback_estimate.engineering_weeks &gt; 1 with reversibility == two_way_door (contradiction)</pattern>
-      <pattern id="f5">approval_record missing required_approvers OR signed before cool-off window expires</pattern>
-      <pattern id="f6">approval_record where author == approver on one_way_door_* (self-approval)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>"partial_two_way" can be promoted to "two_way_door" if a refactor makes rollback cheaper than expected — document in superseding ADR.</transformation>
-      <transformation>Approval may be batch-signed for related two_way_door ADRs (linter rules, dev tooling) under a single PR.</transformation>
-      <transformation>For solo founders without a co-approver, "founder sign-off" rule on one-way-door becomes "wait 48h then sign self" — cool-off period replaces the second person.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/adr-with-reversibility.md"/>
-  </output-contract>
-
-  <section title="Review-gate routing table">
-    <code lang="text"><![CDATA[
-reversibility                | approvers          | cool-off | pre-mortem
-two_way_door                 | author             | 0h       | no
-partial_two_way              | 1 peer             | 0h       | no
-one_way_door_costly          | architect + PM     | 24h      | required
-one_way_door_irrevocable     | founder + arch     | 48h      | required
-    ]]></code>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/adr-reversibility-tagging.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "adr_id", "reversibility", "rollback_estimate"],
+  "properties": {
+  "artefact_id": {
+    "type": "string",
+    "minLength": 3,
+    "maxLength": 100
+  },
+  "owner": {
+    "type": "string",
+    "minLength": 3
+  },
+  "version": {
+    "type": "string",
+    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  },
+  "last_reviewed": {
+    "type": "string",
+    "format": "date"
+  },
+  "adr_id": {
+    "type": "string",
+    "minLength": 1
+  },
+  "reversibility": {
+    "type": "string",
+    "enum": [
+      "two_way_door",
+      "partial_two_way",
+      "one_way_door_costly",
+      "one_way_door_irrevocable"
+    ]
+  },
+  "rollback_estimate": {
+    "type": "object",
+    "required": [
+      "engineering_weeks",
+      "dollars_contract_exit",
+      "customers_affected"
+    ],
+    "properties": {
+      "engineering_weeks": {
+        "type": "number",
+        "minimum": 0
+      },
+      "dollars_contract_exit": {
+        "type": "number",
+        "minimum": 0
+      },
+      "customers_affected": {
+        "type": "string",
+        "enum": [
+          "none",
+          "internal_only",
+          "subset",
+          "all_active"
+        ]
+      }
+    }
+  },
+  "pre_mortem": {
+    "type": "object"
+  }
+}
+}
+]]></code>
+    </schema>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>reversibility field populated with one of 4 enum values</item>
-      <item>rollback_estimate populated with all 3 required keys</item>
-      <item>pre_mortem present for any one_way_door_* tag</item>
-      <item>approval_record matches the routing table for the tier</item>
-      <item>cool_off_hours respected (signed_at - opened_at ≥ required hours)</item>
-      <item>no self-approval on one-way-door tiers (unless solo founder with documented 48h wait)</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "adr-reversibility-023-clerk-migration",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "adr_id": "023",
+  "reversibility": "one_way_door_costly",
+  "rollback_estimate": {
+    "engineering_weeks": 4,
+    "dollars_contract_exit": 12000,
+    "customers_affected": "all_active"
+  },
+  "pre_mortem": {
+    "reversal_triggers": [
+      "bill/MAU > 2x",
+      "enterprise SSO blocker"
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "reversibility": "maybe-reversible",
+  "rollback_estimate": {}
+}
+]]></code>
+    <note>Owner is plural pronoun; reversibility not in 4-tier enum; rollback_estimate empty.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`) or empty.</pattern>
+    <pattern id="reversibility-not-enum">`reversibility` value not in the 4-tier enum.</pattern>
+    <pattern id="missing-pre-mortem">`reversibility` starts with `one_way_door` AND no `pre_mortem` block.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-adr-reversibility-tagging.py">Stdlib-only validator implementing this schema.</reference>
 </text>

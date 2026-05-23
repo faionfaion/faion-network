@@ -1,3 +1,8 @@
+# purpose: Django CACHES configuration with Redis.
+# consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml
+# produces: a caching-architecture artefact validating against scripts/validate-caching-architecture.py
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~400-1500 tokens once filled
 """
 django-cache-settings.py — Django CACHES settings for default + session caches
 using django-redis backend.

@@ -1,22 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="architecture-decision-records Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Architecture Decision Records (ADRs) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid decision-record artefact for architecture-decision-records. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/architecture-decision-records.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "version", "last_reviewed", "adr_id", "title", "status", "date", "context", "decision", "consequences", "alternatives_rejected"],
+  "properties": {
+  "artefact_id": {
+    "type": "string",
+    "minLength": 3
+  },
+  "owner": {
+    "type": "string",
+    "minLength": 3
+  },
+  "version": {
+    "type": "string",
+    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  },
+  "last_reviewed": {
+    "type": "string",
+    "format": "date"
+  },
+  "adr_id": {
+    "type": "string"
+  },
+  "title": {
+    "type": "string",
+    "minLength": 5
+  },
+  "status": {
+    "type": "string",
+    "enum": [
+      "Proposed",
+      "Accepted",
+      "Deprecated",
+      "Superseded"
+    ]
+  },
+  "date": {
+    "type": "string",
+    "format": "date"
+  },
+  "context": {
+    "type": "string",
+    "minLength": 30
+  },
+  "decision": {
+    "type": "string",
+    "minLength": 20
+  },
+  "consequences": {
+    "type": "array",
+    "minItems": 1
+  },
+  "alternatives_rejected": {
+    "type": "array",
+    "minItems": 1
+  }
+}
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "adr-auth-clerk-023",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "adr_id": "023",
+  "title": "Adopt Clerk for identity",
+  "status": "Accepted",
+  "date": "2026-05-23",
+  "context": "Auth0 pricing climbed; we need an alternative with SSO and decent UX.",
+  "decision": "Adopt Clerk as the primary identity provider for new signups.",
+  "consequences": [
+    "Vendor concentration on Clerk",
+    "Cheaper at current MAU"
+  ],
+  "alternatives_rejected": [
+    {
+      "option": "WorkOS",
+      "reason": "Higher floor cost"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "status": "lgtm",
+  "alternatives_rejected": []
+}
+]]></code>
+    <note>Owner plural; status not in enum; alternatives_rejected empty.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="status-not-enum">`status` not in `[Proposed, Accepted, Deprecated, Superseded]`.</pattern>
+    <pattern id="no-alternatives">`alternatives_rejected` empty.</pattern>
+    <pattern id="decision-laundering">`status: Accepted` AND `date` precedes any referenced commit date by &lt; 1 hour — likely retroactive.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-architecture-decision-records.py">Stdlib-only validator implementing this schema.</reference>
 </text>

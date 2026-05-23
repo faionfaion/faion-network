@@ -1,77 +1,98 @@
 ---
 slug: c4-model
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The C4 model is a hierarchical diagramming approach for software architecture: Context (system + users + external systems), Containers (deployable units + technology choices), Components (internal structure of one container), and Code (class diagrams, usually auto-generated).
-content_id: "7394c763c6abec95"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Hierarchical diagrams at four levels: System Context, Containers, Components, Code. Locked toolchain (Structurizr / Mermaid / PlantUML) and per-level audience.
+content_id: "d6cf997782f75d7f"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [c4-model, architecture, visualization, diagrams, documentation]
 ---
 # C4 Model for Architecture Visualization
 
 ## Summary
 
-**One-sentence:** The C4 model is a hierarchical diagramming approach for software architecture: Context (system + users + external systems), Containers (deployable units + technology choices), Components (internal structure of one container), and Code (class diagrams, usually auto-generated).
+**One-sentence:** Hierarchical diagrams at four levels: System Context, Containers, Components, Code. Locked toolchain (Structurizr / Mermaid / PlantUML) and per-level audience.
 
-**One-paragraph:** The C4 model is a hierarchical diagramming approach for software architecture: Context (system + users + external systems), Containers (deployable units + technology choices), Components (internal structure of one container), and Code (class diagrams, usually auto-generated). Each level zooms into the previous one. Always start at Level 1; create Level 4 only from auto-generation tools. Keep each diagram to 5–10 elements — split rather than crowd.
+**One-paragraph:** C4 (Simon Brown) gives architecture diagrams a hierarchy: Level 1 Context (system + users + external systems), Level 2 Containers (deployable units + tech), Level 3 Components (internals of one container), Level 4 Code (class diagrams, usually auto-generated). Output is a diagram pack at Levels 1-3 + a chosen toolchain + a sync-with-code policy.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Onboarding new contributors: Level 1 (Context) and Level 2 (Container) are mandatory.
-- Architecture review: create diagrams to communicate current and target state.
-- Documenting microservices topology: Container diagram shows services, databases, message brokers.
-- Recording decisions in ADRs: reference C4 diagrams for the affected components.
-- Sprint planning for cross-team features that touch multiple containers or external systems.
-- Deployment diagrams for mapping containers to cloud infrastructure.
+- Stakeholders ask 'how does this system fit together?' more than once a quarter.
+- Onboarding a new engineer takes > 1 day on architecture alone.
+- You have ≥1 external integration or ≥3 deployable containers.
 
 ## Skip If (ANY kills it)
 
-- Single-developer scripts or single-container applications where a simple README suffices.
-- When diagrams would be discarded immediately — invest only if they will be maintained.
-- Level 4 (Code) diagrams done manually — use IDE class diagram generation instead.
-- As a substitute for ADRs: C4 shows structure, ADRs document the decisions behind structure.
-- When the team has agreed on a different diagramming standard already in use — do not introduce C4 mid-project without buy-in.
+- Single binary, single DB, no external integrations.
+- No stakeholders beyond the implementing engineer.
+- Architecture changes weekly — diagrams will stale before they ship.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| System inventory | list of containers + tech | tech lead |
+| External integrations | list | tech lead |
+| Toolchain decision | Structurizr / Mermaid / PlantUML | team consensus |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/architecture-decision-records` | Toolchain choice is recorded as an ADR. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the diagram pack + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: tool choice → L1 context → L2 containers → L3 components → sync policy | ~700 |
+| `content/05-examples.xml` | medium | Worked example: Context + Containers diagrams for a SaaS shop | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-l1-context` | sonnet | Synthesize external systems + actors. |
+| `draft-l2-containers` | sonnet | Per-container tech + relationships. |
+| `audit-staleness` | opus | Compare diagrams against current repo + manifests. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/c4-diagram-pack.md` | C4 diagram-pack spec listing levels + toolchain + sync policy. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-c4-model.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[architecture-decision-records]]
+- [[arch-pattern-clean]]
+- [[decision-tree-architecture-style]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

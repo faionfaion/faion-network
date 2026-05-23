@@ -1,75 +1,97 @@
 ---
 slug: api-gateway-observability
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: API gateway observability covers three pillars: metrics (request rate, latency percentiles, error rate, circuit breaker state, rate limit hits) exported via Prometheus; structured access logging with correlation ID, consumer identity, and upstream latency; and distributed tracing via OpenTelemetry with W3C trace context propagation.
-content_id: "8382b79a0458e92b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Three pillars at the gateway edge: Prometheus metrics, structured access logs with correlation ID, and W3C-context OpenTelemetry traces.
+content_id: "7117e10cdfcaac07"
+complexity: medium
+produces: config
+est_tokens: 3900
 tags: [api-gateway, observability, metrics, tracing, opentelemetry]
 ---
-# API Gateway Observability: Metrics, Logging, Tracing, and Alerting
+# API Gateway Observability
 
 ## Summary
 
-**One-sentence:** API gateway observability covers three pillars: metrics (request rate, latency percentiles, error rate, circuit breaker state, rate limit hits) exported via Prometheus; structured access logging with correlation ID, consumer identity, and upstream latency; and distributed tracing via OpenTelemetry with W3C trace context propagation.
+**One-sentence:** Three pillars at the gateway edge: Prometheus metrics, structured access logs with correlation ID, and W3C-context OpenTelemetry traces.
 
-**One-paragraph:** API gateway observability covers three pillars: metrics (request rate, latency percentiles, error rate, circuit breaker state, rate limit hits) exported via Prometheus; structured access logging with correlation ID, consumer identity, and upstream latency; and distributed tracing via OpenTelemetry with W3C trace context propagation. Alert on SLO breaches, not raw thresholds, to reduce false positives.
+**One-paragraph:** Defines the observability config for the gateway layer: request-rate / latency-percentile / error-rate / circuit-breaker-state metrics scraped by Prometheus; access logs with correlation_id + consumer_id + upstream_latency_ms; OpenTelemetry traces with W3C tracecontext propagation. Output is a gateway observability config artefact plus a dashboard/alert pack.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі 'API gateway observability' — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф конфігу до того, як він потрапить у CI.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Setting up initial gateway metrics and Prometheus scrape configuration.
-- Configuring structured access logging with correlation IDs and consumer identity.
-- Integrating distributed tracing (OpenTelemetry, Jaeger, Zipkin, Tempo).
-- Defining SLO-based alerts for error rate, latency, and circuit breaker state.
-- Building dashboards for request rate, latency percentiles, and upstream health.
-- Correlating traces to logs for incident investigation.
+- You run an API gateway (Kong, Tyk, Apollo Router, AWS APIGW, Traefik, Envoy) in production.
+- You have or plan a Prometheus + Grafana + tracing stack (Tempo / Jaeger / Honeycomb).
+- You need SLO/SLI reporting at the gateway boundary.
 
 ## Skip If (ANY kills it)
 
-- Logging every request body at high RPS — log request metadata only (method, path, status, latency, consumer). Body logging at scale saturates storage and violates GDPR/HIPAA.
-- Sampling traces at 100% in high-throughput production — use adaptive or rate-based sampling (10% default, 100% for errors and slow requests).
-- Alerting on raw request count thresholds — alert on error rate (%) and latency percentiles, which are meaningful regardless of traffic volume.
+- Pure pass-through nginx with no app-layer routing — gateway observability adds little.
+- No metrics/tracing stack and no plan to add one within the quarter.
+- Dev-only environment with no SLO commitments.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Gateway product + version | name + semver | deployment manifest |
+| Metrics backend endpoint | URL | platform team |
+| Tracing backend endpoint | URL | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/api-gateway-patterns` | Defines the gateway role this config instruments. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the observability config + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: pick stack → metrics → logs → traces → SLO dashboard | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-observability-config` | sonnet | Template fill from gateway + backend selection. |
+| `design-slo-dashboard` | sonnet | SLO/SLI panel design. |
+| `cross-gateway-trace-audit` | opus | Cross-component propagation correctness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/observability.yaml` | Gateway observability config with metrics, logs, and tracing endpoints. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-api-gateway-observability.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[api-gateway-patterns]]
+- [[api-gateway-resilience]]
+- [[api-gateway-security]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

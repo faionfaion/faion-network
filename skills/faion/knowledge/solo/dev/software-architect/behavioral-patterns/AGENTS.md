@@ -1,74 +1,99 @@
 ---
 slug: behavioral-patterns
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Nine GoF behavioral patterns for controlling how objects communicate and distribute responsibilities at runtime.
-content_id: "e54decf8a51ed833"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Nine GoF behavioral patterns (Strategy, Observer, Command, State, Chain of Responsibility, Template Method, Mediator, Iterator, Visitor) for controlling object communication at runtime.
+content_id: "1fa14cba4608122e"
+complexity: medium
+produces: spec
+est_tokens: 4500
 tags: [design-patterns, behavioral, gof, refactoring, architecture]
 ---
 # Behavioral Design Patterns
 
 ## Summary
 
-**One-sentence:** Nine GoF behavioral patterns for controlling how objects communicate and distribute responsibilities at runtime.
+**One-sentence:** Nine GoF behavioral patterns (Strategy, Observer, Command, State, Chain of Responsibility, Template Method, Mediator, Iterator, Visitor) for controlling object communication at runtime.
 
-**One-paragraph:** Nine GoF behavioral patterns for controlling how objects communicate and distribute responsibilities at runtime. Strategy, Observer, and Command handle algorithm selection and operation history. State, Chain of Responsibility, Template Method, and Mediator manage complex flows and component interaction. Iterator and Visitor provide traversal and operation abstraction. Apply them when measured code smells — cyclomatic complexity >15, repeated switch-on-type, growing if-state chains — justify the abstraction cost. Start with the simplest representation (function, lookup table); promote to a class-based pattern only when type signatures or shared state demand it.
+**One-paragraph:** Behavioral patterns address how objects communicate and distribute responsibility. Output is a per-codebase pattern selection record naming which patterns are intentionally used, the rule for picking among confusable patterns (Strategy vs State vs Chain of Responsibility), and the lint / review check that prevents accidental misuse.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Code review: long switch/match on type, duplicated event-listener boilerplate, or growing if/else state machines.
-- New feature: multiple algorithms selectable at runtime (Strategy), domain events fan-out to N consumers (Observer), explicit state machine with guards (State).
-- Refactoring a monolithic class into smaller testable pieces by externalizing variable behavior.
-- Building extensible middleware/handler chains (Chain of Responsibility): request validation, auth pipelines, log enrichers.
-- LLM-driven code generation that needs a vocabulary of named patterns to constrain output and keep code idiomatic.
+- Codebase has runtime variance in behaviour (e.g., 'choose one of N algorithms', 'react to events').
+- You see if/else or switch on type that grows weekly.
+- ≥2 engineers will touch the variance-bearing code.
 
 ## Skip If (ANY kills it)
 
-- Two-line if/else with one likely future variant — pattern overhead outweighs benefit; revisit at third variant.
-- Pure data-transformation pipelines mapping cleanly to functions or streams — patterns add ceremony.
-- Languages with first-class FP idioms (Rust, Haskell, modern TS) — many GoF behavioral patterns reduce to higher-order functions.
+- Codebase is small (<5K LOC) and behaviour is stable.
+- Solo founder with throwaway prototype.
+- Pattern would add ≥2 layers of indirection over a 1-line if/else.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Variance hotspot list | list of files/methods | tech lead |
+| Refactoring budget | story points / hours | PM |
+| Language idiom catalogue | doc | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/creational-patterns` | Object creation patterns complement behavioural ones. |
+| `solo/dev/software-architect/arch-pattern-clean` | Behavioural patterns live in the inner rings. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the pattern selection record + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure: locate variance → diagnose → pick pattern → refactor → review | ~700 |
+| `content/05-examples.xml` | medium | Worked example: refactoring an if/elif/else into Strategy | ~600 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-variance` | sonnet | Decide which pattern (Strategy/State/Chain) fits the variance. |
+| `draft-refactor` | sonnet | Per-pattern refactor scaffold. |
+| `cross-codebase-audit` | opus | Spot misuse patterns across modules. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pattern-selection.md` | Behavioural pattern selection record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-behavioral-patterns.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[creational-patterns]]
+- [[arch-pattern-clean]]
+- [[arch-pattern-hexagonal]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
