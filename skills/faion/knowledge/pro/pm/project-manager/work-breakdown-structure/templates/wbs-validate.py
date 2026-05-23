@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: WBS YAML helper validator (100% rule + 8-80h + overhead)
+# consumes: wbs.yaml tree
+# produces: validation report; exit 0 valid / 1 fail
+# depends-on: content/01-core-rules.xml#hundred-percent-rule, eight-eighty-sizing
+# token-budget-impact: ~250 tokens
 """Validate wbs.yaml: 100% rule (weight_pct children sum) + 8-80h leaf effort rule.
 
 Input YAML structure:

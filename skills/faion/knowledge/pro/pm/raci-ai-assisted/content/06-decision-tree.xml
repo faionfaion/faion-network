@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="RACI AI Assisted Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Tree mapping observable signals (trigger validity, owner named, A-count per row, evidence presence, staleness) to scaffold / suppress / repair / refresh.</summary>
+
+  <decision-tree>
+    <root-question id="q-trigger">header.trigger in {kickoff, roster_delta, quarterly_review}?</root-question>
+
+    <branch when="trigger_valid == false">
+      <conclusion ref="r1-explicit-trigger" verdict="skip-this-methodology — refuse vague triggers; named cadence only"/>
+    </branch>
+
+    <branch when="trigger_valid == true">
+      <question id="q-owner">header.owner.person populated AND in stakeholder register?</question>
+
+      <branch when="owner_missing == true">
+        <conclusion ref="r4-named-owner" verdict="defer; resolve PM ownership before scaffold"/>
+      </branch>
+
+      <branch when="owner_missing == false">
+        <question id="q-stale">last_reviewed within 90 days?</question>
+
+        <branch when="stale == true">
+          <conclusion ref="r5-iteration-loop" verdict="refresh: run quarterly review before scaffold"/>
+        </branch>
+
+        <branch when="stale == false">
+          <question id="q-a-count">every row has exactly one accountable role + ≥1 evidence anchor?</question>
+
+          <branch when="a_missing_or_dup == true">
+            <conclusion ref="r3-evidence-anchored" verdict="repair: rerun assign-A; reject rows with missing or duplicate A; require evidence per row"/>
+          </branch>
+
+          <branch when="a_missing_or_dup == false">
+            <conclusion ref="r2-bounded-output" verdict="publish RACIMatrix per fixed schema; notify roster"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-roster-delta">
+    trigger=roster_delta → owner=pm-handle → last_reviewed=2026-05-10 (fresh) → every row has 1 A + evidence → publish.
+  </example>
+</text>

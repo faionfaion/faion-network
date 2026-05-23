@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# dora-quick.sh — last-30-day DORA from git log + deploy.log
-#
-# deploy.log format: one ISO 8601 UTC timestamp per line (one per deployment)
-# Output: Deployment Frequency and Change Lead Time mean to stdout
+# purpose: Last-30-day DORA snapshot from git log + deploy.log
+# consumes: deploy.log (one ISO 8601 UTC timestamp per line)
+# produces: DF + Change Lead Time mean (stdout)
+# depends-on: content/01-core-rules.xml#pair-dora-metrics, ai-pr-bot-split
+# token-budget-impact: ~150 tokens when loaded as context
 #
 # Usage: ./dora-quick.sh [days=30]
-# Source: value-stream-management methodology
 set -euo pipefail
 
 DAYS="${1:-30}"

@@ -1,17 +1,25 @@
-# Activity List — [Project Name]
+<!-- purpose: Activity table with ID, duration, dependencies, and resource columns -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-| ID | Activity | O (days) | M (days) | P (days) | Expected | Predecessors | Resources |
-|----|----------|----------|----------|----------|----------|--------------|-----------|
-| A1 | [Verb+noun] | [O] | [M] | [P] | =(O+4M+P)/6 | None | [Role] |
-| A2 | [Verb+noun] | [O] | [M] | [P] | =(O+4M+P)/6 | A1 (FS) | [Role] |
-| A3 | [Verb+noun] | [O] | [M] | [P] | =(O+4M+P)/6 | A1 (FS) | [Role] |
+# Activity table with ID, duration, dependencies, and resource columns
 
-<!-- Dependency types: FS (default) | FF | SS | SF (rare, document justification) -->
-<!-- Lag notation: A1 (FS+2d) means start 2 days after A1 finishes -->
-<!-- Resources: use role names, not individual names, for schedule flexibility -->
+## Background
 
-## Critical Path Analysis
-- Critical path: [A1 → A2 → A4 → ...] = [N] days total float 0
-- Near-critical paths (float &lt; 2 days): [list]
-- Project buffer: [N days at project end]
-- Feeding buffers: [location and size]
+[3-5 lines of context]
+
+## Scope
+
+### In Scope
+- [item]
+
+### Out of Scope
+- [exclusion]
+
+## Deliverables
+
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

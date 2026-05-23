@@ -1,56 +1,25 @@
-# Project Scope Statement: [Project Name]
+<!-- purpose: Scope statement with deliverables, boundaries, constraints, assumptions -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** 1.0
-**Date:** [Date]
-**Project Manager:** [Name]
-**Approved By:** [Name]
+# Scope statement with deliverables, boundaries, constraints, assumptions
 
-## 1. Project Objectives
+## Background
 
-[Measurable goals — what the project aims to achieve. Every objective must be testable.]
+[3-5 lines of context]
 
-## 2. Product Scope Description
-
-[Detailed description of the product, service, or result to be delivered.]
-
-## 3. Deliverables
-
-| ID | Deliverable | Description | Acceptance Criteria |
-|----|-------------|-------------|---------------------|
-| D1 | [Name] | [What it is] | [How completion is verified] |
-
-## 4. Project Boundaries
+## Scope
 
 ### In Scope
+- [item]
 
-- [Item 1]
-- [Item 2]
+### Out of Scope
+- [exclusion]
 
-### Out of Scope (explicit exclusions — write these first)
+## Deliverables
 
-- [Exclusion 1 — prevents ambiguity]
-- [Exclusion 2]
-
-## 5. Constraints
-
-- Budget: $[X]
-- Timeline: [X months / specific end date]
-- Resources: [Key limitations]
-- Technology: [Required or prohibited technologies]
-
-## 6. Assumptions
-
-- [Assumption 1 — if false, scope must be re-evaluated]
-- [Assumption 2]
-
-## 7. Risks Related to Scope
-
-- [Risk 1]
-- [Risk 2]
-
-## Approval
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Project Sponsor | | | |
-| Project Manager | | | |
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

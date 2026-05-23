@@ -3,82 +3,103 @@ slug: raci-ai-assisted
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "e8e34fa687b3587e"
-summary: RACI AI Assisted — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so multi-team coordination & dependency-graph reasoning (p6 product) stops being folklore and starts being a reviewable operating tool.
-tags: [pm, pro, method, raci, assisted]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: AI-assisted RACI matrix builder; ingests project charter + WBS + team roster, emits typed `RACIMatrix` with exactly-one A per row, flags orphaned R's + duplicate A's, refreshed when roster changes.
+content_id: "d416a9a4ae0f622c"
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [pm, pro, raci, matrix, accountability]
 ---
 # RACI AI Assisted
 
 ## Summary
 
-**One-sentence:** RACI AI Assisted — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so multi-team coordination & dependency-graph reasoning (p6 product) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** AI-assisted RACI matrix builder: ingests project charter + WBS + team roster, emits a typed `RACIMatrix` with exactly-one A per row, flags orphaned R's and duplicate A's, and refreshes when the roster changes.
 
-**One-paragraph:** In project / programme management, the project manager runs multi-team coordination & dependency-graph reasoning (p6 product) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. raci-matrix exists as a static doc. No methodology for AI to draft RACI from project charter + WBS + team roster, flag duplicated A's / orphaned R's, and refresh when roster changes. Without this, RACI rots within 4 weeks of project start. `raci-ai-assisted` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** The corpus covers RACI as a static doc but not the methodology that drafts, validates, and refreshes one. Without the loop, RACI rots within 4 weeks of project start. This methodology pins it: trigger fires on (a) project kickoff, (b) roster change, (c) quarterly review. Output is a typed `RACIMatrix` mapping each WBS-leaf id to {responsible[], accountable, consulted[], informed[]} with named-owner discipline, exactly one A per row, and evidence anchor per assignment (charter line, WBS dictionary entry, or stakeholder register row). Refreshed on roster delta; quarterly review removes orphaned entries.
+
+**Ефективно для:**
+
+- Multi-team coordination & dependency-graph reasoning (P6-product context).
+- Roster onboarding / offboarding triggering RACI delta.
+- Audit: every WBS leaf has exactly one accountable role.
+- Quarterly review removing dead rows + flagging duplicates.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Multi-team coordination & dependency-graph reasoning (P6 product)`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- A WBS spec exists (see [[wbs-creation]]) — RACI binds to WBS-leaf ids.
+- A stakeholder register exists with role + person fields.
+- Project manager owns the artefact (or escalates to named role).
+- Trigger event fires at a published cadence (kickoff / roster delta / quarterly).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot project with no recurrence — single doc, not a versioned artefact.
+- < 3 RACI cycles per year — review cadence costs more than it returns.
+- Regulated context mandating a specific accountability format — adopt that template.
+- No named owner — defer until ownership resolved.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Project charter | Markdown | sponsor |
+| WBS spec | JSON | [[wbs-creation]] |
+| Team roster | YAML | HR / stakeholder register |
+| Last RACI delta | JSON | this methodology (prior cycle) |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[wbs-creation]] | RACI rows reference WBS-leaf ids. |
+| [[team-development]] | Skills matrix informs viable role assignments. |
+| [[proposal-red-team-checklist]] | RACI inconsistencies surface during proposal red-team. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `RACIMatrix` + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 6 modes: cargo-cult, ownership ambiguity, drift, example-text leakage, no outcome review, trigger drift | ~900 |
+| `content/04-procedure.xml` | medium | 5-step: scaffold → assign → validate → publish → quarterly-review | ~600 |
+| `content/06-decision-tree.xml` | essential | Tree: trigger present? owner named? evidence? per-row A count? → action + rule | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `raci-scaffold` | haiku | Mechanical fill from WBS rows + roster. |
+| `raci-assign-A` | sonnet | Per-row judgment on the single accountable role. |
+| `raci-validate` | haiku | Mechanical exactly-one-A + orphaned-R check. |
+| `outcome-review-synthesis` | opus | Cross-quarter synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/skeleton.md` | RACI matrix skeleton with not_applicable markers |
+| `templates/header.yaml` | Frontmatter schema |
+| `templates/_smoke-test.json` | Minimum-viable filled `RACIMatrix` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-raci-ai-assisted.py` | Validate `RACIMatrix`: exactly-one-A, evidence anchors, owner | Pre-merge |
+| `scripts/staleness-check.py` | Flag matrices whose `last_reviewed` exceeds 90 days | Weekly cron |
 
 ## Related
 
-- parent skill: `pro/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[wbs-creation]]
+- [[team-development]]
+- [[proposal-red-team-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (trigger fired, owner named, A-count per row, evidence presence, staleness) to run / suppress / repair-A / refresh. Every leaf references a rule from `01-core-rules.xml`.

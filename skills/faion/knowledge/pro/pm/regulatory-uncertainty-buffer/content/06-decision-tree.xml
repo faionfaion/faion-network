@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Regulatory Uncertainty Buffer Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Tree mapping jurisdiction + signal vs threshold to buffer% / pause / escalate-to-legal. Every leaf references a rule from `01-core-rules.xml`.</summary>
+
+  <decision-tree>
+    <root-question id="q-named">signal is a named, observable input?</root-question>
+
+    <branch when="signal_vague == true">
+      <conclusion ref="r1-named-inputs" verdict="reject rule; rewrite signal as observable input + named source"/>
+    </branch>
+
+    <branch when="signal_vague == false">
+      <question id="q-threshold">threshold is numeric or boolean (not 'significant')?</question>
+
+      <branch when="threshold_vague == true">
+        <conclusion ref="r2-published-thresholds" verdict="reject rule; publish numeric/boolean threshold"/>
+      </branch>
+
+      <branch when="threshold_vague == false">
+        <question id="q-evidence">recorded-call evidence (transcript / counsel memo) attached?</question>
+
+        <branch when="evidence_missing == true">
+          <conclusion ref="r4-recorded-call" verdict="reject rule; require recorded-call evidence; rule unenforceable without it"/>
+        </branch>
+
+        <branch when="evidence_missing == false">
+          <question id="q-signal-fires">signal value meets/exceeds threshold per comparator?</question>
+
+          <branch when="rule_fires == true">
+            <conclusion ref="r3-default-action" verdict="apply default_action: proceed (+buffer%) | pause | escalate_to_legal — per rule"/>
+          </branch>
+          <branch when="rule_fires == false">
+            <conclusion ref="r5-review-on-failure" verdict="no buffer; record in review_log; review on next failure"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="ai-recommender-eu-ai-act">
+    signal=Annex-III high-risk (named) → threshold=true (boolean) → counsel-memo-2026-04 attached → fires → default_action=proceed +30% buffer.
+  </example>
+</text>

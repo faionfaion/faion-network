@@ -1,35 +1,25 @@
-# Meeting Prep: [Stakeholder Name]
+<!-- purpose: Pre/post meeting brief for a single stakeholder interaction -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Date:** [Date] | **Purpose:** [Why meeting] | **Desired Outcome:** [What we want]
+# Pre/post meeting brief for a single stakeholder interaction
 
-## Pre-Meeting
+## Background
 
-**Their Perspective:**
-- Current engagement level: [Level]
-- Key concerns: [List — drawn from previous interactions]
-- Recent interactions: [Summary of last 2-3 touchpoints]
+[3-5 lines of context]
 
-**Our Objectives:**
-- Primary: [Main goal — one thing we must achieve]
-- Secondary: [One additional goal if time allows]
+## Scope
 
-**Key Messages (max 3):**
-1. [Message 1]
-2. [Message 2]
-3. [Message 3]
+### In Scope
+- [item]
 
-**Anticipated Objections:**
+### Out of Scope
+- [exclusion]
 
-| Objection | Response |
-|-----------|----------|
-| [Objection] | [Concrete answer — cite data or commitment] |
+## Deliverables
 
-**What We Need From Them:**
-- [Single specific ask]
-
-## Post-Meeting
-
-**Outcome:** [What happened — be specific]
-**Engagement Change:** Better / Same / Worse
-**Action Items:** [Follow-ups with owner and date]
-**Next Interaction:** [Date, purpose, channel]
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

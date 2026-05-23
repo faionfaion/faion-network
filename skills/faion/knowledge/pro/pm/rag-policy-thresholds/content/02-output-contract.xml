@@ -1,43 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="RAG Policy Thresholds — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="RAG Policy Thresholds Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `RAGPolicy` — numeric thresholds per signal + default action per colour + evidence + owner + refresh cadence.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rag-policy.json",
+  "type": "object",
+  "required": ["project_id", "header", "signals", "actions", "review_log"],
+  "properties": {
+    "project_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version", "trigger", "reporting_cadence_days"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"},
+        "trigger": {"enum": ["weekly_status", "fortnightly_status", "monthly_status"]},
+        "reporting_cadence_days": {"type": "integer", "minimum": 1, "maximum": 30}
+      }
+    },
+    "signals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["signal_id", "input_source", "amber_threshold", "red_threshold", "comparator", "evidence"],
+        "properties": {
+          "signal_id": {"type": "string"},
+          "input_source": {"type": "string"},
+          "amber_threshold": {"type": "number"},
+          "red_threshold": {"type": "number"},
+          "comparator": {"enum": ["gt", "lt", "gte", "lte", "eq"]},
+          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "required": ["green", "amber", "red"],
+      "properties": {
+        "green": {"type": "string"},
+        "amber": {"type": "string", "minLength": 10},
+        "red": {"type": "string", "minLength": 10}
+      }
+    },
+    "review_log": {"type": "array", "items": {"type": "object", "required": ["reviewed_at"]}}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
+      <item>`signals[*].amber_threshold` or `red_threshold` non-numeric ("significant", "material") — violates `r2-bounded-output`.</item>
+      <item>`actions.red` empty or generic "discuss" — violates `r4-named-owner`.</item>
+      <item>`header.last_reviewed` &gt; 90 days — violates `r5-iteration-loop`.</item>
+      <item>`signals[*].evidence` empty — violates `r3-evidence-anchored`.</item>
+      <item>`header.trigger` "when_needed" — violates `r1-explicit-trigger`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "checkout",
+  "header": {"owner": {"role": "PM", "person": "pm-handle"}, "last_reviewed": "2026-05-10", "version": "1.4", "trigger": "weekly_status", "reporting_cadence_days": 7},
+  "signals": [
+    {"signal_id": "schedule_variance_pct", "input_source": "Jira velocity report", "amber_threshold": 10, "red_threshold": 20, "comparator": "gt",
+     "evidence": ["incident-2025-Q4-acme-overrun", "policy://pmo/schedule-tolerance"]},
+    {"signal_id": "defect_escape_rate", "input_source": "Sentry weekly export", "amber_threshold": 0.05, "red_threshold": 0.10, "comparator": "gt",
+     "evidence": ["postmortem-2026-Q1"]}
+  ],
+  "actions": {"green": "continue normal cadence", "amber": "PM scheduled mid-week health-check; surface in next sync", "red": "fire distressed-project-rescue playbook; sponsor notified within 4h"},
+  "review_log": [{"reviewed_at": "2026-05-10"}]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "x",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0", "trigger": "when_needed", "reporting_cadence_days": 7},
+  "signals": [{"signal_id": "schedule", "input_source": "guess", "amber_threshold": "significant", "red_threshold": "material", "comparator": "gt", "evidence": []}],
+  "actions": {"green": "", "amber": "discuss", "red": "..."},
+  "review_log": []
+}
+]]></code>
+    <note>Non-numeric thresholds; no evidence; vague trigger; empty owner; actions too short.</note>
+  </example>
+
+  <reference path="scripts/validate-rag-policy-thresholds.py">Validator script</reference>
 </text>

@@ -1,36 +1,25 @@
-# Stakeholder Profile: [Name / Group]
+<!-- purpose: Individual stakeholder profile with interests, concerns, and engagement history -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**ID:** S-[NN]
-**Role:** [Position]
-**Department:** [Department]
-**Quadrant:** [Manage Closely / Keep Satisfied / Keep Informed / Monitor]
+# Individual stakeholder profile with interests, concerns, and engagement history
 
-## Interests (concrete)
+## Background
 
-- [Specific interest — e.g. "< 50ms p95 latency at launch", not "wants success"]
-- [Second interest]
+[3-5 lines of context]
 
-## Concerns
+## Scope
 
-- [Potential worry about the project]
-- [Risk to their team or OKRs]
+### In Scope
+- [item]
 
-## Attitude
+### Out of Scope
+- [exclusion]
 
-**Classification:** [Supportive / Neutral / Resistant / Unknown]
-**Evidence:** "[Direct quote or observation from conversation on [date]]"
+## Deliverables
 
-## Communication Plan
-
-| Attribute | Value |
-|-----------|-------|
-| Frequency | [Weekly / Bi-weekly / Monthly] |
-| Channel | [Meeting / Email / Slack] |
-| Format | [1:1 / Status report / Dashboard link] |
-| Content | [What to include — avoid anything that surprises them] |
-
-## Engagement History
-
-| Date | Interaction | Outcome | Next Action |
-|------|-------------|---------|-------------|
-| [Date] | [Meeting/Email topic] | [Decision/sentiment] | [Follow-up] |
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

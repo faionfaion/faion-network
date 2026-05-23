@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Vendor Margin Defense Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five-step Friday end-of-week procedure: scan → classify → quantify → alert → draft. Each step gates the next.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scan-time-log">
+      <input>Last 7 days of time-log (Harvest/Toggl export) + Slack/email thread + SOW</input>
+      <action>Run `time-log-pattern-scan`. For each of the 6 patterns identify candidate entries. Exclude rows tagged `SALES_INVESTMENT`.</action>
+      <output>Candidate bleed list per pattern</output>
+    </step>
+
+    <step n="2" name="classify-patterns">
+      <input>Candidate bleed list</input>
+      <action>Run `pattern-classification`. Reclassify gold_plating items in {accessibility, security, performance} as `value_add` (not bleed). Reclassify rework with `QA_ITERATION` tag as normal. Confirm ai_rework_loop only when same task billed &gt;= 3 times.</action>
+      <output>Confirmed bleed list with `pattern_id` per item</output>
+    </step>
+
+    <step n="3" name="quantify-bleed">
+      <input>Confirmed bleeds + project margin baseline</input>
+      <action>Run `bleed-quantification`. For each bleed compute `hours_or_dollars` and `severity_pct_of_margin`. Sum to `cumulative_bleed_pct`.</action>
+      <output>Quantified `bleeds` array + cumulative</output>
+    </step>
+
+    <step n="4" name="alert-decision">
+      <input>Quantified bleeds + cumulative</input>
+      <action>If any bleed &gt; 5% OR cumulative &gt; 10% OR realised margin &lt; 0, emit alert with `due_by = trigger + 48 business hours`.</action>
+      <output>`alerts_triggered` array</output>
+      <decision-gate>If no alerts, skip to step 5 with `comms_drafted: false`.</decision-gate>
+    </step>
+
+    <step n="5" name="draft-comms">
+      <input>Alerts + client communication style guide</input>
+      <action>Run `client-message-draft`. Concrete numbers in body, diplomatic in salutation. Soften vocabulary tokens {minor, slight, just, small} are forbidden when bleed &gt; 5%.</action>
+      <output>`recommended_conversation` strings + `comms_drafted: true`</output>
+      <decision-gate>Human reviews each drafted message before sending. Auto-send is forbidden.</decision-gate>
+    </step>
+
+  </section>
+</text>

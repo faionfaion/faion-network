@@ -1,52 +1,25 @@
-# Requirements Document: [Project Name]
+<!-- purpose: Requirements document (business, stakeholder, functional, non-functional) -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** 1.0
-**Date:** [Date]
-**Author:** [Name]
-**Status:** Draft / Under Review / Approved
+# Requirements document (business, stakeholder, functional, non-functional)
 
-## 1. Business Requirements
+## Background
 
-| ID | Requirement | Priority | Source |
-|----|-------------|----------|--------|
-| BR-01 | [Requirement statement] | Must/Should/Could | [Stakeholder] |
+[3-5 lines of context]
 
-## 2. Stakeholder Requirements
+## Scope
 
-| ID | Stakeholder | Requirement | Priority |
-|----|-------------|-------------|----------|
-| SR-01 | [Stakeholder] | [Need] | Must/Should/Could |
+### In Scope
+- [item]
 
-## 3. Functional Requirements
+### Out of Scope
+- [exclusion]
 
-| ID | Feature | Description | Acceptance Criteria |
-|----|---------|-------------|---------------------|
-| FR-01 | [Feature name] | [What the system does] | [Verifiable, testable condition] |
+## Deliverables
 
-## 4. Non-Functional Requirements
-
-| ID | Category | Requirement | Measure |
-|----|----------|-------------|---------|
-| NFR-01 | Performance | [Requirement] | [Metric and threshold] |
-| NFR-02 | Security | [Requirement] | [Metric and threshold] |
-| NFR-03 | Usability | [Requirement] | [Metric and threshold] |
-
-## 5. Constraints
-
-- [Budget, timeline, technology, regulatory constraints]
-
-## 6. Assumptions
-
-- [Conditions assumed true; if assumption fails, re-scope]
-
-## 7. Dependencies
-
-- [External systems, teams, or deliverables this project depends on]
-
-## Approval
-
-| Role | Name | Date | Signature |
-|------|------|------|-----------|
-| Project Sponsor | | | |
-| Project Manager | | | |
-| Lead Stakeholder | | | |
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

@@ -1,29 +1,25 @@
-# Stakeholder Engagement Plan: [Project Name]
+<!-- purpose: Full engagement plan: assessment matrix + per-stakeholder strategy + activity table -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** [X.X] | **Date:** [Date] | **Owner:** [PM Name]
+# Full engagement plan: assessment matrix + per-stakeholder strategy + activity table
 
-## Engagement Assessment Matrix
+## Background
 
-| Stakeholder | Power | Interest | Current | Desired | Gap | Quadrant |
-|-------------|-------|----------|---------|---------|-----|----------|
-| [Name] | H/M/L | H/M/L | U/R/N/S/L | U/R/N/S/L | +/- | Manage-Closely/etc |
+[3-5 lines of context]
 
-Legend: U=Unaware, R=Resistant, N=Neutral, S=Supportive, L=Leading
+## Scope
 
-## Per-Stakeholder Strategies
+### In Scope
+- [item]
 
-### [Stakeholder Name]
+### Out of Scope
+- [exclusion]
 
-**Current:** [Level] | **Desired:** [Level] | **Key Concerns:** [What worries them]
-**Motivations:** [What they want from this project]
+## Deliverables
 
-**Strategy:** [One-line approach — address concerns / demonstrate benefit / empower]
-
-| Activity | Frequency | Owner | Evidence of Success |
-|----------|-----------|-------|---------------------|
-| [Activity] | [Freq] | [Name] | [Observable signal] |
-
----
-
-### [Next Stakeholder]
-[Same structure]
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

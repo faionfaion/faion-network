@@ -1,44 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Proposal Red Team Checklist — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A pause-point structured checklist (5–9 items per pause-point), each item with named executor and completion artefact, owned and quarterly-reviewed.</summary>
+<text id="02-output-contract" title="Proposal Red Team Checklist Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for a `RedTeamChecklist`. Forbidden patterns + valid/invalid examples enforce the five core rules.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>header.owner</item>
-      <item>header.mode (READ-DO or DO-CONFIRM per pause-point)</item>
-      <item>header.last_reviewed (≤ 90 days)</item>
-      <item>item.executor (role)</item>
-      <item>item.artefact (link / screenshot / sign-off id)</item>
-      <item>item.killer_anchor (incident_id / policy / postmortem) for every item</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/proposal-red-team-checklist.json",
+  "type": "object",
+  "required": ["proposal_id", "header", "pause_points"],
+  "properties": {
+    "proposal_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "mode", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "mode": {"enum": ["READ-DO", "DO-CONFIRM"]},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "pause_points": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "items"],
+        "properties": {
+          "name": {"type": "string"},
+          "items": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 9,
+            "items": {
+              "type": "object",
+              "required": ["item_id", "text", "executor", "artefact", "killer_anchor"],
+              "properties": {
+                "item_id": {"type": "string"},
+                "text": {"type": "string", "minLength": 10},
+                "executor": {"type": "string"},
+                "artefact": {"type": "string"},
+                "killer_anchor": {"type": "string", "minLength": 5}
+              }
+            }
+          }
+        }
+      }
+    },
+    "review_log": {
+      "type": "array",
+      "items": {"type": "object", "required": ["reviewed_at", "removed_items"]}
+    }
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>items without a killer-anchor</description>
-      <reason>Decorative items rot the checklist.</reason>
-    </antipattern>
-    <antipattern>
-      <description>pause-point &gt; 9 items</description>
-      <reason>Working memory cap exceeded; items get skipped.</reason>
-    </antipattern>
-    <antipattern>
-      <description>anonymous items</description>
-      <reason>Owner-less items become &apos;somebody else&apos;s job&apos;.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing or stale last_reviewed</description>
-      <reason>Drift from operating reality.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Mode (READ-DO / DO-CONFIRM) named at header.</item>
-      <item>Each pause-point sized 5–9 items.</item>
-      <item>Every item ties to an executor + artefact + killer-anchor.</item>
-      <item>Owner + last_reviewed populated and current.</item>
-      <item>Quarterly review scheduled.</item>
+      <item>Any `pause_point.items` length &lt; 5 or &gt; 9 — violates `r2-bounded-length`.</item>
+      <item>Any `item.killer_anchor` missing or matching generic text — violates `r3-killer-items-only`.</item>
+      <item>Any `item.executor` empty OR `item.artefact` empty — violates `r4-named-execution`.</item>
+      <item>`header.last_reviewed` older than 90 days — violates `r5-review-cadence`.</item>
+      <item>`header.owner.person` empty / "team" / "channel" — violates `fm-02 ownership ambiguity`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "proposal_id": "ACME-2026-Q2-001",
+  "header": {
+    "owner": {"role": "delivery-manager", "person": "dm-handle"},
+    "mode": "DO-CONFIRM",
+    "last_reviewed": "2026-04-10",
+    "version": "2.3"
+  },
+  "pause_points": [
+    {"name": "Scope & Assumptions",
+     "items": [
+       {"item_id": "S1", "text": "Out-of-scope list explicit and acknowledged", "executor": "BA", "artefact": "link://gdoc/oos-list", "killer_anchor": "incident-2025-Q3-acme-scope-blowout"},
+       {"item_id": "S2", "text": "Estimation buffers split by work-type per Flow Framework", "executor": "architect", "artefact": "link://wbs/v2", "killer_anchor": "postmortem-2025-12-defect-flood"},
+       {"item_id": "S3", "text": "Risk register attached", "executor": "PM", "artefact": "link://risks", "killer_anchor": "policy-pmo-risk-required"},
+       {"item_id": "S4", "text": "Change-control clause referenced in SOW", "executor": "PM", "artefact": "link://sow#change-control", "killer_anchor": "incident-2025-Q4-no-cr"},
+       {"item_id": "S5", "text": "Acceptance criteria observable + testable per leaf", "executor": "BA", "artefact": "link://wbs-dict", "killer_anchor": "postmortem-2026-Q1-sign-off-dispute"}
+     ]}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "proposal_id": "ACME-2026-Q2-001",
+  "header": {"owner": {"role": "team", "person": ""}, "mode": "FREESTYLE", "last_reviewed": "2025-08-01", "version": "1.0"},
+  "pause_points": [{"name": "Scope", "items": [{"item_id": "S1", "text": "Looks good", "executor": "", "artefact": "", "killer_anchor": ""}]}]
+}
+]]></code>
+    <note>owner.person empty; mode invalid; last_reviewed stale; single-item pause-point; missing executor/artefact/killer_anchor; text too short.</note>
+  </example>
+
+  <reference path="scripts/validate-proposal-red-team-checklist.py">Validator script</reference>
 </text>

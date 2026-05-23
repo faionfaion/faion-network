@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="value-stream-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Value Stream Management Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema (draft-07) for the `ValueStreamReport` produced by VSM. Forbidden patterns + valid/invalid examples enforce the six core rules.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/value-stream-report.json",
+  "type": "object",
+  "required": ["stream_id", "window", "customer_anchor", "flow_metrics_by_type", "dora", "constraint", "experiments"],
+  "properties": {
+    "stream_id": {"type": "string"},
+    "window": {"type": "object", "required": ["start", "end", "days"], "properties": {"start": {"type": "string", "format": "date"}, "end": {"type": "string", "format": "date"}, "days": {"type": "integer", "minimum": 30}}},
+    "customer_anchor": {"type": "object", "required": ["start_event", "end_event"], "properties": {"start_event": {"type": "string"}, "end_event": {"type": "string"}}},
+    "flow_metrics_by_type": {
+      "type": "object",
+      "required": ["feature", "defect", "risk", "debt"],
+      "additionalProperties": false,
+      "properties": {
+        "feature": {"$ref": "#/definitions/flow_block"},
+        "defect": {"$ref": "#/definitions/flow_block"},
+        "risk": {"$ref": "#/definitions/flow_block"},
+        "debt": {"$ref": "#/definitions/flow_block"}
+      }
+    },
+    "dora": {
+      "type": "object",
+      "required": ["deployment_frequency", "change_lead_time_minutes", "change_failure_rate", "mttr_minutes", "trend_window_quarters"],
+      "properties": {
+        "deployment_frequency": {"type": "object", "required": ["human_prs", "bot_prs"], "properties": {"human_prs": {"type": "integer"}, "bot_prs": {"type": "integer"}}},
+        "change_lead_time_minutes": {"type": "number", "minimum": 0},
+        "change_failure_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "mttr_minutes": {"type": "number", "minimum": 0},
+        "trend_window_quarters": {"type": "integer", "minimum": 2},
+        "tier_label": {"enum": ["low", "medium", "high", "elite"]},
+        "tier_label_delta_vs_prior": {"type": "string"}
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "required": ["stage", "evidence", "samples_per_type"],
+      "properties": {
+        "stage": {"type": "string"},
+        "evidence": {"type": "string", "minLength": 20},
+        "samples_per_type": {"type": "object", "required": ["feature", "defect", "risk", "debt"]}
+      }
+    },
+    "experiments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {"type": "object", "required": ["name", "expected_lift", "cost", "rank"], "properties": {"name": {"type": "string"}, "expected_lift": {"type": "string"}, "cost": {"type": "string"}, "rank": {"type": "integer", "minimum": 1, "maximum": 3}}}
+    },
+    "insufficient_data": {"type": "boolean"}
+  },
+  "definitions": {
+    "flow_block": {
+      "type": "object",
+      "required": ["lead_time_days", "cycle_time_days", "throughput_per_week", "wip", "complete_and_accurate_pct", "sample_size"],
+      "properties": {
+        "lead_time_days": {"type": "number", "minimum": 0},
+        "cycle_time_days": {"type": "number", "minimum": 0},
+        "throughput_per_week": {"type": "number", "minimum": 0},
+        "wip": {"type": "integer", "minimum": 0},
+        "complete_and_accurate_pct": {"type": "number", "minimum": 0, "maximum": 1},
+        "sample_size": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`customer_anchor.start_event` matching "ticket created" or "issue opened" without an upstream user-request step — violates `customer-anchored-boundary`.</item>
+      <item>`flow_metrics_by_type` missing any of feature/defect/risk/debt — violates `work-type-split`.</item>
+      <item>`dora.tier_label` populated while `dora.trend_window_quarters &lt; 2` — violates `no-elite-label-without-trend`.</item>
+      <item>`constraint.stage` non-empty while any `flow_metrics_by_type.*.sample_size &lt; 50` — violates `fifty-item-minimum-before-constraint`.</item>
+      <item>`dora.deployment_frequency` reported as a single integer instead of `{human_prs, bot_prs}` — violates `ai-pr-bot-split`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "stream_id": "checkout",
+  "window": {"start": "2026-02-22", "end": "2026-05-23", "days": 90},
+  "customer_anchor": {"start_event": "support_ticket_opened", "end_event": "feature_visible_in_prod"},
+  "flow_metrics_by_type": {
+    "feature": {"lead_time_days": 28, "cycle_time_days": 4, "throughput_per_week": 6, "wip": 12, "complete_and_accurate_pct": 0.82, "sample_size": 62},
+    "defect": {"lead_time_days": 9, "cycle_time_days": 2, "throughput_per_week": 14, "wip": 6, "complete_and_accurate_pct": 0.91, "sample_size": 110},
+    "risk":    {"lead_time_days": 18, "cycle_time_days": 3, "throughput_per_week": 2, "wip": 4, "complete_and_accurate_pct": 0.95, "sample_size": 55},
+    "debt":    {"lead_time_days": 22, "cycle_time_days": 5, "throughput_per_week": 3, "wip": 8, "complete_and_accurate_pct": 0.85, "sample_size": 58}
+  },
+  "dora": {"deployment_frequency": {"human_prs": 220, "bot_prs": 90}, "change_lead_time_minutes": 95, "change_failure_rate": 0.07, "mttr_minutes": 38, "trend_window_quarters": 3, "tier_label": "high", "tier_label_delta_vs_prior": "+1 vs prior quarter"},
+  "constraint": {"stage": "design-review", "evidence": "design-review WIP=10 with cycle_time 6.2d dominates; feature lead time 28d vs cycle 4d implies queue upstream", "samples_per_type": {"feature": 62, "defect": 110, "risk": 55, "debt": 58}},
+  "experiments": [
+    {"name": "WIP cap on design-review = 3", "expected_lift": "feature LT -25%", "cost": "1 designer day/wk facilitation", "rank": 1},
+    {"name": "Async-first review with same-day SLA", "expected_lift": "feature LT -15%", "cost": "0", "rank": 2},
+    {"name": "Add designer FTE", "expected_lift": "throughput +30%", "cost": "$140k/yr", "rank": 3}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "stream_id": "checkout",
+  "window": {"start": "2026-04-22", "end": "2026-05-23", "days": 31},
+  "customer_anchor": {"start_event": "ticket created", "end_event": "merged"},
+  "flow_metrics_by_type": {
+    "feature": {"lead_time_days": 12, "cycle_time_days": 4, "throughput_per_week": 5, "wip": 10, "complete_and_accurate_pct": 0.7, "sample_size": 18}
+  },
+  "dora": {"deployment_frequency": 47, "change_lead_time_minutes": 60, "change_failure_rate": 0.05, "mttr_minutes": 20, "trend_window_quarters": 1, "tier_label": "elite"},
+  "constraint": {"stage": "design-review", "evidence": "vibes", "samples_per_type": {"feature": 18}},
+  "experiments": []
+}
+]]></code>
+    <note>Customer anchor uses "ticket created/merged"; missing 3 of 4 work types; bot/human split missing in DORA; elite label without 2-quarter trend; sample size 18 below 50 minimum; no experiments listed.</note>
+  </example>
+
+  <reference path="scripts/validate-value-stream-management.py">Validator script</reference>
 </text>

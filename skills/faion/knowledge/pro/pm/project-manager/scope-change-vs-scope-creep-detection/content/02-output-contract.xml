@@ -1,42 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Scope Detection — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Schemas for the per-ticket triage record and the weekly dashboard. Both are consumed by the PM, the change-control board, and the engagement-close auditor.</summary>
+<text id="02-output-contract" title="Scope Change vs Scope Creep Detection Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. The validator script enforces the schema.</summary>
 
-  <output-contract>
-    <required>
-      <field name="triage_record" required_keys="ticket_id,ticket_url,baseline_version,classifier_verdict,confidence,citations,reasoning,recommended_route,human_override,timestamp"/>
-      <field name="classifier_verdict" enum="in_scope,legitimate_change,creep,ambiguous"/>
-      <field name="citations" type="list" min_entries="1"
-             item_required_keys="baseline_section,quote,relation_to_ticket"/>
-      <field name="human_override" required_keys="overridden,reason,actor,timestamp"
-             default_overridden="false"/>
-      <field name="recommended_route" enum="accept,change_control,pushback,pm_review"/>
-      <field name="weekly_dashboard" required_keys="window,counts_by_verdict,top_requesters,override_rate_per_verdict,baseline_version"/>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/scope-change-vs-scope-creep-detection.json",
+  "title": "Scope Change vs Scope Creep Detection",
+  "type": "object",
+  "required": [
+    "__faion_header__",
+    "config_path",
+    "entries"
+  ],
+  "properties": {
+    "__faion_header__": {
+      "type": "object",
+      "required": [
+        "methodology",
+        "version",
+        "produces",
+        "rules_satisfied"
+      ],
+      "properties": {
+        "methodology": {
+          "const": "scope-change-vs-scope-creep-detection"
+        },
+        "version": {
+          "const": "1.1.0"
+        },
+        "produces": {
+          "const": "config"
+        },
+        "rules_satisfied": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "signed-baseline-as-ground-truth",
+              "four-outcome-routing",
+              "evidence-citation-required",
+              "human-override-with-log",
+              "immutable-audit-trail"
+            ]
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "config_path": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">classifier_verdict not one of the four enum values</pattern>
-      <pattern id="f2">citations empty</pattern>
-      <pattern id="f3">confidence omitted OR not in [0, 1]</pattern>
-      <pattern id="f4">triage_record committed without baseline_version recorded</pattern>
-      <pattern id="f5">override_rate_per_verdict &gt; 0.20 for any verdict over 2 consecutive weeks without rule recalibration</pattern>
-      <pattern id="f6">pushback message sent for a verdict where confidence &lt; 0.7 without human override sign-off</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Increase confidence-floor for auto-routing pushback (e.g. require ≥0.85 for unattended pushback).</transformation>
-      <transformation>Promote `ambiguous` to `pm_review` after 24h with no PM action; do not silently default to a verdict.</transformation>
-      <transformation>Add per-requester routing rules (e.g. always pm_review for the client sponsor) without changing the verdict logic.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every triage record has citations referring to the current baseline version</item>
-      <item>Verdict is one of the four enum values</item>
-      <item>Human override workflow is reachable from the ticket UI</item>
-      <item>Weekly dashboard shows override rate per verdict; alerts when &gt;20%</item>
-      <item>Audit log retention ≥ engagement duration + 12 months</item>
+      <item>Missing __faion_header__ block — every artefact MUST carry methodology, version, produces, rules_satisfied.</item>
+      <item>rules_satisfied containing IDs outside the scope-change-vs-scope-creep-detection rule set.</item>
+      <item>Empty top-level body (no sections / data / entries / items / criteria) — the artefact must carry payload, not metadata only.</item>
+      <item>Free-form prose substituted for the typed sub-fields the schema requires.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "__faion_header__": {
+    "methodology": "scope-change-vs-scope-creep-detection",
+    "version": "1.1.0",
+    "produces": "config",
+    "rules_satisfied": [
+      "signed-baseline-as-ground-truth",
+      "four-outcome-routing",
+      "evidence-citation-required"
+    ]
+  },
+  "config_path": "config/scope-change-vs-scope-creep-detection.yaml",
+  "entries": [
+    {
+      "key": "k1",
+      "value": "v1"
+    }
+  ]
+}
+]]></code>
+    <note>Header carries methodology + version + produces + rules_satisfied; body matches the per-produces shape.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_path": "docs/scope-change-vs-scope-creep-detection.md"
+}
+]]></code>
+    <note>Header missing → validator rejects; rules_satisfied not declared → no audit trail.</note>
+  </example>
+
+  <reference path="scripts/validate-scope-change-vs-scope-creep-detection.py">Validator script</reference>
 </text>

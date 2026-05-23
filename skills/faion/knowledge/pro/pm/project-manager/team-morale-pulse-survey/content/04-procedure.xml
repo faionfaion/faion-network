@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Team Morale Pulse Survey Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five-step weekly procedure: launch → collect → aggregate → alert → action. Each step gates the next via observable signals.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="launch">
+      <input>4-question template (verbatim from templates/pulse-survey.md), team channel</input>
+      <action>Post survey link with the no-retaliation statement. Note team_size + sprint_id + week_iso.</action>
+      <output>Posted survey + bookkeeping row</output>
+      <decision-gate>If PM cannot guarantee 48h action SLA for the week, do NOT launch (pause per r4).</decision-gate>
+    </step>
+
+    <step n="2" name="collect">
+      <input>Survey responses over 5 business days</input>
+      <action>Tally responses_received; compute response_rate. Stop collecting at end of business day Wednesday so Thursday can aggregate.</action>
+      <output>responses_received, response_rate, raw responses (PM-only)</output>
+    </step>
+
+    <step n="3" name="aggregate">
+      <input>Raw responses</input>
+      <action>Run `scripts/aggregate-pulse.py` (or equivalent). Compute eNPS as `promoter_pct - detractor_pct`. Compute mean + median for workload/autonomy/clarity. Set `anonymity_threshold_met = (responses_received &gt;= 3 AND response_rate &gt;= 0.6)`.</action>
+      <output>Partial `MoralePulse` with scores</output>
+      <decision-gate>If `anonymity_threshold_met == false`: suppress per-axis medians, publish only response counts.</decision-gate>
+    </step>
+
+    <step n="4" name="alert">
+      <input>Partial `MoralePulse` + prior sprint scores</input>
+      <action>Evaluate alert rules: (a) eNPS_drop &gt; 20 vs prior, (b) any axis median &lt; 6, (c) response_rate &lt; 0.5. For each trigger emit an alert with `due_by = trigger + 48 business hours` and `responsible_pm` filled.</action>
+      <output>Full `MoralePulse` with `alerts_triggered`</output>
+    </step>
+
+    <step n="5" name="action">
+      <input>Alerts list</input>
+      <action>PM books 1:1s with every team member before `due_by`. Output a follow-up note (PM-private) within 5 days. If 1:1s cannot happen, pause survey per r4.</action>
+      <output>1:1 completion log + decision: continue weekly / pause / change cadence</output>
+      <decision-gate>If pause &gt; 1 week, run `scripts/validate-team-morale-pulse-survey.py` against the last `MoralePulse` and document why before resumption.</decision-gate>
+    </step>
+
+  </section>
+</text>

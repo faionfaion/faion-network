@@ -1,24 +1,11 @@
-# PMBoK 8 Principle Audit — [Artefact Name]
+<!-- purpose: Six-row audit table: principle / evidence / pass-fail / fix -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Date:** [Date]
-**Auditor:** [Name]
-**PMBoK Edition:** 8 (6 principles)
+# Six-row audit table: principle / evidence / pass-fail / fix
 
-| Principle | Pass | Evidence (quote from artefact) | Fix if Failed |
-|-----------|------|-------------------------------|---------------|
-| Adopt Holistic View | [ ] | "[quote]" | [imperative fix action] |
-| Focus on Value | [ ] | "[quote]" | [imperative fix action] |
-| Embed Quality | [ ] | "[quote]" | [imperative fix action] |
-| Lead Accountably | [ ] | "[quote]" | [imperative fix action] |
-| Integrate Sustainability | [ ] | "[numeric proxy or quote]" | [imperative fix action] |
-| Build Empowered Teams | [ ] | "[quote]" | [imperative fix action] |
-
-## Gate Decision
-- All 6 pass → proceed
-- Any fail → [fix or escalate] before proceeding
-
-<!-- Rules:
-- Pass requires a direct quote from the artefact, not "the artefact implies..."
-- Integrate Sustainability must cite a numeric proxy (CO2 estimate, WCAG level, etc.)
-- Failed principles block the gate — do not mark "monitor" or "partial"
--->
+| ID | Item | Status | Evidence | Owner |
+|----|------|--------|----------|-------|
+| C1 | [item] | pass / fail / na | [quote + link] | [role] |

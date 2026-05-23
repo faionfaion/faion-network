@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Team Morale Pulse Survey Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Tree mapping observed signals (team_size, responses_received, response_rate, axis medians, prior-week scores) to suppress / report / alert / pause.</summary>
+
+  <decision-tree>
+    <root-question id="q-team-size">team_size &gt;= 3?</root-question>
+
+    <branch when="team_size &lt; 3">
+      <conclusion ref="r2-anonymity-floor" verdict="skip-this-methodology — anonymity impossible at this team size; use direct 1:1s"/>
+    </branch>
+
+    <branch when="team_size &gt;= 3">
+      <question id="q-anonymity">responses_received &gt;= 3 AND response_rate &gt;= 0.6?</question>
+
+      <branch when="anonymity_met == false">
+        <conclusion ref="r2-anonymity-floor" verdict="suppress per-axis medians; publish only response counts and 'pulse paused' note"/>
+      </branch>
+
+      <branch when="anonymity_met == true">
+        <question id="q-pm-action-ready">PM can complete 1:1s within 48 business hours if alerts fire?</question>
+
+        <branch when="pm_action_ready == false">
+          <conclusion ref="r4-action-sla" verdict="pause survey this week; running pulse without action capability destroys trust"/>
+        </branch>
+
+        <branch when="pm_action_ready == true">
+          <question id="q-thresholds">eNPS_drop &gt; 20 OR any axis median &lt; 6 OR response_rate &lt; 0.5?</question>
+
+          <branch when="threshold_breached == true">
+            <conclusion ref="r3-alert-thresholds" verdict="emit alert(s) with due_by = trigger + 48 business hours; book 1:1s before due_by"/>
+          </branch>
+          <branch when="threshold_breached == false">
+            <conclusion ref="r1-four-question-cap" verdict="report-only; continue weekly cadence; do NOT add questions for next week"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-squad-W21">
+    team_size=6 → responses=5 → rate=0.83 → anonymity_met=true → PM ready → eNPS dropped 28 (&gt; 20) → emit alert; workload median 3 (&lt; 6) → emit alert.
+  </example>
+</text>

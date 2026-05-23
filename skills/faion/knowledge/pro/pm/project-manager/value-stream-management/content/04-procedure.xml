@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Value Stream Management Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Five-step procedure: instrument → map → measure DORA → identify constraint → experiment. Each step gates the next via observable invariants.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="instrument">
+      <input>Jira/Linear, GitHub/GitLab, deploy log, PagerDuty, Zendesk; tool ID-link map</input>
+      <action>Wire connectors. Normalize timestamps to UTC. Audit a known-good item end-to-end and verify the chain.</action>
+      <output>Live event stream + reconciliation cron</output>
+      <decision-gate>If coverage &lt; 3 sources OR &lt; 90 days timestamp data, STOP — instrument first.</decision-gate>
+    </step>
+
+    <step n="2" name="map">
+      <input>One representative work item per work type</input>
+      <action>Trace each item end-to-end across the wire. Identify stages. Validate `customer_anchor` is at user-request and value-received endpoints, not internal.</action>
+      <output>Stream map: stages + handoffs + work-type taxonomy</output>
+      <decision-gate>If `customer_anchor` cannot be anchored at customer-visible events, reject the map.</decision-gate>
+    </step>
+
+    <step n="3" name="measure-dora">
+      <input>Last 90 days of git + deploy + incident logs</input>
+      <action>Run `dora-collector`. Split DF into `human_prs` + `bot_prs`. Compute CLT, CFR, MTTR. Reconcile webhook stream against daily full-pull.</action>
+      <output>`dora` block; tier_label only if trend_window_quarters &gt;= 2</output>
+    </step>
+
+    <step n="4" name="identify-constraint">
+      <input>Stream map + 90-day flow data per work type</input>
+      <action>Run `bottleneck-analyzer`. Apply Little's Law per stage; identify highest `cycle_time * WIP`. Require sample_size &gt;= 50 per work type.</action>
+      <output>`constraint` block OR `insufficient_data: true`</output>
+      <decision-gate>If any work type has sample_size &lt; 50, emit `insufficient_data: true` and stop.</decision-gate>
+    </step>
+
+    <step n="5" name="experiment">
+      <input>Constraint + flow data</input>
+      <action>Generate 1-3 ranked experiments with expected_lift + cost. Run highest-ranked experiment on the constraint; track before/after distribution over 2 sprints minimum.</action>
+      <output>`experiments` array + tracker entry</output>
+      <decision-gate>After 2 sprints, re-run step 4 to confirm constraint moved; if not, re-rank experiments.</decision-gate>
+    </step>
+
+  </section>
+</text>

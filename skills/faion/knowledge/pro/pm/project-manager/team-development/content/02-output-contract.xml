@@ -1,22 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="team-development Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Team Development Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the `TeamDevelopmentReport` produced by this methodology. Validator enforces required keys, per-field constraints, and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/team-development-report.json",
+  "type": "object",
+  "required": ["team_id", "as_of", "tuckman_stage", "tuckman_confidence", "tuckman_evidence", "charter", "skills_gap_plan", "themes"],
+  "properties": {
+    "team_id": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "format": "date"},
+    "tuckman_stage": {"enum": ["Forming", "Storming", "Norming", "Performing", "Adjourning"]},
+    "tuckman_confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "tuckman_evidence": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+    "charter": {
+      "type": "object",
+      "required": ["co_authored", "mission", "working_agreements"],
+      "properties": {
+        "co_authored": {"type": "boolean"},
+        "mission": {"type": "string", "minLength": 10},
+        "working_agreements": {"type": "array", "minItems": 3, "items": {"type": "string"}}
+      }
+    },
+    "skills_gap_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill", "gap_severity", "gap_options_evaluated", "chosen_option", "owner_role", "deadline_sprint"],
+        "properties": {
+          "skill": {"type": "string"},
+          "gap_severity": {"enum": ["low", "medium", "high"]},
+          "gap_options_evaluated": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"enum": ["training", "pairing", "contracting", "hiring"]}},
+          "chosen_option": {"enum": ["training", "pairing", "contracting", "hiring"]},
+          "owner_role": {"type": "string", "minLength": 1},
+          "deadline_sprint": {"type": "string", "pattern": "^S[0-9]+$"}
+        }
+      }
+    },
+    "themes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["theme", "evidence_sprints", "proposed_experiment"],
+        "properties": {
+          "theme": {"type": "string"},
+          "evidence_sprints": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+          "proposed_experiment": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Any string field containing first/last names (regex `\b[A-Z][a-z]+\b\s+[A-Z][a-z]+\b` outside roles) — violates `no-individual-naming`.</item>
+      <item>`tuckman_evidence` shorter than 2 entries — violates `tuckman-confidence-score`.</item>
+      <item>`theme.evidence_sprints` shorter than 2 entries — violates `pattern-needs-two-sprints`.</item>
+      <item>`skills_gap_plan.gap_options_evaluated` missing `training` or `pairing` — violates `training-before-hire`.</item>
+      <item>`charter.co_authored: true` without a session record reference — violates `charter-co-authored`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "team_id": "checkout-squad",
+  "as_of": "2026-05-23",
+  "tuckman_stage": "Storming",
+  "tuckman_confidence": 0.72,
+  "tuckman_evidence": ["throughput dropped 28% over 2 sprints", "PR review conflict cited in 3 retros", "1:1 reports note role overlap"],
+  "charter": {"co_authored": false, "mission": "Ship checkout to <2s p95 by Q3", "working_agreements": ["PR review SLA 24h", "async-first comms", "decisions via RFC"]},
+  "skills_gap_plan": [
+    {"skill": "loadtesting", "gap_severity": "high", "gap_options_evaluated": ["training", "pairing", "contracting", "hiring"], "chosen_option": "pairing", "owner_role": "SRE lead", "deadline_sprint": "S14"}
+  ],
+  "themes": [
+    {"theme": "PR review backlog blocking merges", "evidence_sprints": ["S11", "S12", "S13"], "proposed_experiment": "Rotate review-day owner; cap WIP at 5"}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "team_id": "checkout-squad",
+  "as_of": "2026-05-23",
+  "tuckman_stage": "Performing",
+  "tuckman_confidence": 0.4,
+  "tuckman_evidence": ["vibes"],
+  "charter": {"co_authored": true, "mission": "Ship", "working_agreements": ["be good"]},
+  "skills_gap_plan": [{"skill": "loadtesting", "gap_severity": "high", "gap_options_evaluated": ["hiring"], "chosen_option": "hiring", "owner_role": "PM", "deadline_sprint": "next"}],
+  "themes": [{"theme": "Alice raised concern", "evidence_sprints": ["S13"], "proposed_experiment": "..."}]
+}
+]]></code>
+    <note>Evidence too thin; charter co_authored without proof; hiring without training/pairing evaluation; single-sprint theme; individual name "Alice"; deadline_sprint not S-pattern.</note>
+  </example>
+
+  <reference path="scripts/validate-team-development.py">Validator script</reference>
 </text>

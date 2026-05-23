@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="RAG Policy Thresholds Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Tree mapping signal values to colour + default action; gates scaffolding by trigger validity + owner + freshness.</summary>
+
+  <decision-tree>
+    <root-question id="q-trigger">header.trigger in {weekly_status, fortnightly_status, monthly_status}?</root-question>
+
+    <branch when="trigger_valid == false">
+      <conclusion ref="r1-explicit-trigger" verdict="skip-this-methodology — refuse vague trigger; named cadence only"/>
+    </branch>
+
+    <branch when="trigger_valid == true">
+      <question id="q-stale">last_reviewed within 90 days?</question>
+
+      <branch when="stale == true">
+        <conclusion ref="r5-iteration-loop" verdict="refresh: run quarterly review first; do NOT compute colours from stale thresholds"/>
+      </branch>
+
+      <branch when="stale == false">
+        <question id="q-thresholds-numeric">every signal has numeric amber + red thresholds + ≥1 evidence?</question>
+
+        <branch when="thresholds_invalid == true">
+          <conclusion ref="r2-bounded-output" verdict="repair: replace any non-numeric threshold; require evidence anchor per signal"/>
+        </branch>
+
+        <branch when="thresholds_invalid == false">
+          <question id="q-signal-state">any signal beyond red_threshold (per comparator)?</question>
+
+          <branch when="signal_red == true">
+            <conclusion ref="r4-named-owner" verdict="colour=Red; fire actions.red immediately; sponsor notified within 4h"/>
+          </branch>
+          <branch when="signal_red == false">
+            <question id="q-signal-amber">any signal beyond amber_threshold?</question>
+            <branch when="signal_amber == true">
+              <conclusion ref="r3-evidence-anchored" verdict="colour=Amber; PM-scheduled mid-week health-check; surface in next sync with evidence"/>
+            </branch>
+            <branch when="signal_amber == false">
+              <conclusion ref="r3-evidence-anchored" verdict="colour=Green; continue normal cadence; record in review log"/>
+            </branch>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-W21">
+    trigger=weekly_status → fresh → schedule_variance=22 > red_threshold=20 → Red; fire distressed-project-rescue playbook.
+  </example>
+</text>

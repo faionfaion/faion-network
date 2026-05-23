@@ -1,43 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Regulatory Uncertainty Buffer — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A decision-rule artefact: named inputs, published thresholds, a default branch, and a per-invocation log.</summary>
+<text id="02-output-contract" title="Regulatory Uncertainty Buffer Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `RegulatoryBuffer` — named inputs + numeric thresholds + default actions + recorded-call evidence + owner.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>rule.inputs (name + source per input)</item>
-      <item>rule.thresholds (numeric or boolean)</item>
-      <item>rule.default_branch (the unhappy-path action)</item>
-      <item>invocation.log (timestamp + inputs + branch + decider)</item>
-      <item>owner + version + last_reviewed</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/regulatory-uncertainty-buffer.json",
+  "type": "object",
+  "required": ["project_id", "header", "rules", "review_log"],
+  "properties": {
+    "project_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "jurisdiction", "regulation", "signal", "threshold", "default_action", "buffer_pct", "evidence"],
+        "properties": {
+          "rule_id": {"type": "string"},
+          "jurisdiction": {"type": "string"},
+          "regulation": {"type": "string"},
+          "signal": {"type": "string"},
+          "threshold": {"type": ["number", "boolean"]},
+          "default_action": {"enum": ["proceed", "pause", "escalate_to_legal"]},
+          "buffer_pct": {"type": "number", "minimum": 0, "maximum": 100},
+          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+        }
+      }
+    },
+    "review_log": {"type": "array", "items": {"type": "object", "required": ["reviewed_at"]}}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>input named &apos;judgment&apos;</description>
-      <reason>Unnamed inputs let bias dominate.</reason>
-    </antipattern>
-    <antipattern>
-      <description>thresholds without numbers</description>
-      <reason>Not reproducible.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no default branch</description>
-      <reason>Edge cases collapse the rule.</reason>
-    </antipattern>
-    <antipattern>
-      <description>invocations not logged</description>
-      <reason>Rule cannot be reviewed against outcomes.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Inputs named with source.</item>
-      <item>Thresholds carry numbers.</item>
-      <item>Default branch documented.</item>
-      <item>Each invocation logged with branch and decider.</item>
-      <item>Owner + last_reviewed populated.</item>
+      <item>`rules[*].threshold` non-numeric/non-boolean ("significant") — violates `r2-published-thresholds`.</item>
+      <item>`rules[*].evidence` empty — violates `r4-recorded-call`.</item>
+      <item>`rules[*].default_action` outside enum — violates `r3-default-action`.</item>
+      <item>`header.last_reviewed` &gt; 90 days — violates `r5-review-on-failure`.</item>
+      <item>`rules[*].signal` like "use judgment" — violates `r1-named-inputs`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "ai-recommender",
+  "header": {"owner": {"role": "delivery-manager", "person": "dm-handle"}, "last_reviewed": "2026-05-10", "version": "2.1"},
+  "rules": [
+    {"rule_id": "eu-ai-act-annex3", "jurisdiction": "EU", "regulation": "AI Act 2024", "signal": "system classified Annex III high-risk", "threshold": true, "default_action": "proceed", "buffer_pct": 30,
+     "evidence": ["counsel-memo-2026-04", "transcript://meet/legal-review-2026-04-29"]},
+    {"rule_id": "gdpr-art22", "jurisdiction": "EU", "regulation": "GDPR Art 22", "signal": "automated decisions affecting individuals", "threshold": true, "default_action": "pause", "buffer_pct": 15,
+     "evidence": ["counsel-memo-2026-03"]}
+  ],
+  "review_log": [{"reviewed_at": "2026-05-10"}]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "x",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "rules": [{"rule_id": "r1", "jurisdiction": "EU", "regulation": "AI Act", "signal": "use judgment",
+             "threshold": "significant", "default_action": "guess", "buffer_pct": 30, "evidence": []}],
+  "review_log": []
+}
+]]></code>
+    <note>signal vague; threshold non-numeric; default_action invalid; evidence empty.</note>
+  </example>
+
+  <reference path="scripts/validate-regulatory-uncertainty-buffer.py">Validator script</reference>
 </text>

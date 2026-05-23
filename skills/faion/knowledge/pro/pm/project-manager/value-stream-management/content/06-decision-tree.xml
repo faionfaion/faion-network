@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Value Stream Management Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Tree mapping observable signals (telemetry coverage, sample size, customer-anchor presence, AI-PR mix) to instrument-first / measure-only / declare-constraint / experiment.</summary>
+
+  <decision-tree>
+    <root-question id="q-telemetry">telemetry_sources_connected &gt;= 3 AND window_days &gt;= 90?</root-question>
+
+    <branch when="telemetry_ready == false">
+      <conclusion ref="customer-anchored-boundary" verdict="instrument-first; do NOT run VSM until coverage is sufficient — produces folklore otherwise"/>
+    </branch>
+
+    <branch when="telemetry_ready == true">
+      <question id="q-anchor">customer_anchor anchored at user-request AND value-received events?</question>
+
+      <branch when="customer_anchor_valid == false">
+        <conclusion ref="customer-anchored-boundary" verdict="reject the map; re-anchor before measuring — internal endpoints produce misleading reports"/>
+      </branch>
+
+      <branch when="customer_anchor_valid == true">
+        <question id="q-sample">min(sample_size per work type) &gt;= 50?</question>
+
+        <branch when="sample_ok == false">
+          <conclusion ref="fifty-item-minimum-before-constraint" verdict="emit insufficient_data: true; measure only; do NOT declare constraint"/>
+        </branch>
+
+        <branch when="sample_ok == true">
+          <question id="q-bot-share">bot_prs / total_prs &gt; 0.1?</question>
+
+          <branch when="ai_present == true">
+            <conclusion ref="ai-pr-bot-split" verdict="enforce human/bot split in DORA; reject reports without split; proceed to constraint declaration"/>
+          </branch>
+          <branch when="ai_present == false">
+            <conclusion ref="pair-dora-metrics" verdict="proceed to constraint declaration; pair DF with CFR; rank experiments with expected lift + cost"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-90d">
+    telemetry_sources=5 → window_days=90 → ready → anchor=ticket+prod → valid → samples=[62,110,55,58] >= 50 → ok → bot/human split → ai_present=true → enforce split → declare design-review constraint.
+  </example>
+</text>
