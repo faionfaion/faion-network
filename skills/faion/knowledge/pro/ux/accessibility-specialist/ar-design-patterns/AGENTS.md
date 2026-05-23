@@ -3,72 +3,96 @@ slug: ar-design-patterns
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design patterns for augmented reality experiences on iOS (ARKit/RealityKit), Android (ARCore), WebAR (8th Wall, model-viewer), and social AR (Snap Lens Studio).
-content_id: "f87d0aa0ebdaf898"
-tags: [ar, augmented-reality, xr, arkit, arcore]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Accessible AR (augmented-reality) design patterns: anchor stability, environment-aware contrast, dwell vs gaze input, audio cues, motion budgets.
+content_id: "bf7adc464ed95c66"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [ar, augmented-reality, xr, a11y, spatial]
 ---
 # AR Design Patterns
 
 ## Summary
 
-**One-sentence:** Design patterns for augmented reality experiences on iOS (ARKit/RealityKit), Android (ARCore), WebAR (8th Wall, model-viewer), and social AR (Snap Lens Studio).
+**One-sentence:** Accessible AR (augmented-reality) design patterns: anchor stability, environment-aware contrast, dwell vs gaze input, audio cues, motion budgets.
 
-**One-paragraph:** Design patterns for augmented reality experiences on iOS (ARKit/RealityKit), Android (ARCore), WebAR (8th Wall, model-viewer), and social AR (Snap Lens Studio). Covers surface and object anchoring strategies, interaction patterns (touch, gaze, voice, controller), real/virtual distinction, safety considerations, comfort and performance constraints, and accessibility requirements per W3C XAUR.
+**One-paragraph:** AR overlays graphics on the real world, so accessibility constraints differ from flat UI: anchor stability against device drift, environment-aware contrast (sun, indoor, dark), dwell + gaze input alternates for hand-tracking, spatial audio cues for blind users, and motion budgets to avoid simulator sickness. This methodology pins five canonical AR patterns and emits an AR-pattern decision record per component.
+
+**Ефективно для:**
+
+- Anchor stability spec prevents 'jittering UI' a11y reports.
+- Environment-aware contrast policy works in sun + dark.
+- Dwell + gaze alternate avoids fatigue-induced exclusion.
+- Motion-budget rule keeps simulator-sickness reports low.
 
 ## Applies If (ALL must hold)
 
-- Designing AR experiences with spatial anchoring for iOS, Android, WebAR, or social AR platforms.
-- Selecting an anchoring strategy (horizontal surface, vertical surface, image tracking, object recognition, geo).
-- Auditing AR UX for safety, occlusion quality, accessibility, and performance.
-- Building retail try-on, maintenance overlay, museum, navigation, or training AR flows.
+- Designing an AR component or HUD.
+- Mixed environments (indoor + outdoor) expected.
+- Multiple input modalities present.
 
 ## Skip If (ANY kills it)
 
-- Fully-immersive VR with occluded headset — use vr-design-patterns.
-- Mixed-reality productivity (passthrough Quest / Vision Pro) — use immersive-design-principles.
-- Pure 2D mobile UI that only overlays a camera feed without spatial anchoring — standard mobile UX applies.
-- Low-power smart glasses with no spatial tracking — different constraints (voice-first display-only).
+- Pure VR — use `vr-design-patterns`.
+- Flat 2D mobile — use standard `accessibility-first-design`.
+- Lab-only research demo with no production users.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| AR runtime | ARKit / ARCore / WebXR | platform |
+| Component brief | what the AR UI is doing | product |
+| Environment scope | indoor / outdoor / mixed | research |
+| Input modalities | hand-tracking / gaze / controller / touch | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ar-pattern-record.json` | JSON skeleton for the AR-pattern record. |
+| `templates/ar-anchor-schema.json` | Anchor metadata schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ar-design-patterns.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[vr-design-patterns]]
+- [[spatial-accessibility]]
+- [[immersive-design-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

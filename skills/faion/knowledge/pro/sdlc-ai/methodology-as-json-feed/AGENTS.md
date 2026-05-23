@@ -3,77 +3,97 @@ slug: methodology-as-json-feed
 tier: pro
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Methodology As Json Feed: codified sdlc-ai practice that turns the recurring 'p7-llm-agent-developer/Make faion a programmatic context source for an agent' decision into a repeatable, auditable artefact.
-content_id: "90c8253a9b7e7ead"
-tags: [methodology-as-json-feed, sdlc-ai, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "JSON feed contract for `faion search --json` and `faion get-content --format json` so agents can consume faion methodology content as structured tool output, not Markdown prose."
+content_id: "90727163aaca15cf"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["json-feed", "agent-context", "schema", "sdlc-ai", "pro"]
 ---
-# Methodology As Json Feed
+# Methodology as JSON Feed
 
 ## Summary
 
-**One-sentence:** Methodology As Json Feed: codified sdlc-ai practice that turns the recurring 'p7-llm-agent-developer/Make faion a programmatic context source for an agent' decision into a repeatable, auditable artefact.
+**One-sentence:** JSON feed contract for `faion search --json` and `faion get-content --format json` so agents can consume faion methodology content as structured tool output, not Markdown prose.
 
-**One-paragraph:** Methodology As Json Feed addresses the gap identified by the p7-llm-agent-developer/Make faion a programmatic context source for an agent playbook: P7 ships agents — agents read JSON, not markdown. faion has no `faion search --json` / `faion get-content --format json` contract documented as a methodology with stable schema. Without it, P7 cannot embed faion as a context source. This is the single largest commercial gap: the customer who SHOULD cite faion most cannot consume faion at all. Tier should be pro (not geek) because programmatic access is a build-time integration prerequisite, not a power-user feature. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** P7 ships agents -- agents read JSON, not Markdown. Faion had no `faion search --json` / `faion get-content --format json` contract documented as a methodology with a stable schema. Without it, P7 cannot embed faion as a context source. This methodology defines the JSON schema for both endpoints, the version-pinning rules, the pagination contract, and the citation block embedded in each item. Output is a stable JSON contract + verifier that downstream agents can rely on across faion releases.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «methodology as json feed» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p7-llm-agent-developer/Make faion a programmatic context source for an agent OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- you build an AI agent that calls faion CLI as a tool to fetch methodology content.
+- you need a parseable response format that survives faion content updates.
+- you can pin the agent's adapter to a specific JSON schema version.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- you only read faion content as Markdown for human display.
+- you embed faion content statically at build time and never call the CLI at runtime.
+- your stack already adapts faion via a different protocol (RAG ingestion of raw files).
 
 ## Prerequisites
 
-- recent context for the p7-llm-agent-developer/Make faion a programmatic context source for an agent task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Methodology as JSON Feed task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdlc-ai/sdd` | parent role skill — provides the operating context for this methodology |
+| `pro/sdlc-ai/faion-cli-agent-adapter-pattern` | adapters consume this feed. |
+| `pro/sdlc-ai/citation-contract-back-to-source` | supplies the citation block format. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/methodology-as-json-feed.json` | JSON schema for the Methodology As Json Feed output contract |
-| `templates/methodology-as-json-feed.md` | Markdown skeleton with the required fields |
+| `templates/feed-schema.json` | JSON Schema draft-07 for both endpoints with citation + pagination. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-methodology-as-json-feed.py` | Enforce Methodology As Json Feed output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-methodology-as-json-feed.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdlc-ai/sdd/`
-- upstream playbook: `p7-llm-agent-developer/Make faion a programmatic context source for an agent`
+- [[faion-cli-agent-adapter-pattern]]
+- [[citation-contract-back-to-source]]
+- [[ai-debt-detection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

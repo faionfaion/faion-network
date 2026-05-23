@@ -3,72 +3,98 @@ slug: a11y-basics
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The entry-level accessibility layer for web products: WCAG POUR principles, A/AA/AAA conformance levels, four evaluation types, five-minute quick-check protocol, and pre-commit gate criteria.
-content_id: "3f3f6cb28d4c5f72"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Entry-level accessibility layer for web products: WCAG POUR principles, conformance levels, four evaluation types, and a 5-minute pre-PR quick-check protocol.
+content_id: "bf5ad586ed00e8b6"
+complexity: light
+produces: report
+est_tokens: 4800
 tags: [accessibility, wcag, a11y, inclusion, compliance]
 ---
 # Accessibility Basics
 
 ## Summary
 
-**One-sentence:** The entry-level accessibility layer for web products: WCAG POUR principles, A/AA/AAA conformance levels, four evaluation types, five-minute quick-check protocol, and pre-commit gate criteria.
+**One-sentence:** Entry-level accessibility layer for web products: WCAG POUR principles, conformance levels, four evaluation types, and a 5-minute pre-PR quick-check protocol.
 
-**One-paragraph:** The entry-level accessibility layer for web products: WCAG POUR principles, A/AA/AAA conformance levels, four evaluation types, five-minute quick-check protocol, and pre-commit gate criteria. Automated scanners catch only ~30% of issues; manual and assistive-tech testing is required.
+**One-paragraph:** Products without an accessibility baseline exclude users with disabilities, create legal exposure (ADA, Section 508, AODA, EAA), and accumulate expensive late-stage fixes. This methodology pins the POUR framing (Perceivable / Operable / Understandable / Robust), the WCAG A / AA / AAA bands, the four evaluation types (automated ≈30%, manual ≈50%, AT, user testing), and a 5-minute pre-PR quick-check covering tab navigation, 200% zoom, alt-text on one image, label on one input, and an axe DevTools run. Output is a quick-check report validated against the schema.
+
+**Ефективно для:**
+
+- Pre-PR quick-check that takes ≤5 minutes per page.
+- Onboarding the team to a shared a11y vocabulary (POUR + A/AA/AAA).
+- Wiring axe-core into CI for the automated 30% baseline.
+- Tagging the 70% gap so QA / AT testing can be scoped.
 
 ## Applies If (ALL must hold)
 
-- Onboarding a team or codebase to accessibility for the first time
-- Pre-launch sanity sweep on a small site or feature where a full WCAG 2.2 conformance audit is overkill
-- Wiring CI to catch the obvious 30% automated tools find: missing alt, unlabelled inputs, contrast failures, heading skips
-- Educating a new agent or developer before they edit UI code
+- Onboarding a new team or codebase to accessibility for the first time.
+- Pre-launch sanity sweep on a small feature where a full WCAG 2.2 audit is overkill.
+- Wiring CI to catch the obvious ~30% issues automated tools find.
+- Educating a new agent or developer before they touch UI code.
 
 ## Skip If (ANY kills it)
 
-- Final compliance sign-off — use wcag-22-compliance and regulatory-compliance-2026
-- Real assistive-technology testing flows (NVDA/VoiceOver/TalkBack) — use testing-with-assistive-technology
-- Procurement / VPAT-ACR generation — use regulatory-compliance-2026
-- XR/spatial experiences — use vr-design-patterns, ar-design-patterns, spatial-accessibility
+- Final compliance sign-off — use `wcag-22-compliance` and `regulatory-compliance-2026`.
+- Real AT testing flows (NVDA / VoiceOver / TalkBack) — use `testing-with-assistive-technology`.
+- Procurement / VPAT-ACR generation — use `regulatory-compliance-2026`.
+- XR / spatial experiences — use `vr-design-patterns`, `ar-design-patterns`, `spatial-accessibility`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| PR diff / page URL | URL or unified diff | git / browser |
+| WCAG version | string (target = 2.2 AA) | team policy |
+| Axe DevTools or axe-core | browser ext / npm pkg | deque.com |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: pour-as-frame, pin-wcag-version-and-level, automated-only-catches-30pct, five-minute-quick-check, placeholder-is-not-a-label | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the quick-check report + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: scanner-only-audit, placeholder-as-label, aria-label-on-native, mixed-wcag-levels | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/quick-check-report.md` | Markdown skeleton for a11y quick-check report. |
+| `templates/a11y-ci.js` | axe-core CI wiring snippet. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-a11y-basics.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[wcag-22-compliance]]
+- [[a11y-testing]]
+- [[testing-with-assistive-technology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

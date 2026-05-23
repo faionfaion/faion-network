@@ -1,30 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="A11y Screen Status Tracker Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a A11y Screen Status Tracker deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="steps" type="list" min="4" schema="{id,input,owner,exit_criterion,output_location}" />
-      <field name="decision_branches" type="list" />
-      <field name="owner_of_playbook" type="string" />
-      <field name="deviation_log_reference" format="url_or_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">step without exit_criterion</pattern>
-      <pattern id="f2">playbook without named owner</pattern>
-      <pattern id="f3">decision branch without explicit signal</pattern>
-      <pattern id="f4">deviation log missing</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder steps as long as input/output graph stays acyclic.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="A11y Screen Status Tracker Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the report artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/a11y-screen-status-tracker.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "owner",
+    "scope",
+    "findings"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "object"
+    },
+    "findings": {
+      "type": "array"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "partial",
+        "fail",
+        "not-applicable"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>Every step has exit_criterion</item>
-      <item>Owner named</item>
-      <item>Branches explicit</item>
-      <item>Deviation log exists</item>
+      <pattern id="f1">verdict not in {pass, partial, fail, not-applicable}.</pattern>
+      <pattern id="f2">owner = &apos;team&apos; / &apos;we&apos; / empty.</pattern>
+      <pattern id="f3">row with verdict in {partial, fail} and no remediation_url.</pattern>
+      <pattern id="f4">composite screen row covering multiple URLs.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ast-2026-0001",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "owner": "@ruslan",
+  "scope": {
+    "product": "Faion Web",
+    "wcag_version": "2.2",
+    "level": "AA"
+  },
+  "findings": [
+    {
+      "screen": "/signup",
+      "verdict": "partial",
+      "owner": "@alice",
+      "last_tested": "2026-05-20",
+      "blocking_sc": [
+        "1.4.3"
+      ],
+      "remediation_url": "https://tracker/issues/901"
+    },
+    {
+      "screen": "/dashboard",
+      "verdict": "fail",
+      "owner": "@bob",
+      "last_tested": "2026-05-21",
+      "blocking_sc": [
+        "2.4.7"
+      ],
+      "remediation_url": "https://tracker/issues/902"
+    }
+  ],
+  "verdict": "partial"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "findings": [
+    {
+      "screen": "/signup",
+      "verdict": "in-progress",
+      "owner": "team"
+    }
+  ]
+}
+]]></code>
+    <note>verdict &apos;in-progress&apos; not in enum; owner &apos;team&apos; forbidden; missing artefact_id, version, last_reviewed, owner, scope; missing last_tested + remediation_url on failing row.</note>
+  </example>
+
+  <reference path="scripts/validate-a11y-screen-status-tracker.py">Schema validator (stdlib only).</reference>
 </text>

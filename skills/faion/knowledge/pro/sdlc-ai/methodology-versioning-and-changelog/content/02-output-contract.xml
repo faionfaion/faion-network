@@ -1,39 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Methodology Versioning And Changelog Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Methodology Versioning And Changelog output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Methodology Versioning and CHANGELOG Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the decision-record artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/methodology-versioning-and-changelog.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "slug",
+    "previous_version",
+    "bump",
+    "changelog_entry",
+    "content_id"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "previous_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "bump": {
+      "enum": [
+        "MAJOR",
+        "MINOR",
+        "PATCH"
+      ]
+    },
+    "changelog_entry": {
+      "type": "string"
+    },
+    "migration_plan_url": {
+      "type": "string"
+    },
+    "content_id": {
+      "type": "string"
+    },
+    "removed_rule_ids": {
+      "type": "array"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/methodology-versioning-and-changelog.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/methodology-versioning-and-changelog.json</item>
+      <pattern id="f1">MAJOR bump without migration_plan_url.</pattern>
+      <pattern id="f2">Removed rule id with bump != MAJOR.</pattern>
+      <pattern id="f3">Stale content_id (does not match sha1(slug+version)[:16]).</pattern>
+      <pattern id="f4">Empty changelog_entry.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ver-2026-0014",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "slug": "code-review",
+  "previous_version": "1.0.0",
+  "bump": "MINOR",
+  "changelog_entry": "Added rule no-sole-approver-agent; no schema change.",
+  "content_id": "ee8a70147c263798",
+  "removed_rule_ids": []
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "2",
+  "slug": "code-review",
+  "bump": "major",
+  "removed_rule_ids": [
+    "old-rule"
+  ]
+}
+]]></code>
+    <note>Version not semver; bump enum is upper-case; removed_rule_ids non-empty but no migration_plan_url; missing artefact_id, last_reviewed, previous_version, changelog_entry, content_id.</note>
+  </example>
+
+  <reference path="scripts/validate-methodology-versioning-and-changelog.py">Schema validator (stdlib only).</reference>
 </text>

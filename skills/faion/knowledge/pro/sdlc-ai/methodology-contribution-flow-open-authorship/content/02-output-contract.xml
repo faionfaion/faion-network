@@ -1,44 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Methodology Contribution Flow (Open Authorship) Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Methodology Contribution Flow (Open Authorship) output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Methodology Contribution Flow (Open Authorship) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the decision-record artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="pr_template_path" type="string" required="true">path to template in repo</field>
-      <field name="review_rubric" type="object" required="true">{axis_a_shape, axis_b_evidence, axis_c_duplication}</field>
-      <field name="attribution_policy" type="string" required="true">verbatim policy text</field>
-      <field name="revenue_share_policy" type="object" required="true">{trigger_count, share_pct, audit_cadence}</field>
-      <field name="cla_url" type="string" required="true">Contributor License Agreement URL</field>
-      <field name="decay_review_cycle_months" type="integer" required="true">12</field>
-      <field name="owner" type="string" required="true">named faion maintainer / community lead</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/methodology-contribution-flow-open-authorship.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "pr_url",
+    "contributor",
+    "tier",
+    "prior_art_done",
+    "reviewers",
+    "attribution",
+    "revenue_share",
+    "decision"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "pr_url": {
+      "type": "string"
+    },
+    "contributor": {
+      "type": "object"
+    },
+    "tier": {
+      "enum": [
+        "free",
+        "solo",
+        "pro",
+        "geek"
+      ]
+    },
+    "prior_art_done": {
+      "type": "boolean"
+    },
+    "reviewers": {
+      "type": "array"
+    },
+    "attribution": {
+      "type": "object"
+    },
+    "revenue_share": {
+      "type": "object"
+    },
+    "decision": {
+      "enum": [
+        "accept",
+        "request-changes",
+        "reject"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">pr_template missing</pattern>
-      <pattern id="f2">review by single reviewer for any methodology</pattern>
-      <pattern id="f3">attribution policy missing OR ambiguous</pattern>
-      <pattern id="f4">cla_url missing</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/methodology-contribution-flow-open-authorship.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>pr_template_path populated with a typed value</item>
-      <item>review_rubric populated with a typed value</item>
-      <item>attribution_policy populated with a typed value</item>
-      <item>revenue_share_policy populated with a typed value</item>
-      <item>cla_url populated with a typed value</item>
-      <item>decay_review_cycle_months populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <pattern id="f1">Single-reviewer accept on any methodology.</pattern>
+      <pattern id="f2">PR template missing or partially filled.</pattern>
+      <pattern id="f3">Attribution stripped or replaced with &apos;team&apos;.</pattern>
+      <pattern id="f4">Revenue-share field omitted when count ≥ 5.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "mcf-2026-0001",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "pr_url": "https://github.com/faionfaion/faion-network/pull/482",
+  "contributor": {
+    "name": "J. Doe",
+    "github": "jdoe",
+    "cla_signed": true
+  },
+  "tier": "pro",
+  "prior_art_done": true,
+  "reviewers": [
+    {
+      "handle": "alice",
+      "axis": "shape"
+    },
+    {
+      "handle": "bob",
+      "axis": "evidence"
+    },
+    {
+      "handle": "carol",
+      "axis": "duplication"
+    }
+  ],
+  "attribution": {
+    "maintainers_listed": true,
+    "changelog_entry": "v1.1.0 added by J. Doe"
+  },
+  "revenue_share": {
+    "enrolled": false,
+    "count_so_far": 1,
+    "trigger_count": 5,
+    "share_pct": 10
+  },
+  "decision": "accept"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pr_url": "x",
+  "tier": "free",
+  "decision": "approve",
+  "reviewers": [
+    {
+      "handle": "alice",
+      "axis": "shape"
+    }
+  ]
+}
+]]></code>
+    <note>Single reviewer; decision is `approve` (not in enum); missing artefact_id, version, last_reviewed, contributor, prior_art_done, attribution, revenue_share.</note>
+  </example>
+
+  <reference path="scripts/validate-methodology-contribution-flow-open-authorship.py">Schema validator (stdlib only).</reference>
 </text>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Shift Log Template Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable inputs to a rule from `01-core-rules.xml`. MANDATORY for every methodology — even flat ones — per F-066 DoD.</summary>
+
+  <decision-tree>
+    <root-question id="q-state-change">Did any state change occur during the shift (commit / incident / decision)?</root-question>
+
+      <branch when="state_change == false">
+        <conclusion ref="log-required" verdict="no-op-log-only"/>
+      </branch>
+      <branch when="state_change == true">
+        <question id="q-pickup">Is the pickup_first field concrete (path + named action, ≤200 chars)?</question>
+        <branch when="pickup_concrete == false">
+          <conclusion ref="pickup-first-explicit" verdict="block-rewrite-pickup"/>
+        </branch>
+        <branch when="pickup_concrete == true">
+          <question id="q-secret">Does any field match a secret-scan regex?</question>
+          <branch when="secret_hit == true">
+            <conclusion ref="no-leaky-secrets" verdict="block-redact-and-review"/>
+          </branch>
+          <branch when="secret_hit == false">
+            <conclusion ref="log-required" verdict="publish"/>
+          </branch>
+        </branch>
+      </branch>
+  </decision-tree>
+
+  <example trace="state_change=true → pickup_concrete=true → secret_hit=false → publish">
+    Concrete walk: AM shift on 2026-05-23: 2 commits + 1 incident + 1 decision → pickup `Resume podcast pipeline at stage 4` (path included) → secret-scan clean → publish.
+  </example>
+</text>

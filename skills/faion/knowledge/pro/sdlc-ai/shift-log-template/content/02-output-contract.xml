@@ -1,41 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Shift Log — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the per-file shape, frontmatter fields, and archive path. Lint script consumes both.</summary>
+<text id="02-output-contract" title="Shift Log Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the decision-record artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="frontmatter" required_keys="shift_date,shift_number,shift_start,shift_end,engineer,previous_shift_acknowledged,previous_shift_path"/>
-      <field name="sections" must_contain="Carry-over from previous shift,Active investigations,Watch items,Deferred work,Customer escalations,End-of-shift handover"/>
-      <field name="path" pattern="^shifts/\d{4}/\d{2}/\d{4}-\d{2}-\d{2}-shift-\d+\.md$"/>
-      <field name="checkpoints" must_contain="start,mid,end"
-             requirement="each section updated at least once at corresponding checkpoint"/>
-      <field name="acknowledgement" required_keys="previous_shift_acknowledged,handover_call_at_or_async_ack_at"/>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/shift-log-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "shift_window",
+    "operator",
+    "next_operator",
+    "pickup_first",
+    "open_items",
+    "changes"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "shift_window": {
+      "type": "object"
+    },
+    "operator": {
+      "type": "object"
+    },
+    "next_operator": {
+      "type": "object"
+    },
+    "pickup_first": {
+      "type": "string"
+    },
+    "open_items": {
+      "type": "array"
+    },
+    "changes": {
+      "type": "array"
+    },
+    "secrets_scrubbed": {
+      "type": "boolean"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">frontmatter.previous_shift_acknowledged == false AND shift is not the first in the system</pattern>
-      <pattern id="f2">end-of-shift handover empty</pattern>
-      <pattern id="f3">log body contains blame markers (named-person + negative-action pattern)</pattern>
-      <pattern id="f4">missing any of the five required sections</pattern>
-      <pattern id="f5">log not committed to the repository within 30 minutes of shift end</pattern>
-      <pattern id="f6">non-canonical path (e.g. `notes/shift.md` rather than `shifts/YYYY/MM/...`)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Append-only updates within a shift; do not rewrite earlier sections.</transformation>
-      <transformation>Link incident-runbook references inline; do not duplicate runbook content in the shift log.</transformation>
-      <transformation>Redact customer-PII in customer escalation entries; refer by ticket ID, not name + email.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Frontmatter complete; engineer named</item>
-      <item>All five sections present</item>
-      <item>Three checkpoints visibly updated (start ack, mid update, end handover)</item>
-      <item>Previous shift read and acknowledged</item>
-      <item>No blame language</item>
-      <item>Committed to the repo within 30 min of shift end</item>
+      <pattern id="f1">next_operator.handle empty or &apos;team&apos;.</pattern>
+      <pattern id="f2">pickup_first empty or &apos;continue work&apos;.</pattern>
+      <pattern id="f3">open_items omitted (must be present, even if empty array).</pattern>
+      <pattern id="f4">Any field contains a regex match for AWS / GCP / Anthropic / generic API-key patterns.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "shift-2026-05-23-am",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "shift_window": {
+    "start": "2026-05-23T00:00:00Z",
+    "end": "2026-05-23T06:00:00Z"
+  },
+  "operator": {
+    "name": "Nero",
+    "handle": "@nero"
+  },
+  "next_operator": {
+    "name": "Ruslan",
+    "handle": "@ruslan",
+    "channel_url": "tg://user?id=267619672"
+  },
+  "pickup_first": "Resume neromedia podcast pipeline at stage 4 \u2014 see /var/log/podcast/2026-05-23.log",
+  "open_items": [
+    {
+      "id": "inc-91",
+      "owner": "@ruslan",
+      "due": "2026-05-24"
+    }
+  ],
+  "changes": [
+    {
+      "commit": "abc123",
+      "summary": "fix: podcast voice cap"
+    }
+  ],
+  "secrets_scrubbed": true
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "operator": {
+    "name": "team"
+  },
+  "next_operator": {
+    "handle": "team"
+  },
+  "pickup_first": "continue work"
+}
+]]></code>
+    <note>next_operator.handle is &apos;team&apos; (forbidden); pickup_first is generic; missing artefact_id, version, last_reviewed, shift_window, open_items, changes.</note>
+  </example>
+
+  <reference path="scripts/validate-shift-log-template.py">Schema validator (stdlib only).</reference>
 </text>

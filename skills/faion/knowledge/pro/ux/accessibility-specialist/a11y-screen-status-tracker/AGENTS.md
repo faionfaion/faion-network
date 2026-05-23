@@ -3,77 +3,95 @@ slug: a11y-screen-status-tracker
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for a11y screen status tracker that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "4139baf8902bbc26"
-tags: [a11y, playbook, ux]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-screen accessibility status tracker (pass / partial / fail) with owner + last-tested + remediation plan for every named screen.
+content_id: "ba30495e22b713ff"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [a11y, tracker, screen-status, audit, ux]
 ---
 # A11y Screen Status Tracker
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for a11y screen status tracker that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Per-screen accessibility status tracker (pass / partial / fail) with owner + last-tested + remediation plan for every named screen.
 
-**One-paragraph:** End-to-end playbook for a11y screen status tracker that walks an operator from trigger to closed outcome with named artefacts at each step. Per-screen pass/partial/fail tracking is what survives audits — current a11y methodologies cover testing technique but not screen-level state management.
+**One-paragraph:** Audits without per-screen state collapse into a single PDF that goes stale within a sprint. This methodology pins one row per screen with status (pass / partial / fail / not-applicable), owner, last-tested date, blocking SC list, and the linked remediation plan. The tracker becomes the audit's living counterpart and survives scope changes. Output is a screen-status spreadsheet record validated against the schema.
+
+**Ефективно для:**
+
+- Living audit state: each sprint shows progress per screen.
+- Per-screen ownership prevents 'team' blame.
+- Pass / partial / fail / not-applicable verdict supports audit-grade evidence.
+- Remediation plan link makes the next fix one click away.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by a11y screen status tracker end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Product has ≥5 distinct screens / flows under accessibility audit.
+- An audit must remain usable across sprints (not just snapshot).
+- Multiple owners across screens; need clarity who fixes what.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Single-screen tools / extensions — overhead exceeds value.
+- Pre-audit phase — finish the audit first.
+- Tracker already exists in QA tool with same fields — extend rather than duplicate.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Screen inventory | list of screen names + URLs | design system / product map |
+| Audit baseline | WCAG 2.2 AA findings per screen | audit |
+| Owners + last-tested dates | name + ISO date | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/accessibility-specialist/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/screen-status-tracker.json` | JSON skeleton matching the tracker schema. |
+| `templates/screen-status-tracker.csv` | CSV row template for the tracker. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-a11y-screen-status-tracker.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
-- peer methodologies: see siblings under `pro/ux/accessibility-specialist/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[a11y-basics]]
+- [[a11y-testing]]
+- [[wcag-22-compliance]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

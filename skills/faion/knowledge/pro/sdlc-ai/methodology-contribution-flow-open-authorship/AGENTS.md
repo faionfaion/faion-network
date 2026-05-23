@@ -3,68 +3,96 @@ slug: methodology-contribution-flow-open-authorship
 tier: pro
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: PR template, review rubric, signing/attribution policy, contributor-tier revenue-share for open contribution of faion methodologies.
-content_id: "5c215bbf81b3d9df"
-tags: [methodology-contribution-flow-open-authorship, sdlc-ai, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Defines the open-contribution flow for new faion methodologies — PR template, three-axis review rubric, attribution + revenue-share policy.
+content_id: "a5c89ac30872d607"
+complexity: medium
+produces: decision-record
+est_tokens: 4100
+tags: [methodology-contribution, open-authorship, sdlc-ai, governance]
 ---
-
 # Methodology Contribution Flow (Open Authorship)
 
 ## Summary
 
-**One-sentence:** PR template, review rubric, signing/attribution policy, contributor-tier revenue-share for open contribution of faion methodologies.
+**One-sentence:** Defines the open-contribution flow for new faion methodologies — PR template, three-axis review rubric, attribution + revenue-share policy.
 
-**One-paragraph:** P7 builds vertical agents on narrow domains and will produce methodology IP. Today no open contribution path. faion authoring is self-bottleneck. Output: PR template + review rubric + attribution + revenue-share policy.
+**One-paragraph:** External contributors need a documented path to add a methodology to faion. This methodology pins the PR template (topic, tier rationale, prior-art search, draft AGENTS.md + content files, evidence, attribution preference), a three-axis × three-reviewer review rubric, the CLA-grounded attribution policy, and the revenue-share trigger (≥5 accepted contributions → 10% share of attributed CLI-paid-tier revenue). Output is a contribution-flow record validated against the schema before merge.
+
+**Ефективно для:**
+
+- External contributors that want to add domain methodologies under a stable attribution policy.
+- Maintainers running structured three-axis review (shape / evidence / duplication).
+- Faion governance — ties contribution acceptance to a documented revenue-share policy.
+- Audit trail: every accepted methodology has a contribution record with reviewers, owner, decay date.
 
 ## Applies If (ALL must hold)
 
-- external contributor wants to add a methodology to faion
-- topic falls within faion's tier coverage (free/solo/pro/geek)
-- contributor accepts CLA-equivalent attribution terms
+- External contributor wants to add a new methodology to faion-network.
+- Topic falls within faion's tier coverage (free / solo / pro / geek).
+- Contributor has signed (or is willing to sign) the CLA referenced by the policy.
 
 ## Skip If (ANY kills it)
 
-- internal faion content (different review path)
-- minor edits / typo fixes (use lightweight PR)
-- non-methodology contribution (skill structure, tooling)
+- Internal faion content — different review path applies.
+- Minor edits / typo fixes — use a lightweight PR template.
+- Non-methodology contribution (skill structure / tooling) — outside scope.
 
 ## Prerequisites
 
-- contributor has GitHub account + signed CLA
-- topic checked against existing methodology + playbook list
-- draft conforms to v2 methodology shape
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Contributor identity | GitHub handle + signed CLA | contributor |
+| Draft methodology | v2 shape (AGENTS.md + content/*.xml) | contributor |
+| Prior-art search | search results vs existing methodology + playbook list | contributor |
+| Topic + tier rationale | Markdown body | contributor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/methodology-contribution-flow` | parent skill — provides operating context for this methodology |
-| `geek/sdlc-ai/methodology-contribution-flow` | peer methodology — produces inputs or consumes outputs |
-| `pro/sdd/internal-rfc-template` | peer methodology — produces inputs or consumes outputs |
+| project-docs-convention | Defines AGENTS.md + content/*.xml shape this PR must conform to. |
+| methodology-versioning-and-changelog | Versioning and CHANGELOG conventions invoked on accept. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: pr-template-required, three-axis-review, attribution-policy, revenue-share-policy, decay-rule | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the contribution-flow record + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: under-reviewed-merge, attribution-stripped, revenue-share-skipped, duplicate-slip-through, stale-contributor-content | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: submit → triage → three-axis review → accept + record → register | 800 |
+| `content/06-decision-tree.xml` | essential | Maps PR signals (template-complete? reviewers ≥ 3? attribution + revenue-share captured?) to a verdict | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `triage-pr` | haiku | Template-conformance check; deterministic. |
+| `three-axis-review` | sonnet | Cross-axis judgement (shape / evidence / duplication). |
+| `policy-finalise` | opus | Attribution + revenue-share evaluation; stakes high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/contribution-record.json` | Schema-conformant contribution record skeleton. |
+| `templates/PR-template.md` | Markdown PR template the contributor fills. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-methodology-contribution-flow-open-authorship.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/methodology-contribution-flow/`
-- peer methodology: `geek/sdlc-ai/methodology-contribution-flow`
-- peer methodology: `pro/sdd/internal-rfc-template`
-- external: https://opensource.guide/how-to-contribute/; https://github.com/cla-assistant/cla-assistant; https://contributor-covenant.org/
+- [[methodology-versioning-and-changelog]]
+- [[shift-log-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

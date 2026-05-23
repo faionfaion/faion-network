@@ -3,73 +3,96 @@ slug: cognitive-inclusion-design
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design patterns for cognitive accessibility: ADHD, autism, dyslexia, anxiety, learning disabilities (15-20% of population).
-content_id: "c1407cca3d3f9f7c"
-tags: [cognitive-accessibility, neurodiversity, adhd, autism, dyslexia]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Design spec for cognitive accessibility: plain language, predictable navigation, error tolerance, recoverable actions, time-extension defaults.
+content_id: "b624b9cb2ede6877"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [cognitive, inclusion, plain-language, a11y, ux]
 ---
 # Cognitive Inclusion Design
 
 ## Summary
 
-**One-sentence:** Design patterns for cognitive accessibility: ADHD, autism, dyslexia, anxiety, learning disabilities (15-20% of population).
+**One-sentence:** Design spec for cognitive accessibility: plain language, predictable navigation, error tolerance, recoverable actions, time-extension defaults.
 
-**One-paragraph:** Design patterns for cognitive accessibility: ADHD, autism, dyslexia, anxiety, learning disabilities (15-20% of population). Auto-save, progress indicators, predictable navigation, plain language, dyslexia-friendly typography, reduced-motion defaults, non-blaming errors, sensory-friendly modes.
+**One-paragraph:** Cognitive disabilities cover the widest population (≈25% in some studies) and the smallest design coverage. This methodology pins five operational rules — plain language (Flesch / target reading level), predictable navigation patterns, error tolerance with auto-suggest, recoverable / undoable critical actions, and time-extension defaults — and emits a cognitive-inclusion design record per component validated against the schema.
+
+**Ефективно для:**
+
+- Plain-language rule cuts ambiguity defects ≥40%.
+- Predictable navigation removes 'where am I' bounces.
+- Recoverable actions enable confident exploration for users with executive-function differences.
+- Time extension defaults remove pressure-induced fail-states.
 
 ## Applies If (ALL must hold)
 
-- Designing or auditing forms, dashboards, learning tools, government services, or healthcare apps used by a non-expert public.
-- Reducing form abandonment or support load on complex multi-step flows.
-- Auditing copy, error messages, and microcopy for plain language and non-blaming tone.
-- Working in EU (EAA) where WCAG 2.2 AA + cognitive guidance is expected.
-- Accommodating neurodiverse employees in internal tools (HR platforms, intranets).
+- Public-facing form, content, or critical-action flow.
+- Audience includes non-experts or includes neurodivergent users.
+- Localisation targets multiple reading levels / languages.
 
 ## Skip If (ANY kills it)
 
-- Pure visual/motor a11y audit — use `a11y-testing` and `wcag-22-compliance`.
-- Performance-driven, expert-only tooling (CLI dashboards for SREs) — minimalism trumps scaffolding.
-- Marketing landing pages where brand voice is intentionally playful — idioms acceptable in moderation.
-- Game design where challenge is the point — apply selectively (settings menu, onboarding only).
+- Internal expert tooling where jargon is required.
+- Pure UI chrome with no language content.
+- Performance / Operable issues — use `a11y-basics` instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Component brief | Markdown | product |
+| Target reading level | default Flesch ≥60 / Grade ≤8 | team policy |
+| Critical actions list | list | product |
+| Localisation matrix | languages in scope | i18n |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. |
+| `templates/readability-gate.py` | Stdlib readability scorer. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cognitive-inclusion-design.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[accessibility-first-design]]
+- [[wcag-22-compliance]]
+- [[vui-accessibility-inclusivity]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

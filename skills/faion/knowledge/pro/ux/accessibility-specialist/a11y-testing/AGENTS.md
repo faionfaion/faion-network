@@ -3,73 +3,97 @@ slug: a11y-testing
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Five-step accessibility testing process combining automated scanning (axe, WAVE, Lighthouse, Pa11y), manual keyboard testing, screen reader verification, cognitive accessibility checks, and prioritized issue documentation.
-content_id: "98f034ff4fd5f42f"
-tags: [accessibility, testing, a11y, screen-readers, wcag]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: End-to-end accessibility testing process combining automated scan, manual keyboard pass, AT testing, and disabled-user feedback into a single audit report.
+content_id: "2064d74abc5eaf23"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [a11y-testing, audit, manual, automated, screen-reader]
 ---
 # Accessibility Testing Process
 
 ## Summary
 
-**One-sentence:** Five-step accessibility testing process combining automated scanning (axe, WAVE, Lighthouse, Pa11y), manual keyboard testing, screen reader verification, cognitive accessibility checks, and prioritized issue documentation.
+**One-sentence:** End-to-end accessibility testing process combining automated scan, manual keyboard pass, AT testing, and disabled-user feedback into a single audit report.
 
-**One-paragraph:** Five-step accessibility testing process combining automated scanning (axe, WAVE, Lighthouse, Pa11y), manual keyboard testing, screen reader verification, cognitive accessibility checks, and prioritized issue documentation. Automated tools catch ~30-40% of WCAG violations; the rest require structured manual walkthroughs with real AT.
+**One-paragraph:** Accessibility testing without process produces inconsistent audits where different reviewers reach different verdicts. This methodology pins a four-layer process — automated scan (axe + pa11y + lighthouse), manual keyboard pass, AT testing on at least two screen readers, and structured disabled-user feedback — and aggregates findings into one prioritised report. Output is an audit report validated against the schema before delivery.
+
+**Ефективно для:**
+
+- Four-layer process closes the ~70% gap that scanners miss.
+- Audit-grade reports usable for VPAT and procurement.
+- Per-issue severity (blocker / major / minor) prioritises remediation.
+- Disabled-user feedback weighted heavier than synthetic findings.
 
 ## Applies If (ALL must hold)
 
-- Pre-release WCAG 2.1/2.2 audit on a web product
-- CI gate for new pages or components — automated scan must pass before merge
-- Quarterly compliance review for ADA Title II or EAA-bound products
-- Procurement: generating VPAT/ACR evidence from real test runs
-- Triage: converting a raw a11y issue dump into a prioritized remediation plan
+- Product is mid- to large-sized and requires an audit-grade report.
+- Audit budget supports four testing layers within the same window.
+- WCAG 2.2 AA (or higher) is the conformance target.
 
 ## Skip If (ANY kills it)
 
-- Design-stage review — use accessibility-first-design (cheaper to fix in Figma than in code)
-- Native mobile-only flows — axe/Pa11y do not cover XCUITest/Espresso; use platform-specific scanners
-- XR/spatial interfaces — WCAG does not fully cover them; use spatial-accessibility and W3C XAUR
-- Quick one-off contrast tweak — run Colour Contrast Analyser directly, not a full audit
+- ≤1 screen / quick sweep — use `a11y-basics`.
+- Compliance paperwork only — use `regulatory-compliance-2026`.
+- Pure scanner pass with no AT — produces non-audit-grade output.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target product / flows | URL list | product |
+| WCAG target | string (default 2.2 AA) | team policy |
+| AT environment | NVDA / VoiceOver / TalkBack installed | tester rig |
+| Disabled-user panel | ≥3 participants OR explicit waiver | research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/audit-report.md` | Markdown skeleton for the audit narrative. |
+| `templates/a11y-scan.sh` | axe + pa11y + lighthouse CI wrapper. |
+| `templates/audit-findings.json` | JSON findings skeleton matching the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-a11y-testing.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[a11y-basics]]
+- [[wcag-22-compliance]]
+- [[testing-with-assistive-technology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

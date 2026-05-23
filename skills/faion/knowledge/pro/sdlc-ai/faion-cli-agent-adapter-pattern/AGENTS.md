@@ -3,78 +3,98 @@ slug: faion-cli-agent-adapter-pattern
 tier: pro
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "a54ab84f5844356d"
-summary: Faion Cli Agent Adapter Pattern delivers a concrete, testable methodology that turns the recurring task of 'Make faion a programmatic context source for an agent' into an auditable artefact, addressing the gap: Reference implementation: how to wrap `faion search` + `faion get-con
-tags: [sdlc-ai, pro, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Reference implementation wrapping `faion search` + `faion get-content` as a tool inside Claude Agent SDK, LangChain, and OpenAI Assistants -- with error handling, caching, and version pinning."
+content_id: "b1ea2e88ea822a97"
+complexity: deep
+produces: code
+est_tokens: 4200
+tags: ["adapter", "agent-sdk", "claude", "langchain", "openai", "sdlc-ai", "pro"]
 ---
-# Faion Cli Agent Adapter Pattern
+# Faion CLI Agent Adapter Pattern
 
 ## Summary
 
-**One-sentence:** Faion Cli Agent Adapter Pattern delivers a concrete, testable methodology that turns the recurring task of 'Make faion a programmatic context source for an agent' into an auditable artefact, addressing the gap: Reference implementation: how to wrap `faion search` + `faion get-content` as a tool inside Claude Agent SDK / LangGraph / OpenAI Assistants. Three concrete adapters (Anthropic tool, LangChain Tool, OpenAI function) plus error-handling, caching, version-pinning. Should ship at pro tier as a top-of-funnel showcase.
+**One-sentence:** Reference implementation wrapping `faion search` + `faion get-content` as a tool inside Claude Agent SDK, LangChain, and OpenAI Assistants -- with error handling, caching, and version pinning.
 
-**One-paragraph:** Reference implementation: how to wrap `faion search` + `faion get-content` as a tool inside Claude Agent SDK / LangGraph / OpenAI Assistants. Three concrete adapters (Anthropic tool, LangChain Tool, OpenAI function) plus error-handling, caching, version-pinning. Should ship at pro tier as a top-of-funnel showcase. Faion Cli Agent Adapter Pattern closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Make faion a programmatic context source for an agent' (p7-llm-agent-developer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Reference implementation: how to wrap `faion search` + `faion get-content` as a tool inside Claude Agent SDK / LangGraph / OpenAI Assistants. This methodology ships three adapters (Anthropic tool, LangChain Tool, OpenAI function) plus shared concerns: error handling, response caching, version pinning, citation-contract integration. Output is a working `faion-agent-adapter/` package that an LLM-agent developer can drop into their project and bind to their agent in <30 minutes.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі «faion cli agent adapter pattern» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Make faion a programmatic context source for an agent' (role: p7-llm-agent-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- you are building an AI agent in Claude Agent SDK, LangGraph/LangChain, OpenAI Assistants, or an SDK with equivalent tool semantics.
+- you want faion methodology content available to the agent as a tool, not pre-stuffed context.
+- you have a Python or TypeScript runtime in your agent stack.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- your agent does not support tool-use semantics -- pre-load context instead.
+- you are using an SDK with no documented tool API.
+- your agent runs only against local non-faion methodology files -- skip.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering context for the Faion CLI Agent Adapter Pattern task | recent notes / tickets / interviews | operator's inbox or system of record |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/sdlc-ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/sdlc-ai/methodology-as-json-feed` | supplies the JSON shape the adapter consumes. |
+| `pro/sdlc-ai/citation-contract-back-to-source` | supplies the citation format the adapter emits. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `faion_cli_agent_adapter_pattern_template_fill` | haiku | Template fill, no judgment |
-| `faion_cli_agent_adapter_pattern_evidence_check` | sonnet | Bounded comparison + judgment |
-| `faion_cli_agent_adapter_pattern_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/anthropic-adapter.py` | Claude Agent SDK adapter showing tool definition + handler + caching. |
+| `templates/langchain-adapter.py` | LangChain Tool adapter (sync + async) with citation emission. |
+| `templates/openai-adapter.py` | OpenAI Assistants function adapter with version pinning. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-faion-cli-agent-adapter-pattern.py` | Validate the code artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/sdlc-ai/` (see neighbouring methodologies)
-- triggering activity: `p7-llm-agent-developer/Make faion a programmatic context source for an agent`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[methodology-as-json-feed]]
+- [[citation-contract-back-to-source]]
+- [[ai-debt-detection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

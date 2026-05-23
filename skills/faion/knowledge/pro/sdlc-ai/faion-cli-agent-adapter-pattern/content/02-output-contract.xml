@@ -1,42 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Faion Cli Agent Adapter Pattern Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Faion Cli Agent Adapter Pattern deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-    </list>
+<text id="02-output-contract" title="Faion CLI Agent Adapter Pattern Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid code artefact. Subagents validate against this before returning.</summary>
+
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/faion-cli-agent-adapter-pattern.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "modules"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ]
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "language"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "faion-cli-agent-adapter-pattern-adapter-2026-05-23",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {
+      "name": "feed-schema",
+      "source": "templates/feed-schema.json"
+    }
+  ],
+  "modules": [
+    {
+      "name": "anthropic-adapter",
+      "path": "templates/anthropic-adapter.py",
+      "language": "python"
+    },
+    {
+      "name": "langchain-adapter",
+      "path": "templates/langchain-adapter.py",
+      "language": "python"
+    },
+    {
+      "name": "openai-adapter",
+      "path": "templates/openai-adapter.py",
+      "language": "python"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "modules": []
+}
+]]></code>
+    <note>Owner is plural pronoun (or generic group); required fields empty or missing.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`, `everyone`, `engineering`) or empty string</pattern>
+    <pattern id="inputs-empty">`inputs_used` is empty</pattern>
+    <pattern id="version-not-semver">`version` does not match `^[0-9]+\.[0-9]+\.[0-9]+$`</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-faion-cli-agent-adapter-pattern.py">Stdlib-only validator implementing this schema.</reference>
 </text>

@@ -3,82 +3,96 @@ slug: shift-log-template
 tier: pro
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5a55fbd86d40a24c"
-summary: Per-shift operational log template DevOps engineers fill at start, mid, and end of every on-call shift — capturing context that incident runbooks cannot — so handovers are deterministic and the next shift starts informed.
-tags: [devops, on-call, shift-log, handoff, sre]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a per-shift handover log: what changed, what's open, what the next operator must touch first.
+content_id: "dcedd995c404cf2f"
+complexity: medium
+produces: decision-record
+est_tokens: 4100
+tags: [shift-log, handover, operations, sdlc-ai]
 ---
-
 # Shift Log Template
 
 ## Summary
 
-**One-sentence:** Per-shift operational log template DevOps engineers fill at start, mid, and end of every on-call shift, capturing context (active investigations, deferred work, watch items, environmental quirks) that incident runbooks do not, so handovers happen in writing not in tribal lore.
+**One-sentence:** Produces a per-shift handover log: what changed, what's open, what the next operator must touch first.
 
-**One-paragraph:** Incident runbooks cover what to do when a specific alert fires. They do not cover the operational state of "the morning of": ongoing investigations from the previous shift, deferred maintenance, known-flaky systems being watched, scheduled jobs that should fire, vendor maintenance windows, customer escalations in flight, things-that-are-weird-but-not-yet-broken. Without a structured shift log, each on-call hands over via a 5-minute call (or worse, a Slack DM) and 30% of the operational context evaporates. This methodology pins a markdown shift-log template with five named sections (Carry-over, Active investigations, Watch items, Deferred work, Customer escalations), filled at shift start (read previous), mid-shift (update active items), and end (write next), committed to a `shifts/` directory in the ops repo so each entry is permanent and searchable. Mechanism: structured-write at three checkpoints + read-from-previous at handover. Primary output: a per-shift `YYYY-MM-DD-shift-N.md` log + a searchable archive.
+**One-paragraph:** Multi-shift / multi-agent operations rot when handover is verbal. This methodology pins the shift-log template: changes (diffs + commits), open incidents, pending decisions, blocked dependencies, and the explicit 'pick-up first' pointer for the next operator. Output is one log per shift, validated against the schema before close-out.
+
+**Ефективно для:**
+
+- Solopreneur operator handing off to NERO overnight (or vice versa).
+- Multi-agent pools where each agent inherits previous state with zero verbal context.
+- Incident-on-call rotations — log makes the next responder productive in minutes.
+- Audit trail: shifts close with a known artefact, not a Slack thread.
 
 ## Applies If (ALL must hold)
 
-- on-call rotation with ≥2 people (single-operator may use a simplified version)
-- production system with active alerting (Sentry, Datadog, Grafana, Pingdom)
-- the team has a shared repository or Notion / Confluence space for the logs
-- shifts have defined start/end (8h, 12h, or 24h)
+- Operator (human or agent) is wrapping up a shift / session.
+- There exists at least one in-flight change, open incident, or pending decision.
+- Next operator is named and reachable.
 
 ## Skip If (ANY kills it)
 
-- single solo operator — they remember their own context; this overhead is excessive
-- batch-mode operations (no real-time on-call) — use a maintenance log instead
-- the team explicitly uses an incident management platform (incident.io, FireHydrant) that already supports shift logs — extend that, do not build parallel
+- Idle shift with no state change — use a one-line 'no-op' log.
+- Brand-new project with no prior shift — use the bootstrap form, not this.
+- Fully automated pipeline with deterministic state — no handover needed.
 
 ## Prerequisites
 
-- shared repo or page for logs (`shifts/`, `ops/shifts/`, or similar)
-- shift-rotation schedule visible to all engineers
-- handover ritual at shift change (5-15 minutes)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Shift window | ISO start/end timestamps | operator |
+| Commits / diffs in window | git log --since/--until | git |
+| Open incidents | incident tracker entries | tracker |
+| Pending decisions | decision-record drafts | internal |
+| Next operator | name + handle | rotation calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps` | Runbooks the shift log references but does not duplicate |
-| `pro/infra/devops-engineer/oncall-handoff-template` | Generic handoff pattern; this is the per-shift complement |
-| `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish` | Postmortem drafting; shift log feeds postmortem timeline |
+| methodology-versioning-and-changelog | Logs may reference methodology versions touched during the shift. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: three-checkpoint discipline, structured sections, read-previous-as-start, searchable archive, no-blame framing | ~1000 |
-| `content/02-output-contract.xml` | essential | Shift-log markdown frontmatter + sections schema, archive layout | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: end-of-shift skipped, free-form drift, handover-by-DM, blame-leak, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: log-required, next-operator-named, pickup-first-explicit, open-items-stated, no-leaky-secrets | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the shift-log record + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: missing-log, vague-pickup, secret-leak, unreachable-next-operator, stale-open-items | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: collect → group → name pickup → scrub secrets → publish | 800 |
+| `content/06-decision-tree.xml` | essential | Maps state signals (open items > 0? secrets in diff? next operator reachable?) to publish / block / clean-up | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `shift_log_draft_from_chat_and_alerts` | sonnet | Compose end-of-shift entry from Slack + alert history |
-| `handover_summary_for_next_shift` | sonnet | Compact previous log into the active-priority view |
-| `archive_search` | n/a | Plain grep / search index |
+| `collect-changes` | haiku | Mechanical scrape of git + tracker. |
+| `draft-log` | sonnet | Per-item summary with judgement on what matters. |
+| `secret-scrub` | haiku | Regex-based scrub before publish. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/shift-log.md` | The five-section template |
-| `templates/handover-checklist.md` | 5-minute handover meeting checklist |
+| `templates/shift-log.md` | Markdown skeleton with required sections. |
+| `templates/shift-log.json` | JSON skeleton matching the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/new-shift.py` | Scaffold a new shift log, copy carry-over from previous | Start of each shift |
-| `scripts/lint-shift-log.py` | Ensure all five sections present and frontmatter valid | Pre-commit hook |
+| `scripts/validate-shift-log-template.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/sdlc-ai/`
-- peer methodologies: `inc-runbook-as-markdown-tagged-steps`, `oncall-handoff-template`, `inc-postmortem-auto-draft-no-publish`
-- external: [Google SRE Workbook — On-call](https://sre.google/workbook/on-call/) · [PagerDuty Incident Response](https://response.pagerduty.com/) · [Atlassian Incident Handbook](https://www.atlassian.com/incident-management/handbook)
+- [[methodology-versioning-and-changelog]]
+- [[methodology-contribution-flow-open-authorship]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.
