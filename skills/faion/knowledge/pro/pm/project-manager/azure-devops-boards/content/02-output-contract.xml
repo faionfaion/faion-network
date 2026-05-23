@@ -1,22 +1,116 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="azure-devops-boards Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Azure DevOps Boards Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the ADO Boards configuration artefact: process template, area/iteration tree, board columns, swimlanes, PAT scope manifest.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/azure-devops-boards.json",
+  "type": "object",
+  "required": ["organization", "project", "process_template", "area_tree",
+               "iteration_tree", "board", "pat_scope_manifest"],
+  "properties": {
+    "organization": {"type": "string", "minLength": 1},
+    "project": {"type": "string", "minLength": 1},
+    "process_template": {"enum": ["Basic", "Agile", "Scrum", "CMMI"]},
+    "area_tree": {
+      "type": "object",
+      "required": ["root", "children"],
+      "properties": {
+        "root": {"type": "string"},
+        "children": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "iteration_tree": {
+      "type": "object",
+      "required": ["cadence", "iterations"],
+      "properties": {
+        "cadence": {"enum": ["weekly", "biweekly", "monthly"]},
+        "iterations": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    },
+    "board": {
+      "type": "object",
+      "required": ["columns", "swimlanes"],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["name", "state_mapping"],
+            "properties": {
+              "name": {"type": "string"},
+              "state_mapping": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+              "wip_limit": {"type": ["integer", "null"], "minimum": 1}
+            }
+          }
+        },
+        "swimlanes": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    },
+    "pat_scope_manifest": {
+      "type": "object",
+      "required": ["work_items_read_write", "full_access_forbidden"],
+      "properties": {
+        "work_items_read_write": {"const": true},
+        "full_access_forbidden": {"const": true}
+      }
+    },
+    "ab_linking_required": {"type": "boolean"}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "organization": "acme",
+  "project": "platform",
+  "process_template": "Agile",
+  "area_tree": {"root": "platform", "children": ["payments", "identity", "infra"]},
+  "iteration_tree": {"cadence": "biweekly", "iterations": ["2026-Q2-S1", "2026-Q2-S2", "2026-Q2-S3"]},
+  "board": {
+    "columns": [
+      {"name": "New", "state_mapping": ["New"], "wip_limit": null},
+      {"name": "Active", "state_mapping": ["Active"], "wip_limit": 5},
+      {"name": "Resolved", "state_mapping": ["Resolved"], "wip_limit": 3},
+      {"name": "Closed", "state_mapping": ["Closed"], "wip_limit": null}
+    ],
+    "swimlanes": ["Expedite", "Default", "Tech Debt"]
+  },
+  "pat_scope_manifest": {"work_items_read_write": true, "full_access_forbidden": true},
+  "ab_linking_required": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "organization": "acme",
+  "project": "x",
+  "process_template": "Custom",
+  "area_tree": {"root": "x"},
+  "iteration_tree": {"cadence": "ad-hoc", "iterations": []},
+  "board": {"columns": [{"name": "Active", "state_mapping": ["Active"]}], "swimlanes": []},
+  "pat_scope_manifest": {"work_items_read_write": true, "full_access_forbidden": false}
+}
+]]></code>
+    <note>process_template not in enum; iteration cadence invalid; column lacks wip_limit on Active; swimlanes empty; full_access_forbidden must be true.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Active column without wip_limit.</item>
+      <item>pat_scope_manifest.full_access_forbidden = false.</item>
+      <item>process_template outside {Basic, Agile, Scrum, CMMI}.</item>
+      <item>iteration_tree.iterations empty.</item>
+      <item>area_tree.children that duplicate iteration_tree.iterations names (Area/Iteration confusion).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-azure-devops-boards.py">Validator script enforcing this schema</reference>
 </text>

@@ -1,48 +1,33 @@
-# Change Request: CR-[YYYY]-[NNN]
+<!-- purpose: Single CR document -->
+<!-- consumes: requester intent + current baseline -->
+<!-- produces: CR row conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml rule impact-analysis-mandatory -->
+<!-- token-budget-impact: ~250 tokens per CR -->
 
-**Date:** [Date]
-**Requester:** [Name] ([Role])
-**Priority:** [High / Medium / Low]
-**Status:** Submitted
+# CR-REPLACE-id — REPLACE-title
+
+| field | value |
+|---|---|
+| requester | REPLACE |
+| submitted_at | REPLACE-ISO-date |
+| status | draft |
+| tier | REPLACE — tier-1 / tier-2 / tier-3 |
 
 ## Description
 
-[Clear description of what is requested to change.]
+REPLACE — one paragraph.
 
-## Business Justification
+## Impact analysis
 
-[Why this change is needed. Quote stakeholder evidence or measurement data — do not paraphrase the request.]
+| dimension | value |
+|---|---|
+| cost_delta_pct | REPLACE |
+| schedule_delta_days | REPLACE |
+| scope_delta | REPLACE |
+| risk_delta | increases / neutral / decreases |
 
-## Impact Analysis
+## Decision (filled by approver)
 
-| Area | Impact |
-|------|--------|
-| Scope | [Features/WBS nodes affected — list by ID] |
-| Schedule | [+N / -N working days] |
-| Cost | [+$X / -$X] |
-| Quality | [Effect on standards, test coverage, or technical debt] |
-| Risk | [New risks introduced: title, P, I] |
-| Resources | [Who must work on it; what is displaced] |
-
-## Options
-
-| Option | Schedule impact | Cost impact | Recommendation |
-|--------|----------------|-------------|----------------|
-| A: [Full implementation] | +[N]d | +$[X] | [Yes/No] |
-| B: [Partial / scoped down] | +[N]d | +$[X] | [Yes/No] |
-| C: Defer to phase N | 0 | $0 | [Yes/No] |
-| D: Decline | 0 | $0 | [Yes/No] |
-
-## Routing
-
-**Tier:** [PM / Sponsor / CCB] (days=[N], cost=$[X], risk=[low/high])
-
-## Decision
-
-- [ ] Approved (Option ___)
-- [ ] Rejected
-- [ ] Deferred
-
-**Decided By:** ________________
-**Date:** ________________
-**Notes:** ________________
+- approver: REPLACE
+- decided_at: REPLACE
+- rationale: REPLACE

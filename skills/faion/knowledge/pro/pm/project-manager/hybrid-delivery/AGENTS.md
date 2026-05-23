@@ -3,73 +3,99 @@ slug: hybrid-delivery
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Hybrid delivery is a framework for programs that combine predictive (waterfall) and agile delivery modes when neither alone fits.
-content_id: "9023d6bf3361c079"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Program-level framework that mixes predictive (waterfall) and agile delivery modes per workstream, with explicit handoff contracts between modes.
+content_id: "c2b1a0f9e8d7c6b5"
+complexity: medium
+produces: spec
+est_tokens: 4300
 tags: [hybrid, agile, waterfall, program-management, governance]
 ---
-# Hybrid Delivery: Combining Predictive and Agile Approaches
+# Hybrid Delivery
 
 ## Summary
 
-**One-sentence:** Hybrid delivery is a framework for programs that combine predictive (waterfall) and agile delivery modes when neither alone fits.
+**One-sentence:** Program-level framework that mixes predictive (waterfall) and agile delivery modes per workstream, with explicit handoff contracts between modes.
 
-**One-paragraph:** Hybrid delivery is a framework for programs that combine predictive (waterfall) and agile delivery modes when neither alone fits. The boundary between modes is defined explicitly in a program.yaml work-graph: top-level milestones (predictive arm) decompose into epics, which decompose into team backlogs (agile arm). Both arms use their own vocabulary and rituals; a translation layer converts between them for steering-committee reporting.
+**One-paragraph:** Program-level framework that mixes predictive (waterfall) and agile delivery modes per workstream, with explicit handoff contracts between modes.
+
+**Ефективно для:**
+
+- Програм із regulated workstream (waterfall) + R&D workstream (agile).
+- Корпорацій, що мігрують з повного waterfall до agile поступово.
+- Великих vendors зі змішаним customer base (enterprise vs SMB).
+- Проектів, де hardware (waterfall) + firmware/software (agile) переплітаються.
 
 ## Applies If (ALL must hold)
 
-- Programs with hardware + software components where physical-world milestones are predictive and digital iteration is agile.
-- Regulated software (FDA, FAA, ISO 26262, SOX, GDPR) needing stage gates on top of agile execution.
-- Enterprise transformation rollouts: portfolio-level milestones and budget cycles with Scrum/Kanban delivery teams.
-- Vendor + internal team mixes where vendor contracts are fixed-bid and internal teams iterate.
-- DevOps + Agile delivery with monthly/quarterly ops/finance/security governance reviews.
+- Program has ≥2 workstreams with materially different delivery cadence.
+- Workstream interfaces are stable enough to specify in advance.
+- Governance accepts mode-per-workstream rather than mode-per-org.
+- Each workstream lead can defend mode choice.
 
 ## Skip If (ANY kills it)
 
-- Pure software-only product teams with autonomous backlog and no compliance gates — full Scrum or Kanban is simpler.
-- Tiny teams (under 10) where ceremony overhead exceeds coordination value — pick one mode.
-- Pure fixed-scope delivery where iteration adds risk without value — stay predictive.
-- "We do hybrid" without explicit boundaries — that is incoherence, not hybrid; refuse and force a real method choice.
+- Single workstream — pick one mode, not hybrid.
+- Org politics force one mode despite mismatch — fix governance first.
+- Workstream interfaces unstable — handoff contracts will churn.
+- Project &lt;3 months — hybrid overhead dominates.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[pm-framework-focus-areas]] | PMBoK 8 framework backbone. |
+| [[performance-domains-overview]] | Performance-domain vocabulary for both modes. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | one worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `workstream-classifier` | sonnet | Assign each workstream to predictive/agile. |
+| `interface-contract-author` | opus | Author handoff contract between modes. |
+| `governance-overlay-designer` | sonnet | Single governance layer over both modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/hybrid-plan.md` | Program plan: workstream table with mode + handoff contracts. |
+| `templates/interface-contract.md` | Handoff contract template: inputs, outputs, SLA, escalation. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-hybrid-delivery.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[pm-framework-focus-areas]]
+- [[performance-domains-overview]]
+- [[change-control]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (workstream_count, interface_stability, governance_flexibility) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

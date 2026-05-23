@@ -1,22 +1,161 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="cost-estimation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Cost Estimation Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/cost-estimation.json",
+  "type": "object",
+  "required": [
+    "project_id",
+    "wbs_leaves",
+    "contingency",
+    "management_reserve",
+    "total_mean",
+    "total_pessimistic"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "wbs_leaves": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "optimistic_hours",
+          "most_likely_hours",
+          "pessimistic_hours",
+          "pert_mean_hours",
+          "rate_per_hour",
+          "historical_reference"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "optimistic_hours": {
+            "type": "number",
+            "minimum": 0.5
+          },
+          "most_likely_hours": {
+            "type": "number"
+          },
+          "pessimistic_hours": {
+            "type": "number"
+          },
+          "pert_mean_hours": {
+            "type": "number"
+          },
+          "rate_per_hour": {
+            "type": "number"
+          },
+          "historical_reference": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "contingency": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "risk_id",
+          "amount",
+          "rationale"
+        ],
+        "properties": {
+          "risk_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "management_reserve": {
+      "type": "number",
+      "minimum": 0
+    },
+    "total_mean": {
+      "type": "number"
+    },
+    "total_pessimistic": {
+      "type": "number"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "acme-checkout",
+  "wbs_leaves": [
+    {
+      "id": "wbs-1.1",
+      "name": "Stripe webhook handler",
+      "optimistic_hours": 4,
+      "most_likely_hours": 8,
+      "pessimistic_hours": 16,
+      "pert_mean_hours": 8.67,
+      "rate_per_hour": 120,
+      "historical_reference": "engagement-2025-Q4 wbs-2.3 (8h actual)"
+    }
+  ],
+  "contingency": [
+    {
+      "risk_id": "R-01",
+      "amount": 1200,
+      "rationale": "Stripe API contract drift risk"
+    }
+  ],
+  "management_reserve": 2000,
+  "total_mean": 1040,
+  "total_pessimistic": 4192
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "x",
+  "wbs_leaves": [],
+  "contingency": [],
+  "management_reserve": 0,
+  "total_mean": 0,
+  "total_pessimistic": 0
+}
+]]></code>
+    <note>wbs_leaves empty (rule wbs-decomposition violated).</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>wbs leaf without three-point estimates.</item>
+      <item>contingency entry without linked risk_id.</item>
+      <item>management_reserve folded into contingency.</item>
+      <item>pert_mean_hours not equal to (O + 4M + P) / 6 within tolerance.</item>
+      <item>wbs leaf without historical_reference citation.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-cost-estimation.py">Validator script enforcing this schema</reference>
 </text>

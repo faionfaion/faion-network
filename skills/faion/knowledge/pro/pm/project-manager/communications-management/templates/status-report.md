@@ -1,41 +1,27 @@
-# Weekly Status Report
+<!-- purpose: Weekly / biweekly status report -->
+<!-- consumes: metric dashboards + decisions taken in period -->
+<!-- produces: 1-page status report -->
+<!-- depends-on: content/01-core-rules.xml rule status-report-cadence-fixed -->
+<!-- token-budget-impact: ~250 tokens per report -->
 
-**Project:** [Name] | **Week ending:** [Date] | **PM:** [Name]
+# Status report — REPLACE-period
 
-## Overall Status: GREEN / YELLOW / RED
+## Headline
 
-[Colour from quantitative thresholds defined in comms/plan.yaml — not PM judgment]
+REPLACE: green / amber / red + one-sentence reason.
 
-## Summary
+## Progress
 
-[1-2 sentences: overall status lead with the metric that sets the colour]
+- REPLACE.
 
-## Progress This Week
+## Risks
 
-(Only items with state=Done in this reporting week — cite issue IDs)
+- REPLACE.
 
-- [#123] [Description]
-- [#124] [Description]
+## Decisions in period
 
-## Planned Next Week
+- REPLACE (cite decision_log id).
 
-- [Description]
-- [Description]
+## Next steps
 
-## Risks and Issues
-
-| ID | Description | Impact | Status | Mitigation |
-|----|-------------|--------|--------|------------|
-| R-01 | [Risk] | [Impact] | Open | [Action] |
-
-## Metrics
-
-| Metric | Value | Status |
-|--------|-------|--------|
-| Schedule | [N days ahead / behind] | GREEN/YELLOW/RED |
-| Budget | [$X spent of $Y — N%] | GREEN/YELLOW/RED |
-| Scope | [N% complete] | — |
-
-## Decisions Needed
-
-- [Decision 1] — from whom: [Role] — by: [Date]
+- REPLACE.

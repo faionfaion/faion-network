@@ -3,72 +3,101 @@ slug: lessons-learned
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured knowledge-capture process that runs continuously throughout a project, not only at close-out.
-content_id: "15d77bd37b2b85c5"
-tags: [lessons-learned, postmortem, continuous-improvement, knowledge-management, rca]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Continuous knowledge-capture: in-flight observation log + per-milestone retro + post-mortem report, feeding a project-wide knowledge base and triggering SOP updates.
+content_id: "d4c3b2a1f0e9d8c7"
+complexity: medium
+produces: report
+est_tokens: 4200
+tags: [lessons-learned, postmortem, continuous-improvement, knowledge-management]
 ---
 # Lessons Learned
 
 ## Summary
 
-**One-sentence:** Structured knowledge-capture process that runs continuously throughout a project, not only at close-out.
+**One-sentence:** Continuous knowledge-capture: in-flight observation log + per-milestone retro + post-mortem report, feeding a project-wide knowledge base and triggering SOP updates.
 
-**One-paragraph:** Structured knowledge-capture process that runs continuously throughout a project, not only at close-out. Each lesson requires five fields: Situation (facts), Impact (quantified), Root Cause (5-whys), Lesson (generalizable, two sentences max), Recommendation (action verb + owner role + where applied). Lessons stored in a versioned, searchable repository; application rate tracked as an SLO.
+**One-paragraph:** Continuous knowledge-capture: in-flight observation log + per-milestone retro + post-mortem report, feeding a project-wide knowledge base and triggering SOP updates.
+
+**Ефективно для:**
+
+- PMO, що хоче перетворити кожен проект на institutional learning.
+- Agency, що оптимізує delivery rate cards за результатами retros.
+- Регульованих програм, де post-mortem — частина audit trail.
+- Команд, що страждають від repeating mistakes без формального learning loop.
 
 ## Applies If (ALL must hold)
 
-- Capturing knowledge during and at the end of a project (milestone close, post-incident, full close-out).
-- Building a searchable, structured organizational memory across many projects.
-- Onboarding new PMs / engineers with curated patterns and anti-patterns.
-- Feeding a continuous-improvement loop: lesson → updated checklist → applied next sprint / project.
-- Post-incident reviews (PIR / blameless postmortems) when the incident touched scope / cost / schedule.
+- Project has at least one milestone with measurable outcome.
+- Team can dedicate 2-3 hours for retro per milestone.
+- Project will repeat or have peers in the portfolio.
+- PM is willing to publish post-mortem cross-team.
 
 ## Skip If (ANY kills it)
 
-- One-person, one-week project — overhead exceeds value; a 5-line note in the README is enough.
-- Already-mature org with strong RCA culture and a working knowledge base — just contribute, don't re-invent the methodology.
-- Live incident — capture facts now, lessons later. Do not derail incident response with a retro.
+- One-shot project with no peers in portfolio.
+- Team explicitly outsources retros to an external coach.
+- &lt;1-month project — overhead exceeds benefit.
+- No psychological-safety for blameless post-mortem.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[communications-management]] | Comms plan determines who reads the report. |
+| [[delivery-sop-template]] | SOPs updated when lessons trigger procedural change. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | one worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `observation-log-keeper` | haiku | Append observation rows in-flight. |
+| `retro-facilitator` | sonnet | Synthesize retro themes from observation log + survey. |
+| `post-mortem-author` | opus | Author blameless post-mortem report. |
+| `sop-updater` | sonnet | Translate lesson into SOP change. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/observation-log.md` | In-flight observation row: date, observer, signal, hypothesis. |
+| `templates/retro-notes.md` | Per-milestone retro: went-well, went-wrong, decisions, action items. |
+| `templates/post-mortem.md` | Blameless post-mortem: timeline, root cause, contributing factors, actions. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-lessons-learned.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[delivery-sop-template]]
+- [[communications-management]]
+- [[change-control]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (milestone_count, peer_projects_in_portfolio, psychological_safety) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

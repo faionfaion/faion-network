@@ -1,38 +1,20 @@
-# Meeting Notes: [Meeting Name]
+<!-- purpose: Meeting minutes template -->
+<!-- consumes: agenda + attendee list -->
+<!-- produces: minutes with decisions + action items -->
+<!-- depends-on: content/01-core-rules.xml rule meeting-with-decision-or-skip -->
+<!-- token-budget-impact: ~200 tokens per meeting -->
 
-**Date:** [Date] | **Time:** [Time] | **Facilitator:** [Name] | **Note-taker:** [Name]
-**Attendees:** [Names]
+# Meeting — REPLACE-title — REPLACE-date
 
-## Agenda
+## Attendees
 
-1. [Topic 1]
-2. [Topic 2]
+- REPLACE.
 
-## Discussion
+## Decisions
 
-### [Topic 1]
+- REPLACE — or "no decision needed".
 
-**Summary:** [What was discussed]
-**Decision:** [What was decided — move to decisions/YYYY-MM-DD-slug.md]
-**Action items:**
-- [ ] [Action] — owner: @name — due: [Date]
+## Action items
 
-### [Topic 2]
-
-[Same structure]
-
-## Action Items Summary
-
-| Action | Owner | Due Date | Status |
-|--------|-------|----------|--------|
-| [Action] | @name | [Date] | Open |
-
-## Decisions Made
-
-(Each decision also filed to decisions/YYYY-MM-DD-slug.md within 24h)
-
-- [Decision 1] — rationale: [brief]
-
-## Next Meeting
-
-**Date:** [Date] | **Topics:** [Planned topics]
+| who | what | due |
+|-----|------|-----|

@@ -1,47 +1,231 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Service Delivery SOP — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the structure of an SOP document. Agent producing or auditing an SOP must satisfy this contract.</summary>
+<text id="02-output-contract" title="Service Delivery SOP Template Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="service_name" format="short_string"/>
-      <field name="version" format="semver"/>
-      <field name="target_operator_profile" format="senior_contractor_or_employee_with_named_skills"/>
-      <field name="engagement_type_scope" format="list_of_engagement_types_this_SOP_covers"/>
-      <field name="success_definition" format="objective_acceptance_criteria_from_client_perspective"/>
-      <field name="steps" min="5" max="20" source="step_record_schema"/>
-      <field name="overall_time_budget" format="hours_range"/>
-      <field name="escalation_owners" min="1" required_keys="name,channel,bundle_required"/>
-    </required>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/delivery-sop-template.json",
+  "type": "object",
+  "required": [
+    "sop_id",
+    "service_name",
+    "version",
+    "owner",
+    "steps",
+    "engagement_acceptance"
+  ],
+  "properties": {
+    "sop_id": {
+      "type": "string"
+    },
+    "service_name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "required": [
+          "n",
+          "name",
+          "inputs",
+          "action",
+          "decisions",
+          "quality_gates",
+          "escalation",
+          "time_budget_min"
+        ],
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "action": {
+            "type": "string"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "condition",
+                "branch_a",
+                "branch_b"
+              ]
+            }
+          },
+          "quality_gates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "escalation": {
+            "type": "string"
+          },
+          "time_budget_min": {
+            "type": "integer",
+            "minimum": 5
+          }
+        }
+      }
+    },
+    "engagement_acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">any step missing one or more of: inputs / action / quality_gate / time_budget</pattern>
-      <pattern id="f2">decision text containing "use your judgment" / "it depends" / "see what makes sense" without an explicit branch table</pattern>
-      <pattern id="f3">quality gate stated as "make sure it works" / "looks good" without an evaluable check</pattern>
-      <pattern id="f4">SOP that references undocumented founder-only tools or credentials without an access plan</pattern>
-      <pattern id="f5">SOP versioned 1.0 with zero history of contractor executions (untested SOP)</pattern>
-      <pattern id="f6">step count &lt; 5 (likely too coarse) or &gt; 20 (likely needs sub-SOPs)</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "sop_id": "sop-ga4-setup",
+  "service_name": "Analytics setup",
+  "version": "1.0.0",
+  "owner": "U_FOUNDER",
+  "steps": [
+    {
+      "n": 1,
+      "name": "intake",
+      "inputs": [
+        "client brief"
+      ],
+      "action": "read brief, confirm scope",
+      "decisions": [],
+      "quality_gates": [
+        "scope confirmed in writing"
+      ],
+      "escalation": "U_FOUNDER if scope unclear",
+      "time_budget_min": 30
+    },
+    {
+      "n": 2,
+      "name": "ga4-property",
+      "inputs": [
+        "GA admin access"
+      ],
+      "action": "create GA4 property",
+      "decisions": [],
+      "quality_gates": [
+        "property visible to client"
+      ],
+      "escalation": "U_FOUNDER if access denied",
+      "time_budget_min": 20
+    },
+    {
+      "n": 3,
+      "name": "gtm-install",
+      "inputs": [
+        "CMS admin"
+      ],
+      "action": "install GTM via template",
+      "decisions": [
+        {
+          "condition": "CMP present",
+          "branch_a": "consent template",
+          "branch_b": "default-deny + sales flag"
+        }
+      ],
+      "quality_gates": [
+        "GTM preview shows page_view"
+      ],
+      "escalation": "U_FOUNDER if 4xx",
+      "time_budget_min": 60
+    },
+    {
+      "n": 4,
+      "name": "events",
+      "inputs": [
+        "event list from intake"
+      ],
+      "action": "configure conversion events",
+      "decisions": [],
+      "quality_gates": [
+        "DebugView fires each event"
+      ],
+      "escalation": "U_FOUNDER if events stuck",
+      "time_budget_min": 45
+    },
+    {
+      "n": 5,
+      "name": "handoff",
+      "inputs": [
+        "dashboard access list"
+      ],
+      "action": "share access + write handoff doc",
+      "decisions": [],
+      "quality_gates": [
+        "client signs acceptance"
+      ],
+      "escalation": "U_FOUNDER if client unresponsive 48h",
+      "time_budget_min": 30
+    }
+  ],
+  "engagement_acceptance": [
+    "client signs handoff",
+    "all events fire in DebugView",
+    "GTM preview clean"
+  ]
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Group two short adjacent steps into one IF they share inputs and the combined step still has one gate.</transformation>
-      <transformation>Extract a recurring sub-routine into its own SOP and reference it as a step ("see SOP-007: GA4 install").</transformation>
-      <transformation>Mark a step as "optional, applies if &lt;condition&gt;" — allowed when condition is part of decision branching.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "sop_id": "x",
+  "service_name": "y",
+  "version": "1.0",
+  "owner": "z",
+  "steps": [
+    {
+      "n": 1,
+      "name": "do stuff"
+    }
+  ],
+  "engagement_acceptance": []
+}
+]]></code>
+    <note>version pattern invalid; step missing inputs/action/decisions/quality_gates/escalation/time_budget_min; steps below minItems 5; engagement_acceptance empty.</note>
+  </example>
 
-    <schema-reference path="templates/step-record.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist (run before publishing SOP v1.0)">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every step has named inputs with source (r1)</item>
-      <item>Every "depends on..." moment is captured as an explicit branch (r2)</item>
-      <item>Every step has a concrete pass/fail gate (r3)</item>
-      <item>Every decision + gate has a named escalation owner + channel (r4)</item>
-      <item>Every step has a time budget; engagement total is calculable (r5)</item>
-      <item>SOP has been dry-run by the author end-to-end OR observed during a real execution</item>
-      <item>Tools, credentials, and templates referenced exist and are accessible to the target operator</item>
-      <item>Output validates against templates/step-record.json</item>
+      <item>step without quality_gates.</item>
+      <item>decision branch without explicit condition.</item>
+      <item>escalation reading 'use judgment'.</item>
+      <item>time_budget_min == 0.</item>
+      <item>step count outside 5-15 range.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-delivery-sop-template.py">Validator script enforcing this schema</reference>
 </text>

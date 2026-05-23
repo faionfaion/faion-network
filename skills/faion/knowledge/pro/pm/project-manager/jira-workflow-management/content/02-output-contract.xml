@@ -1,22 +1,144 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="jira-workflow-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Jira Workflow Management Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the config artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/jira-workflow-management.json",
+  "type": "object",
+  "required": [
+    "site",
+    "project_key",
+    "workflow_yaml_path",
+    "saved_filters",
+    "automation_rules",
+    "token_scope"
+  ],
+  "properties": {
+    "site": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+\\.atlassian\\.net$"
+    },
+    "project_key": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]+$"
+    },
+    "workflow_yaml_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "saved_filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "jql"
+        ]
+      },
+      "minItems": 1
+    },
+    "automation_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "scope",
+          "rate_limit_per_min"
+        ]
+      }
+    },
+    "token_scope": {
+      "type": "object",
+      "required": [
+        "scopes",
+        "expiry_days"
+      ],
+      "properties": {
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "expiry_days": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 365
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "site": "acme.atlassian.net",
+  "project_key": "PLAT",
+  "workflow_yaml_path": "./workflows/plat.yaml",
+  "saved_filters": [
+    {
+      "name": "My Active",
+      "jql": "assignee = currentUser() AND status != Done"
+    }
+  ],
+  "automation_rules": [
+    {
+      "name": "auto-assign-bug",
+      "scope": "project",
+      "rate_limit_per_min": 60
+    }
+  ],
+  "token_scope": {
+    "scopes": [
+      "read:jira-work",
+      "write:jira-work"
+    ],
+    "expiry_days": 90
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "site": "acme.com",
+  "project_key": "platform",
+  "workflow_yaml_path": "",
+  "saved_filters": [],
+  "automation_rules": [
+    {
+      "name": "x"
+    }
+  ],
+  "token_scope": {
+    "scopes": [
+      "admin"
+    ],
+    "expiry_days": 9999
+  }
+}
+]]></code>
+    <note>site domain wrong; project_key lowercase; workflow_yaml_path empty; saved_filters empty; automation_rule missing scope+rate_limit; token scope admin; expiry too long.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>token scope including 'admin' or 'manage:jira-configuration'.</item>
+      <item>automation_rule without rate_limit_per_min.</item>
+      <item>workflow defined UI-only (workflow_yaml_path empty).</item>
+      <item>saved_filters empty when project has ≥1 active sprint.</item>
+      <item>expiry_days &gt; 365.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-jira-workflow-management.py">Validator script enforcing this schema</reference>
 </text>

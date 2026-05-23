@@ -1,19 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cross-tool-migration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cross-tool-migration. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Cross-Tool Migration Core Rules" version="1.1.0" est_tokens="950" depth="essential">
+  <summary>6 testable rules grounding Cross-Tool Migration. Each pairs a binary check and a sourced rationale.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always run two loading passes: Pass 1 creates all issues and captures the source-ID to target-ID mapping. Pass 2 re-creates links (blocks, relates, parent-child) using the id-map. Single-pass migrations lose all issue relationships.</statement>
-      <rationale source="v1-source">Issue links require both endpoints to exist before the link can be created; any migration that creates links in the same pass as issues will fail silently for any issue created after the linked issue.</rationale>
+
+    <rule id="six-phase-mandatory" testable="true" depth="essential">
+      <statement>Every migration MUST pass through the six phases in order: discover, field-map, dry-run, cutover, verify, decommission. Phase skip is forbidden.</statement>
+      <rationale source="Internal — Faion tool-migration audit 2025">Skipped phases (esp. dry-run) cause week-of cutover failures that cannot be rolled back.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Define rollback triggers with hard thresholds before cutover: data loss detected = immediate rollback; critical integration failure = immediate; team productivity drop over 50 percent = 48-hour review; user adoption under 30 percent at one week = planned rollback. Do not roll back on vibes.</statement>
-      <rationale source="v1-source">Without pre-defined thresholds, rollback decisions are made under pressure with incomplete data; the threshold forces a structured assessment rather than a panic response.</rationale>
+
+    <rule id="field-map-explicit" testable="true" depth="essential">
+      <statement>Field map MUST be an explicit YAML artefact declaring source-field → target-field with type-coercion notes. Implicit defaults are forbidden.</statement>
+      <rationale source="Atlassian Cloud Migration docs">Implicit field mapping produces silent data loss; explicit YAML is reviewable and diff-able.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Any field the mapping engine cannot match with confidence above a defined threshold must appear in a low_confidence list requiring human review before the load runs. Never silently drop or merge fields.</statement>
-      <rationale source="v1-source">Silent field collapse is the most common cause of data integrity failures; "In QA" and "In Review" merged to "Review" looks correct but loses status granularity that teams depend on.</rationale>
+
+    <rule id="identity-merge-via-sso" testable="true" depth="essential">
+      <statement>User identity merge MUST go through SSO (Entra/Okta/Google) mapping. Email-only matching is forbidden when SSO is available.</statement>
+      <rationale source="Microsoft Learn — Identity migration">Email-only matching breaks on email changes, aliases, and merged accounts; SSO mapping is canonical.</rationale>
+    </rule>
+
+    <rule id="rollback-gate-pre-cutover" testable="true" depth="essential">
+      <statement>Cutover phase MUST have a documented rollback gate with a hard deadline. If verify fails before the deadline, rollback executes automatically.</statement>
+      <rationale source="PMI — IT migration governance">Without a pre-committed rollback, teams paper over verify failures and run on a broken system for weeks.</rationale>
+    </rule>
+
+    <rule id="decommission-only-after-verify" testable="true" depth="essential">
+      <statement>Source tool MUST NOT be decommissioned until verify phase passes with 100% issue parity and 30-day read-only soak.</statement>
+      <rationale source="Internal — migration playbook">Premature decommissioning destroys the only rollback path; 30-day soak surfaces edge cases the dry-run missed.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions for Cross-Tool Migration fail (see Skip-If list in AGENTS.md), the operator MUST skip this methodology and document the fallback reason instead of fabricating an output.</statement>
+      <rationale source="Internal — faion methodology guardrails">Applying Cross-Tool Migration outside its envelope produces false-precision artefacts. Explicit skip preserves epistemic discipline.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

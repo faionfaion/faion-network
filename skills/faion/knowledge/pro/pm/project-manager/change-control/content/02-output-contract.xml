@@ -1,22 +1,177 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="change-control Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Change Control Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/change-control.json",
+  "type": "object",
+  "required": [
+    "project_id",
+    "baseline_version",
+    "change_requests"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "baseline_version": {
+      "type": "string"
+    },
+    "change_requests": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "requester",
+          "submitted_at",
+          "status",
+          "tier",
+          "impact_analysis"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^CR-[0-9]{4}$"
+          },
+          "requester": {
+            "type": "string"
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "submitted",
+              "in-review",
+              "approved",
+              "rejected",
+              "deferred"
+            ]
+          },
+          "tier": {
+            "enum": [
+              "tier-1",
+              "tier-2",
+              "tier-3"
+            ]
+          },
+          "impact_analysis": {
+            "type": "object",
+            "required": [
+              "cost_delta_pct",
+              "schedule_delta_days",
+              "scope_delta",
+              "risk_delta"
+            ],
+            "properties": {
+              "cost_delta_pct": {
+                "type": "number"
+              },
+              "schedule_delta_days": {
+                "type": "integer"
+              },
+              "scope_delta": {
+                "type": "string"
+              },
+              "risk_delta": {
+                "enum": [
+                  "increases",
+                  "neutral",
+                  "decreases"
+                ]
+              }
+            }
+          },
+          "decision_record": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "approver": {
+                "type": "string"
+              },
+              "decided_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "rationale": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "acme-platform-2026",
+  "baseline_version": "v3",
+  "change_requests": [
+    {
+      "id": "CR-0042",
+      "requester": "U_PO",
+      "submitted_at": "2026-05-20T10:00:00Z",
+      "status": "approved",
+      "tier": "tier-2",
+      "impact_analysis": {
+        "cost_delta_pct": 4.5,
+        "schedule_delta_days": 7,
+        "scope_delta": "add billing webhook retry",
+        "risk_delta": "decreases"
+      },
+      "decision_record": {
+        "approver": "U_SPONSOR",
+        "decided_at": "2026-05-22T15:00:00Z",
+        "rationale": "Reduces support ticket volume."
+      }
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "x",
+  "baseline_version": "",
+  "change_requests": [
+    {
+      "id": "42",
+      "requester": "x",
+      "submitted_at": "yesterday",
+      "status": "ok",
+      "tier": "small"
+    }
+  ]
+}
+]]></code>
+    <note>CR id pattern wrong; status not in enum; tier not in enum; impact_analysis missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>CR without impact_analysis.</item>
+      <item>CR status='approved' AND decision_record null.</item>
+      <item>tier-1 CR with cost_delta_pct &gt; 2%.</item>
+      <item>tier-3 CR approved by anyone other than CCB.</item>
+      <item>deletion of any CR row — silent rejection forbidden.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-change-control.py">Validator script enforcing this schema</reference>
 </text>

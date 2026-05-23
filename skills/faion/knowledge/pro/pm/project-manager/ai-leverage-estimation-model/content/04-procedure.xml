@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="AI Leverage Estimation Model Procedure" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>5-step procedure to produce a leverage-adjusted estimate end-to-end. Each step names its input artefact, action, output, and a decision-gate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="decompose-wbs">
+      <input>Engagement brief + scope notes</input>
+      <action>Decompose scope into named leaf tasks. Each leaf has a one-sentence success criterion. Stop when leaves are 4-16h of raw work.</action>
+      <output>WBS leaves list</output>
+      <decision-gate>If any leaf &gt;16h raw, split. If any leaf &lt;1h raw, merge.</decision-gate>
+    </step>
+
+    <step n="2" name="classify-leaves">
+      <input>WBS leaves + task-class taxonomy</input>
+      <action>Assign each leaf to one of {glue, scaffold, tests, business-logic, regulated, novel}. If a leaf straddles two classes, split it.</action>
+      <output>Classified leaves</output>
+      <decision-gate>If any leaf cannot be classified, STOP and apply `skip-this-methodology` for that leaf.</decision-gate>
+    </step>
+
+    <step n="3" name="assign-multiplier-bands">
+      <input>Classified leaves + operator throughput log (last 90 days)</input>
+      <action>For each class present, pull ≥1 evidence row from the log. Derive low/mid/high band from observed planned/actual ratios. Use the current quarter's band-version.</action>
+      <output>Per-leaf multiplier_band + evidence_rows</output>
+      <decision-gate>If &lt;1 evidence row for a class, fall back to PERT for those leaves (set fallback_reason on them).</decision-gate>
+    </step>
+
+    <step n="4" name="compute-and-audit">
+      <input>Bands + raw hours per leaf</input>
+      <action>Compute adjusted_hours = raw_hours / multiplier_band per leaf, per band corner. Sum totals. Run `scripts/validate-ai-leverage-estimation-model.py` against the resulting JSON.</action>
+      <output>Validated estimate JSON</output>
+      <decision-gate>If validator fails, fix violations before sending to buyer.</decision-gate>
+    </step>
+
+    <step n="5" name="post-engagement-calibration">
+      <input>Final timesheet vs estimate</input>
+      <action>Append actual hours to the operator's throughput log per leaf. Surface any leaf where actual was &gt;2x mid-band into the engagement's lessons-learned record.</action>
+      <output>Updated throughput log + lessons-learned entries</output>
+      <decision-gate>At quarter-end, re-derive multiplier bands; bump band_version.</decision-gate>
+    </step>
+
+  </section>
+</text>

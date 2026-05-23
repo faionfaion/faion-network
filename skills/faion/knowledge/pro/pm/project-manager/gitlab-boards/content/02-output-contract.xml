@@ -1,22 +1,225 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="gitlab-boards Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="GitLab Issue Boards Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the config artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/gitlab-boards.json",
+  "type": "object",
+  "required": [
+    "group",
+    "project",
+    "scoped_labels",
+    "milestones",
+    "board_lists",
+    "token_scope"
+  ],
+  "properties": {
+    "group": {
+      "type": "string"
+    },
+    "project": {
+      "type": "string"
+    },
+    "scoped_labels": {
+      "type": "object",
+      "required": [
+        "status",
+        "type",
+        "priority"
+      ],
+      "properties": {
+        "status": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 3
+        },
+        "type": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "priority": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        }
+      }
+    },
+    "milestones": {
+      "type": "object",
+      "required": [
+        "cadence",
+        "active"
+      ],
+      "properties": {
+        "cadence": {
+          "enum": [
+            "weekly",
+            "biweekly",
+            "monthly"
+          ]
+        },
+        "active": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "board_lists": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "scoped_label_value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scoped_label_value": {
+            "type": "string",
+            "pattern": "^status::"
+          }
+        }
+      }
+    },
+    "token_scope": {
+      "type": "object",
+      "required": [
+        "scope",
+        "expiry_days"
+      ],
+      "properties": {
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expiry_days": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 365
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "group": "acme",
+  "project": "platform",
+  "scoped_labels": {
+    "status": [
+      "status::todo",
+      "status::doing",
+      "status::review",
+      "status::done"
+    ],
+    "type": [
+      "type::bug",
+      "type::feature",
+      "type::chore"
+    ],
+    "priority": [
+      "priority::high",
+      "priority::medium",
+      "priority::low"
+    ]
+  },
+  "milestones": {
+    "cadence": "biweekly",
+    "active": [
+      "2026-Q2-S1",
+      "2026-Q2-S2"
+    ]
+  },
+  "board_lists": [
+    {
+      "name": "Todo",
+      "scoped_label_value": "status::todo"
+    },
+    {
+      "name": "Doing",
+      "scoped_label_value": "status::doing"
+    },
+    {
+      "name": "Review",
+      "scoped_label_value": "status::review"
+    },
+    {
+      "name": "Done",
+      "scoped_label_value": "status::done"
+    }
+  ],
+  "token_scope": {
+    "scope": [
+      "api",
+      "read_repository"
+    ],
+    "expiry_days": 90
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "group": "x",
+  "project": "y",
+  "scoped_labels": {
+    "status": []
+  },
+  "milestones": {
+    "cadence": "ad-hoc",
+    "active": []
+  },
+  "board_lists": [
+    {
+      "name": "Doing",
+      "scoped_label_value": "doing"
+    }
+  ],
+  "token_scope": {
+    "scope": [
+      "api",
+      "sudo"
+    ],
+    "expiry_days": 9999
+  }
+}
+]]></code>
+    <note>status labels empty; milestone cadence invalid; board list label not scoped; token includes sudo; expiry too long.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>board_list with scoped_label_value not starting with 'status::'.</item>
+      <item>token_scope.scope including 'sudo' or 'admin_mode'.</item>
+      <item>milestone cadence outside {weekly, biweekly, monthly}.</item>
+      <item>scoped_labels.status with fewer than 3 entries.</item>
+      <item>token expiry_days &gt; 365.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-gitlab-boards.py">Validator script enforcing this schema</reference>
 </text>

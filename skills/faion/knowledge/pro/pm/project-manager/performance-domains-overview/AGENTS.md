@@ -3,73 +3,94 @@ slug: performance-domains-overview
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: PMBoK 7 defines eight interconnected performance domains — Stakeholder, Team, Development Approach, Planning, Project Work, Delivery, Measurement, Uncertainty — that together enable successful project delivery.
-content_id: "85a662c53cc5bbed"
-tags: [pmbok7, performance-domains, project-assessment, governance, framework]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PMBoK 7/8 eight performance domains (Stakeholder, Team, Development Approach, Planning, Project Work, Delivery, Measurement, Uncertainty) used as a project-health rubric.
+content_id: "7e8f9a0b1c2d3e4f"
+complexity: light
+produces: rubric
+est_tokens: 3500
+tags: [pmbok, performance-domains, project-assessment, governance, framework]
 ---
-# Performance Domains Overview
+# PMBoK Performance Domains Overview
 
 ## Summary
 
-**One-sentence:** PMBoK 7 defines eight interconnected performance domains — Stakeholder, Team, Development Approach, Planning, Project Work, Delivery, Measurement, Uncertainty — that together enable successful project delivery.
+**One-sentence:** PMBoK 7/8 eight performance domains (Stakeholder, Team, Development Approach, Planning, Project Work, Delivery, Measurement, Uncertainty) used as a project-health rubric.
 
-**One-paragraph:** PMBoK 7 defines eight interconnected performance domains — Stakeholder, Team, Development Approach, Planning, Project Work, Delivery, Measurement, Uncertainty — that together enable successful project delivery. Domains are ongoing concurrent concerns, not sequential phases. The overview serves as a router and assessment harness: triage which domains need active management, select the relevant detailed methodologies, and score each domain green/yellow/red at project gates.
+**One-paragraph:** PMBoK 7/8 eight performance domains (Stakeholder, Team, Development Approach, Planning, Project Work, Delivery, Measurement, Uncertainty) used as a project-health rubric.
+
+**Ефективно для:**
+
+- PMO health checks, де project health має бути порівняний across portfolio.
+- Onboarding PM-ів, які потребують спільної vocabulary.
+- Audit reviews, де assessor питає 'як ви покриваєте PMBoK 7 domains?'.
+- Self-assessment по quarter end для project leads.
 
 ## Applies If (ALL must hold)
 
-- Onboarding a new project: triage which of the 8 PMBOK7 domains need active management on this engagement.
-- Periodic project health checks where you score each domain green/yellow/red and decide where to spend management attention.
-- Tailoring an engagement: deciding which methodologies (RACI, EVM, risk register, communication plan) to instantiate vs skip based on domain weight.
-- Mapping legacy-PMBOK6 process documentation onto the PMBOK7 outcome-based view during cert prep or audit.
-- Routing a multi-methodology agent: a router that picks the right detailed methodology (scope-management, schedule-development, EVM, etc.) given a project question.
+- Project lead willing to score domains qualitatively (red/amber/green).
+- Project &gt;4 weeks duration — domains have time to manifest.
+- PMO accepts qualitative scoring over quantitative metrics.
+- Audit or governance requires PMBoK alignment.
 
 ## Skip If (ANY kills it)
 
-- Single-task work where a checklist suffices; the framework adds overhead without changing decisions.
-- Pure scrum teams for whom Scrum Guide already defines roles, ceremonies and metrics — domains and Scrum aren't contradictory but redundant overlay creates confusion.
-- Operations / BAU work that is not a project (no defined start/end, no unique outcome).
-- Low-stakes internal work where domain assessment cost > project cost.
+- Project &lt;4 weeks — domains have no chance to manifest.
+- Engineering-only solopreneur — overhead exceeds benefit.
+- Org explicitly uses an alternative framework (e.g. PRINCE2-only).
+- Team rejects framework-based assessment as bureaucratic.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[pm-framework-focus-areas]] | Focus areas complement performance domains. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `domain-scorer` | sonnet | Score each domain red/amber/green with evidence. |
+| `rubric-renderer` | haiku | Emit final rubric report. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/domain-rubric.md` | 8-row rubric: domain, score, evidence, recommended action. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-performance-domains-overview.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[pm-framework-focus-areas]]
+- [[hybrid-delivery]]
+- [[lessons-learned]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (project_duration_weeks, pmo_requires_assessment, framework_alignment) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

@@ -3,73 +3,101 @@ slug: benefits-realization
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Identify, quantify, assign ownership for, and track the business value that a project is expected to deliver after go-live.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identify, quantify, assign ownership for, and track post-launch business value via a Benefits Register with metrics, baselines, targets, and named owners accountable after delivery.
 content_id: "52c670f2e7e08c3f"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [benefits, roi, outcomes, measurement, attribution]
 ---
 # Benefits Realization
 
 ## Summary
 
-**One-sentence:** Identify, quantify, assign ownership for, and track the business value that a project is expected to deliver after go-live.
+**One-sentence:** Identify, quantify, assign ownership for, and track post-launch business value via a Benefits Register with metrics, baselines, targets, and named owners accountable after delivery.
 
-**One-paragraph:** Identify, quantify, assign ownership for, and track the business value that a project is expected to deliver after go-live. A Benefits Register stores each benefit with metric, baseline (frozen before launch), target, owner, and source system. The rule: every benefit must have a quantified target and a named owner before project approval — "soft benefits" without a metric do not count.
+**One-paragraph:** Identify, quantify, assign ownership for, and track post-launch business value via a Benefits Register with metrics, baselines, targets, and named owners accountable after delivery.
+
+**Ефективно для:**
+
+- Бізнес-кейсів, що вимагають quantified ROI з tracking-plan.
+- Post-launch portfolio reviews (3, 6, 12 months) у PMO.
+- Інвестиційних комітетів, що ставлять питання payback.
+- Програм, де outputs передають outcomes на 6-18 місяців.
 
 ## Applies If (ALL must hold)
 
-- Business case approval requiring quantified ROI and a tracking plan.
-- Post-launch benefits review (3, 6, 12 months) across a project portfolio.
-- Investment committee asking "did the last N projects pay back?"
-- Programs spanning years where outputs precede outcomes by 6-18 months.
-- PMO maturity step: adopting outcome-based metrics over output-based.
+- Business case approval requires quantified ROI + tracking plan.
+- Post-launch portfolio review across ≥3 projects scheduled.
+- Benefit owner is a business stakeholder, NOT the PM.
+- Baseline values can be measured before launch.
 
 ## Skip If (ANY kills it)
 
-- Pre-revenue startup pre-PMF — benefits are speculative; track learning milestones instead.
-- Compliance-driven projects where the benefit is "stay legal" (binary, not quantifiable).
-- Internal tooling with weak baseline data (no measurable "before" state).
-- Crisis incident response — the benefit is "stopped bleeding", not a trackable KPI.
+- Pre-revenue startup pre-PMF — benefits are speculative.
+- Compliance-driven project where benefit is binary 'stay legal'.
+- Internal tooling with no measurable 'before' state.
+- Crisis incident response — benefit is 'stopped bleeding'.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cost-estimation]] | Cost baseline this register multiplies against for ROI. |
+| [[earned-value-management]] | Performance-measurement vocabulary used in tracking. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | one worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `benefits-cataloger` | sonnet | Extract quantified benefits from business case prose. |
+| `baseline-collector` | haiku | Pull T-0 metric values from source systems. |
+| `measurement-runner` | haiku | Periodic pulls vs target, drift detection. |
+| `counterfactual-analyzer` | opus | DiD / synthetic-control attribution. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/benefits-register.md` | Register table: id, benefit, category, owner, metric, baseline, target, status. |
+| `templates/benefits-report.md` | Post-launch report: exec summary, status per benefit, barriers, forecast. |
+| `templates/business-case-benefits.md` | Business case section: financial table (3-year), non-financial, ROI/NPV. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-benefits-realization.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[cost-estimation]]
+- [[earned-value-management]]
+- [[lessons-learned]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (baseline_measurable, owner_is_business_stakeholder, attribution_required) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

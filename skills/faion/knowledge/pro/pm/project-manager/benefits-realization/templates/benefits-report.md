@@ -1,42 +1,24 @@
-# Benefits Realization Report: [Project Name]
+<!-- purpose: Post-launch benefits status report -->
+<!-- consumes: register + actuals from source systems -->
+<!-- produces: report for sponsor / CFO -->
+<!-- depends-on: content/01-core-rules.xml rule baseline-frozen -->
+<!-- token-budget-impact: ~400 tokens per report -->
 
-**Reporting Period:** [Date Range]
-**Report Date:** [Date]
-**Prepared By:** [PM/BA Name]
+# Benefits report — REPLACE-project-id — REPLACE-checkpoint-date
 
-## Executive Summary
+## Executive summary
 
-[2-3 sentences: overall benefits realization status, top achievement, top concern.]
+REPLACE 3 sentences: overall realization %, top success, top concern.
 
-## Benefits Status
+## Per-benefit status
 
-| Benefit | Target | Current | % Realized | Trend | Status |
-|---------|--------|---------|------------|-------|--------|
-| [B-01 name] | [Value] | [Value] | [%] | Up/Stable/Down | On Track |
-| [B-02 name] | [Value] | [Value] | [%] | Up/Stable/Down | At Risk |
+| id | metric | baseline | target | actual | % realized | attributed % | trend |
+|----|--------|----------|--------|--------|-----------|--------------|-------|
 
-## Detailed Analysis
+## Barriers and recommendations
 
-### [B-01 Benefit Name]
-
-- **Target:** [Value by date]
-- **Current:** [Value as of report date]
-- **% Realized:** [%]
-- **Trend:** [Improving / Stable / Declining]
-- **Attribution note:** [Control cohort comparison or DiD result]
-- **Actions:** [What is being done to close the gap]
-
-## Barriers and Actions
-
-| Barrier | Impact | Action | Owner | Due |
-|---------|--------|--------|-------|-----|
-| [Barrier description] | [High/Med/Low] | [Action] | [Name] | [Date] |
+- REPLACE.
 
 ## Forecast
 
-[Updated forecast for full benefits realization. Include any scope adjustments to expected benefits.]
-
-## Recommendations
-
-1. [Recommendation with owner]
-2. [Recommendation with owner]
+REPLACE: 12-month projection with confidence band.

@@ -1,20 +1,13 @@
-# Benefits Register: [Project Name]
+<!-- purpose: Benefits register table -->
+<!-- consumes: business case + source-system baselines -->
+<!-- produces: register conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml rule quantified-benefit -->
+<!-- token-budget-impact: ~300 tokens per register -->
 
-**Version:** 1.0
-**Date:** [Date]
-**PM:** [Name]
+# Benefits register — REPLACE-project-id
 
-| ID | Benefit | Category | Owner | Metric | Baseline | Target | Realization Date | Source System | Status |
-|----|---------|----------|-------|--------|----------|--------|-----------------|---------------|--------|
-| B-01 | [Description] | Financial | [Name] | [Metric name] | [Value] | [Value] | [Date] | [System] | Tracking |
-| B-02 | [Description] | Efficiency | [Name] | [Metric name] | [Value] | [Value] | [Date] | [System] | Tracking |
+Owner of register: REPLACE-business-stakeholder
 
-**Categories:** Financial | Efficiency | Quality | Strategic | Compliance
-
-**Status values:** Planned | Tracking | On Track | At Risk | Achieved | Not Realized
-
-## Baseline Freeze Record
-
-| ID | Baseline Value | Source Query | Frozen Date | Frozen By |
-|----|---------------|-------------|------------|-----------|
-| B-01 | [Value] | [Query or report URL] | [Date] | [Name] |
+| id | benefit | metric | baseline (date) | target (date) | owner | attribution | category | status |
+|----|---------|--------|------------------|----------------|-------|-------------|----------|--------|
+| b1 | REPLACE | REPLACE | REPLACE (REPLACE) | REPLACE (REPLACE) | REPLACE | diff-in-diff | revenue | active |

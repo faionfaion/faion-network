@@ -1,51 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Async Standup Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Schemas for the daily standup post and the weekly digest. Posts must match the post schema; digests must match the digest schema.</summary>
+<text id="02-output-contract" title="Async Standup Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema draft-07 for the daily standup post and the weekly digest. Validator rejects posts with empty blocker/owner inconsistencies or digests authored by the worker being summarised.</summary>
 
-  <output-contract>
-    <required>
-      <field name="post.author" type="string"/>
-      <field name="post.posted_at" format="ISO-8601"/>
-      <field name="post.author_local_window_match" type="boolean"
-             notes="true if posted_at is within 2h of working-day-start OR 1h of previous-day-end in author's local tz"/>
-      <field name="post.yesterday" type="paragraph" max_words="60"/>
-      <field name="post.today" type="paragraph" max_words="60"/>
-      <field name="post.blocker" type="paragraph" max_words="80"
-             notes="literal 'none' if no blocker"/>
-      <field name="post.blocker_owner_mention" type="user_id_or_null"
-             notes="non-null iff blocker != 'none'"/>
-      <field name="digest.week_window" format="YYYY-MM-DD..YYYY-MM-DD"/>
-      <field name="digest.shipped" type="bullet_list" max_items="7"/>
-      <field name="digest.in_progress" type="bullet_list" max_items="7"/>
-      <field name="digest.unresolved_blockers" type="bullet_list"/>
-      <field name="digest.missed_posters" type="user_id_list"/>
-      <field name="digest.next_week_risk" type="paragraph" max_words="60"/>
-    </required>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/async-standup-template.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["kind", "author", "posted_at", "yesterday", "today", "blocker"],
+      "properties": {
+        "kind": {"const": "post"},
+        "author": {"type": "string", "minLength": 1},
+        "posted_at": {"type": "string", "format": "date-time"},
+        "in_window": {"type": "boolean"},
+        "yesterday": {"type": "string", "minLength": 1, "maxLength": 400},
+        "today": {"type": "string", "minLength": 1, "maxLength": 400},
+        "blocker": {"type": "string", "minLength": 1, "maxLength": 600},
+        "blocker_owner": {"type": ["string", "null"]}
+      }
+    },
+    {
+      "type": "object",
+      "required": ["kind", "author", "week_window", "shipped", "in_progress",
+                   "unresolved_blockers", "missed_posters", "next_week_risk"],
+      "properties": {
+        "kind": {"const": "digest"},
+        "author": {"type": "string"},
+        "week_window": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.\\.[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+        "shipped": {"type": "array", "items": {"type": "string"}, "maxItems": 7},
+        "in_progress": {"type": "array", "items": {"type": "string"}, "maxItems": 7},
+        "unresolved_blockers": {"type": "array", "items": {"type": "string"}},
+        "missed_posters": {"type": "array", "items": {"type": "string"}},
+        "next_week_risk": {"type": "string", "minLength": 1, "maxLength": 400}
+      }
+    }
+  ]
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">post.blocker contains text but post.blocker_owner_mention is null</pattern>
-      <pattern id="f2">post fields with literal placeholders ("TBD", "WIP", "TODO") — must be concrete sentences</pattern>
-      <pattern id="f3">post longer than 250 words total — standup is not a journal</pattern>
-      <pattern id="f4">digest authored by the same contributor whose work it summarizes (must be PM or independent summarizer)</pattern>
-      <pattern id="f5">digest invented entries not traceable to a specific daily post (require post_id citations on each bullet)</pattern>
-      <pattern id="f6">post.yesterday and post.today identical (signal of copy-paste / disengagement; must explicitly say "continuing same task" if true)</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "kind": "post",
+  "author": "U_ALICE",
+  "posted_at": "2026-05-23T08:15:00+02:00",
+  "in_window": true,
+  "yesterday": "Shipped checkout flow v2 to staging; pair-debugged Klaviyo webhook with Maria.",
+  "today": "Production rollout behind feature flag (10% canary), then monitor 4h before broadening.",
+  "blocker": "Need DB migration window for canary promotion; proposing 14:00 UTC tomorrow.",
+  "blocker_owner": "U_RAJ"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>AI may draft a post from the contributor's daily commit log + calendar; the contributor must edit and sign before submit.</transformation>
-      <transformation>AI may produce the digest from raw thread content; PM must edit and sign before publishing.</transformation>
-      <transformation>Auto-translate posts to the team's working language if the contributor wrote in their native one (preserve original below the translation).</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "kind": "post",
+  "author": "U_ALICE",
+  "posted_at": "2026-05-23T08:15:00+02:00",
+  "yesterday": "Stuff.",
+  "today": "Stuff.",
+  "blocker": "Blocked by DB migration window",
+  "blocker_owner": null
+}
+]]></code>
+    <note>Blocker text present but blocker_owner null — violates rule r3-blocker-routing-and-sla. yesterday/today identical — violates rule r1-three-field-shape (copy-paste signal).</note>
+  </example>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Three labeled fields present in order (Yesterday/Today/Blocker)</item>
-      <item>Blocker field is either "none" or has an @-owner mention</item>
-      <item>Post under 250 words</item>
-      <item>Posted within author's local window OR explicitly flagged late</item>
-      <item>Digest cites post_ids for each bullet</item>
-      <item>Digest produced by PM or summarizer, not the worker being summarized</item>
+      <item>post.blocker non-"none" with blocker_owner null.</item>
+      <item>post fields with literal placeholders (TBD, WIP, TODO).</item>
+      <item>post total &gt; 250 words.</item>
+      <item>digest authored by the same contributor whose work it summarises.</item>
+      <item>digest entries not traceable to a daily post.</item>
+      <item>post.yesterday == post.today (signal of copy-paste / disengagement).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-async-standup-template.py">Validator script enforcing this schema</reference>
 </text>

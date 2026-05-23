@@ -1,22 +1,208 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="hybrid-delivery Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Hybrid Delivery Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/hybrid-delivery.json",
+  "type": "object",
+  "required": [
+    "program_id",
+    "workstreams",
+    "handoffs",
+    "governance",
+    "reporting_dashboard"
+  ],
+  "properties": {
+    "program_id": {
+      "type": "string"
+    },
+    "workstreams": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "mode",
+          "cadence",
+          "lead",
+          "rationale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "predictive",
+              "agile"
+            ]
+          },
+          "cadence": {
+            "type": "string"
+          },
+          "lead": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 30
+          }
+        }
+      }
+    },
+    "handoffs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "from_ws",
+          "to_ws",
+          "inputs",
+          "outputs",
+          "acceptance_criteria",
+          "sla_days",
+          "escalation_owner"
+        ]
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "layer",
+        "decision_authority"
+      ],
+      "properties": {
+        "layer": {
+          "const": "single"
+        },
+        "decision_authority": {
+          "type": "string"
+        }
+      }
+    },
+    "reporting_dashboard": {
+      "type": "object",
+      "required": [
+        "common_metrics",
+        "translation_rules"
+      ],
+      "properties": {
+        "common_metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "translation_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "program_id": "acme-hardware-launch",
+  "workstreams": [
+    {
+      "id": "ws-1",
+      "name": "hardware",
+      "mode": "predictive",
+      "cadence": "monthly milestone",
+      "lead": "U_HW_LEAD",
+      "rationale": "Regulated hardware path with FDA submission gate; predictive plan required."
+    },
+    {
+      "id": "ws-2",
+      "name": "firmware",
+      "mode": "agile",
+      "cadence": "2-week sprints",
+      "lead": "U_FW_LEAD",
+      "rationale": "Firmware features iterate weekly with hardware prototypes; agile fits feedback loop."
+    }
+  ],
+  "handoffs": [
+    {
+      "from_ws": "ws-1",
+      "to_ws": "ws-2",
+      "inputs": [
+        "board rev"
+      ],
+      "outputs": [
+        "working prototype"
+      ],
+      "acceptance_criteria": [
+        "passes smoke test"
+      ],
+      "sla_days": 5,
+      "escalation_owner": "U_PROGRAM_DIRECTOR"
+    }
+  ],
+  "governance": {
+    "layer": "single",
+    "decision_authority": "U_STEERING_COMMITTEE"
+  },
+  "reporting_dashboard": {
+    "common_metrics": [
+      "cost variance",
+      "schedule variance",
+      "open risks"
+    ],
+    "translation_rules": [
+      "velocity * avg-story-cost = cost variance equivalent"
+    ]
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "program_id": "x",
+  "workstreams": [
+    {
+      "id": "ws-1",
+      "name": "x",
+      "mode": "hybrid"
+    }
+  ],
+  "handoffs": [],
+  "governance": {
+    "layer": "dual"
+  },
+  "reporting_dashboard": {}
+}
+]]></code>
+    <note>mode='hybrid' not in enum; workstream missing cadence/lead/rationale; governance.layer must be 'single'; handoffs empty; reporting missing fields.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>workstream with mode outside {predictive, agile}.</item>
+      <item>governance.layer != 'single'.</item>
+      <item>handoff without sla_days OR escalation_owner.</item>
+      <item>workstream rationale &lt; 30 chars.</item>
+      <item>workstreams count &lt; 2 (single workstream is not hybrid).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-hybrid-delivery.py">Validator script enforcing this schema</reference>
 </text>

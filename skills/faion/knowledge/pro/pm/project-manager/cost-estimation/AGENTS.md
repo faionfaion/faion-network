@@ -3,72 +3,100 @@ slug: cost-estimation
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured approach to producing a defensible project cost baseline: bottom-up estimation from a WBS, three-point (PERT) uncertainty modelling, risk-driven contingency reserve, and a separate management reserve.
-content_id: "cfd9ea2bd6d65b5a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Defensible bottom-up cost baseline: WBS decomposition, three-point (PERT) uncertainty modelling, risk-driven contingency reserve, and separate management reserve.
+content_id: "5b4a3c2d1e0f9a8b"
+complexity: deep
+produces: spec
+est_tokens: 5200
 tags: [estimation, budget, cost-baseline, wbs, pert]
 ---
 # Cost Estimation
 
 ## Summary
 
-**One-sentence:** Structured approach to producing a defensible project cost baseline: bottom-up estimation from a WBS, three-point (PERT) uncertainty modelling, risk-driven contingency reserve, and a separate management reserve.
+**One-sentence:** Defensible bottom-up cost baseline: WBS decomposition, three-point (PERT) uncertainty modelling, risk-driven contingency reserve, and separate management reserve.
 
-**One-paragraph:** Structured approach to producing a defensible project cost baseline: bottom-up estimation from a WBS, three-point (PERT) uncertainty modelling, risk-driven contingency reserve, and a separate management reserve. Output is a Cost Baseline plus Budget at Completion (BAC), versioned through every change-control event.
+**One-paragraph:** Defensible bottom-up cost baseline: WBS decomposition, three-point (PERT) uncertainty modelling, risk-driven contingency reserve, and separate management reserve.
+
+**Ефективно для:**
+
+- Запитів на фіксовану ціну, де PM зобов'язаний захистити кошторис.
+- Внутрішнього budget approval з ROI-orientation.
+- Контрактів типу cost-plus з documented baseline.
+- Програм, де cost variance — KPI keypoint у performance reviews.
 
 ## Applies If (ALL must hold)
 
-- Producing an initial budget for a feature, project, or RFP response.
-- Bottom-up estimation from a WBS (each work package gets labor + tools + infra cost).
-- Build-vs-buy / build-vs-SaaS decisions where opportunity cost must be quantified.
-- Updating the cost baseline after a change-control event.
-- Solopreneur "true cost" analysis — own time at market rate vs. out-of-pocket spend.
+- Project value ≥ 25k requires defensible cost baseline.
+- WBS or feature-level decomposition is producible.
+- Historical similar-engagement data is reachable.
+- Buyer signs off on the estimate before kick-off.
 
 ## Skip If (ANY kills it)
 
-- Agile teams estimating via story points + capacity-based run-rate — cost is derived from team-month spend, not bottom-up sums.
-- Pre-discovery exploration where requirements are less than 30% defined — use ROM (rough order of magnitude, plus or minus 50%) instead; bottom-up output will be a fantasy.
-- Fixed-fee contracts already signed — internal re-estimation has no contractual force and creates confusion.
+- Time-and-materials no-cap engagement.
+- Internal R&D spike under 40 hours.
+- Fully fixed-team retainer with no per-project cost question.
+- Highly novel domain with zero prior data — use exploratory budget, not PERT.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ai-leverage-estimation-model]] | Multiplier rubric applied AFTER raw PERT estimate. |
+| [[earned-value-management]] | EVM consumes this baseline for tracking. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | one worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `wbs-decompose` | sonnet | Decompose scope into leaves with success criteria. |
+| `pert-estimate` | sonnet | Three-point estimation per leaf with rationale. |
+| `reserve-sizing` | opus | Risk-driven contingency + management reserve. |
+| `baseline-validate` | haiku | Run validator and emit baseline document. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/cost-worksheet.md` | Bottom-up worksheet: leaf, optimistic, most-likely, pessimistic, PERT, risk. |
+| `templates/quick-estimate.md` | 10-line estimate skeleton for early-phase ballparking. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cost-estimation.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[ai-leverage-estimation-model]]
+- [[earned-value-management]]
+- [[change-control]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (project_value_band, scope_frozen, historical_data_available) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

@@ -3,73 +3,100 @@ slug: communications-management
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured who-what-when-how matrix (comms/plan.
-content_id: "1fd0695dcdc612d7"
-tags: [communications, stakeholder, status-reporting, meeting-management, decision-log]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structured who-what-when-how matrix (Communications Plan + RACI + decision log + meeting cadence) so each stakeholder gets the right artefact at the right tempo.
+content_id: "2dfe89c0a1b3c4d5"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [communications, stakeholder, status-reporting, meetings, decision-log]
 ---
 # Communications Management
 
 ## Summary
 
-**One-sentence:** A structured who-what-when-how matrix (comms/plan.
+**One-sentence:** Structured who-what-when-how matrix (Communications Plan + RACI + decision log + meeting cadence) so each stakeholder gets the right artefact at the right tempo.
 
-**One-paragraph:** A structured who-what-when-how matrix (comms/plan.yaml) that maps every stakeholder to their information need, delivery channel, cadence, and owner. Status report colour (GREEN/YELLOW/RED) derives from quantitative schedule and budget thresholds, not PM judgment. Decisions are never stored in chat — they are logged in a versioned decision record. The plan self-monitors via a weekly audit script that opens issues for overdue communications.
+**One-paragraph:** Structured who-what-when-how matrix (Communications Plan + RACI + decision log + meeting cadence) so each stakeholder gets the right artefact at the right tempo.
+
+**Ефективно для:**
+
+- Проектів з ≥5 стейкхолдерів різного рівня поінформованості.
+- Розподілених команд із cross-timezone-комунікацією.
+- PMO, що централізує status reporting через комбінацію Slack/Email/Confluence.
+- Програм із зовнішніми клієнтами, де комунікаційні SLA — частина контракту.
 
 ## Applies If (ALL must hold)
 
-- New projects where stakeholder count is above 5 and you need a written matrix before kickoff.
-- Distributed or async-first teams where missed updates are the dominant failure mode.
-- Regulated programs (SOX, HIPAA, GDPR, MDR) requiring traceable, dated, signed-off communications.
-- "Drowning in Slack/email" situations: consolidate channels and kill duplicate updates.
-- Multi-vendor engagements with formal status cadences and escalation paths required by contract.
+- Project has ≥5 distinct stakeholder groups.
+- At least one external client / regulator requires status reports.
+- Cross-timezone team (timezone gap ≥4h).
+- Decisions need a written record for audit / handover.
 
 ## Skip If (ANY kills it)
 
-- Solo founders or 2-3-person startups pre-PMF — matrix overhead exceeds value; a single Slack channel works.
-- Crisis or incident response — runbooks and on-call rotations replace this; do not retrofit during P0.
-- Short spikes under 2 weeks — agree on channel verbally, skip the artifact.
-- When stakeholders refuse classification or the political situation is too fluid to commit to a cadence.
+- Two-person project — verbal coordination is enough.
+- Single-stakeholder internal tooling project.
+- Engagement < 1 week.
+- Team uses an external comms framework (e.g. ITIL Service Comms) that supersedes this one.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[async-standup-template]] | Daily-cadence sub-pattern this plan absorbs. |
+| [[lessons-learned]] | Decision log feeds retros. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | one worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `comms-matrix-author` | sonnet | Stakeholder × artefact × cadence synthesis. |
+| `status-report-draft` | haiku | Fill the status template from metric inputs. |
+| `decision-log-append` | haiku | Append immutable decision row. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/comms-plan.md` | Comms-matrix: stakeholder, artefact, channel, owner, cadence, format. |
+| `templates/status-report.md` | Weekly / biweekly status: progress, risks, decisions, next steps. |
+| `templates/meeting-notes.md` | Notes template: attendees, decisions, action items with owners + due dates. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-communications-management.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[async-standup-template]]
+- [[lessons-learned]]
+- [[change-control]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (stakeholder_count, external_client, timezone_gap, contract_sla) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

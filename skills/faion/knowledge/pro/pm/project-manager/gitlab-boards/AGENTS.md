@@ -3,74 +3,98 @@ slug: gitlab-boards
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GitLab Issue Boards integrate kanban-style project management directly into GitLab's DevOps platform.
-content_id: "935f0b7572a29575"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: GitLab Issue Board configuration spec (labels, milestones, iteration cadence, scoped labels for status, list scoping by assignee/milestone, REST API for agent automation).
+content_id: "f1a2b3c4d5e6f7a8"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [gitlab, kanban, project-management, devops, issue-tracking]
 ---
-# GitLab Issue Boards for Team Project Management
+# GitLab Issue Boards
 
 ## Summary
 
-**One-sentence:** GitLab Issue Boards integrate kanban-style project management directly into GitLab's DevOps platform.
+**One-sentence:** GitLab Issue Board configuration spec (labels, milestones, iteration cadence, scoped labels for status, list scoping by assignee/milestone, REST API for agent automation).
 
-**One-paragraph:** GitLab Issue Boards integrate kanban-style project management directly into GitLab's DevOps platform. Work is visualized through scoped labels (workflow::*, priority::*, type::*), WIP limits, iterations, and CI-driven automation. Engineering teams using GitLab for source control and CI/CD eliminate context-switching by managing work inside the same system that runs their pipelines.
+**One-paragraph:** GitLab Issue Board configuration spec (labels, milestones, iteration cadence, scoped labels for status, list scoping by assignee/milestone, REST API for agent automation).
+
+**Ефективно для:**
+
+- GitLab-first команд, що уже мають Repos/CI/CD в одному tenant.
+- Open-source проектів з public issue tracking.
+- Teams, що використовують scoped labels для статус-машини.
+- Self-hosted GitLab організацій із data-residency constraints.
 
 ## Applies If (ALL must hold)
 
-- Engineering teams using GitLab for source control and CI/CD wanting one unified platform.
-- Self-hosted or compliance-constrained organizations (defense, finance, healthcare) where GitLab CE/EE on-premises is the only option.
-- Group-of-projects needing cross-repository visibility via group-level boards.
-- DevSecOps pipelines where vulnerabilities should auto-become issues on the same board.
-- Teams using GitLab Iterations for sprint cadence and Roadmaps (Premium) for portfolio views.
+- Team uses GitLab as the source-of-truth for code AND issues.
+- Scoped labels available (GitLab Premium+ or self-hosted EE).
+- Iterations enabled at group/project level.
+- Agent authenticated with project-scoped token (api scope minimum).
 
 ## Skip If (ANY kills it)
 
-- Teams not using GitLab for code — Linear, Jira, or GitHub Projects fit better.
-- Heavy custom-field requirements with cross-issue rollups and pivot dashboards — GitLab boards are deliberately simple.
-- Marketing or non-engineering teams needing rich content management — Asana, Notion, or ClickUp fit better.
-- Free-tier projects needing WIP limits, scoped iterations, or roadmap timelines — those are Premium/Ultimate features.
-- Highly regulated portfolios needing earned-value management, official gantts, or PMO-grade reporting — GitLab is light on EVM.
+- Team primarily on GitHub — use GitHub Projects v2.
+- Microsoft stack — use ADO Boards.
+- Free-tier GitLab without scoped labels — board becomes label soup.
+- &lt;10 issues per month — overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[pm-tool-selection]] | Why GitLab was picked over alternatives. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `label-taxonomy-author` | sonnet | Design scoped-label taxonomy for status, type, priority. |
+| `milestone-cadence-setter` | haiku | Emit milestone tree for chosen cadence. |
+| `board-list-wirer` | haiku | Wire board lists to scoped labels. |
+| `api-token-issuer` | haiku | Issue project-scoped API token with api+read_repository minimum. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gitlab-board-config.yaml` | Board config: lists, labels, milestones, iterations, token scope. |
+| `templates/scoped-labels.yaml` | Standard scoped-label taxonomy (status::, type::, priority::). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gitlab-boards.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[jira-workflow-management]]
+- [[azure-devops-boards]]
+- [[pm-tool-selection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (gitlab_tier, scoped_labels_available, issue_volume_per_month) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

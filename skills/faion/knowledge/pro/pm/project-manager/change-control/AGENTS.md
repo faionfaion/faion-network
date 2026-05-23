@@ -3,72 +3,100 @@ slug: change-control
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Route every change request through a formal log → impact analysis → tiered decision → baseline update cycle.
-content_id: "5a43867c425632e1"
-tags: [change-control, change-management, scope, governance, approval]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Route every change request through a formal log → impact analysis → tiered decision → baseline update cycle, with named approvers per change-size tier.
+content_id: "9bc1a4d0e2f5b6c7"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [change-control, governance, scope, approval, baseline]
 ---
 # Change Control
 
 ## Summary
 
-**One-sentence:** Route every change request through a formal log → impact analysis → tiered decision → baseline update cycle.
+**One-sentence:** Route every change request through a formal log → impact analysis → tiered decision → baseline update cycle, with named approvers per change-size tier.
 
-**One-paragraph:** Route every change request through a formal log → impact analysis → tiered decision → baseline update cycle. Tier authority by size: PM approves minor (less than 1 day, less than $500), Sponsor approves medium (1-5 days, less than $5k), CCB approves major. The rule: never auto-approve — the agent prepares the impact packet; a human approver signs off before implementation begins.
+**One-paragraph:** Route every change request through a formal log → impact analysis → tiered decision → baseline update cycle, with named approvers per change-size tier.
+
+**Ефективно для:**
+
+- Проектів із зафіксованим scope-baseline, де scope-creep тематично знищує margin.
+- Регульованих програм, де audit trail обов'язковий.
+- Програм >1M USD з кількома стейкхолдерами.
+- PMO з декількома одночасними проектами і єдиним governance.
 
 ## Applies If (ALL must hold)
 
-- Fixed-scope, fixed-budget engagements (agency contracts, SoWs) where every change has billing impact.
-- Regulated environments (finance, healthcare, government) requiring an audit trail of decisions.
-- Projects with multiple stakeholders submitting asks via different channels — register forces one queue.
-- Late-stage projects (greater than 50% complete) where every change has compounded ripple effects.
-- Programs where one project's change affects sibling projects.
+- Project has a written scope/schedule/cost baseline.
+- Stakeholders > 3 with conflicting change desires.
+- Compliance regime requires CR audit trail.
+- Project value > 1M or fixed-price contract in force.
 
 ## Skip If (ANY kills it)
 
-- Pure agile teams with continuous backlog refinement — change is the default state, not the exception.
-- Discovery/research phases — you want changes; controlling them defeats the purpose.
-- Solo projects where you are both requester and approver — capture as a TODO, not a CR.
+- Agile project with empty/rolling baseline.
+- Solo solopreneur project — overhead exceeds benefit.
+- Internal R&D with deliberately fluid scope.
+- Project < 2 weeks duration.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cost-estimation]] | Cost baseline that change-impact analysis compares against. |
+| [[communications-management]] | Comms plan that routes CR approvals. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | one worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `cr-log-author` | haiku | Append CR row to register. |
+| `impact-analysis` | sonnet | Estimate cost/schedule/scope impact. |
+| `tier-router` | sonnet | Route to correct approver tier. |
+| `baseline-update` | haiku | Re-baseline once CR approved. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/change-request.md` | CR document: requester, description, justification, impact, attachments. |
+| `templates/change-register.md` | Register row: id, status, tier, decision, approver, baseline-version. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-change-control.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[cost-estimation]]
+- [[communications-management]]
+- [[lessons-learned]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (baseline_frozen, value_band_USD, compliance_required) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

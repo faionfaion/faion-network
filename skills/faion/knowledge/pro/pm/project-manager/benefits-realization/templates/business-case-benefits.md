@@ -1,38 +1,24 @@
-# Business Case — Benefits Section: [Project Name]
+<!-- purpose: Business case benefits section -->
+<!-- consumes: scope + cost estimate + market data -->
+<!-- produces: approval-ready benefits section -->
+<!-- depends-on: content/01-core-rules.xml rule quantified-benefit -->
+<!-- token-budget-impact: ~500 tokens per business case -->
 
-**Total Investment:** $[X]
+# Business case — benefits section
 
-## Financial Benefits
+## Financial benefits (3-year)
 
-| Benefit | Year 1 | Year 2 | Year 3 | Total |
-|---------|--------|--------|--------|-------|
-| [Revenue increase] | $[X] | $[X] | $[X] | $[X] |
-| [Cost savings] | $[X] | $[X] | $[X] | $[X] |
-| **Total** | **$[X]** | **$[X]** | **$[X]** | **$[X]** |
+| year | revenue uplift | cost reduction | other | net |
+|------|----------------|-----------------|-------|-----|
+| Y1 | REPLACE | REPLACE | REPLACE | REPLACE |
+| Y2 | REPLACE | REPLACE | REPLACE | REPLACE |
+| Y3 | REPLACE | REPLACE | REPLACE | REPLACE |
 
-## Non-Financial Benefits
+## Non-financial benefits
 
-| Benefit | Metric | Baseline | Target |
-|---------|--------|----------|--------|
-| [Customer satisfaction] | NPS | [X] | [X] |
-| [Employee productivity] | [Tasks/day] | [X] | [X] |
+- REPLACE.
 
-## ROI Calculation
+## ROI / NPV
 
-- **Total Investment:** $[X]
-- **Total Benefits (N years, nominal):** $[X]
-- **Net Benefit:** $[X]
-- **ROI:** [X]%
-- **NPV (discount rate [X]%):** $[X]
-- **Payback Period:** [X months]
-
-## Assumptions and Risks to Benefits
-
-- [Assumption: adoption rate of X% achieved by month N]
-- [Risk: market shift could reduce revenue benefit by X%]
-
-## Benefit Owner Sign-Off
-
-| Benefit | Owner | Committed | Date |
-|---------|-------|-----------|------|
-| [B-01] | [Name] | Yes | |
+- ROI: REPLACE%
+- NPV (discount rate REPLACE%): REPLACE
