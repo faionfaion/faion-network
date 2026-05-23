@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template fixture for server-init-bootstrap: verify-bootstrap.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # verify-bootstrap.sh — Post-bootstrap verification checklist
 # Run as the non-root user after completing all 5 phases.
 set -euo pipefail

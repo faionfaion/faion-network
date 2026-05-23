@@ -1,37 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="langchain-observability Decision Tree" version="2.0.0" est_tokens="700">
+<text id="06-decision-tree" title="langchain-observability Decision Tree" version="2.0.1" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-root" text="Are runtime drivers (latency_target_ms, cost_cap_per_turn_usd, pii_posture) all present?">
-      <branch when="profile.valid == false">
-        <conclusion ref="skip-this-methodology">Incomplete profile.</conclusion>
-      </branch>
-      <branch when="profile.valid == true">
-        <question id="q-pii" text="pii_posture == 'no-export'?">
-          <branch when="pii_posture == 'no-export'">
-            <conclusion ref="r-local-otel">Use opentelemetry local collector; redact_payloads=true.</conclusion>
-          </branch>
-          <branch when="pii_posture != 'no-export'">
-            <question id="q-latency" text="latency_target_ms &lt;= 500?">
-              <branch when="latency_target_ms &lt;= 500">
-                <conclusion ref="r-streaming-langsmith">LangSmith + streaming=true + sample_rate=1.0.</conclusion>
-              </branch>
-              <branch when="latency_target_ms &gt; 500">
-                <question id="q-cost" text="cost_cap_per_turn_usd &lt;= 0.01?">
-                  <branch when="cost_cap_per_turn_usd &lt;= 0.01">
-                    <conclusion ref="r-cheap-sample">LangSmith + sample_rate=0.1 + tail-based error keep.</conclusion>
-                  </branch>
-                  <branch when="cost_cap_per_turn_usd &gt; 0.01">
-                    <conclusion ref="r-full-trace">LangSmith + sample_rate=1.0; no streaming forced.</conclusion>
-                  </branch>
-                </question>
-              </branch>
-            </question>
-          </branch>
-        </question>
-      </branch>
-    </root-question>
-    <example trace="latency_target_ms=400, pii_posture=internal">
-      q-root yes → q-pii no → q-latency yes → r-streaming-langsmith
-    </example>
+    <root-question id="q-applies">Are runtime drivers (latency_target_ms, cost_cap_per_turn_usd, pii_posture) all present?</root-question>
+    <branch when="profile.valid == false">
+      <conclusion ref="skip-this-methodology" verdict="Incomplete profile."/>
+    </branch>
+    <branch when="profile.valid == true AND pii_posture == 'no-export'">
+      <conclusion ref="r-local-otel" verdict="Use opentelemetry local collector; redact_payloads=true."/>
+    </branch>
+    <branch when="profile.valid == true AND pii_posture != 'no-export' AND latency_target_ms &lt;= 500">
+      <conclusion ref="r-streaming-langsmith" verdict="LangSmith + streaming=true + sample_rate=1.0."/>
+    </branch>
+    <branch when="profile.valid == true AND pii_posture != 'no-export' AND latency_target_ms &gt; 500 AND cost_cap_per_turn_usd &lt;= 0.01">
+      <conclusion ref="r-cheap-sample" verdict="LangSmith + sample_rate=0.1 + tail-based error keep."/>
+    </branch>
+    <branch when="profile.valid == true AND pii_posture != 'no-export' AND latency_target_ms &gt; 500 AND cost_cap_per_turn_usd &gt; 0.01">
+      <conclusion ref="r-full-trace" verdict="LangSmith + sample_rate=1.0; no streaming forced."/>
+    </branch>
   </decision-tree>
 </text>

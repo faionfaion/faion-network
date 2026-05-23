@@ -1,3 +1,8 @@
+<!-- purpose: Template fixture for stakeholder-analysis: stakeholder-register.md -->
+<!-- consumes: content/01-core-rules.xml -->
+<!-- produces: Markdown artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: small -->
 # Stakeholder Register: [Initiative Name]
 
 **Version:** [X.X]

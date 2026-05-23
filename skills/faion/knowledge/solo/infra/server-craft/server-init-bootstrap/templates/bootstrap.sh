@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template fixture for server-init-bootstrap: bootstrap.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # bootstrap.sh — Full interactive bootstrap: all 5 phases with verification steps
 # Run as root or first-login user. Set variables at top before running.
 set -euo pipefail

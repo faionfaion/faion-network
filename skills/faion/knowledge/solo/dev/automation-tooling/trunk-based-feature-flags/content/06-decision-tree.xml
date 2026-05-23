@@ -1,60 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Trunk-Based Feature Flags Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+<text id="06-decision-tree" title="Trunk-Based Feature Flags Decision Tree" version="1.0.1" est_tokens="500" depth="essential">
   <summary>Routes a flag spec by completeness of required fields. Branches name observable spec fields; leaves reference rules.</summary>
-
   <decision-tree>
-    <root-question id="q-prereqs">Are the prerequisites satisfied: flag service present, PR open, owner identifiable?</root-question>
-
+    <root-question id="q-applies">Are the prerequisites satisfied: flag service present, PR open, owner identifiable?</root-question>
     <branch when="prereqs_met == false">
       <conclusion ref="skip-this-methodology" verdict="abort"/>
     </branch>
-
-    <branch when="prereqs_met == true">
-      <question id="q-owner">Is owner_email a named human (not a team alias)?</question>
-
-      <branch when="owner_is_team_alias == true">
-        <conclusion ref="owner-and-sla" verdict="block-team-alias"/>
-      </branch>
-
-      <branch when="owner_is_team_alias == false">
-        <question id="q-cleanup">Is cleanup_ticket_id present and pointing to an OPEN ticket?</question>
-
-        <branch when="cleanup_ticket_open == false">
-          <conclusion ref="cleanup-ticket-linked" verdict="block-missing-cleanup-ticket"/>
-        </branch>
-
-        <branch when="cleanup_ticket_open == true">
-          <question id="q-ramp">Is ramp_plan non-empty AND, for type != ops, contains intermediate stages (not 0→100)?</question>
-
-          <branch when="ramp_plan_missing_or_single_step == true">
-            <conclusion ref="ramp-plan-present" verdict="block-missing-ramp-plan"/>
-          </branch>
-
-          <branch when="ramp_plan_missing_or_single_step == false">
-            <question id="q-kill-switch">Is kill_switch_tested=true AND kill_switch_test_run_id resolves?</question>
-
-            <branch when="kill_switch_verified == false">
-              <conclusion ref="kill-switch-armed" verdict="block-kill-switch-untested"/>
-            </branch>
-
-            <branch when="kill_switch_verified == true">
-              <question id="q-quota">Does owner have &lt; 3 zombie flags past SLA?</question>
-
-              <branch when="zombie_quota_exceeded == true">
-                <conclusion ref="cleanup-ticket-linked" verdict="block-zombie-flag-quota-exceeded"/>
-              </branch>
-
-              <branch when="zombie_quota_exceeded == false">
-                <conclusion ref="run-the-checklist" verdict="approve"/>
-              </branch>
-            </branch>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="prereqs_met == true AND owner_is_team_alias == true">
+      <conclusion ref="owner-and-sla" verdict="block-team-alias"/>
+    </branch>
+    <branch when="prereqs_met == true AND owner_is_team_alias == false AND cleanup_ticket_open == false">
+      <conclusion ref="cleanup-ticket-linked" verdict="block-missing-cleanup-ticket"/>
+    </branch>
+    <branch when="prereqs_met == true AND owner_is_team_alias == false AND cleanup_ticket_open == true AND ramp_plan_missing_or_single_step == true">
+      <conclusion ref="ramp-plan-present" verdict="block-missing-ramp-plan"/>
+    </branch>
+    <branch when="prereqs_met == true AND owner_is_team_alias == false AND cleanup_ticket_open == true AND ramp_plan_missing_or_single_step == false AND kill_switch_verified == false">
+      <conclusion ref="kill-switch-armed" verdict="block-kill-switch-untested"/>
+    </branch>
+    <branch when="prereqs_met == true AND owner_is_team_alias == false AND cleanup_ticket_open == true AND ramp_plan_missing_or_single_step == false AND kill_switch_verified == true AND zombie_quota_exceeded == true">
+      <conclusion ref="cleanup-ticket-linked" verdict="block-zombie-flag-quota-exceeded"/>
+    </branch>
+    <branch when="prereqs_met == true AND owner_is_team_alias == false AND cleanup_ticket_open == true AND ramp_plan_missing_or_single_step == false AND kill_switch_verified == true AND zombie_quota_exceeded == false">
+      <conclusion ref="run-the-checklist" verdict="approve"/>
     </branch>
   </decision-tree>
-
-  <example trace="release-flag-clean">
-    prereqs_met=true → owner ruslan@faion.net is named → cleanup_ticket TICKET-4421 open → ramp_plan has 4 stages → kill_switch_test_run_id verified → owner has 1 active flag → verdict=approve (ref run-the-checklist).
-  </example>
+  <example trace="release-flag-clean">prereqs_met=true → owner ruslan@faion.net is named → cleanup_ticket TICKET-4421 open → ramp_plan has 4 stages → kill_switch_test_run_id verified → owner has 1 active flag → verdict=approve (ref run-the-checklist).</example>
 </text>

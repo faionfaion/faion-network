@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Yes/no qualification rubric for founder-led sales — 5 binary checks (budget, authority, need, timeline, fit) gate every proposal cycle and prevent overqualification.
-content_id: "founder-qual-1"
+content_id: "f372e4b710b0c547"
 complexity: medium
 produces: rubric
 est_tokens: 3000

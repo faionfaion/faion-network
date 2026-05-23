@@ -1,39 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="TTS Implementation — Routing Decision Tree" version="1.1.0" est_tokens="500">
+<text id="06-decision-tree" title="TTS Implementation — Routing Decision Tree" version="1.1.1" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-length">Is the payload short-form (len(text) &lt;= 4000 chars)?</root-question>
+    <root-question id="q-applies">Is the payload short-form (len(text) &lt;= 4000 chars)?</root-question>
     <branch when="char_count &lt;= 4000">
-      <conclusion ref="r1-provider-in-cache-key">Delegate to tts-basics synthesize(). TTSService chunking overhead is unjustified for short payloads. Cache key still includes provider.</conclusion>
+      <conclusion ref="r1-provider-in-cache-key" verdict="Delegate to tts-basics synthesize(). TTSService chunking overhead is unjustified for short payloads. Cache key still includes provider."/>
     </branch>
-    <branch when="char_count &gt; 4000">
-      <question id="q-cache">Does the full-payload cache exist at `{cache_dir}/{full_key}/assembled.mp3`?</question>
-      <branch when="cache_hit == true">
-        <conclusion ref="r2-cache-eviction">Return cached path + chunks index. Skip synth. Still run eviction at end to keep total size under cap.</conclusion>
-      </branch>
-      <branch when="cache_hit == false">
-        <question id="q-delivery">Is the consumer a file (cache_dir target) or a real-time stream (WebSocket / pyaudio)?</question>
-        <branch when="delivery == 'stream'">
-          <conclusion ref="r5-async-safe-stream">Use stream_tts() async generator. Bridge to sync via asyncio.run(collect_stream()). Never call stream_to_file from inside async without to_thread().</conclusion>
-        </branch>
-        <branch when="delivery == 'file'">
-          <question id="q-voice-mode">Is the voice mode library (pre-existing voice id) or clone (new voice from samples)?</question>
-          <branch when="voice_mode == 'clone'">
-            <question id="q-consent">Is there a valid consent record for this speaker matching the requested scope?</question>
-            <branch when="consent_record_present == false">
-              <conclusion ref="r6-clone-consent-gate">Reject: return status="error", error="missing consent". Do NOT call clone_voice. Surface to human for consent collection.</conclusion>
-            </branch>
-            <branch when="consent_record_present == true">
-              <conclusion ref="r6-clone-consent-gate">Proceed with ElevenLabs clone_voice. Attach consent_id to output. Cache key uses cloned voice_id.</conclusion>
-            </branch>
-          </branch>
-          <branch when="voice_mode == 'library'">
-            <conclusion ref="r3-chunk-tempdir-isolation">Standard long-form path: tempfile.mkdtemp() → semantic_split() → parallel synth → assemble → cache → evict. Apply rule r4 split discipline.</conclusion>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="char_count &gt; 4000 AND cache_hit == true">
+      <conclusion ref="r2-cache-eviction" verdict="Return cached path + chunks index. Skip synth. Still run eviction at end to keep total size under cap."/>
     </branch>
-    <example trace="podcast-episode-18000-chars">
-      <p>Input: 18000-char article, voice=onyx, model=tts-1-hd, library voice, deliver as file. char_count &gt; 4000 → cache miss → file delivery → library voice → conclusion r3-chunk-tempdir-isolation: mkdtemp, 5 chunks, parallel synth under semaphore, pydub assemble, cache + evict.</p>
-    </example>
+    <branch when="char_count &gt; 4000 AND cache_hit == false AND delivery == 'stream'">
+      <conclusion ref="r5-async-safe-stream" verdict="Use stream_tts() async generator. Bridge to sync via asyncio.run(collect_stream()). Never call stream_to_file from inside async without to_thread()."/>
+    </branch>
+    <branch when="char_count &gt; 4000 AND cache_hit == false AND delivery == 'file' AND voice_mode == 'clone' AND consent_record_present == false">
+      <conclusion ref="r6-clone-consent-gate" verdict="Reject: return status=&quot;error&quot;, error=&quot;missing consent&quot;. Do NOT call clone_voice. Surface to human for consent collection."/>
+    </branch>
+    <branch when="char_count &gt; 4000 AND cache_hit == false AND delivery == 'file' AND voice_mode == 'clone' AND consent_record_present == true">
+      <conclusion ref="r6-clone-consent-gate" verdict="Proceed with ElevenLabs clone_voice. Attach consent_id to output. Cache key uses cloned voice_id."/>
+    </branch>
+    <branch when="char_count &gt; 4000 AND cache_hit == false AND delivery == 'file' AND voice_mode == 'library'">
+      <conclusion ref="r3-chunk-tempdir-isolation" verdict="Standard long-form path: tempfile.mkdtemp() → semantic_split() → parallel synth → assemble → cache → evict. Apply rule r4 split discipline."/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
+    </branch>
   </decision-tree>
 </text>

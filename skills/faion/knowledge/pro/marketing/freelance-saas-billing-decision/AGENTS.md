@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Seed-stage SaaS billing-shape decision — subscription vs usage vs hybrid — scored on 4 signals (predictability, primary-value driver, expansion surface, customer size).
-content_id: "freelance-saas-billing-1"
+content_id: "66db14aa6dbc86f1"
 complexity: medium
 produces: decision-record
 est_tokens: 3200

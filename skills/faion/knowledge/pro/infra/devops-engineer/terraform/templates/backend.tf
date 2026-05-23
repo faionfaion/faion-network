@@ -1,3 +1,8 @@
+# purpose: Template fixture for terraform: backend.tf
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 terraform {
   backend "s3" {
     bucket         = "my-terraform-state"

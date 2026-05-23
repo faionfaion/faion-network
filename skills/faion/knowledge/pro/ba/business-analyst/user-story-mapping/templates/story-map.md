@@ -1,3 +1,8 @@
+<!-- purpose: Template fixture for user-story-mapping: story-map.md -->
+<!-- consumes: content/01-core-rules.xml -->
+<!-- produces: Markdown artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: small -->
 # User Story Map: [Product Name]
 
 **Version:** [X.X]

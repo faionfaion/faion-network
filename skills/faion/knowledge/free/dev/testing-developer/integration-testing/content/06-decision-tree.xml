@@ -1,40 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Integration Testing Decision Tree" version="2.0.0" est_tokens="600">
+<text id="06-decision-tree" title="Integration Testing Decision Tree" version="2.0.1" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-root" text="Are drivers present (db_engine_required, commit_time_behavior_under_test, parallel_target, external_http_calls)?">
-      <branch when="drivers.valid == false">
-        <conclusion ref="skip-this-methodology">Profile incomplete — return structured error, do not guess defaults.</conclusion>
-      </branch>
-      <branch when="drivers.valid == true">
-        <question id="q-db" text="Is db_engine_required true?">
-          <branch when="db_engine_required == false">
-            <conclusion ref="r-rollback-strategy">Use in-memory SQLite via SQLAlchemy; no Docker, no Testcontainers.</conclusion>
-          </branch>
-          <branch when="db_engine_required == true">
-            <question id="q-commit" text="Is commit_time_behavior_under_test true?">
-              <branch when="commit_time_behavior_under_test == true">
-                <conclusion ref="r-truncate-strategy">Use truncate isolation + transaction=True markers (pytest-django) to surface commit-time constraint violations.</conclusion>
-              </branch>
-              <branch when="commit_time_behavior_under_test == false">
-                <question id="q-http" text="What is external_http_calls?">
-                  <branch when="external_http_calls == 'many_or_complex'">
-                    <conclusion ref="r-wiremock-pick">Use rollback isolation + session-scoped WireMock container.</conclusion>
-                  </branch>
-                  <branch when="external_http_calls == 'few' or external_http_calls == 'simple'">
-                    <conclusion ref="r-respx-pick">Use rollback isolation + respx transport interception.</conclusion>
-                  </branch>
-                  <branch when="external_http_calls == 'none'">
-                    <conclusion ref="r-rollback-strategy">Use rollback isolation only; no HTTP mocking layer needed.</conclusion>
-                  </branch>
-                </question>
-              </branch>
-            </question>
-          </branch>
-        </question>
-      </branch>
-    </root-question>
-    <example trace="drivers.valid=true, db_engine_required=true, commit_time_behavior_under_test=false, external_http_calls=few">
-      q-root yes → q-db yes → q-commit no → q-http few → r-respx-pick
-    </example>
+    <root-question id="q-applies">Are drivers present (db_engine_required, commit_time_behavior_under_test, parallel_target, external_http_calls)?</root-question>
+    <branch when="drivers.valid == false">
+      <conclusion ref="skip-this-methodology" verdict="Profile incomplete — return structured error, do not guess defaults."/>
+    </branch>
+    <branch when="drivers.valid == true AND db_engine_required == false">
+      <conclusion ref="r-rollback-strategy" verdict="Use in-memory SQLite via SQLAlchemy; no Docker, no Testcontainers."/>
+    </branch>
+    <branch when="drivers.valid == true AND db_engine_required == true AND commit_time_behavior_under_test == true">
+      <conclusion ref="r-truncate-strategy" verdict="Use truncate isolation + transaction=True markers (pytest-django) to surface commit-time constraint violations."/>
+    </branch>
+    <branch when="drivers.valid == true AND db_engine_required == true AND commit_time_behavior_under_test == false AND external_http_calls == 'many_or_complex'">
+      <conclusion ref="r-wiremock-pick" verdict="Use rollback isolation + session-scoped WireMock container."/>
+    </branch>
+    <branch when="drivers.valid == true AND db_engine_required == true AND commit_time_behavior_under_test == false AND external_http_calls == 'few' or external_http_calls == 'simple'">
+      <conclusion ref="r-respx-pick" verdict="Use rollback isolation + respx transport interception."/>
+    </branch>
+    <branch when="drivers.valid == true AND db_engine_required == true AND commit_time_behavior_under_test == false AND external_http_calls == 'none'">
+      <conclusion ref="r-rollback-strategy" verdict="Use rollback isolation only; no HTTP mocking layer needed."/>
+    </branch>
   </decision-tree>
 </text>

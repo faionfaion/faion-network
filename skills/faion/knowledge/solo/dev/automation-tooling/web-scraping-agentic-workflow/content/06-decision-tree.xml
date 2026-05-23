@@ -1,52 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Web Scraping Agentic Workflow Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+<text id="06-decision-tree" title="Web Scraping Agentic Workflow Decision Tree" version="1.0.1" est_tokens="500" depth="essential">
   <summary>Routes a scrape run by robots / render-mode / validation / drift. Branches name observable run-report fields; leaves reference rules.</summary>
-
   <decision-tree>
-    <root-question id="q-prereqs">Are prerequisites satisfied: target URL, schema, storage path, contact UA?</root-question>
-
+    <root-question id="q-applies">Are prerequisites satisfied: target URL, schema, storage path, contact UA?</root-question>
     <branch when="prereqs_met == false">
       <conclusion ref="skip-this-methodology" verdict="abort"/>
     </branch>
-
-    <branch when="prereqs_met == true">
-      <question id="q-robots">Did robots_check fetch succeed AND robots_check.allowed == true?</question>
-
-      <branch when="robots_check_allowed == false">
-        <conclusion ref="r7-robots-and-ua" verdict="block-robots-disallow"/>
-      </branch>
-
-      <branch when="robots_check_allowed == true">
-        <question id="q-tool-match">Does tool match render_mode (ssr↔httpx-selectolax, js↔playwright, managed↔firecrawl|jina-reader)?</question>
-
-        <branch when="tool_matches_render_mode == false">
-          <conclusion ref="r2-tool-by-render-mode" verdict="block-tool-mismatch"/>
-        </branch>
-
-        <branch when="tool_matches_render_mode == true">
-          <question id="q-validation">Is rows_valid / rows_seen ≥ 0.9?</question>
-
-          <branch when="validation_ratio &lt; 0.9">
-            <conclusion ref="r4-validate-rows" verdict="block-validation-low"/>
-          </branch>
-
-          <branch when="validation_ratio &gt;= 0.9">
-            <question id="q-drift">Is drift_score ≤ 5?</question>
-
-            <branch when="drift_score &gt; 5">
-              <conclusion ref="r6-drift-alarm" verdict="block-drift-high"/>
-            </branch>
-
-            <branch when="drift_score &lt;= 5">
-              <conclusion ref="run-the-checklist" verdict="promote"/>
-            </branch>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="prereqs_met == true AND robots_check_allowed == false">
+      <conclusion ref="r7-robots-and-ua" verdict="block-robots-disallow"/>
+    </branch>
+    <branch when="prereqs_met == true AND robots_check_allowed == true AND tool_matches_render_mode == false">
+      <conclusion ref="r2-tool-by-render-mode" verdict="block-tool-mismatch"/>
+    </branch>
+    <branch when="prereqs_met == true AND robots_check_allowed == true AND tool_matches_render_mode == true AND validation_ratio &lt; 0.9">
+      <conclusion ref="r4-validate-rows" verdict="block-validation-low"/>
+    </branch>
+    <branch when="prereqs_met == true AND robots_check_allowed == true AND tool_matches_render_mode == true AND validation_ratio &gt;= 0.9 AND drift_score &gt; 5">
+      <conclusion ref="r6-drift-alarm" verdict="block-drift-high"/>
+    </branch>
+    <branch when="prereqs_met == true AND robots_check_allowed == true AND tool_matches_render_mode == true AND validation_ratio &gt;= 0.9 AND drift_score &lt;= 5">
+      <conclusion ref="run-the-checklist" verdict="promote"/>
     </branch>
   </decision-tree>
-
-  <example trace="day-18-drift">
-    prereqs_met=true → robots_allowed=true → tool ssr+httpx-selectolax match → validation_ratio=8/124=0.065 → verdict=block-validation-low (ref r4-validate-rows). Drift would have also caught it.
-  </example>
+  <example trace="day-18-drift">prereqs_met=true → robots_allowed=true → tool ssr+httpx-selectolax match → validation_ratio=8/124=0.065 → verdict=block-validation-low (ref r4-validate-rows). Drift would have also caught it.</example>
 </text>

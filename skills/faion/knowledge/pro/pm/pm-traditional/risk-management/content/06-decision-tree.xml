@@ -1,44 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Risk Management Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+<text id="06-decision-tree" title="Risk Management Decision Tree" version="1.1.1" est_tokens="600" depth="essential">
   <summary>Routing tree mapping the input shape to a rule from 01-core-rules.xml.</summary>
-
   <decision-tree>
-    <root-question id="q-preconditions">Does the candidate risk have an observable trigger AND a named owner?</root-question>
-
+    <root-question id="q-applies">Does the candidate risk have an observable trigger AND a named owner?</root-question>
     <branch when="trigger_set == false OR owner_set == false">
       <conclusion ref="every-risk-has-trigger-and-owner" verdict="reject row; force trigger + owner before accepting"/>
     </branch>
-
-    <branch when="trigger_set == true AND owner_set == true">
-      <question id="q-rationale">Do the P and I scores carry source citations?</question>
-      <branch when="rationale_present == false">
-        <conclusion ref="pi-score-cites-source" verdict="reject scores; require one-line rationale citing source artefact"/>
-      </branch>
-      <branch when="rationale_present == true">
-        <question id="q-reserve-shape">Are reserves modelled per-risk or as aggregate contingency?</question>
-        <branch when="per_risk_reserve == true">
-          <conclusion ref="emv-rolls-into-single-contingency" verdict="reject per-risk reserves; sum EMV into single contingency line"/>
-        </branch>
-        <branch when="per_risk_reserve == false">
-          <question id="q-freshness">Has the register been reviewed within 14 days?</question>
-          <branch when="days_since_review > 14">
-            <conclusion ref="weekly-review-or-stale" verdict="flag stale; trigger weekly review cycle"/>
-          </branch>
-          <branch when="days_since_review &lt;= 14">
-            <question id="q-closure">Is any closed row missing outcome label or being deleted?</question>
-            <branch when="deletion_attempted == true">
-              <conclusion ref="closure-with-outcome-never-delete" verdict="reverse deletion; require outcome label"/>
-            </branch>
-            <branch when="deletion_attempted == false">
-              <conclusion ref="every-risk-has-trigger-and-owner" verdict="accept register"/>
-            </branch>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="trigger_set == true AND owner_set == true AND rationale_present == false">
+      <conclusion ref="pi-score-cites-source" verdict="reject scores; require one-line rationale citing source artefact"/>
+    </branch>
+    <branch when="trigger_set == true AND owner_set == true AND rationale_present == true AND per_risk_reserve == true">
+      <conclusion ref="emv-rolls-into-single-contingency" verdict="reject per-risk reserves; sum EMV into single contingency line"/>
+    </branch>
+    <branch when="trigger_set == true AND owner_set == true AND rationale_present == true AND per_risk_reserve == false AND days_since_review &gt; 14">
+      <conclusion ref="weekly-review-or-stale" verdict="flag stale; trigger weekly review cycle"/>
+    </branch>
+    <branch when="trigger_set == true AND owner_set == true AND rationale_present == true AND per_risk_reserve == false AND days_since_review &lt;= 14 AND deletion_attempted == true">
+      <conclusion ref="closure-with-outcome-never-delete" verdict="reverse deletion; require outcome label"/>
+    </branch>
+    <branch when="trigger_set == true AND owner_set == true AND rationale_present == true AND per_risk_reserve == false AND days_since_review &lt;= 14 AND deletion_attempted == false">
+      <conclusion ref="every-risk-has-trigger-and-owner" verdict="accept register"/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
     </branch>
   </decision-tree>
-
-  <example trace="key-developer-leaves">
-    trigger_set=true, owner_set=true, rationale_present=true, per_risk_reserve=false, days_since_review=3, deletion_attempted=false → accept register.
-  </example>
+  <example trace="key-developer-leaves">trigger_set=true, owner_set=true, rationale_present=true, per_risk_reserve=false, days_since_review=3, deletion_attempted=false → accept register.</example>
 </text>

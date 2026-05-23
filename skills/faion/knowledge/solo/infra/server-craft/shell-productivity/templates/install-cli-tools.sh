@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: Template fixture for shell-productivity: install-cli-tools.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # install-cli-tools.sh — Idempotent install of modern CLI tools on Ubuntu 24.04
 #
 # Tools: bat, fd, fzf, ripgrep, eza, delta, starship, zoxide, btop, duf, dust

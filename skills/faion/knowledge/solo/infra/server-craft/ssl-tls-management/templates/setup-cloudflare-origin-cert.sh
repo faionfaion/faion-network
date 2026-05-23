@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template fixture for ssl-tls-management: setup-cloudflare-origin-cert.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # setup-cloudflare-origin-cert.sh — Place origin cert + key in /etc/nginx/ssl/, set permissions
 # Prerequisites: copy cert and key content from Cloudflare Dashboard
 # Usage: bash setup-cloudflare-origin-cert.sh cert.pem key.pem

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Produces a handover-package report at engagement end — runbook, ops surface, credentials transfer log, SLA, open items, training plan — that closes a client engagement cleanly.
-content_id: "chp1.0.0handover"
+content_id: "96d5591f9144e081"
 complexity: medium
 produces: report
 est_tokens: 3800

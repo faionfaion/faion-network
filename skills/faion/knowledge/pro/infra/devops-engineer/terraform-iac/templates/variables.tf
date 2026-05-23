@@ -1,3 +1,8 @@
+# purpose: Template fixture for terraform-iac: variables.tf
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 variable "environment" {
   description = "Environment name"
   type        = string

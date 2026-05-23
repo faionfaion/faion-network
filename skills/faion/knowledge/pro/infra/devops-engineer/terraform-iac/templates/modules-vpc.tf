@@ -1,3 +1,8 @@
+# purpose: Template fixture for terraform-iac: modules-vpc.tf
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # modules/vpc/main.tf
 
 resource "aws_vpc" "main" {

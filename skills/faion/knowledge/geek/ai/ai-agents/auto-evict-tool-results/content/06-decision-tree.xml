@@ -1,31 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Auto-Evict Tool Results Decision Tree" version="1.0.0" est_tokens="600">
+<text id="06-decision-tree" title="Auto-Evict Tool Results Decision Tree" version="1.0.1" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q1" text="Can any tool in the registry return more than N tokens (default 20k)?">
-      <branch when="large_payload_possible == true">
-        <question id="q2" text="Is scratch storage (local disk, S3, in-proc store) available?">
-          <branch when="storage_available == true">
-            <question id="q3" text="Can a paired read-file tool be exposed to the agent?">
-              <branch when="read_tool_addable == true">
-                <conclusion ref="r1" outcome="install-middleware">Install the eviction middleware with threshold N. Expose read_file(path, lines).</conclusion>
-              </branch>
-              <branch when="read_tool_addable == false">
-                <conclusion ref="r1" outcome="raise-tool-caps">Cannot use middleware — raise per-tool hard size caps in tool definitions instead.</conclusion>
-              </branch>
-            </question>
-          </branch>
-          <branch when="storage_available == false">
-            <conclusion ref="r2" outcome="add-storage-first">Add scratch storage before installing middleware; eviction needs somewhere to write.</conclusion>
-          </branch>
-        </question>
-      </branch>
-      <branch when="large_payload_possible == false">
-        <conclusion ref="r1" outcome="skip">Skip — methodology not applicable.</conclusion>
-      </branch>
-    </root-question>
+    <root-question id="q-applies">Can any tool in the registry return more than N tokens (default 20k)?</root-question>
+    <branch when="large_payload_possible == true AND storage_available == true AND read_tool_addable == true">
+      <conclusion ref="r1" verdict="Install the eviction middleware with threshold N. Expose read_file(path, lines)."/>
+    </branch>
+    <branch when="large_payload_possible == true AND storage_available == true AND read_tool_addable == false">
+      <conclusion ref="r1" verdict="Cannot use middleware — raise per-tool hard size caps in tool definitions instead."/>
+    </branch>
+    <branch when="large_payload_possible == true AND storage_available == false">
+      <conclusion ref="r2" verdict="Add scratch storage before installing middleware; eviction needs somewhere to write."/>
+    </branch>
+    <branch when="large_payload_possible == false">
+      <conclusion ref="r1" verdict="Skip — methodology not applicable."/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
+    </branch>
   </decision-tree>
-
-  <example trace="research-agent">
-    <p>large_payload_possible=true (web scrape) → storage_available=true (local /tmp) → read_tool_addable=true → conclusion: install-middleware.</p>
-  </example>
+  <example trace="research-agent"></example>
 </text>

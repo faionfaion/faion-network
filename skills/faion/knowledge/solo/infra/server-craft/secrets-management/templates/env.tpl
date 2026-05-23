@@ -1,3 +1,8 @@
+# purpose: Template fixture for secrets-management: env.tpl
+# consumes: content/01-core-rules.xml
+# produces: structured artefact
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # .env.tpl — 1Password inject template
 # Usage: op inject -i .env.tpl -o .env && chmod 600 .env
 #

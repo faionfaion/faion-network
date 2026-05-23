@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: Template fixture for tmux-power-user: tmux-session.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # tmux-session.sh
 # Generic create-or-attach session launcher — safe to call repeatedly.
 #

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template fixture for swap-memory-management: swap-create.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # swap-create.sh — Idempotent swap file creation and fstab persistence
 # Usage: sudo bash swap-create.sh [size]
 #   size: e.g. 4G (default), 8G, 2G

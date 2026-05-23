@@ -1,37 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="langchain-production-patterns Decision Tree" version="2.0.0" est_tokens="700">
+<text id="06-decision-tree" title="langchain-production-patterns Decision Tree" version="2.0.1" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-root" text="Are target_uptime, providers, latency_budget_ms, dep_policy all set in the profile?">
-      <branch when="profile.valid == false">
-        <conclusion ref="skip-this-methodology">Incomplete profile.</conclusion>
-      </branch>
-      <branch when="profile.valid == true">
-        <question id="q-providers" text="len(profile.providers) &gt;= 2?">
-          <branch when="len(providers) &gt;= 2">
-            <question id="q-uptime" text="target_uptime &gt;= 0.995?">
-              <branch when="target_uptime &gt;= 0.995">
-                <conclusion ref="r-fallback-cross-region">Wire with_fallbacks across providers + cross-region.</conclusion>
-              </branch>
-              <branch when="target_uptime &lt; 0.995">
-                <conclusion ref="r-fallback-simple">Wire with_fallbacks single-region.</conclusion>
-              </branch>
-            </question>
-          </branch>
-          <branch when="len(providers) &lt; 2">
-            <question id="q-latency" text="latency_budget_ms &gt; 500?">
-              <branch when="latency_budget_ms &gt; 500">
-                <conclusion ref="r-retry-exp">Single provider + with_retry exponential.</conclusion>
-              </branch>
-              <branch when="latency_budget_ms &lt;= 500">
-                <conclusion ref="r-circuit-breaker">Single provider + circuit-breaker, no retries.</conclusion>
-              </branch>
-            </question>
-          </branch>
-        </question>
-      </branch>
-    </root-question>
-    <example trace="providers=[anthropic,openai], target_uptime=0.999, latency=1500">
-      q-root yes → q-providers yes → q-uptime yes → r-fallback-cross-region
-    </example>
+    <root-question id="q-applies">Are target_uptime, providers, latency_budget_ms, dep_policy all set in the profile?</root-question>
+    <branch when="profile.valid == false">
+      <conclusion ref="skip-this-methodology" verdict="Incomplete profile."/>
+    </branch>
+    <branch when="profile.valid == true AND len(providers) &gt;= 2 AND target_uptime &gt;= 0.995">
+      <conclusion ref="r-fallback-cross-region" verdict="Wire with_fallbacks across providers + cross-region."/>
+    </branch>
+    <branch when="profile.valid == true AND len(providers) &gt;= 2 AND target_uptime &lt; 0.995">
+      <conclusion ref="r-fallback-simple" verdict="Wire with_fallbacks single-region."/>
+    </branch>
+    <branch when="profile.valid == true AND len(providers) &lt; 2 AND latency_budget_ms &gt; 500">
+      <conclusion ref="r-retry-exp" verdict="Single provider + with_retry exponential."/>
+    </branch>
+    <branch when="profile.valid == true AND len(providers) &lt; 2 AND latency_budget_ms &lt;= 500">
+      <conclusion ref="r-circuit-breaker" verdict="Single provider + circuit-breaker, no retries."/>
+    </branch>
   </decision-tree>
 </text>

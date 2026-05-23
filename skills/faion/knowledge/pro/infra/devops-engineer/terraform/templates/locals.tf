@@ -1,3 +1,8 @@
+# purpose: Template fixture for terraform: locals.tf
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 

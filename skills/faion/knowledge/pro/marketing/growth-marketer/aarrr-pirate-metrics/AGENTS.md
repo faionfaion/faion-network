@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Five-stage growth funnel — Acquisition, Activation, Retention, Revenue, Referral — with per-stage numeric metric + baseline + bottleneck-identification rule before any tactic ships.
-content_id: "aarrr-pirate-1"
+content_id: "6dee5392c2304ef7"
 complexity: medium
 produces: report
 est_tokens: 3200

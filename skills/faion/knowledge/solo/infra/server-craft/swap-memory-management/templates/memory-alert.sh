@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Template fixture for swap-memory-management: memory-alert.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # memory-alert.sh — Alert when RAM or swap exceeds threshold
 # Usage: bash memory-alert.sh [ram_threshold] [swap_threshold]
 #   Defaults: RAM 90%, Swap 50%

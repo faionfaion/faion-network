@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Freelance-specific tax + cashflow checklist — quarterly self-employment-tax setoff, EU reverse-charge VAT for B2B cross-border, sole-trader vs LLC threshold math, separate-account rule, 6-month runway target.
-content_id: "freelance-tax-cashflow-1"
+content_id: "a8f2f2e2398545d9"
 complexity: medium
 produces: checklist
 est_tokens: 3000

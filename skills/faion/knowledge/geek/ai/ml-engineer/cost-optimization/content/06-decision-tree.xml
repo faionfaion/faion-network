@@ -1,55 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="LLM Cost Optimization Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+<text id="06-decision-tree" title="LLM Cost Optimization Decision Tree" version="1.1.1" est_tokens="600" depth="essential">
   <summary>Per-stage routing tree. Branches name observable inputs; leaves cite rule ids from 01-core-rules.xml.</summary>
-
   <decision-tree>
-    <root-question id="q-measured">Has the per-stage cost dashboard accumulated ≥7 days of data (measurement_baseline_days ≥7)?</root-question>
-
+    <root-question id="q-applies">Has the per-stage cost dashboard accumulated ≥7 days of data (measurement_baseline_days ≥7)?</root-question>
     <branch when="measurement_baseline_days &lt; 7">
       <conclusion ref="measure-before-optimize" verdict="block-instrument-first"/>
     </branch>
-
-    <branch when="measurement_baseline_days &gt;= 7">
-      <question id="q-stage-share">Is this stage carrying ≥10% of pipeline cost?</question>
-      <branch when="cost_share &lt; 0.10">
-        <conclusion ref="measure-before-optimize" verdict="no-op-stage-too-small"/>
-      </branch>
-      <branch when="cost_share &gt;= 0.10">
-        <question id="q-output-heavy">Is output_token_share &gt;60% on this stage?</question>
-        <branch when="output_token_share &gt; 0.60">
-          <conclusion ref="log-output-token-share" verdict="prompt-redesign-required"/>
-        </branch>
-        <branch when="output_token_share &lt;= 0.60">
-          <question id="q-offline">Is the stage offline-tolerant (no human waiting ≥1h)?</question>
-          <branch when="offline_ok == true">
-            <conclusion ref="batch-the-offline" verdict="route-through-batch-api"/>
-          </branch>
-          <branch when="offline_ok == false">
-            <question id="q-prefix-stable">Is the request prefix ≥1024/2048 tokens AND stable AND request rate ≥12/h?</question>
-            <branch when="prefix_cacheable == true">
-              <conclusion ref="cache-only-repeated-prefix" verdict="enable-prompt-caching"/>
-            </branch>
-            <branch when="prefix_cacheable == false">
-              <question id="q-model-overshoot">Does the current model exceed task complexity for ≥40% of traffic?</question>
-              <branch when="model_overshoot == true">
-                <conclusion ref="route-by-complexity" verdict="install-complexity-router"/>
-              </branch>
-              <branch when="model_overshoot == false">
-                <conclusion ref="token-budget-guard" verdict="guard-only"/>
-              </branch>
-            </branch>
-          </branch>
-        </branch>
-      </question>
+    <branch when="measurement_baseline_days &gt;= 7 AND cost_share &lt; 0.10">
+      <conclusion ref="measure-before-optimize" verdict="no-op-stage-too-small"/>
+    </branch>
+    <branch when="measurement_baseline_days &gt;= 7 AND cost_share &gt;= 0.10 AND output_token_share &gt; 0.60">
+      <conclusion ref="log-output-token-share" verdict="prompt-redesign-required"/>
+    </branch>
+    <branch when="measurement_baseline_days &gt;= 7 AND cost_share &gt;= 0.10 AND output_token_share &lt;= 0.60 AND offline_ok == true">
+      <conclusion ref="batch-the-offline" verdict="route-through-batch-api"/>
+    </branch>
+    <branch when="measurement_baseline_days &gt;= 7 AND cost_share &gt;= 0.10 AND output_token_share &lt;= 0.60 AND offline_ok == false AND prefix_cacheable == true">
+      <conclusion ref="cache-only-repeated-prefix" verdict="enable-prompt-caching"/>
+    </branch>
+    <branch when="measurement_baseline_days &gt;= 7 AND cost_share &gt;= 0.10 AND output_token_share &lt;= 0.60 AND offline_ok == false AND prefix_cacheable == false AND model_overshoot == true">
+      <conclusion ref="route-by-complexity" verdict="install-complexity-router"/>
+    </branch>
+    <branch when="measurement_baseline_days &gt;= 7 AND cost_share &gt;= 0.10 AND output_token_share &lt;= 0.60 AND offline_ok == false AND prefix_cacheable == false AND model_overshoot == false">
+      <conclusion ref="token-budget-guard" verdict="guard-only"/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
     </branch>
   </decision-tree>
-
-  <example trace="rewrite-stage">
-    measurement_baseline_days=14 → cost_share=0.55 → output_token_share=0.72 → prompt-redesign-required (ref log-output-token-share). Routing alone wouldn't help; output bloat must be cut at the prompt.
-  </example>
-
-  <example trace="embed-archive-stage">
-    cost_share=0.15 → output_token_share=0.05 → offline_ok=true (nightly job) → route-through-batch-api (ref batch-the-offline). 50% discount applies.
-  </example>
-
+  <example trace="rewrite-stage">measurement_baseline_days=14 → cost_share=0.55 → output_token_share=0.72 → prompt-redesign-required (ref log-output-token-share). Routing alone wouldn't help; output bloat must be cut at the prompt.</example>
+  <example trace="embed-archive-stage">cost_share=0.15 → output_token_share=0.05 → offline_ok=true (nightly job) → route-through-batch-api (ref batch-the-offline). 50% discount applies.</example>
 </text>

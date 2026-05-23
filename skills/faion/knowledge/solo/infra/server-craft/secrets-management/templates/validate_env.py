@@ -1,3 +1,8 @@
+# purpose: Template fixture for secrets-management: validate_env.py
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 """Environment variable validation for service startup.
 
 Call validate_env() at the top of your application's entry point.

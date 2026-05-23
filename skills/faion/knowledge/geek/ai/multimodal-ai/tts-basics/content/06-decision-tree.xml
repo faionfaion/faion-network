@@ -1,39 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="TTS Basics — Provider Routing Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="TTS Basics — Provider Routing Decision Tree" version="1.1.1" est_tokens="400" depth="essential">
+  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-payload-fits">Does the payload fit in a single call (len(cleaned_text) &lt;= 4000 chars)?</root-question>
+    <root-question id="q-applies">Does the payload fit in a single call (len(cleaned_text) &lt;= 4000 chars)?</root-question>
     <branch when="char_count &gt; 4000">
-      <conclusion ref="r5-char-cap">Reject. Route to tts-implementation LongTextTTS chunking — do not silently truncate.</conclusion>
+      <conclusion ref="r5-char-cap" verdict="Reject. Route to tts-implementation LongTextTTS chunking — do not silently truncate."/>
     </branch>
-    <branch when="char_count &lt;= 4000">
-      <question id="q-ssml-present">Does the payload contain SSML markup (`&lt;break&gt;`, `&lt;prosody&gt;`, `&lt;say-as&gt;`, `&lt;phoneme&gt;`)?</question>
-      <branch when="ssml_present == true">
-        <conclusion ref="r2-ssml-routing">Force provider in {google, azure}. Never pass SSML to OpenAI TTS or ElevenLabs — both produce broken audio.</conclusion>
-      </branch>
-      <branch when="ssml_present == false">
-        <question id="q-voice-clone">Is a specific person's voice required (voice_clone_required == true)?</question>
-        <branch when="voice_clone_required == true">
-          <conclusion ref="r3-cache-key-shape">Escalate to tts-implementation ElevenLabs clone_voice path. tts-basics does not handle cloning. Cache key still includes provider=elevenlabs to keep replay safe.</conclusion>
-        </branch>
-        <branch when="voice_clone_required == false">
-          <question id="q-lang-coverage">Is the language in OpenAI TTS supported set (en, es, fr, de, it, pt, pl, ja, zh, ru, uk, ko, hi, ar, tr, vi)?</question>
-          <branch when="lang_supported == false">
-            <conclusion ref="r1-model-tier">Fall back to ElevenLabs eleven_multilingual_v2 OR Google Neural2 — pick by cost cap. Apply rate-limit delay per rule r6.</conclusion>
-          </branch>
-          <branch when="lang_supported == true">
-            <question id="q-final-asset">Is this a final production asset (vs draft/preview)?</question>
-            <branch when="final_asset == true">
-              <conclusion ref="r1-model-tier">OpenAI TTS with model=tts-1-hd. Higher quality justifies 2x cost on shipped audio.</conclusion>
-            </branch>
-            <branch when="final_asset == false">
-              <conclusion ref="r1-model-tier">OpenAI TTS with model=tts-1. Iterate cheap; promote to tts-1-hd only on final pass.</conclusion>
-            </branch>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="char_count &lt;= 4000 AND ssml_present == true">
+      <conclusion ref="r2-ssml-routing" verdict="Force provider in {google, azure}. Never pass SSML to OpenAI TTS or ElevenLabs — both produce broken audio."/>
     </branch>
-    <example trace="news-headline-draft">
-      <p>Input: "Markets closed up 2% today." (28 chars, no SSML, no clone, en, draft) → char_count &lt;= 4000 → ssml_present false → voice_clone_required false → lang_supported true → final_asset false → conclusion r1-model-tier: OpenAI tts-1, voice=onyx via VOICE_MAP["news"]["openai"].</p>
-    </example>
+    <branch when="char_count &lt;= 4000 AND ssml_present == false AND voice_clone_required == true">
+      <conclusion ref="r3-cache-key-shape" verdict="Escalate to tts-implementation ElevenLabs clone_voice path. tts-basics does not handle cloning. Cache key still includes provider=elevenlabs to keep replay safe."/>
+    </branch>
+    <branch when="char_count &lt;= 4000 AND ssml_present == false AND voice_clone_required == false AND lang_supported == false">
+      <conclusion ref="r1-model-tier" verdict="Fall back to ElevenLabs eleven_multilingual_v2 OR Google Neural2 — pick by cost cap. Apply rate-limit delay per rule r6."/>
+    </branch>
+    <branch when="char_count &lt;= 4000 AND ssml_present == false AND voice_clone_required == false AND lang_supported == true AND final_asset == true">
+      <conclusion ref="r1-model-tier" verdict="OpenAI TTS with model=tts-1-hd. Higher quality justifies 2x cost on shipped audio."/>
+    </branch>
+    <branch when="char_count &lt;= 4000 AND ssml_present == false AND voice_clone_required == false AND lang_supported == true AND final_asset == false">
+      <conclusion ref="r1-model-tier" verdict="OpenAI TTS with model=tts-1. Iterate cheap; promote to tts-1-hd only on final pass."/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
+    </branch>
   </decision-tree>
 </text>

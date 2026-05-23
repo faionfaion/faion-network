@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Produces a per-client conventions report captured at engagement start — branching, commit style, review SLA, naming, CI gates, security rules — so all downstream PRs comply from day one.
-content_id: "ccintake1.0.0"
+content_id: "77ed0ff220efa280"
 complexity: medium
 produces: report
 est_tokens: 3800

@@ -1,3 +1,8 @@
+<!-- purpose: Template fixture for solution-assessment: solution-assessment-report.md -->
+<!-- consumes: content/01-core-rules.xml -->
+<!-- produces: Markdown artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: small -->
 # Solution Assessment Report: [Solution Name]
 
 **Version:** 1.0

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Produces an end-to-end scrape-run report (SSR-vs-JS detection, tool choice, schema-validated rows, drift counter) gating a per-source scrape pipeline.
-content_id: "wsaw1.0.0scrape"
+content_id: "481ac2a3a37b6383"
 complexity: medium
 produces: report
 est_tokens: 4200

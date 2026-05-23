@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: Template fixture for tmux-power-user: tmux-system.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # ~/.tmux-system.sh
 # tmux status bar system metrics with color-coded thresholds
 #

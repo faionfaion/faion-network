@@ -1,3 +1,8 @@
+# purpose: Template fixture for secrets-management: vault-policy.hcl
+# consumes: content/01-core-rules.xml
+# produces: structured artefact
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # HashiCorp Vault policy templates
 # Apply with: vault policy write <name> <file.hcl>
 

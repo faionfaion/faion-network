@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: Template fixture for shell-productivity: fzf-config.sh
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # fzf shell integration block
 # Source or paste this into ~/.bashrc
 #

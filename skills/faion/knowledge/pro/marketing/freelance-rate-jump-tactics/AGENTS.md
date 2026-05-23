@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Defensibly raise rates 30-50% inside a niche pivot — credential proof-building, anchor recalibration, case-study sequencing, graduated rollout split between existing clients + new leads.
-content_id: "freelance-rate-jump-1"
+content_id: "42c54c265c4ff50c"
 complexity: medium
 produces: spec
 est_tokens: 3400

@@ -1,3 +1,8 @@
+<!-- purpose: Template fixture for growth-seo-fundamentals: seo-content-brief.md -->
+<!-- consumes: content/01-core-rules.xml -->
+<!-- produces: Markdown artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: small -->
 # SEO Content Brief: [Target Keyword]
 
 ## Keyword Data

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Produces a per-task context-bundle artefact (≤6K tokens) curating the minimum files + glossary the coding agent needs, with a budget check and trim plan.
-content_id: "cwcca1.0.0context"
+content_id: "b761936789f1944b"
 complexity: medium
 produces: spec
 est_tokens: 3800

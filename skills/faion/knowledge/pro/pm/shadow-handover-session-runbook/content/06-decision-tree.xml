@@ -1,48 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Shadow Handover Session Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+<text id="06-decision-tree" title="Shadow Handover Session Decision Tree" version="1.1.1" est_tokens="400" depth="essential">
   <summary>Tree mapping observable signals (outgoing-availability, task-list readiness, drive verdicts, sign-off captured, spf items) to run / second-session / forensic-fallback.</summary>
-
   <decision-tree>
-    <root-question id="q-outgoing">outgoing_engineer available and willing for at least one session?</root-question>
-
+    <root-question id="q-applies">outgoing_engineer available and willing for at least one session?</root-question>
     <branch when="outgoing_unavailable == true">
       <conclusion ref="r1-receiver-drives" verdict="skip-this-methodology; use forensic-handover artefacts (postmortems, runbooks, code-archaeology)"/>
     </branch>
-
-    <branch when="outgoing_unavailable == false">
-      <question id="q-task-list">task_list with at least 5 representative ops tasks ready?</question>
-
-      <branch when="task_list_missing == true">
-        <conclusion ref="r5-no-skipped-tasks" verdict="defer; agree task list with both parties before scheduling session"/>
-      </branch>
-
-      <branch when="task_list_missing == false">
-        <question id="q-drove">every task in this session has receiver_drove == true OR verdict == deferred?</question>
-
-        <branch when="drove_violation == true">
-          <conclusion ref="r1-receiver-drives" verdict="reject session record; schedule second session; outgoing engineer cannot drive non-recovery tasks"/>
-        </branch>
-
-        <branch when="drove_violation == false">
-          <question id="q-sign-off">both engineers signed?</question>
-          <branch when="sign_off_missing == true">
-            <conclusion ref="r4-sign-off-gate" verdict="reject record; schedule sign-off slot; rotation date gated"/>
-          </branch>
-          <branch when="sign_off_missing == false">
-            <question id="q-spf">spf_undocumented list non-empty?</question>
-            <branch when="spf_present == true">
-              <conclusion ref="r4-sign-off-gate" verdict="defer rotation date until SPF items have doc_link OR second-session scheduled"/>
-            </branch>
-            <branch when="spf_present == false">
-              <conclusion ref="r3-written-gap-log" verdict="accept record; convert open gap-log items to doc tickets within 1 week"/>
-            </branch>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="outgoing_unavailable == false AND task_list_missing == true">
+      <conclusion ref="r5-no-skipped-tasks" verdict="defer; agree task list with both parties before scheduling session"/>
+    </branch>
+    <branch when="outgoing_unavailable == false AND task_list_missing == false AND drove_violation == true">
+      <conclusion ref="r1-receiver-drives" verdict="reject session record; schedule second session; outgoing engineer cannot drive non-recovery tasks"/>
+    </branch>
+    <branch when="outgoing_unavailable == false AND task_list_missing == false AND drove_violation == false AND sign_off_missing == true">
+      <conclusion ref="r4-sign-off-gate" verdict="reject record; schedule sign-off slot; rotation date gated"/>
+    </branch>
+    <branch when="outgoing_unavailable == false AND task_list_missing == false AND drove_violation == false AND sign_off_missing == false AND spf_present == true">
+      <conclusion ref="r4-sign-off-gate" verdict="defer rotation date until SPF items have doc_link OR second-session scheduled"/>
+    </branch>
+    <branch when="outgoing_unavailable == false AND task_list_missing == false AND drove_violation == false AND sign_off_missing == false AND spf_present == false">
+      <conclusion ref="r3-written-gap-log" verdict="accept record; convert open gap-log items to doc tickets within 1 week"/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
     </branch>
   </decision-tree>
-
-  <example trace="hand-2026-05-20">
-    outgoing=available → task_list=5 tasks → all drove or deferred → both signed → spf list empty → accept; open gap_log items → doc tickets.
-  </example>
+  <example trace="hand-2026-05-20">outgoing=available → task_list=5 tasks → all drove or deferred → both signed → spf list empty → accept; open gap_log items → doc tickets.</example>
 </text>

@@ -1,44 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="VUI Market Context Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+<text id="06-decision-tree" title="VUI Market Context Decision Tree" version="1.1.1" est_tokens="500" depth="essential">
   <summary>Routing tree from observable brief inputs to a rule-grounded conclusion.</summary>
-
   <decision-tree>
-    <root-question id="q-preconditions">Input is a request to assemble or refresh a VUI market brief?</root-question>
-
+    <root-question id="q-applies">Input is a request to assemble or refresh a VUI market brief?</root-question>
     <branch when="request_type == implementation_or_locked_decision">
       <conclusion ref="skip-this-methodology" verdict="skip; route to vui-conversation-design or market-researcher"/>
     </branch>
-
-    <branch when="request_type == brief_assembly">
-      <question id="q-age">today - refreshed_at &gt; 90 days?</question>
-      <branch when="brief_age_days &gt; 90">
-        <conclusion ref="90-day-freshness" verdict="refresh first via templates/refresh-script.py; do not publish stale brief"/>
-      </branch>
-      <branch when="brief_age_days &lt;= 90">
-        <question id="q-stat-scope">Every data row has value + year + source_url + geo + denominator?</question>
-        <branch when="row_field_completeness == false">
-          <conclusion ref="scoped-stat-fields" verdict="reject brief; reject any row missing a required field"/>
-        </branch>
-        <branch when="row_field_completeness == true">
-          <question id="q-source">All source_url hosts in trusted allowlist?</question>
-          <branch when="source_in_allowlist == false">
-            <conclusion ref="trusted-source-allowlist" verdict="drop non-allowlist rows; refresh from primary source"/>
-          </branch>
-          <branch when="source_in_allowlist == true">
-            <question id="q-platforms">platforms[] includes Custom LLM-VUI?</question>
-            <branch when="llm_native_row_present == false">
-              <conclusion ref="llm-native-as-platform" verdict="add Custom LLM-VUI row before publish"/>
-            </branch>
-            <branch when="llm_native_row_present == true">
-              <conclusion ref="denominator-discipline" verdict="publish; downstream consumer must not mix denominators in derived metrics"/>
-            </branch>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="request_type == brief_assembly AND brief_age_days &gt; 90">
+      <conclusion ref="90-day-freshness" verdict="refresh first via templates/refresh-script.py; do not publish stale brief"/>
+    </branch>
+    <branch when="request_type == brief_assembly AND brief_age_days &lt;= 90 AND row_field_completeness == false">
+      <conclusion ref="scoped-stat-fields" verdict="reject brief; reject any row missing a required field"/>
+    </branch>
+    <branch when="request_type == brief_assembly AND brief_age_days &lt;= 90 AND row_field_completeness == true AND source_in_allowlist == false">
+      <conclusion ref="trusted-source-allowlist" verdict="drop non-allowlist rows; refresh from primary source"/>
+    </branch>
+    <branch when="request_type == brief_assembly AND brief_age_days &lt;= 90 AND row_field_completeness == true AND source_in_allowlist == true AND llm_native_row_present == false">
+      <conclusion ref="llm-native-as-platform" verdict="add Custom LLM-VUI row before publish"/>
+    </branch>
+    <branch when="request_type == brief_assembly AND brief_age_days &lt;= 90 AND row_field_completeness == true AND source_in_allowlist == true AND llm_native_row_present == true">
+      <conclusion ref="denominator-discipline" verdict="publish; downstream consumer must not mix denominators in derived metrics"/>
     </branch>
   </decision-tree>
-
-  <example trace="2026-05-23 brief refresh">
-    request_type=brief_assembly → brief_age_days=0 → row_field_completeness=true → source_in_allowlist=true → llm_native_row_present=true → conclusion = publish (denominator-discipline applies downstream).
-  </example>
+  <example trace="2026-05-23 brief refresh">request_type=brief_assembly → brief_age_days=0 → row_field_completeness=true → source_in_allowlist=true → llm_native_row_present=true → conclusion = publish (denominator-discipline applies downstream).</example>
 </text>

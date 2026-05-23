@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Service-business referral mechanics — bounded incentive ($ or credit), NDA-safe testimonial framing, partner-swap pair design, ≤90-day attribution window, owner-named on every referral.
-content_id: "freelance-referral-1"
+content_id: "2df777b1d74ab9be"
 complexity: medium
 produces: spec
 est_tokens: 3200

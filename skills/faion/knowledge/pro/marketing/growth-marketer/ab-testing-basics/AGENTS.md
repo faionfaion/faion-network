@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Controlled experiment fundamentals — 50/50 split, pre-registered primary metric, MDE-driven sample size, no peeking, verdict-card close — produces a defensible result card.
-content_id: "ab-testing-1"
+content_id: "d86865164eb2ec81"
 complexity: medium
 produces: spec
 est_tokens: 3500

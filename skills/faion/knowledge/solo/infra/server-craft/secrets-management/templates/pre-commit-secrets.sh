@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: Template fixture for secrets-management: pre-commit-secrets.sh
+# consumes: content/01-core-rules.xml
+# produces: executable script
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
 # .git/hooks/pre-commit — Block commits containing secret patterns
 #
 # Install: cp pre-commit-secrets.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit

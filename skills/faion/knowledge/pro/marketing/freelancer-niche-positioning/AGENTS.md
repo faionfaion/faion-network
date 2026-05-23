@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Single-person service positioning — 'I do X for Y so they Z' one-liner validated against 3 external signals (search-find, peer recall, buyer paraphrase) before any other change.
-content_id: "freelancer-niche-1"
+content_id: "5ad0e90259cfd595"
 complexity: medium
 produces: spec
 est_tokens: 3200
