@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="iac-patterns-dry Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for iac-patterns-dry. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="IaC DRY Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `IaC DRY Patterns`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>ALL naming conventions, common tag maps, CIDR derivations, and environment conditionals MUST be defined in locals. Resource blocks reference locals, never raw variables or inline expressions.</statement>
-      <rationale source="v1-source">Centralizing computed values in locals means a naming change requires one edit; scattered inline expressions mean N edits with N opportunities for drift.</rationale>
+
+    <rule id="rule-of-three" testable="true" depth="essential">
+      <statement>Factor a pattern only after the third concrete instance; premature abstraction is forbidden.</statement>
+      <rationale source="Refactoring: Improving the Design of Existing Code (Fowler)">Two instances rarely carry enough variation signal; abstracting too early bakes in wrong axis of variation.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use for_each with a typed map when creating 2+ similar resources. NEVER use count for resources where the set membership can change — count-indexed resources shift when items are inserted or removed, forcing unnecessary destroy/recreate cycles.</statement>
-      <rationale source="v1-source">for_each assigns identity by map key; Terraform can add, remove, or update individual items without touching siblings. count-based addressing breaks on any insertion before the last element.</rationale>
+
+    <rule id="for-each-over-copy" testable="true" depth="essential">
+      <statement>Repeated resource blocks with shared shape MUST use for_each / dynamic blocks; copy-paste duplication is forbidden once rule-of-three triggers.</statement>
+      <rationale source="Terraform for_each docs">Copy-paste blocks drift; for_each enforces single-shape contract.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use dynamic blocks when a resource has N identical nested blocks that differ only in values. Define the block configuration as a list/map variable; the dynamic block iterates over it.</statement>
-      <rationale source="v1-source">Hard-coded repeated nested blocks cannot be parameterized without copy-paste; dynamic blocks make the block set a first-class input to the module.</rationale>
+
+    <rule id="locals-for-shared-constants" testable="true" depth="essential">
+      <statement>Shared constants (tags, names, prefixes) MUST live in locals block at the root, not repeated as literals inside each resource.</statement>
+      <rationale source="Terraform locals docs">Literals drift; locals are the single source.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use Terragrunt generate blocks to produce provider.tf and backend.tf in every child directory from path-derived locals (environment, region, account_id). NEVER hand-write backend.tf or provider.tf per environment — any difference between environment configs must be explicit in the root terragrunt.hcl, not duplicated in leaf files.</statement>
-      <rationale source="v1-source">A 10-environment project has 10 copies of provider.tf and backend.tf if written manually — the first time an org changes its AWS region or state bucket, 9 of 10 will be forgotten.</rationale>
+
+    <rule id="env-overlay-not-copy" testable="true" depth="essential">
+      <statement>Per-environment differences MUST be expressed as *.tfvars / Pulumi stack-config overlays on a shared module, not by copying the module per env.</statement>
+      <rationale source="HashiCorp env-overlay pattern">Per-env copies double the change surface and decay independently.</rationale>
     </rule>
+
+    <rule id="no-magic-numbers" testable="true" depth="essential">
+      <statement>Numeric constants with semantic meaning (timeouts, replicas, ports) MUST be named via variable or locals; raw numbers in resource blocks are forbidden.</statement>
+      <rationale source="Clean Code / IaC style guides">Bare numbers obscure intent + cause silent inconsistencies.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Applies If preconditions fail OR any Skip If trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

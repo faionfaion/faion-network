@@ -1,47 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="iac-patterns-module-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for iac-patterns-module-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="IaC Module Design Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `IaC Module Design Patterns`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Base Module: manages exactly one resource type with sensible defaults. Use for S3 buckets, security groups, IAM roles. Exposes minimal inputs; all security defaults locked.</statement>
-      <rationale source="v1-source">Single-resource modules are the atomic unit of reuse — testable in isolation, versioned independently, composable into higher-level patterns.</rationale>
+
+    <rule id="minimal-input-surface" testable="true" depth="essential">
+      <statement>Module input variables MUST be the minimal set the caller needs; expose internal knobs only when there is a documented use-case.</statement>
+      <rationale source="HashiCorp module design guidance">Large input surface increases miscalibration risk + slows upgrades.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Wrapper Module: wraps a community or base module with non-overridable org-specific defaults (encryption always on, never publicly accessible, backup retention enforced for prod). Use to enforce compliance without repeating policy across teams.</statement>
-      <rationale source="v1-source">Centralizing security defaults in a wrapper means each consumer gets policy compliance for free; the wrapper module is the single point to update when policy changes.</rationale>
+
+    <rule id="typed-outputs" testable="true" depth="essential">
+      <statement>Every output MUST declare a type (or equivalent) + description; untyped outputs are forbidden.</statement>
+      <rationale source="Terraform output docs">Untyped outputs break downstream consumers silently on schema drift.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Facade Module: composes multiple internal modules into a simplified interface. Consumers provide only high-level inputs (project, environment, container_image); all inter-module wiring is internal. Use for complete stack deployments.</statement>
-      <rationale source="v1-source">Facades reduce the consumer's cognitive load from dozens of required inputs to a handful, while preserving flexibility through sensible defaults on everything else.</rationale>
+
+    <rule id="examples-required" testable="true" depth="essential">
+      <statement>Each module MUST ship at least one runnable example under examples/ that terraform validate passes.</statement>
+      <rationale source="HashiCorp module standard layout">Without runnable examples, consumers reverse-engineer usage from tests.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Factory Module: creates multiple similar resources from a configuration map using for_each. Accepts a map of objects, one entry per resource; outputs a parallel map. Use when teams define 3+ similar resources (S3 buckets, security groups, DNS records).</statement>
-      <rationale source="v1-source">for_each on a typed map is safer than count because resource identity is keyed by name, not index — adding or removing items doesn't shift all subsequent resources.</rationale>
+
+    <rule id="semver-tags" testable="true" depth="essential">
+      <statement>Module releases MUST be SemVer-tagged in git; floating main references are not stable consumption surface.</statement>
+      <rationale source="SemVer spec, HashiCorp module versioning">SemVer encodes upgrade safety promise; floating refs break it.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Composite Module: orchestrates two or more sub-modules into a reusable higher-level unit without becoming a Facade (it exposes full outputs of all components). Use for VPC+subnets+NAT, or EKS+node-groups+IRSA.</statement>
-      <rationale source="v1-source">Composite keeps co-deployed resources versioned together while still exposing all outputs for dependent modules — a middle ground between raw composition and a Facade's hidden internals.</rationale>
+
+    <rule id="deprecation-cycle" testable="true" depth="essential">
+      <statement>Removing or renaming an input/output MUST go through one major version with deprecation warning before removal.</statement>
+      <rationale source="HashiCorp module versioning guidance">Hard breaks cascade to every consumer; deprecation cycle absorbs the migration cost.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Keep modules focused and single-purpose. A module that creates "everything my app needs" is an antipattern — split by resource type or concern.</statement>
-      <rationale source="v1-source">Single-purpose modules are independently testable and versionable; monolithic modules create tight coupling and uncontrollable blast radius.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Applies If preconditions fail OR any Skip If trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use semantic versioning (v1.0.0). Pin module calls to a version constraint. Bump major version for breaking changes; provide a migration guide.</statement>
-      <rationale source="v1-source">Without versioned modules, downstream consumers silently receive breaking changes on the next init.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Pass dependencies into modules as inputs (dependency inversion). Never use data sources inside a module to look up resources that the caller already owns.</statement>
-      <rationale source="v1-source">Modules with internal data source lookups are untestable without real cloud state; input-based dependencies enable plan-time testing with mocks.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Set sensible defaults for all optional variables. Required variables MUST have validation rules with descriptive error messages.</statement>
-      <rationale source="v1-source">Defaults reduce the consumer's required inputs; validation fails fast with a readable message rather than an opaque API error during apply.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Expose minimal but sufficient outputs. Every output MUST have a description. Sensitive outputs MUST be marked sensitive = true.</statement>
-      <rationale source="v1-source">Minimal outputs reduce the surface area for accidental secret leakage; descriptions are required for auto-generated documentation tools (terraform-docs).</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

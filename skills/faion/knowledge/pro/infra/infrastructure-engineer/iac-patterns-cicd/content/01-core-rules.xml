@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="iac-patterns-cicd Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for iac-patterns-cicd. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="IaC CI/CD Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `IaC CI/CD Patterns`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The CI pipeline MUST run: (1) fmt -check, (2) validate, (3) tflint, (4) security scan (checkov/tfsec), (5) plan on PR with comment output, (6) apply only on merge to main. Apply MUST require all previous stages to pass.</statement>
-      <rationale source="v1-source">Each stage catches a different failure class: fmt catches formatting drift, validate catches syntax errors, tflint catches provider-specific issues, security scan catches policy violations, and the plan review is the human gate before any cloud mutation.</rationale>
+
+    <rule id="plan-required-on-pr" testable="true" depth="essential">
+      <statement>Every PR touching `*.tf`/`pulumi/*` MUST attach a machine-readable `plan` artefact; merging without plan is forbidden.</statement>
+      <rationale source="HashiCorp / Pulumi review-flow docs">Without a recorded plan, reviewers approve blindly and apply surprises slip in.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Cloud authentication in CI MUST use OIDC (id-token: write permission + configure-aws-credentials with role-to-assume). NEVER store long-lived IAM access keys as CI secrets.</statement>
-      <rationale source="v1-source">OIDC tokens are short-lived (15 minutes) and scoped to the specific workflow run; a leaked token has minimal blast radius compared to a long-lived IAM key that persists until manually rotated.</rationale>
+
+    <rule id="apply-only-on-merge" testable="true" depth="essential">
+      <statement>`apply` MUST run only on the protected branch (`main`); apply-from-PR is forbidden.</statement>
+      <rationale source="GitHub Actions security model">Apply-from-PR allows arbitrary code on a forked branch to mutate prod.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Production apply jobs MUST use a GitHub Environments deployment gate requiring manual approval. Apply from main branch only; never allow direct apply from feature branches.</statement>
-      <rationale source="v1-source">An approval gate before production apply is the last human checkpoint; it prevents accidental production deploys from merged-but-unreviewd PRs.</rationale>
+
+    <rule id="wif-only-ci" testable="true" depth="essential">
+      <statement>CI MUST authenticate to cloud via WIF/OIDC; static long-lived cloud credentials in CI secrets are forbidden.</statement>
+      <rationale source="GCP WIF docs, AWS GitHub OIDC docs">Static keys are the dominant credential-leak vector.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Configure a scheduled drift detection job that runs terraform plan daily (or hourly for critical infrastructure) and alerts when plan output is non-empty. Do NOT auto-apply drift remediation — require human review of each drift incident.</statement>
-      <rationale source="v1-source">Auto-remediation of drift can destroy intentional manual changes made during an incident response. Alert and require human judgment for each drift detection event.</rationale>
+
+    <rule id="drift-detected-nightly" testable="true" depth="essential">
+      <statement>A scheduled (nightly) drift-detect job MUST run `plan` against production state and alert on non-empty changes.</statement>
+      <rationale source="Terraform drift-detection best practices">Without drift detection, console drift accumulates until a noisy `apply` reverts it.</rationale>
     </rule>
+
+    <rule id="env-promotion" testable="true" depth="essential">
+      <statement>Promotion order dev → staging → prod MUST be enforced (manual gate before prod); apply directly to prod is forbidden.</statement>
+      <rationale source="CD pattern handbook">Skipping staging hides env-specific regressions.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If `Applies If` preconditions fail OR any `Skip If` trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

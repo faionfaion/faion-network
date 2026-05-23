@@ -3,21 +3,31 @@ slug: gcp-resource-hierarchy
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GCP organizes all resources in a 4-level tree: Organization → Folder → Project → Resource.
-content_id: "8b550f557ea2efa5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Design and configure GCP resource hierarchy (org/folders/projects), naming conventions, required labels, and project setup to enforce governance at scale.
+content_id: "ef90bbb42157f3e9"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [gcp, resource-hierarchy, organization, projects, governance]
 ---
-# GCP Resource Hierarchy Design
+# Gcp Resource Hierarchy
 
 ## Summary
 
-**One-sentence:** GCP organizes all resources in a 4-level tree: Organization → Folder → Project → Resource.
+**One-sentence:** Design and configure GCP resource hierarchy (org/folders/projects), naming conventions, required labels, and project setup to enforce governance at scale.
 
 **One-paragraph:** GCP organizes all resources in a 4-level tree: Organization → Folder → Project → Resource. IAM policies and organization constraints flow downward; projects are the billing boundary and API-enablement boundary. Designing this hierarchy upfront prevents costly restructuring later.
+
+**Ефективно для:**
+
+- Organization → Folder (per BU/env) → Project (per workload).
+- Policy inheritance + override моделювання.
+- Naming conventions для project-id-ів (env-bu-service-purpose).
+- Billing-account assignment на folder/project level.
 
 ## Applies If (ALL must hold)
 
@@ -28,45 +38,64 @@ tags: [gcp, resource-hierarchy, organization, projects, governance]
 
 ## Skip If (ANY kills it)
 
-- Single personal project with no organizational requirements — flat project structure is sufficient.
-- Read-only GCP audit tasks — hierarchy restructuring requires Organization Admin and should be done in a planned change window.
+- Single-project personal account.
+- Per-project IAM-only changes — use `gcp-iam-design`.
+- Org-policy details — use `gcp-org-policies`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Organisation node | GCP organization id | org admin |
+| Folders inventory | BU / env split | leadership |
+| Naming convention | project-id pattern | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp-iam-design]] | Sibling methodology that supplies context required here. |
+| [[gcp-billing-cost]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-spec` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gcp-resource-hierarchy.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gcp-resource-hierarchy.md` | Skeleton for the spec artefact this methodology produces. |
+| `templates/_smoke-test.md` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-resource-hierarchy.py` | Validate the spec artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gcp-iam-design]]
+- [[gcp-billing-cost]]
+- [[gcp-org-policies]]
+- [[gcp-overview-cli]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-resource-hierarchy vs an adjacent sibling).

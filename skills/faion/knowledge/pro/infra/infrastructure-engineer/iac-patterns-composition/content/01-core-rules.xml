@@ -1,35 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="iac-patterns-composition Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for iac-patterns-composition. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="IaC Module Composition Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `IaC Module Composition Patterns`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Terramod: environment root modules compose from versioned reusable modules. Each environment directory has its own main.tf that calls shared modules with environment-specific inputs. State is isolated per environment. Use for any multi-environment project.</statement>
-      <rationale source="v1-source">Separating environment state prevents a staging apply from affecting production state; each environment's module composition can differ (e.g., staging has fewer replicas) while sharing the same module logic.</rationale>
+
+    <rule id="root-vs-leaf" testable="true" depth="essential">
+      <statement>Root modules MUST only compose leaf modules + pass variables; root modules MUST NOT contain resource declarations directly.</statement>
+      <rationale source="HashiCorp module composition guidance">Mixing resources into root breaks reuse and tangles state files; clear root/leaf split makes refactor mechanical.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Landing Zone: a pre-configured environment framework providing a complete, opinionated baseline (account structure, networking, IAM, logging, monitoring) that teams deploy into without manual configuration. Use when multiple teams need standardized cloud accounts.</statement>
-      <rationale source="v1-source">A Landing Zone moves the org's security and compliance baseline into code, so every new account starts compliant rather than requiring manual hardening.</rationale>
+
+    <rule id="no-circular-refs" testable="true" depth="essential">
+      <statement>Module dependency graph MUST be acyclic; resolving a cycle by moving the offending resource down is required.</statement>
+      <rationale source="Terraform graph docs">Cyclic refs produce nondeterministic plans + intermittent apply failures.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Service Catalog: a library of vetted, org-approved Terraform patterns for complex multi-resource deployments (databases, Kubernetes clusters, message queues). Teams select catalog entries rather than authoring raw Terraform. Use when teams have heterogeneous infrastructure needs.</statement>
-      <rationale source="v1-source">The catalog enforces org standards (encryption, tagging, IAM) at the point of infrastructure creation; teams get velocity without compromising security.</rationale>
+
+    <rule id="outputs-stable" testable="true" depth="essential">
+      <statement>Module outputs MUST be a stable, documented contract; renaming outputs without major-version bump is forbidden.</statement>
+      <rationale source="HashiCorp module versioning guidance">Output renames break every downstream consumer silently on terraform plan.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Hub-Spoke: a central hub account/VPC provides shared services (DNS, transit gateway, logging, security tools) to spoke workload accounts/VPCs via peering or Transit Gateway. Spokes are isolated from each other. Use in multi-account architectures.</statement>
-      <rationale source="v1-source">Hub-Spoke reduces blast radius (a compromised spoke cannot access other spokes), centralizes shared service costs, and simplifies network routing in large organizations.</rationale>
+
+    <rule id="single-source-of-truth" testable="true" depth="essential">
+      <statement>Each piece of infra state MUST be owned by exactly one module; duplicate ownership across modules is forbidden.</statement>
+      <rationale source="Terraform state docs">Duplicate ownership means alternate applies overwrite each other state.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>State MUST be isolated per environment. NEVER share a single state file across dev, staging, and prod — a corrupted or accidental apply in dev must not affect prod state.</statement>
-      <rationale source="v1-source">Shared state means a terraform destroy in dev can remove resources that prod depends on via remote_state data sources.</rationale>
+
+    <rule id="no-cross-state-reads" testable="true" depth="essential">
+      <statement>Modules MUST NOT use terraform_remote_state to read across teams without an explicit, versioned interface module.</statement>
+      <rationale source="Terraform terraform_remote_state docs">Cross-state reads create implicit, untyped contracts that break silently.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Consider state isolation per component within an environment when components have different change rates. Use terraform_remote_state data sources to share outputs across state files.</statement>
-      <rationale source="v1-source">A monolithic environment state file means all components must be planned together; splitting by component (networking, compute, database) reduces plan time and blast radius of a failed apply.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If Applies If preconditions fail OR any Skip If trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>State backend MUST enable encryption at rest and locking. For AWS: S3 bucket with SSE-S3 or SSE-KMS, DynamoDB table for locking. State file MUST NEVER be committed to git.</statement>
-      <rationale source="v1-source">State files contain resource IDs, some plaintext secrets, and the full resource graph — committing them to git is a data exposure.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

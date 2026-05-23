@@ -1,22 +1,178 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="iac-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Infrastructure as Code Basics Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/iac-basics.json",
+  "type": "object",
+  "required": [
+    "tool",
+    "state_backend",
+    "secret_strategy",
+    "ci_runner",
+    "baseline_modules",
+    "owner",
+    "decided_on",
+    "produced_at"
+  ],
+  "properties": {
+    "tool": {
+      "enum": [
+        "terraform",
+        "pulumi",
+        "aws-cdk",
+        "azure-bicep",
+        "google-cdk"
+      ]
+    },
+    "state_backend": {
+      "type": "object",
+      "required": [
+        "type",
+        "location"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "gcs",
+            "s3",
+            "azure-blob",
+            "pulumi-cloud"
+          ]
+        },
+        "location": {
+          "type": "string"
+        }
+      }
+    },
+    "secret_strategy": {
+      "enum": [
+        "vault",
+        "gcp-secret-manager",
+        "aws-secrets-manager",
+        "azure-key-vault"
+      ]
+    },
+    "ci_runner": {
+      "type": "object",
+      "required": [
+        "provider",
+        "auth"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "auth": {
+          "enum": [
+            "wif",
+            "oidc",
+            "static"
+          ]
+        }
+      }
+    },
+    "baseline_modules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "decided_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "alternatives_considered": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tool": "terraform",
+  "state_backend": {
+    "type": "gcs",
+    "location": "acme-tfstate-prod"
+  },
+  "secret_strategy": "gcp-secret-manager",
+  "ci_runner": {
+    "provider": "github-actions",
+    "auth": "wif"
+  },
+  "baseline_modules": [
+    "network",
+    "iam",
+    "audit-logs",
+    "kms"
+  ],
+  "owner": {
+    "name": "Andriy Koval",
+    "role": "platform lead"
+  },
+  "decided_on": "2026-05-23",
+  "alternatives_considered": [
+    "pulumi",
+    "aws-cdk"
+  ],
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tool": "shell-scripts"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`ci_runner.auth: static`.</description>
+      <reason>Long-lived keys are forbidden; use WIF/OIDC.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`tool: shell-scripts` or absent.</description>
+      <reason>Imperative scripts produce drift.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty `baseline_modules`.</description>
+      <reason>Baseline drift across projects.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-iac-basics.py">Validator script</reference>
 </text>

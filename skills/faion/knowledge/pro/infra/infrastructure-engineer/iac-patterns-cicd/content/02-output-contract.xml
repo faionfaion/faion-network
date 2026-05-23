@@ -1,22 +1,183 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="iac-patterns-cicd Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="IaC CI/CD Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/iac-patterns-cicd.json",
+  "type": "object",
+  "required": [
+    "repo",
+    "ci_provider",
+    "auth",
+    "stages",
+    "drift_detection",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "repo": {
+      "type": "string",
+      "minLength": 3
+    },
+    "ci_provider": {
+      "enum": [
+        "github-actions",
+        "gitlab-ci",
+        "buildkite",
+        "atlantis",
+        "spacelift"
+      ]
+    },
+    "auth": {
+      "enum": [
+        "wif",
+        "oidc"
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "trigger",
+          "approvers"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "trigger": {
+            "enum": [
+              "pr",
+              "merge",
+              "manual",
+              "schedule"
+            ]
+          },
+          "approvers": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "minItems": 2
+    },
+    "drift_detection": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "schedule"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "const": true
+        },
+        "schedule": {
+          "type": "string"
+        }
+      }
+    },
+    "promotion_order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "repo": "acme/infra-terraform",
+  "ci_provider": "github-actions",
+  "auth": "wif",
+  "stages": [
+    {
+      "name": "plan",
+      "trigger": "pr",
+      "approvers": 0
+    },
+    {
+      "name": "apply-dev",
+      "trigger": "merge",
+      "approvers": 1
+    },
+    {
+      "name": "apply-prod",
+      "trigger": "manual",
+      "approvers": 2
+    }
+  ],
+  "drift_detection": {
+    "enabled": true,
+    "schedule": "0 3 * * *"
+  },
+  "promotion_order": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "repo": "acme/infra",
+  "auth": "static"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`auth: static`.</description>
+      <reason>Long-lived cloud keys leak; WIF required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Stages with `trigger: pr` that execute `apply`.</description>
+      <reason>Apply on PR allows fork-side mutation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`drift_detection.enabled: false`.</description>
+      <reason>No drift detection = silent console writes.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-iac-patterns-cicd.py">Validator script</reference>
 </text>

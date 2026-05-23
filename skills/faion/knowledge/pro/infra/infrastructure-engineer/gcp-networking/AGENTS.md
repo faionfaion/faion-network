@@ -3,21 +3,32 @@ slug: gcp-networking
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Comprehensive reference for Google Cloud Platform networking: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices.
-content_id: "65c6821c417faf8d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Comprehensive GCP networking reference: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices for production workloads.
+content_id: "f3d63917ff1e001a"
+complexity: deep
+produces: config
+est_tokens: 4100
 tags: [gcp, vpc, networking, firewall, load-balancing]
 ---
-# GCP Networking
+# Gcp Networking
 
 ## Summary
 
-**One-sentence:** Comprehensive reference for Google Cloud Platform networking: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices.
+**One-sentence:** Comprehensive GCP networking reference: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices for production workloads.
 
 **One-paragraph:** Comprehensive reference for Google Cloud Platform networking: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices. Focus Areas: VPC, subnets, firewall rules, Cloud NAT, load balancing.
+
+**Ефективно для:**
+
+- Shared VPC між project-ами у одній організації.
+- VPC peering / Network Connectivity Center для multi-VPC топологій.
+- Cloud NAT для приватних instance-ів з egress до інтернету.
+- Global HTTPS Load Balancer з Cloud Armor + CDN.
+- Private Service Connect для GCP managed services.
 
 ## Applies If (ALL must hold)
 
@@ -30,46 +41,61 @@ tags: [gcp, vpc, networking, firewall, load-balancing]
 
 ## Skip If (ANY kills it)
 
-- Single-VM prototypes where the default VPC is sufficient and network isolation is not required.
-- Workloads fully on Cloud Run with no VPC ingress/egress requirements — Cloud Run handles networking at the service level.
-- AWS or Azure environments — networking concepts and commands are specific to GCP.
+- Single-VPC, single-project basics — use `gcp-networking-vpc`.
+- K8s-internal networking — use GKE Network Policies.
+- Non-GCP networking decisions.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| VPC topology decision | shared VPC / multi-VPC / peering | network owner |
+| Egress requirements | Cloud NAT / internet / private | team |
+| L7 ingress requirements | regions / SSL / Cloud Armor | security |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cloud-run-jobs]] | Sibling methodology that supplies context required here. |
+| [[cloud-run-monitoring]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gcp-networking.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gcp-networking.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-networking.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[cloud-run-jobs]]
+- [[cloud-run-monitoring]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-networking vs an adjacent sibling).

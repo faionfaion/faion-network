@@ -1,23 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gcp-resource-hierarchy Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gcp-resource-hierarchy. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gcp Resource Hierarchy Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gcp-resource-hierarchy methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Keep folder nesting depth at 3 or fewer levels. Deeply nested hierarchies increase policy complexity without adding governance value.</statement>
-      <rationale source="v1-source">Each additional folder level adds an inheritance layer to debug when IAM or org-policy issues occur. Flat hierarchies are easier to reason about and audit.</rationale>
+    <rule id="org-level-policies" testable="true" depth="essential">
+      <statement>Org-wide controls (IAM, billing, allowed locations) MUST be applied at the organisation node and inherited.</statement>
+      <rationale source="GCP resource hierarchy docs">Inheritance + override is the model; applying org-wide controls at folder/project level leads to drift.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Separate environments (dev/staging/prod) into different projects, not different folders inside one project. Each environment must have its own project.</statement>
-      <rationale source="v1-source">Projects are the billing and API-enablement boundary. Mixing environments in one project makes it impossible to restrict prod APIs from dev workloads or attribute costs separately.</rationale>
+    <rule id="folder-per-bu-env" testable="true" depth="essential">
+      <statement>Folder layout MUST be `Folder per (BU × env)` for organisations with &gt;3 projects.</statement>
+      <rationale source="GCP folder best-practices">BU × env folders cleanly separate billing, IAM, and policy without making the tree unmanageable.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All projects MUST follow the naming pattern: {resource-type}-{environment}-{application}. Project IDs must be globally unique and immutable once created — include a short hex suffix if needed.</statement>
-      <rationale source="v1-source">Project names are mutable but project IDs are not. Using a deterministic prefix scheme (prj-prod-ecommerce) makes the hierarchy navigable without console access and avoids naming conflicts.</rationale>
+    <rule id="project-naming-convention" testable="true" depth="essential">
+      <statement>Project IDs MUST follow `{env}-{bu}-{service}-{purpose}` and be ≤30 chars.</statement>
+      <rationale source="Internal — naming convention">Pre-baked naming convention makes inventory + scripts + IaC predictable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Projects MUST carry at minimum three labels: env (prod|staging|dev), team (owning team), cost_center (cost center code). Enforce this via an org policy custom constraint.</statement>
-      <rationale source="v1-source">Labels are the only mechanism for attributing costs to teams and cost centers in BigQuery billing exports. Projects without labels appear as unattributed spend in cost reports.</rationale>
+    <rule id="billing-account-per-folder" testable="true" depth="essential">
+      <statement>Billing accounts MUST be assigned at folder level (not project level) so cost roll-ups follow the BU/env tree.</statement>
+      <rationale source="GCP billing assignment docs">Project-level billing fragments roll-ups and complicates FinOps.</rationale>
+    </rule>
+    <rule id="no-orphan-projects" testable="true" depth="essential">
+      <statement>Every project MUST live under a folder; root-level projects are forbidden in production organisations.</statement>
+      <rationale source="GCP hierarchy hygiene">Root-level projects bypass folder-inherited policies and become drift hotspots.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

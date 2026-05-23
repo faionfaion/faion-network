@@ -3,21 +3,31 @@ slug: gcp-overview-cli
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Google Cloud Platform infrastructure best practices (2025-2026): service catalogue, gcloud CLI setup, authentication, named configurations, CI/CD deployment patterns, disaster recovery, and cost optimization using Recommender and BigQuery billing exports.
-content_id: "854681efa98aa54b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: GCP service overview, gcloud CLI setup, authentication, configuration management, CI/CD deployment patterns, disaster recovery, and cost optimization commands.
+content_id: "b0745e97fc3b4d85"
+complexity: light
+produces: checklist
+est_tokens: 3200
 tags: [gcp, gcloud, cli, deployment, cost-optimization]
 ---
-# GCP Infrastructure Overview and CLI
+# Gcp Overview Cli
 
 ## Summary
 
-**One-sentence:** Google Cloud Platform infrastructure best practices (2025-2026): service catalogue, gcloud CLI setup, authentication, named configurations, CI/CD deployment patterns, disaster recovery, and cost optimization using Recommender and BigQuery billing exports.
+**One-sentence:** GCP service overview, gcloud CLI setup, authentication, configuration management, CI/CD deployment patterns, disaster recovery, and cost optimization commands.
 
 **One-paragraph:** Google Cloud Platform infrastructure best practices (2025-2026): service catalogue, gcloud CLI setup, authentication, named configurations, CI/CD deployment patterns, disaster recovery, and cost optimization using Recommender and BigQuery billing exports.
+
+**Ефективно для:**
+
+- Швидкий старт з gcloud CLI: projects, auth, config-configurations.
+- Service-account impersonation у локальній dev-сесії.
+- Application Default Credentials для SDK / Terraform / клієнтських бібліотек.
+- Per-environment configurations (gcloud config configurations).
 
 ## Applies If (ALL must hold)
 
@@ -29,46 +39,63 @@ tags: [gcp, gcloud, cli, deployment, cost-optimization]
 
 ## Skip If (ANY kills it)
 
-- Deep IAM / network hardening — use gcp-security-iam and gcp-networking-vpc instead.
-- Terraform IaC templates — use gcp-terraform-templates instead.
-- LLM prompt generation for GCP tasks — use gcp-llm-prompts instead.
+- Programmatic SDK usage — use the language client library directly.
+- Terraform / Pulumi workflows — use IaC methodologies.
+- GUI-only Cloud Console workflows.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| gcloud install | gcloud binary on PATH | developer machine |
+| Target environment(s) | list of project ids | team |
+| Service-account impersonation target (if any) | SA email | IAM owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp-security-iam]] | Sibling methodology that supplies context required here. |
+| [[gcp-networking-vpc]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-checklist` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gcp-overview-cli.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gcp-overview-cli.md` | Skeleton for the checklist artefact this methodology produces. |
+| `templates/_smoke-test.md` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-overview-cli.py` | Validate the checklist artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gcp-security-iam]]
+- [[gcp-networking-vpc]]
+- [[gcp-compute-gke]]
+- [[gcp-cloud-run-serverless]]
+- [[gcp-terraform-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-overview-cli vs an adjacent sibling).

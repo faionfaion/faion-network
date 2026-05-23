@@ -1,22 +1,171 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="gcp-terraform-templates Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="GCP Terraform Templates Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/gcp-terraform-templates.json",
+  "type": "object",
+  "required": [
+    "root_name",
+    "terraform_version",
+    "provider_versions",
+    "backend",
+    "modules",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "root_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "terraform_version": {
+      "type": "string",
+      "pattern": "^~>\\s*\\d+\\.\\d+(\\.\\d+)?$"
+    },
+    "provider_versions": {
+      "type": "object",
+      "required": [
+        "google"
+      ],
+      "properties": {
+        "google": {
+          "type": "string",
+          "pattern": "^~>\\s*\\d+\\.\\d+$"
+        },
+        "google-beta": {
+          "type": "string"
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "required": [
+        "type",
+        "bucket"
+      ],
+      "properties": {
+        "type": {
+          "const": "gcs"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "root_name": "acme-prod",
+  "terraform_version": "~> 1.7",
+  "provider_versions": {
+    "google": "~> 5.20",
+    "google-beta": "~> 5.20"
+  },
+  "backend": {
+    "type": "gcs",
+    "bucket": "acme-tfstate-prod",
+    "prefix": "acme-prod"
+  },
+  "modules": [
+    {
+      "name": "network",
+      "source": "git::https://example.com/acme/tf-modules//network",
+      "version": "v1.4.0"
+    },
+    {
+      "name": "cloud-run",
+      "source": "git::https://example.com/acme/tf-modules//cloud-run",
+      "version": "v2.1.0"
+    }
+  ],
+  "owner": {
+    "name": "Andriy Koval",
+    "role": "platform engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "root_name": "ACME",
+  "terraform_version": "latest"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Module `source` ending in `?ref=main` or no `?ref=`.</description>
+      <reason>Floating refs break reproducibility.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`backend.type` other than `gcs`.</description>
+      <reason>Local state files lose on first parallel apply.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`provider_versions.google` missing `~&gt;` constraint.</description>
+      <reason>Unpinned providers drift on init.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-gcp-terraform-templates.py">Validator script</reference>
 </text>

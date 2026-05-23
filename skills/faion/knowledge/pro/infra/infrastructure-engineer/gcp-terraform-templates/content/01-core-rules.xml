@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gcp-terraform-templates Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gcp-terraform-templates. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GCP Terraform Templates Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules plus a skip-clause for `GCP Terraform Templates`. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="pinned-provider" testable="true" depth="essential">
+      <statement>Every root MUST pin `google` and `google-beta` provider versions with `~&gt; MAJOR.MINOR` syntax; floating `latest` is forbidden.</statement>
+      <rationale source="HashiCorp Terraform best practices">Unpinned providers introduce silent drift on the next `terraform init`; reproducible builds require pinning.</rationale>
     </rule>
+
+    <rule id="remote-state-with-locking" testable="true" depth="essential">
+      <statement>State MUST live in a remote GCS backend with object versioning enabled; local state files are forbidden.</statement>
+      <rationale source="Terraform GCS backend docs">Concurrent applies corrupt local state; versioning provides recovery from accidental destroys.</rationale>
+    </rule>
+
+    <rule id="no-implicit-deletes" testable="true" depth="essential">
+      <statement>Production resources (Cloud SQL, GKE clusters, KMS keys) MUST set `deletion_protection = true`; modules expose it as a required input with default `true`.</statement>
+      <rationale source="GCP deletion protection docs, internal incident retro">Accidental `terraform destroy` is the #1 root cause of data loss; deletion_protection blocks the API.</rationale>
+    </rule>
+
+    <rule id="module-source-version" testable="true" depth="essential">
+      <statement>Module `source` MUST be a versioned reference (`git::https://...?ref=v1.2.3` or registry `version = &quot;~&gt; 1.2&quot;`); `main`/`HEAD` references are forbidden.</statement>
+      <rationale source="HashiCorp module usage docs">Floating refs cause non-reproducible plans; version pins enable safe rollback.</rationale>
+    </rule>
+
+    <rule id="ci-uses-wif" testable="true" depth="essential">
+      <statement>CI must authenticate to GCP via Workload Identity Federation; long-lived SA JSON keys are forbidden in CI secrets.</statement>
+      <rationale source="GCP WIF docs">Static keys are the dominant GCP credential-leak vector; WIF removes the surface entirely.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If `Applies If` preconditions fail OR any `Skip If` trigger fires, do not run this methodology.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies waste cycles.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

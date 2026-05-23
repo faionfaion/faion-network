@@ -1,22 +1,157 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="helm-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Helm Basics Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/helm-basics.json",
+  "type": "object",
+  "required": [
+    "chart_name",
+    "chart_version",
+    "api_version",
+    "templates",
+    "values_files",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "chart_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "chart_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-z0-9]+)?$"
+    },
+    "api_version": {
+      "const": "v2"
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "values_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "repository"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "lockfile_committed": {
+      "type": "boolean"
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "chart_name": "acme-app",
+  "chart_version": "0.3.1",
+  "api_version": "v2",
+  "templates": [
+    "deployment.yaml",
+    "service.yaml",
+    "ingress.yaml",
+    "configmap.yaml"
+  ],
+  "values_files": [
+    "values.yaml",
+    "values.dev.yaml",
+    "values.staging.yaml",
+    "values.prod.yaml"
+  ],
+  "dependencies": [
+    {
+      "name": "postgresql",
+      "version": "15.5.0",
+      "repository": "oci://registry-1.docker.io/bitnamicharts"
+    }
+  ],
+  "lockfile_committed": true,
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "chart_name": "App",
+  "chart_version": "v1"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`api_version: v1`.</description>
+      <reason>Helm 2 charts unsupported; v2 required for Helm 3.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`chart_version` without SemVer (`v1`, `latest`).</description>
+      <reason>Breaks upgrade reasoning.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Dependencies present but `lockfile_committed: false`.</description>
+      <reason>Silent sub-chart drift.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-helm-basics.py">Validator script</reference>
 </text>

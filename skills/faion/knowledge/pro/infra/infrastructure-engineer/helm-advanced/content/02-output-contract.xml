@@ -1,22 +1,179 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="helm-advanced Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Helm Advanced Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/helm-advanced.json",
+  "type": "object",
+  "required": [
+    "chart_name",
+    "chart_version",
+    "chart_type",
+    "patterns",
+    "owner",
+    "produced_at"
+  ],
+  "properties": {
+    "chart_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "chart_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "chart_type": {
+      "enum": [
+        "application",
+        "library"
+      ]
+    },
+    "patterns": {
+      "type": "object",
+      "required": [
+        "hooks",
+        "checksum_annotations",
+        "required_values",
+        "resource_policy_keep"
+      ],
+      "properties": {
+        "hooks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "kind",
+              "hook_weight"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "pre-install",
+                  "post-install",
+                  "pre-upgrade",
+                  "post-upgrade",
+                  "pre-delete",
+                  "post-delete",
+                  "test"
+                ]
+              },
+              "hook_weight": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "checksum_annotations": {
+          "type": "boolean",
+          "const": true
+        },
+        "required_values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resource_policy_keep": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "chart_name": "acme-app",
+  "chart_version": "2.1.0",
+  "chart_type": "application",
+  "patterns": {
+    "hooks": [
+      {
+        "name": "db-migrate",
+        "kind": "pre-upgrade",
+        "hook_weight": -5
+      },
+      {
+        "name": "smoke-test",
+        "kind": "test",
+        "hook_weight": 0
+      }
+    ],
+    "checksum_annotations": true,
+    "required_values": [
+      "image.tag",
+      "ingress.host"
+    ],
+    "resource_policy_keep": [
+      "PersistentVolumeClaim"
+    ]
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "chart_name": "Bad",
+  "chart_type": "service"
+}
+]]></code>
+    <note>Required fields missing or shape violated; see VIOLATION output from the validator.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`chart_type: library` with an `application/` install rendered.</description>
+      <reason>Library charts cannot be installed.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Hook without `hook_weight`.</description>
+      <reason>Order depends on glob; flaky.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`checksum_annotations: false` on a chart with ConfigMap/Secret.</description>
+      <reason>Config changes will not roll pods.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-helm-advanced.py">Validator script</reference>
 </text>
