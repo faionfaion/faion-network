@@ -3,72 +3,98 @@ slug: ops-tax-compliance
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An operational checklist for US-based solopreneurs to stay penalty-free: compute quarterly estimated payments using the safe-harbor rule (100% of prior-year tax, 110% if AGI exceeds 150K), pay by the IRS quarterly due dates, maintain a structured record-keeping system, execute year-end deduction sweep (retirement contributions, Section 179, expense acceleration), and file on time or extend.
-content_id: "5a0cb2f74ea298fc"
-tags: [tax, compliance, quarterly-estimates, record-keeping, filing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: US tax-compliance checklist: safe-harbor quarterly estimates (100% prior-year, 110% if AGI > 150k), IRS due dates, record-keeping, year-end deduction sweep, on-time file or extend; non-US needs localisation.
+content_id: "073a0685c83d95ea"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: ["tax", "compliance", "quarterly-estimates", "record-keeping", "filing"]
 ---
-# Tax Compliance & Filing
+# Tax Compliance and Filing
 
 ## Summary
 
-**One-sentence:** An operational checklist for US-based solopreneurs to stay penalty-free: compute quarterly estimated payments using the safe-harbor rule (100% of prior-year tax, 110% if AGI exceeds 150K), pay by the IRS quarterly due dates, maintain a structured record-keeping system, execute year-end deduction sweep (retirement contributions, Section 179, expense acceleration), and file on time or extend.
+**One-sentence:** US tax-compliance checklist: safe-harbor quarterly estimates (100% prior-year, 110% if AGI > 150k), IRS due dates, record-keeping, year-end deduction sweep, on-time file or extend; non-US needs localisation.
 
-**One-paragraph:** An operational checklist for US-based solopreneurs to stay penalty-free: compute quarterly estimated payments using the safe-harbor rule (100% of prior-year tax, 110% if AGI exceeds 150K), pay by the IRS quarterly due dates, maintain a structured record-keeping system, execute year-end deduction sweep (retirement contributions, Section 179, expense acceleration), and file on time or extend. Non-US jurisdictions require localization.
+**One-paragraph:** Tax Compliance and Filing pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- First profitable year as a solopreneur or LLC: setting up quarterly estimate cadence.
-- Multi-state nexus surfaces (SaaS selling into CA/NY/WA, or physical goods crossing thresholds).
-- Year-end planning when LLC profit clears the threshold for S-Corp election (approximately 80K SE income).
-- International seller hitting EU/UK VAT thresholds or Stripe Tax onboarding.
+- The team operates the system the methodology targets (`ops-tax-compliance` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- Novel situations: equity comp, R&D credits, multi-entity structures, ERC, audit defense — require a CPA.
-- Determining nexus liability in previously unserved jurisdictions — LLM nexus reasoning is frequently wrong.
-- When an IRS or state notice has already arrived — go directly to a tax professional.
-- Real-time tax calculations on customer transactions — use Stripe Tax / Avalara / TaxJar APIs, not an LLM.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Квартальних estimated payments по IRS датах без пропусків.
+- Record-keeping system з digital receipts + чітким accounting policy.
+- Year-end deduction sweep: SEP / Solo 401(k) / Section 179 / expense acceleration.
+- Файлінгу on-time або extension з payment, щоб уникнути late-filing penalty.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-tax-compliance.md` | Working skeleton for the `ops-tax-compliance` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-tax-compliance.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

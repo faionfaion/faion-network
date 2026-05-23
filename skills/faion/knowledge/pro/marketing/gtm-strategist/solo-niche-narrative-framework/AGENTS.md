@@ -3,82 +3,99 @@ slug: solo-niche-narrative-framework
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "e42795211f36f227"
-summary: Personal-brand positioning sharpener that refines the "I am the <X> for <Y> who needs <Z>" statement quarterly using paying-customer evidence rather than aspirational positioning.
-tags: [positioning, personal-brand, gtm, freelance, niche]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Solo positioning spec: quarterly refresh of 'I am the X for Y who needs Z' grounded in payer cohort + verbatim Z + negative evidence; aspirations rejected without paying-customer data.
+content_id: "766f8f5967d3c2af"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["positioning", "personal-brand", "gtm", "freelance", "niche"]
 ---
-
 # Solo Niche Narrative Framework
 
 ## Summary
 
-**One-sentence:** Personal-brand positioning sharpener that refines the "I am the &lt;X&gt; for &lt;Y&gt; who needs &lt;Z&gt;" statement quarterly using paying-customer evidence rather than aspirational positioning.
+**One-sentence:** Solo positioning spec: quarterly refresh of 'I am the X for Y who needs Z' grounded in payer cohort + verbatim Z + negative evidence; aspirations rejected without paying-customer data.
 
-**One-paragraph:** April Dunford's "Obviously Awesome" positioning framework was built for venture-backed B2B products with a marketing team. Solo operators need a stripped-down, quarterly-cadence personal version: list paying customers from the prior quarter, group by who-actually-pays-vs-who-asks-for-discounts, extract the unique value the cohort verbalises (verbatim — not your own product copy), and emit a fresh positioning statement. Output: one positioning statement + 3 alternatives + ranked evidence. Replaces "I help businesses grow" generic statements with something a paying buyer recognises in 3 seconds.
+**One-paragraph:** Solo Niche Narrative Framework pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- operator has ≥ 5 paid engagements in the trailing 90-day window
-- engagements span ≥ 2 customer types (so cohort comparison is possible)
-- positioning is being reviewed (quarterly rate adjustment, LinkedIn rewrite, site refresh)
-- operator is willing to fire / refuse a customer cohort if data demands it
+- The team operates the system the methodology targets (`solo-niche-narrative-framework` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- operator has &lt; 5 paid engagements — sample size too small; use problem-validation instead
-- positioning is being set BEFORE first paid engagement — this is research, not refinement
-- operator wants validation of an aspirational niche — framework rejects aspirations without evidence
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Quarterly refresh позиціонування на основі paying customers, а не aspirations.
+- Cohort comparison: who-pays vs who-asks-for-discounts.
+- Verbatim Z (value language) з замовницьких слів, а не з власного copy.
+- Drift gate: міряти різницю vs minulij positioning statement.
 
 ## Prerequisites
 
-- list of trailing-quarter paying customers with revenue, hours-spent, NPS / referral count
-- the operator's prior positioning statement (so drift can be measured)
-- 3-5 prospect rejections / lost deals with stated reason (negative evidence)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/gtm-strategist/positioning-canvas` | Provides the canonical April Dunford 10-input layout this methodology compresses |
-| `solo/marketing/conversion-optimizer/solo-lead-qualification-rubric` | Lead qualification thresholds feed customer cohort definition (who-actually-pays) |
-| `solo/research/researcher/customer-interview` | Source of verbatim quotes feeding the &lt;Z&gt; field |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: cohort-from-payers, verbatim Z, negative evidence, drift gate, anti-aspiration | ~900 |
-| `content/02-output-contract.xml` | essential | Positioning statement schema, ranking rules, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: aspirational drift, cohort-of-one, jargon &lt;X&gt;, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked example from inputs to validated artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `cohort_extraction_from_invoices` | haiku | Group by revenue/recurrence; mechanical |
-| `verbatim_value_extraction` | sonnet | Per-customer quote-mining; bounded |
-| `positioning_synthesis` | opus | Cross-cohort coherence; needs deep judgment |
-| `drift_diff_vs_last_quarter` | sonnet | Structural diff |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/positioning-statement.json` | Output schema |
-| `templates/cohort-table.md` | Customer cohort comparison grid |
+| `templates/solo-niche-narrative-framework.md` | Working skeleton for the `solo-niche-narrative-framework` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/quarterly-positioning-refresh.py` | Pulls invoices + interview notes → positioning candidates | Quarter-end review |
+| `scripts/validate-solo-niche-narrative-framework.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
-- peer methodologies: `positioning-canvas`, `pricing-strategy`
-- external: [April Dunford — Obviously Awesome (2019)](https://www.aprildunford.com/obviously-awesome) · [Tyler Tringas — Earnest Capital positioning notes](https://earnestcapital.com/) · [Patrick McKenzie — Stop Calling Yourself A Freelancer](https://www.kalzumeus.com/2011/10/28/dont-call-yourself-a-programmer/)
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

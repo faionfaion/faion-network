@@ -1,60 +1,189 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Solo Niche Narrative — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a `PositioningStatement` output. The agent must satisfy this contract before returning.</summary>
+<text id="02-output-contract" title="Solo Niche Narrative Framework Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. The stdlib validator enforces required keys, per-field constraints, and forbidden patterns.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>`statement_primary` — string in the form "I am the &lt;X&gt; for &lt;Y&gt; who need &lt;Z&gt;."</item>
-      <item>`statement_alternatives` — array of 3 alternatives differing in only one of X/Y/Z</item>
-      <item>`cohort_evidence` — array of customers {`name_anon`, `revenue_pct`, `engagement_count`, `verbatim_quotes` ≥ 1}</item>
-      <item>`excluded_cohorts` — array (≥ 1) of `{cohort, reason, lost_deal_count}`</item>
-      <item>`drift_from_prior` — object `{x_changed: bool, y_changed: bool, z_changed: bool}` (at least one true OR `stable: true`)</item>
-      <item>`evidence_strength` — enum {strong, medium, weak} per r1 cohort coverage</item>
-      <item>`recommended_action` — enum {adopt, calibrate, hold, run-problem-validation}</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/solo-niche-narrative-framework.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "produced_at",
+    "evidence",
+    "version",
+    "last_reviewed",
+    "items"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+"name",
+"role"
+      ],
+      "properties": {
+"name": {
+  "type": "string",
+  "minLength": 2
+},
+"role": {
+  "type": "string",
+  "minLength": 2
+}
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+"type": "object",
+"required": [
+  "claim",
+  "link"
+],
+"properties": {
+  "claim": {
+    "type": "string",
+    "minLength": 3
+  },
+  "link": {
+    "type": "string",
+    "format": "uri"
+  }
+}
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+"draft",
+"in-review",
+"active",
+"deprecated"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+"type": "object",
+"required": [
+  "id",
+  "statement",
+  "executor",
+  "artefact"
+],
+"properties": {
+  "id": {
+    "type": "string",
+    "pattern": "^[a-z0-9-]+$"
+  },
+  "statement": {
+    "type": "string",
+    "minLength": 3
+  },
+  "executor": {
+    "type": "string",
+    "minLength": 2
+  },
+  "artefact": {
+    "type": "string",
+    "minLength": 2
+  },
+  "not_applicable": {
+    "type": "string"
+  }
+}
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "solo-niche-narrative-framework",
+  "title": "Solo Niche Narrative Framework",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z",
+  "evidence": [
+    {
+      "claim": "baseline captured",
+      "link": "https://wiki.example.com/baseline"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "status": "active",
+  "items": [
+    {
+      "id": "step-01",
+      "statement": "Confirm preconditions hold per AGENTS.md.",
+      "executor": "lead-engineer",
+      "artefact": "https://wiki.example.com/precheck"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "team"
+}
+]]></code>
+    <note>Required fields missing. Slug is upper-case (must match ^[a-z][a-z0-9-]+$). Owner is a string, not the required {name, role} object.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
-      <description>&lt;X&gt; is a job-title noun without a domain qualifier ("developer", "consultant", "designer").</description>
-      <reason>Generic X collapses positioning to "I do things". Buyers searching for help cannot resolve the operator from competitors.</reason>
+      <description>owner = team handle, channel handle, or empty string</description>
+      <reason>Anonymous artefacts rot; named human required.</reason>
     </antipattern>
     <antipattern>
-      <description>&lt;Y&gt; defined by a demographic ("startups", "small businesses") rather than by an evidenced behaviour or stage.</description>
-      <reason>Demographic Ys hide the actual cohort. "Series-A SaaS spending &gt; $5k/mo on AWS" is a usable Y; "startups" is not.</reason>
+      <description>evidence array empty while non-empty conclusions are present</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
     </antipattern>
     <antipattern>
-      <description>&lt;Z&gt; written in marketing voice ("scale faster", "unlock growth", "transform").</description>
-      <reason>Violates r2 — verbatim customer language required. Marketing synonyms strip the recognition signal.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`excluded_cohorts` field empty or contains a generic ("we exclude tire-kickers").</description>
-      <reason>Violates r3. Exclusion must cite real lost-deal evidence.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`statement_alternatives` differ from `statement_primary` only by punctuation, capitalisation, or synonym substitution.</description>
-      <reason>Cosmetic alternatives are noise. Each alternative must vary X, Y, or Z meaningfully.</reason>
+      <description>last_reviewed older than the published staleness window (default 90 days)</description>
+      <reason>Stale artefacts drift from operating reality; treat as suspect on read.</reason>
     </antipattern>
   </section>
 
-  <section title="Allowed transformations">
-    <list>
-      <item>Anonymise customer names (Customer-A, Customer-B) for sharing outside operator's machine.</item>
-      <item>Aggregate revenue in 10%-buckets to protect financial data.</item>
-      <item>Trim verbatim quotes to ≤ 120 chars preserving numbers and named tools.</item>
-    </list>
-  </section>
-
-  <reference path="templates/positioning-statement.json">JSON Schema the output must validate against.</reference>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>X is a domain-qualified role, not a generic noun.</item>
-      <item>Y is evidence-backed and includes ≥ 70% revenue cohort.</item>
-      <item>Z contains verbatim quote from ≥ 3 cohort customers.</item>
-      <item>`excluded_cohorts` non-empty with real lost-deal reasons.</item>
-      <item>`drift_from_prior` honest (no cosmetic change).</item>
-      <item>If `recommended_action == run-problem-validation`, do NOT emit a new statement.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-solo-niche-narrative-framework.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

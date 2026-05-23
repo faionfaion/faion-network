@@ -3,69 +3,98 @@ slug: late-invoice-dunning-sequence
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: B2B 30/60/90-day invoice dunning: reminder cadence, escalation script, late-fee trigger, work-stoppage trigger, collections/small-claims gate.
-content_id: "c5a6ddedb15680a4"
-tags: [late-invoice-dunning-sequence, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: B2B 30/60/90-day dunning playbook-step: reminder cadence, escalation script, late-fee trigger, work-stoppage trigger, collections / small-claims gate.
+content_id: "22abebb332819a30"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: ["dunning", "invoice", "b2b", "cashflow", "marketing", "pro"]
 ---
-
 # Late-Invoice Dunning Sequence
 
 ## Summary
 
-**One-sentence:** B2B 30/60/90-day invoice dunning: reminder cadence, escalation script, late-fee trigger, work-stoppage trigger, collections/small-claims gate.
+**One-sentence:** B2B 30/60/90-day dunning playbook-step: reminder cadence, escalation script, late-fee trigger, work-stoppage trigger, collections / small-claims gate.
 
-**One-paragraph:** Payment delays are the #2 pain (freelancer context). solo/launch-operations/payment-flow covers Stripe checkout. Nothing covers B2B invoice dunning. Output: dunning sequence + script templates + escalation triggers.
+**One-paragraph:** Late-Invoice Dunning Sequence pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- freelancer or agency on Net-30/Net-60 invoice terms
-- ≥1 invoice ≥30 days late OR clear policy needed
-- founder/operator has authority to invoke late fees + work stoppage
+- The team operates the system the methodology targets (`late-invoice-dunning-sequence` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- fully prepaid / retainer-only — different payment model
-- single-client situation where dunning risks the relationship — escalate manually
-- regulated industry with contractual non-late-fee terms
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Фрілансерів і агенцій на Net-30 / Net-60 з ≥1 invoice ≥30 днів late.
+- Escalation: reminder → late fee → work stoppage → collections / small-claims gate.
+- Збереження стосунків там, де ще можна, і clean cut там, де ні.
+- Захист cashflow без сваріння — script робить роботу, а не emotions.
 
 ## Prerequisites
 
-- active contracts with payment terms documented
-- invoice aging report
-- late-fee clause in contract OR willingness to enforce
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent skill — provides operating context for this methodology |
-| `pro/marketing/rate-raise-conversation-script` | peer methodology — produces inputs or consumes outputs |
-| `pro/marketing/client-firing-protocol` | peer methodology — produces inputs or consumes outputs |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/late-invoice-dunning-sequence.md` | Working skeleton for the `late-invoice-dunning-sequence` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-late-invoice-dunning-sequence.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `pro/marketing/rate-raise-conversation-script`
-- peer methodology: `pro/marketing/client-firing-protocol`
-- peer methodology: `pro/marketing/freelance-tax-cashflow-basics`
-- external: https://www.uscourts.gov/services-forms/forms (US small-claims forms); https://www.gov.uk/make-court-claim-for-money (UK MCOL)
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

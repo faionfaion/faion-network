@@ -3,74 +3,98 @@ slug: ops-tax-basics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A US-centric framework for solopreneur tax management: understanding tax types (income, self-employment, state, sales), selecting a tax-efficient business structure, tracking deductible expenses, maximizing tax-advantaged accounts (SEP-IRA, Solo 401k, HSA), and computing quarterly estimated payments.
-content_id: "e12bb7650e1e503b"
-tags: [tax, solopreneur, self-employment, financial-planning, accounting]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: US solopreneur tax checklist: income / self-employment / state / sales taxes, structure choice, deductible-expense tracking, SEP-IRA / Solo 401(k) / HSA, ~30% monthly set-aside, IRS safe-harbor quarterly estimates.
+content_id: "ab057b8dac862ba9"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: ["tax", "solopreneur", "self-employment", "financial-planning", "accounting"]
 ---
 # Tax Basics for Solopreneurs
 
 ## Summary
 
-**One-sentence:** A US-centric framework for solopreneur tax management: understanding tax types (income, self-employment, state, sales), selecting a tax-efficient business structure, tracking deductible expenses, maximizing tax-advantaged accounts (SEP-IRA, Solo 401k, HSA), and computing quarterly estimated payments.
+**One-sentence:** US solopreneur tax checklist: income / self-employment / state / sales taxes, structure choice, deductible-expense tracking, SEP-IRA / Solo 401(k) / HSA, ~30% monthly set-aside, IRS safe-harbor quarterly estimates.
 
-**One-paragraph:** A US-centric framework for solopreneur tax management: understanding tax types (income, self-employment, state, sales), selecting a tax-efficient business structure, tracking deductible expenses, maximizing tax-advantaged accounts (SEP-IRA, Solo 401k, HSA), and computing quarterly estimated payments. The core rule: set aside approximately 30% of net profit monthly to a dedicated tax-savings account and compute quarterly estimates using the IRS safe-harbor rule (90% current-year or 110% prior-year for AGI over 150K).
+**One-paragraph:** Tax Basics for Solopreneurs pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- First year in business: choosing entity type, setting up expense tracking.
-- Monthly bookkeeping: categorizing transactions, computing tax reserve.
-- Mid-year: evaluating S-Corp election threshold.
-- Quarterly: computing estimated tax payment due dates and amounts.
-- Year-end: generating CPA prep package (P&L, deduction log, retirement contributions).
+- The team operates the system the methodology targets (`ops-tax-basics` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- Filing tax returns — agent prepares supporting docs only; CPA or EA must sign.
-- Multi-state nexus / sales-tax compliance per state — specialist domain.
-- Crypto / DeFi / NFT tax treatment — unsettled law, high hallucination risk.
-- Non-US jurisdictions — methodology references US Code only (Schedule C, SE tax, S-Corp, SEP-IRA).
-- Audit response — IRS/state correspondence is human-only with CPA/EA/tax attorney.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- US соло-операторів, що вперше платять self-employment tax.
+- Місячного 30% set-aside у tax-savings account замість квартальної панікі.
+- Вибору SEP-IRA / Solo 401(k) / HSA для tax-advantaged savings.
+- Safe-harbor розрахунку quarterly estimates щоб уникнути underpayment penalty.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-tax-basics.md` | Working skeleton for the `ops-tax-basics` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-tax-basics.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/`
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

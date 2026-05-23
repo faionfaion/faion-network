@@ -3,77 +3,98 @@ slug: marketing-tool-stack-rationalization
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Marketing Tool Stack Rationalization: codified marketing practice that turns the recurring 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' decision into a repeatable, auditable artefact.
-content_id: "ad3046405c28cf7d"
-tags: [marketing-tool-stack-rationalization, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Audits a sprawling marketing tool stack, scores each tool on usage/value/lock-in, and emits a consolidate / keep / kill decision report with migration steps.
+content_id: "f54829e7d179a701"
+complexity: medium
+produces: report
+est_tokens: 5300
+tags: ["marketing", "tooling", "stack-audit", "consolidation", "pro"]
 ---
 # Marketing Tool Stack Rationalization
 
 ## Summary
 
-**One-sentence:** Marketing Tool Stack Rationalization: codified marketing practice that turns the recurring 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Audits a sprawling marketing tool stack, scores each tool on usage/value/lock-in, and emits a consolidate / keep / kill decision report with migration steps.
 
-**One-paragraph:** Marketing Tool Stack Rationalization addresses the gap identified by the role-growth-marketing/Content Engine Build from Zero (12 weeks) playbook: User-named pain: marketing tools sprawl. ai-marketing-tools-stack-2026 lists tools but does not provide a rationalization SOP (audit, consolidate, kill, justify). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Marketing tool sprawl is the single biggest opex inefficiency in solo-to-mid teams. This methodology inventories every tool (login + monthly cost + last-used + named owner + workflow-tier), scores each on usage / replaceable / lock-in, and emits a rationalization report categorizing tools into Keep / Consolidate / Kill, with migration steps per Consolidate and decommission steps per Kill. Output: report + 30-day execution checklist.
+
+**Ефективно для:**
+
+- Marketing teams з >=8 SaaS, де ніхто не може назвати усіх власників.
+- Skip-renewal цикл: який tool можна kill before billing date.
+- Підготовка до budget cut або acquisition: дешевший stack у документі.
+- Post-merger consolidation двох overlapping marketing stacks.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-growth-marketing/Content Engine Build from Zero (12 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Marketing stack >= 8 distinct tools with monthly billing.
+- Stack monthly cost >= $300 (otherwise audit overhead exceeds savings).
+- Operator can access all admin consoles (no shadow-IT).
+- Named owner per workflow exists so migration / decommission can happen.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Stack < 5 tools — too small to rationalize.
+- Mid-renewal-cycle with multi-year contracts — wait until renewal window.
+- Team in active growth mode adding tools weekly — stabilize first, audit in 90 days.
 
 ## Prerequisites
 
-- recent context for the role-growth-marketing/Content Engine Build from Zero (12 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-marketing-tool-stack-rationalization` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/marketing-tool-stack-rationalization.json` | JSON schema for the Marketing Tool Stack Rationalization output contract |
-| `templates/marketing-tool-stack-rationalization.md` | Markdown skeleton with the required fields |
+| `templates/report.md` | Markdown report skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled report |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-marketing-tool-stack-rationalization.py` | Enforce Marketing Tool Stack Rationalization output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-marketing-tool-stack-rationalization.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- upstream playbook: `role-growth-marketing/Content Engine Build from Zero (12 weeks)`
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

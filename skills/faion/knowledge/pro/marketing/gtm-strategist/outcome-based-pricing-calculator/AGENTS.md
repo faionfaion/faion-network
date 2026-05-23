@@ -3,86 +3,99 @@ slug: outcome-based-pricing-calculator
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "168bced160f9372a"
-summary: A structured outcome-based-pricing calculator for solo freelancers and micro-agencies that anchors price to delivered outcome value (revenue lift, cost saved, risk reduced) instead of hours, with a defensible discount-to-confidence ladder.
-tags: [pricing, agency, freelance, value-pricing, outcome-based, retainer]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Outcome-based pricing memo report: outcome value × confidence × capture rate → asking price + floor + 3-step discount ladder + discovery questions used to populate inputs honestly.
+content_id: "3d0a31b03a57ad3f"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: ["pricing", "agency", "freelance", "value-pricing", "outcome-based", "retainer"]
 ---
-
 # Outcome-Based Pricing Calculator
 
 ## Summary
 
-**One-sentence:** Build a defensible outcome-based price for a freelance or micro-agency engagement by quantifying delivered outcome value, multiplying by a confidence-weighted capture rate, and laying out a discount-to-floor ladder the founder can use live in a sales call.
+**One-sentence:** Outcome-based pricing memo report: outcome value × confidence × capture rate → asking price + floor + 3-step discount ladder + discovery questions used to populate inputs honestly.
 
-**One-paragraph:** `ops-financial-basics` is too thin for agency pricing — most founders default to hours-based rates because they cannot defend a value-based price under questioning. Outcome-based pricing requires three explicit inputs: the customer's expected outcome value (revenue lift, cost saved, churn averted, time reclaimed), the confidence with which the outcome will be achieved, and the share of value captured (typical agency capture: 5-25% of outcome value, with the lower end on speculative outcomes and the upper end on guaranteed outcomes). The calculator outputs (a) a defensible asking price, (b) a confidence-weighted floor below which the deal is not worth taking, (c) a 3-step discount ladder for negotiation, and (d) the discovery-call questions required to populate the inputs honestly. Primary output: a one-page pricing memo per prospect plus a saved calculator state checked into the agency's shared pricing repo.
+**One-paragraph:** Outcome-Based Pricing Calculator pins the discipline that turns this workflow from tribal knowledge into a reviewable, owned, version-controlled operating artefact. The methodology constrains input shape, output shape, evidence anchors, and named ownership; the JSON Schema in `content/02-output-contract.xml` drives a stdlib validator at commit time. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without a named owner are tagged stale. The artefact lives in the team's versioned space and is refreshed on a stated cadence.
 
 ## Applies If (ALL must hold)
 
-- engagement is project-based or scoped-retainer (not hourly time-and-materials)
-- outcome can be quantified by at least one of: revenue change, cost change, time-saved-at-fully-loaded-rate, risk-reduced-at-actuarial-value
-- prospect is decision-maker OR has authority to recommend within 1 step
-- engagement scope is bounded (deliverable list, success criteria) at the pricing conversation
+- The team operates the system the methodology targets (`outcome-based-pricing-calculator` scope).
+- A named human owner is available to sign the artefact.
+- The artefact lives in a version-controlled or wiki-style space with diff history.
+- Tier ≥ pro (gated by tier-manifest).
 
 ## Skip If (ANY kills it)
 
-- engagement is genuinely time-and-materials with no defined deliverable — keep hourly rates, do not retrofit outcome framing
-- prospect explicitly refuses to disclose any outcome estimate — outcome-based pricing requires the prospect's number, even a rough one
-- engagement is a fixed-vendor-list government contract — outcome pricing rarely survives procurement; use the procurement template instead
-- you cannot estimate confidence honestly because you have never delivered the outcome class before — price as time-and-materials at a learning-engagement discount; do not bluff a confidence number
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- A regulator or contract mandates a different shape — use the mandated template.
+- No named owner is available — anonymous artefacts rot; defer until ownership resolved.
+
+**Ефективно для:**
+
+- Соло- та мікроагенцій, що переходять з hourly на outcome-based на project-based engagement.
+- Defensible value-pricing під questioning prospect-а: outcome × confidence × capture.
+- Підготовки 3-step discount ladder до перемовин, щоб не панікувати у floor.
+- Discovery-кваль через questions, що змушують prospect назвати свій outcome value.
 
 ## Prerequisites
 
-- discovery-call transcript or notes covering: business model, current metrics for the outcome dimension, decision authority, budget reference points
-- portfolio of 2+ comparable past outcomes (your own or your agency's) with quantified results
-- access to industry benchmarks for the outcome dimension (CAC, churn, conversion rate) when prospect cannot supply baselines
-- a defined floor: the lowest price below which the engagement is not worth taking (covers cost + opportunity cost + minimum margin)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Named owner | Person + role | team / RACI |
+| Versioned space for artefact | Git / wiki with history | team |
+| Trigger event | Event / threshold / schedule | operating cadence |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/gtm-strategist/ops-pricing-strategy` | Foundational pricing models; this methodology specialises one of them |
-| `pro/marketing/conversion-optimizer/agency-case-study-template` | Case studies provide the comparable-outcomes input |
-| `pro/marketing/gtm-strategist/agency-proposal-template-system` | Proposal where the outcome-based price lands |
+| `pro/marketing/gtm-strategist` | Parent skill — provides go-to-market operating context for this methodology. |
+| `pro/marketing/growth-marketer` | Peer skill — supplies adjacent growth-marketing methodology that may consume or produce inputs. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: prospect's-number, confidence-honest, capture-rate-banded, floor-discipline, discount-ladder | ~900 |
-| `content/02-output-contract.xml` | essential | Pricing memo schema with inputs, computation, defensible price, floor, ladder | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: anchor-from-thin-air, ego-confidence, capture-rate-greed, no-floor, accept-floor-on-call, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
+| `content/05-examples.xml` | essential | One worked example from inputs to validated artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract_outcome_value_estimate_from_discovery_notes` | sonnet | Bounded extraction; must cite prospect quotes |
-| `propose_confidence_band_from_comparables` | sonnet | Cross-portfolio judgment |
-| `compute_price_and_floor` | haiku | Deterministic formula once inputs are set |
-| `draft_discount_ladder` | sonnet | Per-step bounded judgment on concessions |
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pricing-memo.md` | One-page memo per prospect with all inputs, computation, asking-price, floor, ladder |
-| `templates/outcome-calc.yaml` | YAML calculator with inputs and formula so the computation is auditable |
-| `templates/discovery-questions.md` | Questions to ask in discovery to populate each input |
+| `templates/outcome-based-pricing-calculator.md` | Working skeleton for the `outcome-based-pricing-calculator` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/compute-price.py` | Reads outcome-calc.yaml, applies confidence and capture-rate, outputs price + floor + ladder | Before sending proposal |
-| `scripts/win-loss-calibration.py` | Walks closed deals, compares predicted vs realised outcome and capture, surfaces calibration error | Quarterly |
+| `scripts/validate-outcome-based-pricing-calculator.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only; supports `--help` and `--self-test`. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/marketing/gtm-strategist/SKILL.md`
-- peer methodologies: `solo/marketing/gtm-strategist/ops-pricing-strategy`, `pro/marketing/gtm-strategist/retainer-conversion-script`
-- external: [Ron Baker, Implementing Value Pricing (Wiley, 2010)] · [Blair Enns, Pricing Creativity (RockBench, 2018)] · [Patrick Campbell, ProfitWell pricing playbooks] · [Hermann Simon, Confessions of the Pricing Man (Springer, 2015)]
+- [[gtm-strategist]]
+- [[growth-marketer]]
+- [[ops-pricing-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

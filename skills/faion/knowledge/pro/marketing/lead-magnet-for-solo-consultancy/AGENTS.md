@@ -3,78 +3,99 @@ slug: lead-magnet-for-solo-consultancy
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "717209a8226b9eeb"
-summary: "Lead Magnet For Solo Consultancy — testable methodology for growth, acquisition, content, GTM. Existing growth-marketer/lead-magnet-style content is SaaS-list-building. Solo consultancy lead magnets are different: niche-specific audit checklist, opinionated benchmark report, code snippet pack, calculator. No methodology covers picking ONE that filters to ..."
-tags: [marketing, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Picks one filtering lead-magnet format (audit / benchmark / calculator / pack) for a solo consultant and ships a versioned spec the consultant can build in a week.
+content_id: "75771b6e6e3ecea2"
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: ["marketing", "lead-magnet", "solo-consultancy", "acquisition", "pro"]
 ---
-# Lead Magnet For Solo Consultancy
+# Lead Magnet for Solo Consultancy
 
 ## Summary
 
-**One-sentence:** Lead Magnet For Solo Consultancy — testable methodology for growth, acquisition, content, GTM. Existing growth-marketer/lead-magnet-style content is SaaS-list-building. Solo consultancy lead magnets are different: niche-specific audit checklist, opinionated benchmark report, code snippet pack, calculator. No methodology covers picking ONE that filters to ...
+**One-sentence:** Picks one filtering lead-magnet format (audit / benchmark / calculator / pack) for a solo consultant and ships a versioned spec the consultant can build in a week.
 
-**One-paragraph:** Lead Magnet For Solo Consultancy closes a known gap in marketing practice: Existing growth-marketer/lead-magnet-style content is SaaS-list-building. Solo consultancy lead magnets are different: niche-specific audit checklist, opinionated benchmark report, code snippet pack, calculator. No methodology covers picking ONE that filters to qualified buyers. The methodology is anchored to the recurring activity 'Productize a recurring engagement into a fixed-scope offer (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Solo-consultant lead magnets must filter to qualified buyers, not pad list size. SaaS-style 'top-10 tips' eBooks attract students, not buyers. This methodology evaluates four filtering formats (niche audit checklist, opinionated benchmark report, code snippet pack, calculator) against the consultant's positioning, then emits a spec covering audience, promised outcome, format, gating, conversion path, and follow-up sequence.
+
+**Ефективно для:**
+
+- Соло-консультант з вузьким ICP, який хоче відсіювати не-покупців на вході.
+- Заміна загальних SaaS-чеклістів на вузький benchmark / audit / calculator.
+- Lead magnet ship < 5 днів силами однієї людини без команди.
+- Підготовка лійки 'magnet → 7-day email → consultation booking'.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Productize a recurring engagement into a fixed-scope offer (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Solo consultant or independent specialist with one named ICP serving < 50 active prospects.
+- Conversion path exists (landing page, scheduling link, or sales call slot).
+- Operator can ship a focused asset in <= 1 working week (no committee approval).
+- Existing organic traffic, audience, or referral pipeline already drives >=10 qualified visits/week to filter.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Headcount > 5 marketing FTE — switch to growth-marketer/content-stack methodology.
+- No defined ICP yet — run niche-positioning-for-solo-dev first.
+- Buyers come exclusively from inbound referrals — lead magnet adds noise, not signal.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | >=6 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=4 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `lead_magnet_for_solo_consultancy_template_fill` | haiku | Template fill, no judgement |
-| `lead_magnet_for_solo_consultancy_evidence_check` | sonnet | Bounded comparison + judgement |
-| `lead_magnet_for_solo_consultancy_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-lead-magnet-for-solo-consultancy` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/spec.md` | Markdown spec skeleton |
+| `templates/output.json` | JSON spec sidecar with __faion_header__ |
+| `templates/_smoke-test.md` | Minimum viable filled spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-lead-magnet-for-solo-consultancy.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/` (see neighbouring methodologies)
-- triggering activity: `Productize a recurring engagement into a fixed-scope offer (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

@@ -3,77 +3,99 @@ slug: linkedin-founder-post-template
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Linkedin Founder Post Template: codified marketing practice that turns the recurring 'p5-micro-agency-founder/Weekly LinkedIn positioning post' decision into a repeatable, auditable artefact.
-content_id: "bd344ce6bcb2964e"
-tags: [linkedin-founder-post-template, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a 180-220 word founder-voice LinkedIn post spec (hook + setup + insight + CTA) calibrated to the founder's positioning lane and weekly cadence.
+content_id: "c2daa27f99739e22"
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: ["marketing", "linkedin", "founder-voice", "content", "pro"]
 ---
-# Linkedin Founder Post Template
+# LinkedIn Founder Post Template
 
 ## Summary
 
-**One-sentence:** Linkedin Founder Post Template: codified marketing practice that turns the recurring 'p5-micro-agency-founder/Weekly LinkedIn positioning post' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a 180-220 word founder-voice LinkedIn post spec (hook + setup + insight + CTA) calibrated to the founder's positioning lane and weekly cadence.
 
-**One-paragraph:** Linkedin Founder Post Template addresses the gap identified by the p5-micro-agency-founder/Weekly LinkedIn positioning post playbook: Content-marketer covers content strategy but not the 200-word founder-voice LinkedIn post format with hook templates. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Solo founders and micro-agency owners need a repeatable LinkedIn post format that surfaces opinion + lived experience without sliding into bro-marketing tropes. This methodology emits a 180-220 word post spec scoped to one of seven hook types (contrarian, postmortem, customer-quote, day-in-life, mistake, mini-framework, prediction), with a single CTA (no link in body, one CTA in comment), tested for the founder's positioning lane, and ready to ship via Buffer or LinkedIn-native scheduling.
+
+**Ефективно для:**
+
+- Founder з вузькою positioning lane і weekly LinkedIn ritual.
+- Заміна generic motivational LinkedIn-постів на opinion-led founder voice.
+- Postmortem або contrarian-take формати, де є lived experience.
+- Building thought-leadership funnel: 'LinkedIn → booking → consult'.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p5-micro-agency-founder/Weekly LinkedIn positioning post OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Founder publishes >= 1 LinkedIn post per week as a positioning move.
+- Named positioning lane exists (e.g., 'AI agent integration for Shopify Plus').
+- Founder voice / lived experience available (transcripts, ticket data, customer notes).
+- CTA is non-immediate (booking, list signup, content series) — not a buy-now button.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Founder cannot allocate 25-40 minutes/post — Buffer-style auto-generators are worse than no post.
+- Positioning lane undefined — run niche-positioning-for-solo-dev first.
+- Goal is paid acquisition / direct response — switch to paid-ads-creative-library.
 
 ## Prerequisites
 
-- recent context for the p5-micro-agency-founder/Weekly LinkedIn positioning post task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-linkedin-founder-post-template` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/linkedin-founder-post-template.json` | JSON schema for the Linkedin Founder Post Template output contract |
-| `templates/linkedin-founder-post-template.md` | Markdown skeleton with the required fields |
+| `templates/spec.md` | Markdown spec skeleton |
+| `templates/output.json` | JSON spec sidecar with __faion_header__ |
+| `templates/_smoke-test.md` | Minimum viable filled spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-linkedin-founder-post-template.py` | Enforce Linkedin Founder Post Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-linkedin-founder-post-template.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- upstream playbook: `p5-micro-agency-founder/Weekly LinkedIn positioning post`
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

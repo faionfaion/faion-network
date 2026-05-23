@@ -1,42 +1,189 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ICP Message Mining from AI Conversations Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid ICP Message Mining from AI Conversations output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="ICP Message Mining from AI Conversations Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. The stdlib validator enforces required keys, per-field constraints, and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="transcript_sources" type="list" required="true">support + sales + agent logs + consent basis</field>
-      <field name="extraction_taxonomy" type="list" required="true">JTBD phrase, objection, success quote, churn, competitor</field>
-      <field name="monthly_synthesis" type="object" required="true">{top_jtbd, top_objections, top_success}</field>
-      <field name="copy_changes_made" type="list" required="true">[{page, before, after, date}]</field>
-      <field name="redaction_policy" type="string" required="true">PII redaction at ingest</field>
-      <field name="owner" type="string" required="true">named marketing owner + research partner</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">transcripts analyzed without consent + redaction</pattern>
-      <pattern id="f2">extraction without verbatim citation</pattern>
-      <pattern id="f3">no copy_changes_made in 3 consecutive months</pattern>
-      <pattern id="f4">taxonomy free-form (no fixed categories)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/icp-message-mining-from-ai-conversations.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>transcript_sources populated with a typed value</item>
-      <item>extraction_taxonomy populated with a typed value</item>
-      <item>monthly_synthesis populated with a typed value</item>
-      <item>copy_changes_made populated with a typed value</item>
-      <item>redaction_policy populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/icp-message-mining-from-ai-conversations.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "produced_at",
+    "evidence",
+    "version",
+    "last_reviewed",
+    "items"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+"name",
+"role"
+      ],
+      "properties": {
+"name": {
+  "type": "string",
+  "minLength": 2
+},
+"role": {
+  "type": "string",
+  "minLength": 2
+}
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+"type": "object",
+"required": [
+  "claim",
+  "link"
+],
+"properties": {
+  "claim": {
+    "type": "string",
+    "minLength": 3
+  },
+  "link": {
+    "type": "string",
+    "format": "uri"
+  }
+}
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+"draft",
+"in-review",
+"active",
+"deprecated"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+"type": "object",
+"required": [
+  "id",
+  "statement",
+  "executor",
+  "artefact"
+],
+"properties": {
+  "id": {
+    "type": "string",
+    "pattern": "^[a-z0-9-]+$"
+  },
+  "statement": {
+    "type": "string",
+    "minLength": 3
+  },
+  "executor": {
+    "type": "string",
+    "minLength": 2
+  },
+  "artefact": {
+    "type": "string",
+    "minLength": 2
+  },
+  "not_applicable": {
+    "type": "string"
+  }
+}
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "icp-message-mining-from-ai-conversations",
+  "title": "ICP Message Mining from AI Conversations",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z",
+  "evidence": [
+    {
+      "claim": "baseline captured",
+      "link": "https://wiki.example.com/baseline"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "status": "active",
+  "items": [
+    {
+      "id": "step-01",
+      "statement": "Confirm preconditions hold per AGENTS.md.",
+      "executor": "lead-engineer",
+      "artefact": "https://wiki.example.com/precheck"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "team"
+}
+]]></code>
+    <note>Required fields missing. Slug is upper-case (must match ^[a-z][a-z0-9-]+$). Owner is a string, not the required {name, role} object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>owner = team handle, channel handle, or empty string</description>
+      <reason>Anonymous artefacts rot; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>evidence array empty while non-empty conclusions are present</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+    <antipattern>
+      <description>last_reviewed older than the published staleness window (default 90 days)</description>
+      <reason>Stale artefacts drift from operating reality; treat as suspect on read.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-icp-message-mining-from-ai-conversations.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

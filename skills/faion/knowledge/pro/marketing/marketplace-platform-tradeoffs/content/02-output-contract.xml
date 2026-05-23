@@ -1,42 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelance Marketplace Platform Tradeoffs Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Freelance Marketplace Platform Tradeoffs output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Freelance Marketplace Platform Tradeoffs Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema draft-07 for the decision-record artefact this methodology produces, plus one valid example, one invalid example, and a forbidden-patterns block. Validator: `scripts/validate-marketplace-platform-tradeoffs.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="rate_band" type="object" required="true">{min, max, currency}</field>
-      <field name="candidate_platforms" type="list" required="true">[{platform, fee_structure, fit_score}]</field>
-      <field name="exclusivity_status" type="object" required="true">[{platform, exclusive, terms}]</field>
-      <field name="primary_platform" type="string" required="true">chosen primary</field>
-      <field name="ramp_timeline" type="object" required="true">{weeks_until_first_contract_target, proposals_target}</field>
-      <field name="owner" type="string" required="true">the freelancer</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">primary_platform absent (multi-platform without commitment)</pattern>
-      <pattern id="f2">rate_band misaligned with platform's range</pattern>
-      <pattern id="f3">exclusivity_status not reviewed</pattern>
-      <pattern id="f4">ramp_timeline absent</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/marketplace-platform-tradeoffs.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>rate_band populated with a typed value</item>
-      <item>candidate_platforms populated with a typed value</item>
-      <item>exclusivity_status populated with a typed value</item>
-      <item>primary_platform populated with a typed value</item>
-      <item>ramp_timeline populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/marketplace-platform-tradeoffs.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "template_version",
+    "owner",
+    "decision",
+    "context",
+    "alternatives",
+    "consequences",
+    "exit_criteria"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "template_version": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "type": "string"
+    },
+    "context": {
+      "type": "string"
+    },
+    "alternatives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "consequences": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "exit_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "marketplace-platform-tradeoffs-2026-Q2",
+  "template_version": "1.1.0",
+  "owner": "founder@faion.net",
+  "decision": "Primary platform: Toptal. Secondary: Contra brand-page.",
+  "context": "Rate band $150-220/hr, lane = 'Stripe integration for Shopify Plus stores', 3 past projects match.",
+  "alternatives": [
+    "Upwork primary (rejected \u2014 rate-band mismatch)",
+    "Direct outreach only (rejected \u2014 slower ramp)",
+    "Braintrust primary (rejected \u2014 exclusivity clause)"
+  ],
+  "consequences": [
+    "6-week ramp on Toptal application + screening",
+    "Contra brand-page bi-monthly post cadence",
+    "Refuse non-Shopify Stripe work for 6 months"
+  ],
+  "exit_criteria": [
+    "< 3 inbound from lane in 6 months => repivot",
+    "Toptal screening fails => switch to Arc + direct outreach"
+  ]
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "marketplace-platform-tradeoffs-2026-Q2",
+  "owner": "",
+  "decision": "",
+  "alternatives": [],
+  "consequences": [],
+  "exit_criteria": []
+}
+]]></code>
+      <note>Missing required fields and / or schema-violating values. The validator rejects on the first error and lists all violations.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern id="missing-required">
+      <description>Artefact missing any required field listed in the JSON Schema.</description>
+      <reason>downstream consumers cannot parse.</reason>
+    </antipattern>
+    <antipattern id="owner-blank-or-team">
+      <description>owner field set to 'team', 'us', 'tbd', or empty string.</description>
+      <reason>un-owned artefacts are not actionable.</reason>
+    </antipattern>
+    <antipattern id="evidence-empty-where-required">
+      <description>evidence array empty for fields the methodology marks non-trivial.</description>
+      <reason>fabrication risk; auditability lost.</reason>
+    </antipattern>
+    <antipattern id="status-auto-approved">
+      <description>agent self-promotes status to 'approved' without named human reviewer.</description>
+      <reason>self-approval defeats the audit checkpoint.</reason>
+    </antipattern>
+    <antipattern id="schema-violation">
+      <description>Output does not validate against the embedded JSON Schema draft-07.</description>
+      <reason>downstream type-checked consumers break silently.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-marketplace-platform-tradeoffs.py">Stdlib-only validator for this contract.</reference>
 </text>
