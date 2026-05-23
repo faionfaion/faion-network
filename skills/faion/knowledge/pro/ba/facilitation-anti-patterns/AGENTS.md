@@ -3,41 +3,98 @@ slug: facilitation-anti-patterns
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-content_id: "0662c0e668d381f7"
-summary: "Catalogue of stakeholder-workshop anti-patterns (sponsor monologue, false consensus, first-speaker anchoring, parking-lot graveyard) with detection cues and live counter-moves so BAs can keep elicitation honest under sponsor pressure."
-tags: [ba, pro, facilitation, anti-patterns, workshop, elicitation]
+summary: Rubric of six facilitation anti-patterns BA workshops must catch in real time, with detection cues + named counter-moves that defuse without humiliation.
+content_id: "0d5727594f6b1635"
+complexity: medium
+produces: rubric
+est_tokens: 4200
+tags: [ba, pro, facilitation, workshop, anti-patterns, rubric]
 ---
 # Facilitation Anti-Patterns
 
 ## Summary
 
-Faion's existing BA corpus covers elicitation techniques but stops at "what to do" and never names "what NOT to do" inside a live workshop. This methodology fills that gap with a closed catalogue of recurring facilitation failures — sponsor monologue, false consensus, anchoring on the first speaker, parking-lot graveyard, HiPPO override, silent dissent, agenda drift — and pairs each one with a detection cue and a scripted counter-move the BA can deploy without breaking rapport. It targets BPMN process-model drafting sessions and multi-week stakeholder-workshop series where requirements quality collapses if any of these patterns is left to compound.
+**One-sentence:** Rubric of six facilitation anti-patterns BA workshops must catch in real time, with detection cues + named counter-moves that defuse without humiliation.
 
-## Applies If
+**One-paragraph:** Facilitation Anti-Patterns pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
 
-- A BA is running or co-facilitating a workshop with three or more stakeholders for at least one full session.
-- Elicitation output (BPMN flows, user stories, acceptance criteria) is meant to be ratified inside the session, not asynchronously rewritten later.
-- The sponsor or a senior stakeholder is in the room and has authority that other participants will defer to.
-- The BA owns the agenda and has permission to redirect the conversation when an anti-pattern surfaces.
+**Ефективно для:**
 
-## Skip If
+- Cross-org elicitation workshops with sponsor + delivery + compliance.
+- Discovery workshops where every minute is funded by a fixed-bid budget.
+- Decision workshops where the deliverable is contractual (SoW change, design freeze).
+- Retrospectives where psychological safety is fragile.
 
-- The session is a one-to-one elicitation interview — anti-patterns here are group-dynamic failures and do not apply.
-- The workshop is purely informational (read-out only) with no requirement to ratify anything.
-- The BA has no authority to interrupt or steer the room (purely note-taking role).
+## Applies If (ALL must hold)
 
-## Content
+- BA facilitates synchronous workshops (elicitation, design, retro) with mixed stakeholders.
+- At least one workshop has produced a deliverable later disputed as 'not what we agreed'.
+- Sponsors and contributors are in the same room (or call) with material power asymmetry.
+- There is a deliverable (BPMN, requirements, decision-record) on the line per session.
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Six testable anti-pattern rules with detection cue + counter-move per pattern |
+## Skip If (ANY kills it)
+
+- Workshop is an informal brainstorm with no deliverable target.
+- Group is fully peer (no sponsor / HiPPO present).
+- Session is asynchronous only — anti-patterns are different there.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workshop agenda | markdown | BA prep doc |
+| Participant role map | yaml | Stakeholder register |
+| Decision template | markdown | BA toolkit |
+| Recording consent | markdown | Legal / participants |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-facilitation-anti-patterns` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/facilitation-anti-patterns.md` | Markdown rubric template with scoring axes + thresholds |
+| `templates/facilitation-anti-patterns.schema.json` | JSON Schema for the structured rubric output |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-facilitation-anti-patterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- triggering activity: `BPMN process model draft for one flow`, `Stakeholder workshop series (4 weeks)`
-- neighbouring: `pro/ba/elicitation-techniques`, `pro/ba/stakeholder-analysis`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

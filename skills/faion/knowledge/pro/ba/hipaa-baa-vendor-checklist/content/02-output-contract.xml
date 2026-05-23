@@ -1,57 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Hipaa Baa Vendor Checklist Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Hipaa Baa Vendor Checklist artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="HIPAA BAA Vendor Checklist Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for hipaa-baa-vendor-checklist output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/hipaa-baa-vendor-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "trigger",
+    "rules_applied",
+    "evidence",
+    "output_payload",
+    "consumer",
+    "owner",
+    "last_touched"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules_applied": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "citation",
+          "source_type"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "citation": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "url",
+              "ticket",
+              "doc",
+              "transcript",
+              "contract"
+            ]
+          }
+        }
+      }
+    },
+    "output_payload": {
+      "type": "object"
+    },
+    "consumer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "01HXT3KQ7P9B2YJZG4N3R5VWFM",
+  "trigger": "HIPAA BAA Vendor Checklist engagement",
+  "rules_applied": [
+    "signed-baa-required",
+    "phi-data-flow-mapped"
+  ],
+  "evidence": [
+    {
+      "rule_id": "signed-baa-required",
+      "citation": "https://example.com/source",
+      "source_type": "url"
+    }
+  ],
+  "output_payload": {
+    "status": "complete"
+  },
+  "consumer": "Mariia Ivanova (delivery PM)",
+  "owner": "Oleh Petrov (BA)",
+  "last_touched": "2026-05-23T10:00:00Z"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "trigger": "vague",
+  "rules_applied": [],
+  "output_payload": {}
+}
+    ]]></code>
+    <note>required fields missing (evidence, consumer, owner, last_touched); rules_applied empty; invalid artefact_id form.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
     <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
+      <item>artefact produced without any evidence entry referencing a rule_id</item>
+      <item>consumer field empty or set to generic 'team' / 'everyone'</item>
+      <item>rules_applied references rule ids not present in content/01-core-rules.xml</item>
+      <item>LLM-generated evidence citing 'industry standard' without a named source</item>
+      <item>applies_if guard failed AND artefact still produced (must be a skip with reason)</item>
     </list>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+  <reference path="scripts/validate-hipaa-baa-vendor-checklist.py">Validator script</reference>
 </text>

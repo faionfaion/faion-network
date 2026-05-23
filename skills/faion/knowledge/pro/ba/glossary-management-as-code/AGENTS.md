@@ -3,78 +3,98 @@ slug: glossary-management-as-code
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "e9c4b23c1c20ac75"
-summary: "Glossary Management As Code — testable methodology for requirements, vendor, compliance, contracts. No methodology for treating the domain glossary as a versioned artefact (YAML / JSON-LD), wired into requirements docs as authoritative references, validated by CI for term drift, exposed to the LLM for grounded retrieval. P4 BAs working across cultures + l..."
-tags: [ba, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Domain glossary kept as versioned YAML next to code: terms, definitions, synonyms, deprecated aliases, owner, last-reviewed date.
+content_id: "8999e0e5a79fee6d"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [ba, pro, glossary, domain-language, as-code, yaml]
 ---
-# Glossary Management As Code
+# Glossary Management as Code
 
 ## Summary
 
-**One-sentence:** Glossary Management As Code — testable methodology for requirements, vendor, compliance, contracts. No methodology for treating the domain glossary as a versioned artefact (YAML / JSON-LD), wired into requirements docs as authoritative references, validated by CI for term drift, exposed to the LLM for grounded retrieval. P4 BAs working across cultures + l...
+**One-sentence:** Domain glossary kept as versioned YAML next to code: terms, definitions, synonyms, deprecated aliases, owner, last-reviewed date.
 
-**One-paragraph:** Glossary Management As Code closes a known gap in ba practice: No methodology for treating the domain glossary as a versioned artefact (YAML / JSON-LD), wired into requirements docs as authoritative references, validated by CI for term drift, exposed to the LLM for grounded retrieval. P4 BAs working across cultures + languages need this; foreign-client engagements rot fastest at terminology. The methodology is anchored to the recurring activity 'AI-assisted requirements discovery on a new outsource engagement (role: role-business-analyst)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Glossary Management as Code pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Outsource projects where client and team build a shared domain language.
+- Multi-team monorepos where vocabulary drift becomes a bug pattern.
+- Compliance-heavy domains (HealthTech, FinTech) where term equivalence is regulated.
+- Migration engagements where legacy terms map to new terms.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'AI-assisted requirements discovery on a new outsource engagement (role: role-business-analyst)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Project has a domain glossary referenced by both BA and engineering teams.
+- Engineers + BA + product use overlapping but not identical terms (synonyms drift).
+- Repo supports YAML + PRs as the change-control mechanism.
+- Glossary changes happen at least monthly.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Single-author project where no terminology drift exists.
+- Glossary lives in a wiki that all stakeholders edit freely (no PR discipline possible).
+- Domain vocabulary is fully covered by an external standard you reference (e.g. FHIR).
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing glossary draft | markdown / yaml | BA repo |
+| Engineer vocabulary sample | extracted from code identifiers | Repo grep |
+| Product vocabulary sample | from product docs | Product repo |
+| PR-review process | markdown | Team process doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `glossary_management_as_code_template_fill` | haiku | Template fill, no judgement |
-| `glossary_management_as_code_evidence_check` | sonnet | Bounded comparison + judgement |
-| `glossary_management_as_code_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-glossary-management-as-code` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/glossary-management-as-code.yaml` | YAML config skeleton with required keys |
+| `templates/glossary-management-as-code.schema.json` | JSON Schema for the config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-glossary-management-as-code.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/` (see neighbouring methodologies)
-- triggering activity: `AI-assisted requirements discovery on a new outsource engagement (role: role-business-analyst)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -3,82 +3,98 @@ slug: requirement-quality-scorecard
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f8fa99853afbe7e0"
-summary: Requirement Quality Scorecard — pinned scorecard for the business analyst: fixed shape + named owner + evidence anchors + outcome review, so ai-assisted requirements discovery on a new outsource engagement stops being folklore and starts being a reviewable operating tool.
-tags: [ba, pro, scorecard, requirement, quality]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Deterministic scorecard for every requirement before baseline: atomicity, testability, traceability, value, ambiguity, completeness — 0/1/2 per axis with rules.
+content_id: "4d1cd23b0cd8f1d3"
+complexity: medium
+produces: rubric
+est_tokens: 4400
+tags: [ba, pro, requirement-quality, scorecard, rubric]
 ---
 # Requirement Quality Scorecard
 
 ## Summary
 
-**One-sentence:** Requirement Quality Scorecard — pinned scorecard for the business analyst: fixed shape + named owner + evidence anchors + outcome review, so ai-assisted requirements discovery on a new outsource engagement stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Deterministic scorecard for every requirement before baseline: atomicity, testability, traceability, value, ambiguity, completeness — 0/1/2 per axis with rules.
 
-**One-paragraph:** In business analysis, the business analyst runs ai-assisted requirements discovery on a new outsource engagement on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. BAs need a deterministic scorecard (atomicity, testability, traceability, value, ambiguity, completeness) they can run on every requirement before baseline. Today the corpus discusses these as principles inside prioritization / validation but provides no scoring artefact. P4 BAs handing to foreign clients need an objective quality signal. `requirement-quality-scorecard` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the business analyst starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored scorecard committed to the team's knowledge space.
+**One-paragraph:** Requirement Quality Scorecard pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Outsource engagements where BA hands written requirements to a foreign delivery team.
+- AI-assisted drafting workflows where consistency drifts fast.
+- Regulated engagements where requirement-quality is auditable.
+- Migration engagements where legacy requirements must be re-baselined.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-business-analyst/AI-assisted requirements discovery on a new outsource engagement`
-- the business analyst owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- BA writes or reviews requirements that will be baselined.
+- Engagement contains AI-assisted requirement drafting (where consistency drifts fast).
+- There is a recurring pattern of requirements bouncing back from QA or engineering.
+- Sponsor expects an objective requirement-quality signal.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Engagement is too small for formal scoring (under 20 requirements).
+- Requirements are not baselined — pure exploratory write-up.
+- Team has a different formal quality model (e.g. EARS-only) already in use.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the business analyst.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Requirements draft | markdown / yaml / DOORS | BA repo |
+| Traceability target (test plan / design) | csv / matrix | BA toolkit |
+| Acceptance criteria template | markdown | Team standard |
+| Glossary (canonical terms) | yaml | Project glossary |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-requirement-quality-scorecard` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/requirement-quality-scorecard.md` | Markdown rubric template with scoring axes + thresholds |
+| `templates/requirement-quality-scorecard.schema.json` | JSON Schema for the structured rubric output |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-requirement-quality-scorecard.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

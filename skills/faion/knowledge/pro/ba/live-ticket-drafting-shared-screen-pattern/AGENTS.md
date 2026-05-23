@@ -3,77 +3,98 @@ slug: live-ticket-drafting-shared-screen-pattern
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Live Ticket Drafting Shared Screen Pattern: codified ba practice that turns the recurring 'p4-outsource-specialist/JIRA ticket scoping session with client PM' decision into a repeatable, auditable artefact.
-content_id: "a60e1a79984ec958"
-tags: [live-ticket-drafting-shared-screen-pattern, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pattern: BA drafts tickets live on a shared screen during elicitation, contributor signs off in-session, eliminating async clarification rounds.
+content_id: "7717646375eee6ff"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [ba, pro, ticket-drafting, elicitation, shared-screen, pattern]
 ---
-# Live Ticket Drafting Shared Screen Pattern
+# Live Ticket Drafting (Shared-Screen Pattern)
 
 ## Summary
 
-**One-sentence:** Live Ticket Drafting Shared Screen Pattern: codified ba practice that turns the recurring 'p4-outsource-specialist/JIRA ticket scoping session with client PM' decision into a repeatable, auditable artefact.
+**One-sentence:** Pattern: BA drafts tickets live on a shared screen during elicitation, contributor signs off in-session, eliminating async clarification rounds.
 
-**One-paragraph:** Live Ticket Drafting Shared Screen Pattern addresses the gap identified by the p4-outsource-specialist/JIRA ticket scoping session with client PM playbook: Elicitation methodologies exist but the specific pattern of drafting the ticket on screen during the call (vs taking notes and editing later) is a separate, distinct skill with very different stakeholder dynamics. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Live Ticket Drafting (Shared-Screen Pattern) pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Outsource engagements with timezone-overlap windows (less than 4 hours overlap).
+- Complex domains where written requirements drift from intent quickly.
+- First sprints of a new engagement establishing common ticket shape.
+- High-stakes tickets (compliance, money) where late clarification is expensive.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/JIRA ticket scoping session with client PM OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- BA writes Jira / Linear / ADO tickets from elicitation sessions.
+- Sessions average more than 1 clarification round per ticket after the fact.
+- Contributors are available for synchronous review.
+- Screen-share tooling exists and is permitted by client security policy.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Contributors are unavailable for synchronous review (extreme timezone offset, async-only culture).
+- Client security policy prohibits shared-screen viewing of internal systems.
+- Engagement is informal — async ticket drafting is fine.
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/JIRA ticket scoping session with client PM task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Elicitation session agenda | markdown | BA prep |
+| Ticket template | yaml / markdown | Team ticket convention |
+| Screen-share permissions | policy doc | Client security |
+| Contributor calendar holds | calendar invite | Session organiser |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-live-ticket-drafting-shared-screen-pattern` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/live-ticket-drafting-shared-screen-pattern.json` | JSON schema for the Live Ticket Drafting Shared Screen Pattern output contract |
-| `templates/live-ticket-drafting-shared-screen-pattern.md` | Markdown skeleton with the required fields |
+| `templates/live-ticket-drafting-shared-screen-pattern.md` | Markdown playbook-step template with required sections |
+| `templates/live-ticket-drafting-shared-screen-pattern.schema.json` | JSON Schema for the structured playbook-step record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-live-ticket-drafting-shared-screen-pattern.py` | Enforce Live Ticket Drafting Shared Screen Pattern output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-live-ticket-drafting-shared-screen-pattern.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- upstream playbook: `p4-outsource-specialist/JIRA ticket scoping session with client PM`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -1,43 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Requirement Quality Scorecard — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A scoring artefact: 4–7 named dimensions, each with 1–5 BARS anchors, an explicit aggregation rule, and per-score evidence pointers.</summary>
-
-  <section title="Required fields">
-    <list>
-      <item>dimension.name + dimension.anchors (5 anchor descriptions)</item>
-      <item>score.value (1–5) + score.evidence (verbatim pointer)</item>
-      <item>aggregation_rule (min | weighted_sum | veto_on_1)</item>
-      <item>calibration.last_run_at + calibration.reviewers (≥ 2)</item>
-      <item>version + owner + last_calibrated_at</item>
-    </list>
+<text id="02-output-contract" title="Requirement Quality Scorecard Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for requirement-quality-scorecard output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/requirement-quality-scorecard.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "trigger",
+    "rules_applied",
+    "evidence",
+    "output_payload",
+    "consumer",
+    "owner",
+    "last_touched"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules_applied": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "citation",
+          "source_type"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "citation": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "url",
+              "ticket",
+              "doc",
+              "transcript",
+              "contract"
+            ]
+          }
+        }
+      }
+    },
+    "output_payload": {
+      "type": "object"
+    },
+    "consumer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+    ]]></code>
   </section>
-
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "01HXT3KQ7P9B2YJZG4N3R5VWFM",
+  "trigger": "Requirement Quality Scorecard engagement",
+  "rules_applied": [
+    "six-axis-shape",
+    "atomicity-rule"
+  ],
+  "evidence": [
+    {
+      "rule_id": "six-axis-shape",
+      "citation": "https://example.com/source",
+      "source_type": "url"
+    }
+  ],
+  "output_payload": {
+    "status": "complete"
+  },
+  "consumer": "Mariia Ivanova (delivery PM)",
+  "owner": "Oleh Petrov (BA)",
+  "last_touched": "2026-05-23T10:00:00Z"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "trigger": "vague",
+  "rules_applied": [],
+  "output_payload": {}
+}
+    ]]></code>
+    <note>required fields missing (evidence, consumer, owner, last_touched); rules_applied empty; invalid artefact_id form.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>dimension &apos;subjective overall&apos; or similar</description>
-      <reason>Unanchored dimensions collapse the score.</reason>
-    </antipattern>
-    <antipattern>
-      <description>score without evidence pointer</description>
-      <reason>Opinion-scoring with no defence.</reason>
-    </antipattern>
-    <antipattern>
-      <description>aggregation by &apos;reviewer feeling&apos;</description>
-      <reason>Hides poor dimensions; not reproducible.</reason>
-    </antipattern>
-    <antipattern>
-      <description>calibration &gt; 6 months stale</description>
-      <reason>Anchors drift from current reality.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>4–7 dimensions with 5-point anchored scales.</item>
-      <item>Each score carries verbatim evidence.</item>
-      <item>Aggregation rule is published and applied.</item>
-      <item>Calibration pass run in the last 6 months.</item>
-      <item>Versioned + named owner.</item>
+      <item>artefact produced without any evidence entry referencing a rule_id</item>
+      <item>consumer field empty or set to generic 'team' / 'everyone'</item>
+      <item>rules_applied references rule ids not present in content/01-core-rules.xml</item>
+      <item>LLM-generated evidence citing 'industry standard' without a named source</item>
+      <item>applies_if guard failed AND artefact still produced (must be a skip with reason)</item>
     </list>
   </section>
+  <reference path="scripts/validate-requirement-quality-scorecard.py">Validator script</reference>
 </text>

@@ -3,57 +3,95 @@ slug: scope-creep-email-language-pack
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Scope-Creep Email Language Pack: ready-to-paste polite-firm phrasings for the seven recurring scope-creep moments so founders stop reinventing each push-back.
-content_id: "1660170df2092d78"
-tags: [scope-creep-email-language-pack, ba, pro]
+summary: Indexed pack of polite-firm push-back phrasings for 7 recurring scope-creep moments; the founder pastes from it instead of wording each reply.
+content_id: "204584492c5be385"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: [scope-creep, email, language-pack, freelance, ba]
 ---
 # Scope-Creep Email Language Pack
 
 ## Summary
 
-**One-sentence:** A curated pack of polite-firm email phrasings indexed by scope-creep scenario (out-of-scope feature ask, retroactive expansion, deadline-and-add, "tiny tweak", verbal scope, multi-stakeholder pile-on, surprise-prio-flip) so the founder can paste and send instead of wording from scratch under pressure.
+**One-sentence:** Indexed pack of polite-firm push-back phrasings for 7 recurring scope-creep moments; the founder pastes from it instead of wording each reply.
 
-**One-paragraph:** Existing `scope-creep-management` covers strategy; it does not cover the actual sentences. Founders waste 20–60 minutes per push-back wording each reply, and under deadline pressure default to either absorbing the work or sounding harsher than intended. This methodology indexes seven recurring scope-creep moments, supplies a tested phrasing for each (with explicit "use as-is" and "replace these bracketed parts" markers), and pairs each phrasing with the structural moves it makes (acknowledge → reframe → propose change-order). Output is a per-engagement language-pack file the founder pastes from; the pack also tracks which phrasing each client has heard so the founder doesn't sound like a template.
+**One-paragraph:** Indexed pack of polite-firm push-back phrasings for 7 recurring scope-creep moments; the founder pastes from it instead of wording each reply. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned checklist artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- паст-готовий push-back на out-of-scope запит у фіксованому проєкті.
+- ротація формулювань між клієнтами — щоб не виглядати як шаблон.
+- переведення «крихітного твіку» у платний change-order без скандалу.
+- комерційний фрейм відмови з конкретним наступним кроком.
+- лог тренду creep на engagement → сигнал «час перепрайсити».
 
 ## Applies If (ALL must hold)
 
-- the engagement has a written scope of work, statement of work, or signed proposal
-- the operator (founder/freelancer) handles their own client comms (no account manager intermediary)
-- the engagement is active or within 30 days of close
-- tier == pro or higher
+- the engagement has a written scope of work, statement of work, or signed proposal.
+- the operator (founder/freelancer) handles their own client comms (no account manager intermediary).
+- the engagement is active or within 30 days of close.
+- tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- the relationship is so adversarial that any template phrasing will be parsed as hostile — book a call instead
-- the engagement explicitly priced as time-and-materials with no scope cap (there is no scope to creep)
-- the ask is genuinely small and a goodwill investment — log it explicitly as goodwill in the engagement file rather than push back
+- the relationship is so adversarial that any template phrasing will be parsed as hostile — book a call instead.
+- the engagement explicitly priced as time-and-materials with no scope cap.
+- the ask is a genuine goodwill investment — log explicitly as goodwill instead of pushing back.
 
 ## Prerequisites
 
-- the original scope of work / SOW reference link
-- engagement-specific glossary (client-named features, agreed-on phrases)
-- change-order rate card or template (linked from the language pack)
-- a log of which phrasing has been used with this client (to rotate)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill |
-| `pro/ba/change-request-impact-rubric` | the rubric this pack hands off to once the client accepts a change order |
+| `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: acknowledge-first, reframe-as-change-order, no-absorb-default, rotate-phrasings, log-the-send | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the checklist artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/scope-creep-email-language-pack.md` | Working checklist skeleton with 5-line header |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-scope-creep-email-language-pack.py` | Validate the checklist artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst`
-- upstream playbook: `p5-micro-agency-founder/Weekly client status email batch`
-- companion methodology: `pro/ba/scope-creep-firewall`
+- [[scope-creep-firewall]]
+- [[change-request-impact-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

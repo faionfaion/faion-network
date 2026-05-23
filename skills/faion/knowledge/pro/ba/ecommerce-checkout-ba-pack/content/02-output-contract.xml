@@ -1,42 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="E-commerce Checkout BA Pack Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid E-commerce Checkout BA Pack output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="pci_scope" type="object" required="true">{components, saq_level, tokenization_boundary}</field>
-      <field name="vat_table" type="list" required="true">[{ship_to, seller_vat, rate, invoice_format}]</field>
-      <field name="fraud_table" type="list" required="true">[{signal_combination, threshold, action}]</field>
-      <field name="abandonment_machine" type="object" required="true">{state_diagram, intervals_h, suppression_rules}</field>
-      <field name="returns_flow" type="list" required="true">[{step, sla_hours, responsible_system}]</field>
-      <field name="owner" type="string" required="true">named BA</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">pci_scope is 'TBD' or unscoped</pattern>
-      <pattern id="f2">vat_table missing OR single-row</pattern>
-      <pattern id="f3">fraud_table is 'block over $X' without signals (oversimplification)</pattern>
-      <pattern id="f4">returns_flow steps without SLAs</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ecommerce-checkout-ba-pack.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="E-commerce Checkout BA Pack Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for ecommerce-checkout-ba-pack output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ecommerce-checkout-ba-pack.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "trigger",
+    "rules_applied",
+    "evidence",
+    "output_payload",
+    "consumer",
+    "owner",
+    "last_touched"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules_applied": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "citation",
+          "source_type"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "citation": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "url",
+              "ticket",
+              "doc",
+              "transcript",
+              "contract"
+            ]
+          }
+        }
+      }
+    },
+    "output_payload": {
+      "type": "object"
+    },
+    "consumer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+    ]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "01HXT3KQ7P9B2YJZG4N3R5VWFM",
+  "trigger": "E-commerce Checkout BA Pack engagement",
+  "rules_applied": [
+    "flow-states-enumerated",
+    "edge-case-catalogue"
+  ],
+  "evidence": [
+    {
+      "rule_id": "flow-states-enumerated",
+      "citation": "https://example.com/source",
+      "source_type": "url"
+    }
+  ],
+  "output_payload": {
+    "status": "complete"
+  },
+  "consumer": "Mariia Ivanova (delivery PM)",
+  "owner": "Oleh Petrov (BA)",
+  "last_touched": "2026-05-23T10:00:00Z"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "trigger": "vague",
+  "rules_applied": [],
+  "output_payload": {}
+}
+    ]]></code>
+    <note>required fields missing (evidence, consumer, owner, last_touched); rules_applied empty; invalid artefact_id form.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>pci_scope populated with a typed value</item>
-      <item>vat_table populated with a typed value</item>
-      <item>fraud_table populated with a typed value</item>
-      <item>abandonment_machine populated with a typed value</item>
-      <item>returns_flow populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>artefact produced without any evidence entry referencing a rule_id</item>
+      <item>consumer field empty or set to generic 'team' / 'everyone'</item>
+      <item>rules_applied references rule ids not present in content/01-core-rules.xml</item>
+      <item>LLM-generated evidence citing 'industry standard' without a named source</item>
+      <item>applies_if guard failed AND artefact still produced (must be a skip with reason)</item>
     </list>
   </section>
+  <reference path="scripts/validate-ecommerce-checkout-ba-pack.py">Validator script</reference>
 </text>

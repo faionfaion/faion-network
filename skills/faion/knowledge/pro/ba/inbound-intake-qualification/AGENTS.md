@@ -3,78 +3,98 @@ slug: inbound-intake-qualification
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "a12e95401515c97e"
-summary: "Inbound Intake Qualification — testable methodology for requirements, vendor, compliance, contracts. An auto-qualifying intake form + triage SOP that filters tire-kickers before a discovery call — current elicitation-techniques is too heavyweight for first contact."
-tags: [ba, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Five-question qualification rubric for inbound consulting leads: budget, decider, timeline, scope clarity, fit; emits qualify / reject / discovery-call routing.
+content_id: "1ee8926cf7411641"
+complexity: medium
+produces: rubric
+est_tokens: 4300
+tags: [ba, pro, intake, qualification, sales, rubric]
 ---
 # Inbound Intake Qualification
 
 ## Summary
 
-**One-sentence:** Inbound Intake Qualification — testable methodology for requirements, vendor, compliance, contracts. An auto-qualifying intake form + triage SOP that filters tire-kickers before a discovery call — current elicitation-techniques is too heavyweight for first contact.
+**One-sentence:** Five-question qualification rubric for inbound consulting leads: budget, decider, timeline, scope clarity, fit; emits qualify / reject / discovery-call routing.
 
-**One-paragraph:** Inbound Intake Qualification closes a known gap in ba practice: An auto-qualifying intake form + triage SOP that filters tire-kickers before a discovery call — current elicitation-techniques is too heavyweight for first contact. The methodology is anchored to the recurring activity 'Reputation + referral pipeline ramp (90-day flywheel) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Inbound Intake Qualification pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Solo consultant scaling lead volume past manual triage.
+- Boutique agency owner protecting senior BA time.
+- Inbound surge after a public talk / blog post / product launch.
+- Switch from referral-only to paid-channel inbound.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Reputation + referral pipeline ramp (90-day flywheel) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Solo BA / consultant receives at least 5 inbound leads per month.
+- Lead quality is mixed — some convert, many waste discovery-call time.
+- Engagement model is fixed-bid or T&M with a minimum.
+- You have a CRM (or spreadsheet) where leads are tracked.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Pure referral pipeline — every lead is pre-qualified by the referrer.
+- Lead volume below 1/month — manual judgement is faster than a rubric.
+- You take every lead regardless of fit (volume strategy).
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inbound lead record | form submission / email | Website / inbox |
+| Service catalogue | markdown | Your offering doc |
+| Minimum engagement size | yaml | Your pricing model |
+| Disqualification reasons log | csv | Prior leads |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `inbound_intake_qualification_template_fill` | haiku | Template fill, no judgement |
-| `inbound_intake_qualification_evidence_check` | sonnet | Bounded comparison + judgement |
-| `inbound_intake_qualification_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-inbound-intake-qualification` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/inbound-intake-qualification.md` | Markdown rubric template with scoring axes + thresholds |
+| `templates/inbound-intake-qualification.schema.json` | JSON Schema for the structured rubric output |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-inbound-intake-qualification.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/` (see neighbouring methodologies)
-- triggering activity: `Reputation + referral pipeline ramp (90-day flywheel) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

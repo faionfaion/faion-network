@@ -3,78 +3,100 @@ slug: discovery-to-delivery-handover-protocol
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4b7b669ba8710358"
-summary: Discovery To Delivery Handover Protocol delivers a concrete, testable methodology that turns the recurring task of 'Pre-bid discovery for a fixed-price engagement (P4)' into an auditable artefact, addressing the gap: In P4 shops, pre-sales BA is often not the delivery BA. Handove
-tags: [ba, pro, protocol, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Formal handover protocol from pre-sales discovery BA to delivery BA: artefact bundle, walkthrough script, signed acknowledgement, and post-handover hot-line.
+content_id: "5079543767289dbd"
+complexity: deep
+produces: spec
+est_tokens: 4800
+tags: [ba, pro, handover, discovery, delivery, fixed-price]
 ---
-# Discovery To Delivery Handover Protocol
+# Discovery to Delivery Handover Protocol
 
 ## Summary
 
-**One-sentence:** Discovery To Delivery Handover Protocol delivers a concrete, testable methodology that turns the recurring task of 'Pre-bid discovery for a fixed-price engagement (P4)' into an auditable artefact, addressing the gap: In P4 shops, pre-sales BA is often not the delivery BA. Handover quality determines whether SoW assumptions survive contact with the dev team. Needs a formal protocol (artefact list, walkthrough script, signed acknowledgement).
+**One-sentence:** Formal handover protocol from pre-sales discovery BA to delivery BA: artefact bundle, walkthrough script, signed acknowledgement, and post-handover hot-line.
 
-**One-paragraph:** In P4 shops, pre-sales BA is often not the delivery BA. Handover quality determines whether SoW assumptions survive contact with the dev team. Needs a formal protocol (artefact list, walkthrough script, signed acknowledgement). Discovery To Delivery Handover Protocol closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Pre-bid discovery for a fixed-price engagement (P4)' (role-business-analyst, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Discovery to Delivery Handover Protocol pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Fixed-bid agency BA handing a sold engagement to a delivery squad.
+- M&A / merger-induced personnel changes between contracts.
+- Multi-region delivery model (discovery on-site, delivery offshore).
+- Regulated industries (HealthTech, FinTech) where assumptions carry compliance risk.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Pre-bid discovery for a fixed-price engagement (P4)' (role: role-business-analyst) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Pre-sales BA is different from delivery BA on this engagement.
+- Engagement is fixed-price or fixed-scope where assumptions become contractual.
+- Discovery surfaced material assumptions that must survive contact with the dev team.
+- Project kickoff is within 30 days of discovery sign-off.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Same person did discovery and runs delivery — handover is internal-memory only.
+- Time-and-materials engagement where assumptions are renegotiable continuously.
+- Discovery findings are trivial (single-feature engagement).
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Discovery report | markdown / pdf | Pre-sales repo |
+| Signed SoW | pdf | Legal / contracts |
+| Assumption register | csv | Discovery output |
+| Risk register | csv | Discovery output |
+| Stakeholder map | yaml | Discovery output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `discovery_to_delivery_handover_protocol_template_fill` | haiku | Template fill, no judgment |
-| `discovery_to_delivery_handover_protocol_evidence_check` | sonnet | Bounded comparison + judgment |
-| `discovery_to_delivery_handover_protocol_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-discovery-to-delivery-handover-protocol` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/discovery-to-delivery-handover-protocol.md` | Markdown spec skeleton with required sections + placeholders |
+| `templates/discovery-to-delivery-handover-protocol.schema.json` | JSON Schema for the structured spec output |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-discovery-to-delivery-handover-protocol.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/` (see neighbouring methodologies)
-- triggering activity: `role-business-analyst/Pre-bid discovery for a fixed-price engagement (P4)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

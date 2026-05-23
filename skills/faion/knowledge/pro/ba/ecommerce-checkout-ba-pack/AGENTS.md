@@ -3,69 +3,100 @@ slug: ecommerce-checkout-ba-pack
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Payment-method requirements (PCI-DSS scope), VAT rules per jurisdiction, fraud decision tables, cart-abandonment rules, returns flow — the vertical BA pack the corpus is missing.
-content_id: "93f70d58f1e94170"
-tags: [ecommerce-checkout-ba-pack, ba, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Reusable BA pack for any e-commerce checkout: user-flow, edge-case catalogue, NFR thresholds, regulatory checklist, payment-provider integration spec.
+content_id: "757eb9b554880f3f"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: [ba, pro, ecommerce, checkout, payments, reusable-pack]
 ---
-
 # E-commerce Checkout BA Pack
 
 ## Summary
 
-**One-sentence:** Payment-method requirements (PCI-DSS scope), VAT rules per jurisdiction, fraud decision tables, cart-abandonment rules, returns flow — the vertical BA pack the corpus is missing.
+**One-sentence:** Reusable BA pack for any e-commerce checkout: user-flow, edge-case catalogue, NFR thresholds, regulatory checklist, payment-provider integration spec.
 
-**One-paragraph:** Most common BA work in outsource is e-commerce. A checkout pack would cover payment requirements, tax / VAT, fraud, cart abandonment, returns. Today the corpus has nothing vertical at all. Output: checkout requirement template + decision tables + regulatory checklist.
+**One-paragraph:** E-commerce Checkout BA Pack pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Greenfield Shopify / Medusa / custom build BA scoping.
+- Checkout-redesign engagement for a Stripe / Adyen / Mollie merchant.
+- Cross-border launch needing VAT / OSS / IOSS rules.
+- PSP migration where existing flow must be re-specified.
 
 ## Applies If (ALL must hold)
 
-- BA assigned to an e-commerce project
-- scope includes checkout, payments, or fulfillment
-- client expects requirements covering ≥1 of: PCI-DSS, VAT, fraud, returns
+- Engagement scope includes designing or rebuilding an e-commerce checkout flow.
+- The store accepts at least one card / wallet / BNPL payment method.
+- There is at least one tax/VAT/GST regime in play (B2C cross-border or domestic VAT).
+- Stakeholders include both product and finance / accounting.
 
 ## Skip If (ANY kills it)
 
-- marketplace project (multi-vendor) — requires marketplace BA pack instead
-- B2B procurement portal — different flow; use B2B-procurement BA pack
-- purely informational e-commerce (catalog without transactions)
+- Pre-order / waitlist flow with no actual money capture at this stage.
+- B2B invoicing only (no card / wallet capture).
+- Pure marketplace where checkout is delegated to seller storefronts.
 
 ## Prerequisites
 
-- client's payment processor + countries of operation
-- list of payment methods supported (cards, wallets, BNPL, bank transfer)
-- fraud baseline data (current chargeback rate or estimate)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing checkout flow doc | markdown / Figma | Client repo |
+| Payment-provider contracts | pdf | Client legal |
+| Tax / VAT regime list | csv | Finance / accounting |
+| Refund / chargeback policy | markdown | Customer success |
+| Browser / device matrix | csv | Analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent skill — provides operating context for this methodology |
-| `pro/ba/business-analyst` | peer methodology — produces inputs or consumes outputs |
-| `pro/ba/ba-modeling` | peer methodology — produces inputs or consumes outputs |
+| `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-ecommerce-checkout-ba-pack` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/ecommerce-checkout-ba-pack.md` | Markdown spec skeleton with required sections + placeholders |
+| `templates/ecommerce-checkout-ba-pack.schema.json` | JSON Schema for the structured spec output |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-ecommerce-checkout-ba-pack.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodology: `pro/ba/business-analyst`
-- peer methodology: `pro/ba/ba-modeling`
-- peer methodology: `pro/sec/data-classification`
-- external: https://www.pcisecuritystandards.org/ (PCI-DSS); https://stripe.com/docs/tax (Stripe Tax docs); https://docs.adyen.com/risk-management
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

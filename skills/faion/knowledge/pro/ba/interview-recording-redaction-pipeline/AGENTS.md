@@ -3,78 +3,99 @@ slug: interview-recording-redaction-pipeline
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "dbcd8d995f956408"
-summary: "Interview Recording Redaction Pipeline — testable methodology for requirements, vendor, compliance, contracts. Modern BAs record + transcribe stakeholder calls but lack a documented PII redaction step before content lands in Confluence/Jira."
-tags: [ba, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pipeline configuration for BA interview recordings: transcript generation, automated PII redaction, manual review checkpoint, retention policy, access log.
+content_id: "94393615aed2e994"
+complexity: deep
+produces: config
+est_tokens: 4700
+tags: [ba, pro, interview, recording, redaction, pii, pipeline]
 ---
 # Interview Recording Redaction Pipeline
 
 ## Summary
 
-**One-sentence:** Interview Recording Redaction Pipeline — testable methodology for requirements, vendor, compliance, contracts. Modern BAs record + transcribe stakeholder calls but lack a documented PII redaction step before content lands in Confluence/Jira.
+**One-sentence:** Pipeline configuration for BA interview recordings: transcript generation, automated PII redaction, manual review checkpoint, retention policy, access log.
 
-**One-paragraph:** Interview Recording Redaction Pipeline closes a known gap in ba practice: Modern BAs record + transcribe stakeholder calls but lack a documented PII redaction step before content lands in Confluence/Jira. The methodology is anchored to the recurring activity 'Stakeholder interview: prep + run + capture (role: role-business-analyst)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Interview Recording Redaction Pipeline pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- User research engagements with HIPAA / GDPR scope.
+- Whistleblower / sensitive-source interviews.
+- Multi-client recording archives where one leak could end the engagement.
+- M&A / due-diligence interviews subject to NDAs.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Stakeholder interview: prep + run + capture (role: role-business-analyst)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- BA records interviews / user research sessions (audio or video).
+- Recordings contain PII / PHI / commercially sensitive data.
+- Recordings are shared with team members or stored beyond the immediate session.
+- Regulatory regime applies (GDPR, HIPAA, CCPA, or contractual NDA).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Sessions are not recorded — no pipeline needed.
+- Recordings are deleted immediately post-session — no retention to manage.
+- Recording is governed entirely by the client's own pipeline — you have no custody.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recording storage location | url / path | Project infra |
+| Transcript tooling (Whisper / vendor) | config | BA toolkit |
+| Redaction allowlist / denylist | yaml | Project legal review |
+| Retention policy | yaml | Engagement governance |
+| Access log destination | url / path | Audit infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `interview_recording_redaction_pipeline_template_fill` | haiku | Template fill, no judgement |
-| `interview_recording_redaction_pipeline_evidence_check` | sonnet | Bounded comparison + judgement |
-| `interview_recording_redaction_pipeline_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-interview-recording-redaction-pipeline` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/interview-recording-redaction-pipeline.yaml` | YAML config skeleton with required keys |
+| `templates/interview-recording-redaction-pipeline.schema.json` | JSON Schema for the config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-interview-recording-redaction-pipeline.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/` (see neighbouring methodologies)
-- triggering activity: `Stakeholder interview: prep + run + capture (role: role-business-analyst)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

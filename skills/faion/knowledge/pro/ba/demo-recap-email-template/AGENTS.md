@@ -3,78 +3,99 @@ slug: demo-recap-email-template
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "31e93c02add9b5fc"
-summary: Demo Recap Email Template delivers a concrete, testable methodology that turns the recurring task of 'Client demo prep + run' into an auditable artefact, addressing the gap: P4 BAs run client demos every sprint; structured recap email cuts scope-creep risk and is a high-frequency
-tags: [ba, pro, template, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Sprint-demo recap email skeleton that pins decisions made, scope deltas, open items, and named follow-ups so the client cannot retroactively reinterpret the demo.
+content_id: "781f0b7db2905075"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, pro, demo, recap, email, client-comms]
 ---
 # Demo Recap Email Template
 
 ## Summary
 
-**One-sentence:** Demo Recap Email Template delivers a concrete, testable methodology that turns the recurring task of 'Client demo prep + run' into an auditable artefact, addressing the gap: P4 BAs run client demos every sprint; structured recap email cuts scope-creep risk and is a high-frequency artifact.
+**One-sentence:** Sprint-demo recap email skeleton that pins decisions made, scope deltas, open items, and named follow-ups so the client cannot retroactively reinterpret the demo.
 
-**One-paragraph:** P4 BAs run client demos every sprint; structured recap email cuts scope-creep risk and is a high-frequency artifact. Demo Recap Email Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Client demo prep + run' (role-business-analyst, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Demo Recap Email Template pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- Outsource sprint demos with foreign clients (timezone + language asymmetry).
+- Fixed-bid engagements where scope drift bleeds margin.
+- Hand-off windows when delivery BA differs from sales BA.
+- Regulated engagements that need an audit trail of every shown feature.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Client demo prep + run' (role: role-business-analyst) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Outsource / consultancy BA runs client demos at least once per sprint.
+- The client and the delivery team are in different organisations / legal entities.
+- There is a recurring pattern of post-demo scope drift or 'I thought you said' disputes.
+- You have email + ticket-system access for follow-up assignment.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- In-house team where demos are informal stand-up walkthroughs with no scope-creep risk.
+- Demo is a one-off pitch where no follow-up exists.
+- Client refuses written records — engagement risk dwarfs methodology benefit.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Demo agenda | markdown | BA pre-demo prep doc |
+| Demo recording / transcript | mp4 / txt | Zoom / Meet / Teams |
+| Live-decision log | markdown | Facilitator notes during demo |
+| Prior recap thread | email / doc | Last sprint's recap email |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `demo_recap_email_template_template_fill` | haiku | Template fill, no judgment |
-| `demo_recap_email_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `demo_recap_email_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-demo-recap-email-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/demo-recap-email-template.md` | Markdown spec skeleton with required sections + placeholders |
+| `templates/demo-recap-email-template.schema.json` | JSON Schema for the structured spec output |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-demo-recap-email-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/` (see neighbouring methodologies)
-- triggering activity: `role-business-analyst/Client demo prep + run`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

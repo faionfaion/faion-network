@@ -3,78 +3,98 @@ slug: hipaa-baa-vendor-checklist
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "796d66fd24059a20"
-summary: "Hipaa Baa Vendor Checklist — testable methodology for requirements, vendor, compliance, contracts. Healthcare engagements need a vendor-side checklist that maps BAA obligations to system + process controls. Today faion has no HIPAA-specific guidance."
-tags: [ba, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pre-engagement HIPAA Business Associate Agreement (BAA) checklist for every PHI-touching vendor: data flow, breach notification, sub-processor map, audit rights.
+content_id: "7a398d4c4422ec63"
+complexity: medium
+produces: checklist
+est_tokens: 4500
+tags: [ba, pro, hipaa, baa, vendor, phi, checklist]
 ---
-# Hipaa Baa Vendor Checklist
+# HIPAA BAA Vendor Checklist
 
 ## Summary
 
-**One-sentence:** Hipaa Baa Vendor Checklist — testable methodology for requirements, vendor, compliance, contracts. Healthcare engagements need a vendor-side checklist that maps BAA obligations to system + process controls. Today faion has no HIPAA-specific guidance.
+**One-sentence:** Pre-engagement HIPAA Business Associate Agreement (BAA) checklist for every PHI-touching vendor: data flow, breach notification, sub-processor map, audit rights.
 
-**One-paragraph:** Hipaa Baa Vendor Checklist closes a known gap in ba practice: Healthcare engagements need a vendor-side checklist that maps BAA obligations to system + process controls. Today faion has no HIPAA-specific guidance. The methodology is anchored to the recurring activity 'FinTech / HIPAA compliance audit prep (4 weeks) (role: p4-outsource-specialist)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** HIPAA BAA Vendor Checklist pins a recurring BA decision into an auditable artefact. It enforces a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. Inputs and triggers come from the engagement context; outputs feed a named downstream consumer (human or agent) without re-deriving the reasoning. The decision tree at `content/06-decision-tree.xml` routes every application to either an applicable rule or `skip-this-methodology`.
+
+**Ефективно для:**
+
+- HealthTech outsource engagement onboarding a new SaaS vendor.
+- M&A due-diligence of a target company's BAA portfolio.
+- Audit prep where every vendor must surface a signed BAA.
+- Migration where PHI flows shift across vendors.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'FinTech / HIPAA compliance audit prep (4 weeks) (role: p4-outsource-specialist)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Engagement involves Protected Health Information (PHI) or US-regulated health data.
+- A third-party vendor will store, process, or transmit PHI on the client's behalf.
+- Client is a US Covered Entity (CE) or Business Associate (BA) under HIPAA.
+- Vendor onboarding is upcoming or under review.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No PHI in scope — engagement is purely structural / financial data.
+- Vendor is being de-onboarded — different checklist applies.
+- Client is non-US and HIPAA does not apply — use local regime checklist instead.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Vendor name + service description | markdown | Procurement |
+| Data flow diagram (PHI surfaces) | diagram | Security / BA |
+| Existing BAA (if any) | pdf | Legal |
+| Sub-processor list | csv | Vendor disclosure |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~700 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `hipaa_baa_vendor_checklist_template_fill` | haiku | Template fill, no judgement |
-| `hipaa_baa_vendor_checklist_evidence_check` | sonnet | Bounded comparison + judgement |
-| `hipaa_baa_vendor_checklist_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-hipaa-baa-vendor-checklist` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/hipaa-baa-vendor-checklist.md` | Markdown checklist skeleton matching the 8-item shape pinned in content/01-core-rules.xml |
+| `templates/hipaa-baa-vendor-checklist.schema.json` | JSON Schema for the structured checklist output |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-hipaa-baa-vendor-checklist.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/ba/` (see neighbouring methodologies)
-- triggering activity: `FinTech / HIPAA compliance audit prep (4 weeks) (role: p4-outsource-specialist)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- Parent: `pro/ba/AGENTS.md`
+- [[requirement-quality-scorecard]]
+- [[discovery-to-delivery-handover-protocol]]
+- [[demo-recap-email-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, scope, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
