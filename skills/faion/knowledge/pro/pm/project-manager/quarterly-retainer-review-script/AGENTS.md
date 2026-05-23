@@ -3,68 +3,81 @@ slug: quarterly-retainer-review-script
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3ce9cb28c133cbbc"
-summary: A 45-minute scripted quarterly review call for retainer clients that converts utilization data into renewal commitment.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 45-min scripted QBR converting utilization data into renewal commitment: 10-min data → 15-min outcomes → 10-min blockers → 10-min renewal; named decision exit; 24h follow-up email.
+content_id: "5e0bf171eabcb013"
+complexity: medium
+produces: spec
+est_tokens: 4700
 tags: [retainer, client-review, qbr, renewal, micro-agency, account-management]
 ---
 # Quarterly Retainer Review Script
 
 ## Summary
 
-**One-sentence:** A 45-minute scripted quarterly review call for retainer clients that converts utilization data into renewal commitment.
+**One-sentence:** 45-min scripted QBR converting utilization data into renewal commitment: 10-min data → 15-min outcomes → 10-min blockers → 10-min renewal; named decision exit; 24h follow-up email.
 
-**One-paragraph:** Existing stakeholder-engagement methodology is generic; this gives a micro-agency founder (1-10 retainer clients) the exact talking points, slide order, and decision framework for a 45-min QBR (Quarterly Business Review). Mechanism: prepares a 6-slide deck driven by retainer utilization data (hours used vs. hours bought, %SLA met, scope creep delta), runs the call in 4 segments (data review 10 min → outcomes 15 min → blockers 10 min → renewal 10 min), captures explicit "continue / scale up / scope down / terminate" decision before hanging up, and emails a 1-page summary within 24h. Primary output: signed-off renewal decision + scope delta for next quarter.
+**One-paragraph:** A 45-minute scripted quarterly review call for retainer clients (1-10 retainers, micro-agency). Four segments: data-only 10 min (hours used/bought, SLA %, deliverables) → outcomes 15 min → blockers 10 min → renewal 10 min. Call ends with one of four explicit decisions named aloud: continue / scale up / scope down / terminate (or deferred with a named date ≤14 days). Scope deltas written live into decision-record JSON. Follow-up email within 24h. Numbers anchor the conversation; advocacy/discount-anchoring deferred to segment 4.
+
+**Ефективно для:**
+
+- Micro-agency founder (1-10 retainer clients) with quarterly cadence
+- Retainer ≥$2k/month — overhead justified
+- Client is decision-maker for renewal (not procurement gatekeeper)
+- Tracked utilization data exists (Toggl, Harvest, Clockify)
 
 ## Applies If (ALL must hold)
 
-- you operate a retainer-based service business (agency, consultancy, freelance) with ≥3 active retainer clients
-- retainer contracts have a renewal/review cadence (monthly, quarterly, or semi-annually)
-- you track hours, deliverables, and SLA adherence per client
-- the client is the decision-maker for renewal (not a procurement gatekeeper)
+- You operate a retainer-based service business with ≥3 active retainer clients
+- Retainer contracts have a renewal/review cadence (monthly, quarterly, or semi-annually)
+- You track hours, deliverables, and SLA adherence per client
+- The client is the decision-maker for renewal (not a procurement gatekeeper)
 
 ## Skip If (ANY kills it)
 
-- one-shot project work — use a project-closure script instead
-- corporate enterprise sales-led renewal (procurement-driven, 90-day cycle) — use enterprise QBR template
-- pre-launch / first quarter of a new retainer — use kickoff review instead
-- retainer is < $2k/month — overhead exceeds value; use a 15-min email check-in
-- client is delinquent on payments — collections call comes first, not a QBR
+- One-shot project work — use a project-closure script instead
+- Corporate enterprise sales-led renewal (procurement-driven, 90-day cycle)
+- Pre-launch / first quarter of a new retainer — use kickoff review
+- Retainer < $2k/month — overhead exceeds value
+- Client delinquent on payments — collections call comes first
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- retainer utilization data for the closing quarter (hours used, hours bought, % SLA met)
-- previous QBR notes (if Q2+) — track promises kept vs. broken
-- list of deliverables shipped this quarter with client-facing artifact links
-- next-quarter capacity forecast (your team's hours available)
-- client stakeholders confirmed on the calendar invite 5 business days ahead
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Utilization data | JSON / CSV | Toggl / Harvest / Clockify export |
+| Previous QBR notes | Markdown | if Q2+ — track promises kept vs broken |
+| Deliverables shipped | list | artefact links per deliverable |
+| Next-quarter capacity forecast | YAML | team capacity planner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/gtm-strategist/ops-customer-success-metrics` | Source of utilization + SLA metrics consumed by the script |
-| `pro/product/product-operations/account-health-scoring-model` | If implemented, feeds the green/yellow/red status used in slide 2 |
-| `pro/pm/project-manager/cost-estimation` | Used to scope the "next quarter capacity" slide |
+| [[project-closure]] | Closure script if decision is terminate |
+| [[scope-management]] | Scope-delta language for scale_up / scope_down |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 45-min cap, named decision exit, data over narrative, scope delta written, 24h follow-up | ~850 |
-| `content/02-output-contract.xml` | essential | Slide-deck schema, decision-record schema, follow-up email schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (data fishing, no-decision exit, advocacy spiral, anchored discount, surprise scope creep, missing follow-up) | ~850 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: 45-minute-cap, named-decision-exit, data-over-narrative, scope-delta-written, 24h-follow-up | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output per step | 800 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `slide_deck_first_draft` | sonnet | Bounded template fill from utilization data |
-| `talking_points_draft` | sonnet | Per-segment bullet generation, low ambiguity |
-| `decision_framework_synthesis` | opus | Cross-input judgment when data is mixed (high util + low NPS) |
+| `slide_deck_first_draft` | sonnet | Template fill from utilization data |
+| `talking_points_draft` | sonnet | Per-segment bullets, low ambiguity |
+| `decision_framework_synthesis` | opus | Cross-input judgement when data is mixed |
 | `follow_up_email_draft` | haiku | Template fill: decision + scope delta + next-quarter date |
 
 ## Templates
@@ -73,7 +86,7 @@ tags: [retainer, client-review, qbr, renewal, micro-agency, account-management]
 |------|---------|
 | `templates/qbr-deck.md` | 6-slide outline: cover / status / outcomes / blockers / renewal options / next quarter |
 | `templates/qbr-talking-points.md` | Verbatim opening, transition, and closing lines for each segment |
-| `templates/decision-record.json` | Renewal decision schema (continue / scale up / scope down / terminate) |
+| `templates/decision-record.json` | Renewal decision schema (continue / scale_up / scope_down / terminate / deferred_with_date) |
 | `templates/follow-up-email.md` | 1-page recap email — sent within 24h of call |
 
 ## Scripts
@@ -81,10 +94,14 @@ tags: [retainer, client-review, qbr, renewal, micro-agency, account-management]
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/build-qbr-deck.py` | Pull utilization + SLA + deliverables → populate qbr-deck.md | 48h before QBR call |
-| `scripts/validate-decision-record.py` | Verify decision-record.json has all required fields populated | Immediately after call |
+| `scripts/validate-quarterly-retainer-review-script.py` | Verify decision-record.json shape + call_duration_minutes cap + follow_up lag | Post-call; pre-renewal |
 
 ## Related
 
 - parent skill: `pro/pm/project-manager/`
-- peer methodologies: `agency-pnl-tracker-template`, `account-health-scoring-model`, `cost-estimation`
-- external: [Gainsight QBR Playbook](https://www.gainsight.com/guides/the-essential-guide-to-quarterly-business-reviews/) · [HBR - The Sales Conversation](https://hbr.org/2017/11/the-best-salespeople-know-when-to-stop-talking) · [ChartMogul renewal metrics](https://chartmogul.com/blog/saas-metrics/)
+- [[project-closure]]
+- [[scope-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

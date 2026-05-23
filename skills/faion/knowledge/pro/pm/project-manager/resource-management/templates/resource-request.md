@@ -1,39 +1,25 @@
-# Resource Request: [Project Name]
+<!-- purpose: Resource request form with role, skills, dates, justification, impact-if-not-filled -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Date:** [Date]
-**Requestor:** [PM Name]
-**Priority:** High / Medium / Low
-**Request ID:** RR-[NNN]
+# Resource request form with role, skills, dates, justification, impact-if-not-filled
 
-## Request Details
+## Background
 
-| Field | Value |
-|-------|-------|
-| Role Required | [Role] |
-| Skills Needed | [Specific skills + levels] |
-| Experience Level | Junior / Mid / Senior |
-| Start Date | [Date] |
-| End Date | [Date] |
-| Allocation | [Hours/week or %] |
-| Engagement Type | Permanent / Contractor / Secondment |
+[3-5 lines of context]
 
-## Justification
+## Scope
 
-[Why is this resource needed? Link to WBS work package and schedule impact.]
+### In Scope
+- [item]
 
-## Impact if Not Filled
+### Out of Scope
+- [exclusion]
 
-[What happens without this resource — schedule slip, scope reduction, or overload on existing team.]
+## Deliverables
 
-## Alternatives Considered
-
-- [Alternative 1]: [Why insufficient]
-- [Alternative 2]: [Why insufficient]
-
-## Approvals
-
-| Approver | Role | Status | Date |
-|----------|------|--------|------|
-| [Name] | PM | Requested | [Date] |
-| [Name] | Resource Manager | | |
-| [Name] | Finance | | |
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

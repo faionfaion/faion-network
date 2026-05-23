@@ -1,46 +1,23 @@
-# Project Closure Checklist: [Project Name]
+<!-- purpose: Complete closure checklist grouped by category -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Project Manager:** [Name] | **Close Date:** [Date]
+# Complete closure checklist grouped by category
 
-## Deliverable Acceptance
+**Date:** [ISO date] | **Owner:** [role]
 
-- [ ] All deliverables complete
-- [ ] Acceptance sign-off obtained (signed form on file)
-- [ ] Outstanding issues resolved or formally documented with owner
+## Summary
 
-## Administrative Closure
+[1-paragraph headline + numeric anchor]
 
-- [ ] Final costs recorded (flag pending net-60 invoices)
-- [ ] All invoices processed
-- [ ] Budget closed
-- [ ] Purchase orders closed
-- [ ] Contracts terminated / termination letters sent
+## Data
 
-## Resource Release
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
 
-- [ ] Team members released to resource managers
-- [ ] Equipment returned
-- [ ] Access permissions revoked (after handover ack)
-- [ ] Resource manager notified
+## Next Action
 
-## Knowledge Management
-
-- [ ] Lessons learned session conducted (before team disperses)
-- [ ] Final project report written
-- [ ] Documents archived in structured format
-- [ ] Lessons entered in queryable knowledge base
-
-## Transition to Operations
-
-- [ ] Operations handover document delivered and acknowledged
-- [ ] Support documentation provided (runbooks, admin guide)
-- [ ] Monitoring transferred
-- [ ] Escalation contacts defined
-- [ ] Infrastructure staged decommission plan in place
-
-## Communication
-
-- [ ] Stakeholders notified of official closure
-- [ ] Final status report distributed
-- [ ] Team recognition event completed
-- [ ] Project declared closed in tracking system
+- [owner] — [imperative sentence] — [date]

@@ -1,22 +1,203 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="predictive-analytics-pm Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Predictive Analytics for PM Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/predictive-analytics-pm.json",
+  "type": "object",
+  "required": [
+    "model_id",
+    "model_version",
+    "feature_spec_version",
+    "training_corpus_size",
+    "calibration",
+    "forecasts"
+  ],
+  "properties": {
+    "model_id": {
+      "type": "string"
+    },
+    "model_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "feature_spec_version": {
+      "type": "string"
+    },
+    "training_corpus_size": {
+      "type": "integer",
+      "minimum": 30
+    },
+    "calibration": {
+      "type": "object",
+      "required": [
+        "last_checked",
+        "brier_score",
+        "pi80_coverage",
+        "pi95_coverage"
+      ],
+      "properties": {
+        "last_checked": {
+          "type": "string",
+          "format": "date"
+        },
+        "brier_score": {
+          "type": "number"
+        },
+        "pi80_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pi95_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "forecasts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "project_id",
+          "risk_dimension",
+          "point_estimate",
+          "pi_80",
+          "pi_95",
+          "top_features"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "risk_dimension": {
+            "enum": [
+              "schedule_slip_weeks",
+              "budget_overrun_pct",
+              "resource_contention",
+              "material_price_risk"
+            ]
+          },
+          "point_estimate": {
+            "type": "number"
+          },
+          "pi_80": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "pi_95": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "top_features": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "required": [
+                "feature",
+                "contribution"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "model_id": "pm-risk-1",
+  "model_version": "1.2.0",
+  "feature_spec_version": "v3",
+  "training_corpus_size": 142,
+  "calibration": {
+    "last_checked": "2026-05-01",
+    "brier_score": 0.18,
+    "pi80_coverage": 0.79,
+    "pi95_coverage": 0.94
+  },
+  "forecasts": [
+    {
+      "project_id": "acme-platform-2026-Q2",
+      "risk_dimension": "schedule_slip_weeks",
+      "point_estimate": 2.4,
+      "pi_80": [
+        1.0,
+        4.0
+      ],
+      "pi_95": [
+        0.5,
+        6.0
+      ],
+      "top_features": [
+        {
+          "feature": "scope_change_count",
+          "contribution": 0.35
+        },
+        {
+          "feature": "vendor_lead_time_avg",
+          "contribution": 0.21
+        },
+        {
+          "feature": "team_attrition_rate",
+          "contribution": 0.15
+        }
+      ]
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "model_id": "x",
+  "model_version": "1.0",
+  "feature_spec_version": "",
+  "training_corpus_size": 12,
+  "calibration": {},
+  "forecasts": [
+    {
+      "project_id": "x",
+      "risk_dimension": "stuff",
+      "point_estimate": 1
+    }
+  ]
+}
+]]></code>
+    <note>version pattern invalid; feature_spec_version empty; corpus_size &lt;30; calibration empty; forecast missing PIs + top_features; risk_dimension not in enum.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>training_corpus_size &lt; 30.</item>
+      <item>forecast without pi_80 AND pi_95.</item>
+      <item>top_features with fewer than 3 entries.</item>
+      <item>calibration.pi80_coverage outside [0.7, 0.9] (off-calibration).</item>
+      <item>model_version not following semver pattern.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-predictive-analytics-pm.py">Validator script enforcing this schema</reference>
 </text>

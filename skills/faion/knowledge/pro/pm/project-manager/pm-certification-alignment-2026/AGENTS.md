@@ -3,72 +3,98 @@ slug: pm-certification-alignment-2026
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Maps existing project-manager methodology content to the 2026 PMBOK 8 / PMP Examination Content Outline (ECO) domain weights and five exam themes.
-content_id: "1da3f5567fad9d36"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Maps existing project-manager methodology content to 2026 PMBOK 8 / PMP Examination Content Outline domain weights and five exam themes (People 33%, Process 41%, Business Environment 26%).
+content_id: "b6a5c4d3e2f1a0b9"
+complexity: medium
+produces: rubric
+est_tokens: 4000
 tags: [pmp, pmbok-8, certification, exam, 2026-eco]
 ---
 # PM Certification Alignment 2026
 
 ## Summary
 
-**One-sentence:** Maps existing project-manager methodology content to the 2026 PMBOK 8 / PMP Examination Content Outline (ECO) domain weights and five exam themes.
+**One-sentence:** Maps existing project-manager methodology content to 2026 PMBOK 8 / PMP Examination Content Outline domain weights and five exam themes (People 33%, Process 41%, Business Environment 26%).
 
-**One-paragraph:** Maps existing project-manager methodology content to the 2026 PMBOK 8 / PMP Examination Content Outline (ECO) domain weights and five exam themes. The primary 2026 change is a +18% shift in Business Environment domain weight (People 33%, Process 41%, Business Environment 26%). Study time allocation is gap-weighted, not domain-weight-weighted.
+**One-paragraph:** Maps existing project-manager methodology content to 2026 PMBOK 8 / PMP Examination Content Outline domain weights and five exam themes (People 33%, Process 41%, Business Environment 26%).
+
+**Ефективно для:**
+
+- PM-ів, що готуються до PMP-2026 exam і хочуть знати where to study.
+- L&D teams, що адаптують внутрішній PM-curriculum до new ECO.
+- Agency-ів, що пропонують exam-prep як supplementary service.
+- PMO, де certification renewal залежить від actively maintained content.
 
 ## Applies If (ALL must hold)
 
-- Preparing for PMP, CAPM, or PMI Disciplined Agile certifications under the 2026 ECO.
-- Updating internal PM curricula, onboarding docs, or playbooks to reflect new domain weights.
-- Mapping existing methodology library to 2026 themes and identifying coverage gaps.
-- Designing study plans for PMs migrating from PMBOK 6/7 to PMBOK 8.
+- Candidate planning to sit PMP after 2026-07-01.
+- Existing PM methodology library to be re-classified.
+- L&D team can dedicate review time per quarter.
+- Exam-content outline (ECO) accessible.
 
 ## Skip If (ANY kills it)
 
-- Practitioners not pursuing a certification — apply PMBOK 7/8 principles directly; no exam-prep overhead.
-- Pre-2026 study plans that need to ship before the ECO cut-over date.
-- Highly specialized domains (Agile-only, regulated construction, defense) — supplement with role-specific guides; this methodology is breadth, not depth.
-- One-off content gap fixes — read the official ECO directly.
+- Candidate sitting before 2026-07-01 — old ECO applies.
+- No PM-certification ambition.
+- Methodology library &lt;30 entries — alignment overhead too high.
+- Org uses non-PMI certification (PRINCE2, IPMA) — different mapping.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[pm-certification-changes-2026]] | Companion that documents the changes themselves. |
+| [[pm-framework-focus-areas]] | PMBoK 8 framework backbone. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `methodology-classifier` | sonnet | Tag each methodology with primary domain + theme. |
+| `gap-analyzer` | opus | Spot domains under-covered relative to ECO weights. |
+| `study-plan-author` | sonnet | Author candidate-specific study plan. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/alignment-rubric.md` | Methodology × ECO-domain matrix with coverage score. |
+| `templates/study-plan.md` | Candidate study plan with weekly time-budget. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pm-certification-alignment-2026.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[pm-certification-changes-2026]]
+- [[pm-framework-focus-areas]]
+- [[performance-domains-overview]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (exam_date, methodology_count, certification_body) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

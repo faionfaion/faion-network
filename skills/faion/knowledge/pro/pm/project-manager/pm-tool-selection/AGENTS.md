@@ -3,72 +3,100 @@ slug: pm-tool-selection
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured evaluation framework for selecting or replacing a project management tool.
-content_id: "fef0da537f092bf5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structured tool-evaluation framework: scope requirements, 5-dimension scorecard (ecosystem, governance, integrations, agent-API, TCO), 3-vendor bake-off, decision record with reversal trigger.
+content_id: "4d5e6f7a8b9c0d1e"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
 tags: [pm-tools, evaluation, procurement, tco, decision-making]
 ---
-# PM Tool Selection Framework
+# PM Tool Selection
 
 ## Summary
 
-**One-sentence:** Structured evaluation framework for selecting or replacing a project management tool.
+**One-sentence:** Structured tool-evaluation framework: scope requirements, 5-dimension scorecard (ecosystem, governance, integrations, agent-API, TCO), 3-vendor bake-off, decision record with reversal trigger.
 
-**One-paragraph:** Structured evaluation framework for selecting or replacing a project management tool. Gather requirements via MoSCoW matrix, run a time-boxed 2-week POC on real project data, score tools against weighted criteria, compute 3-year TCO, and document the decision as an ADR. Human sign-off is mandatory at requirements, POC scoring, and final decision — agents must not pick the tool unilaterally.
+**One-paragraph:** Structured tool-evaluation framework: scope requirements, 5-dimension scorecard (ecosystem, governance, integrations, agent-API, TCO), 3-vendor bake-off, decision record with reversal trigger.
+
+**Ефективно для:**
+
+- PMO, що уперше консолідує tool-портфоліо.
+- Стартапів, що switched з task-app на full PM platform.
+- Agency-ів, що obliquely вибирають tool під клієнта.
+- Команд після M&A, де треба merge tool stacks.
 
 ## Applies If (ALL must hold)
 
-- New team picking a first PM tool, or current tool causing documented friction
-- Vendor renewal cycle where a price jump triggers re-evaluation
-- Post-acquisition consolidation across two tool stacks
-- Compliance shift (SOC2, HIPAA, EU data residency) forcing reassessment
+- Team has ≥10 active PM users.
+- Tooling budget ≥3k/yr is committed.
+- Switching cost is acceptable (data migration plan exists).
+- Decision-maker is named and has authority.
 
 ## Skip If (ANY kills it)
 
-- Teams under 5 people with simple workflow — pick GitHub Projects or Linear free tier, skip the matrix
-- Mid-project under deadline pressure — switching tools mid-flight burns more than it saves
-- Single-issue gripe (e.g., "velocity report is ugly") — fix the report, do not migrate
-- Decision already made by leadership — running a theater POC erodes trust
+- &lt;10 PM users — task-app or shared spreadsheet suffices.
+- Vendor contract locked-in beyond decision horizon.
+- Existing tool meets &gt;80% of needs — stay and refactor.
+- No identified pain — premature optimisation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cross-tool-migration]] | Migration plan triggered if decision is to switch. |
+| [[change-control]] | Tool switch is a controlled change. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `requirements-author` | sonnet | Translate pain into scoped requirements. |
+| `scorecard-builder` | sonnet | Build 5-dimension scorecard with weights. |
+| `bake-off-runner` | opus | Drive 3-vendor evaluation week. |
+| `decision-record-author` | sonnet | Author final decision record with reversal trigger. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/scorecard.yaml` | 5-dimension scorecard with per-dimension weight. |
+| `templates/decision-record.md` | ADR-style decision with context, options, decision, consequences, reversal. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pm-tool-selection.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[azure-devops-boards]]
+- [[jira-workflow-management]]
+- [[gitlab-boards]]
+- [[cross-tool-migration]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (active_users, budget_band, current_tool_satisfaction) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

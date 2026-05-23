@@ -1,23 +1,23 @@
-# Risk Register — [Project Name]
+<!-- purpose: Risk register table: ID, category, P, I, score, response, owner, trigger, status -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** 1.0
-**Date:** [Date]
-**Last reviewed:** [Date]
+# Risk register table: ID, category, P, I, score, response, owner, trigger, status
 
-| ID | Title | Type | Category | P | I | Score | EMV ($) | Response | Owner | Trigger | Status |
-|----|-------|------|----------|---|---|-------|---------|----------|-------|---------|--------|
-| R-01 | [Risk title] | Threat | Technical | M | H | High | [X] | Mitigate | [Name] | [Observable signal] | Active |
-| R-02 | [Risk title] | Opportunity | Market | M | M | Med | — | Enhance | [Name] | [Signal] | Active |
+**Date:** [ISO date] | **Owner:** [role]
 
-**P:** L=10% / M=30% / H=60%
-**Score:** P×I matrix — L/L=low, M/M=med, H/H=crit
-**Status:** Active | Materialized (→ Issue) | Closed
+## Summary
 
-## Contingency Reserve
+[1-paragraph headline + numeric anchor]
 
-| Risk ID | Response | EMV ($) | Reserve allocated |
-|---------|----------|---------|------------------|
-| R-01 | Mitigate (residual Accept) | $[X] | $[X] |
-| Total | | | $[X] |
+## Data
 
-**Management reserve** (unknown-unknowns): $[X] (sponsor-held)
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
+
+## Next Action
+
+- [owner] — [imperative sentence] — [date]

@@ -1,52 +1,23 @@
-# Defect Report
+<!-- purpose: Defect report template with severity, steps, environment, root cause -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**ID:** BUG-[YYYY]-[NNN]
-**Severity:** Critical / High / Medium / Low
-**Priority:** P1 / P2 / P3
-**Reported:** [Date]
-**Reporter:** [Name]
+# Defect report template with severity, steps, environment, root cause
+
+**Date:** [ISO date] | **Owner:** [role]
 
 ## Summary
 
-[One-line description of the defect.]
+[1-paragraph headline + numeric anchor]
 
-## Steps to Reproduce
+## Data
 
-1.
-2.
-3.
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
 
-## Expected Result
+## Next Action
 
-[What should happen.]
-
-## Actual Result
-
-[What actually happens.]
-
-## Environment
-
-- Browser/Client:
-- OS:
-- Version/Build:
-- Project:
-
-## Screenshots/Logs
-
-[Attach relevant screenshots or console logs.]
-
-## Root Cause
-
-[To be filled during investigation.]
-
-## Resolution
-
-[To be filled when fixed. Include PR link.]
-
-## Severity Rationale
-
-| Factor | Assessment |
-|--------|------------|
-| User impact | [Blocked / Degraded / Minor] |
-| Frequency | [Always / Intermittent / Rare] |
-| Workaround | [None / Documented / Easy] |
+- [owner] — [imperative sentence] — [date]

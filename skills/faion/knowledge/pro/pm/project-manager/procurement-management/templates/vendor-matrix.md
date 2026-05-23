@@ -1,38 +1,23 @@
-# Vendor Evaluation: [Procurement Name]
+<!-- purpose: Weighted evaluation matrix with scoring scale and sensitivity check -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Date:** [Date] | **Evaluators:** [Names]
+# Weighted evaluation matrix with scoring scale and sensitivity check
 
-## Scoring Scale
+**Date:** [ISO date] | **Owner:** [role]
 
-1=Poor, 2=Below Average, 3=Average, 4=Good, 5=Excellent
+## Summary
 
-## Evaluation Matrix
+[1-paragraph headline + numeric anchor]
 
-| Criterion | Weight | Vendor A | Vendor B | Vendor C |
-|-----------|--------|----------|----------|----------|
-| Technical Capability | 25% | | | |
-| Relevant Experience | 20% | | | |
-| Price | 25% | | | |
-| Timeline | 15% | | | |
-| Team Quality | 10% | | | |
-| References (independent) | 5% | | | |
-| **Weighted Score** | 100% | | | |
+## Data
 
-## Sensitivity Check
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
 
-Re-run scoring with ±10% weight shift on top two criteria. If rank changes, document the trade-off.
+## Next Action
 
-| Weight Variant | Winner | Notes |
-|----------------|--------|-------|
-| Price +10% | | |
-| Technical +10% | | |
-
-## Recommendation
-
-[Which vendor and why — cite weighted score and sensitivity result]
-
-## Risks with Recommended Vendor
-
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| | | | |
+- [owner] — [imperative sentence] — [date]

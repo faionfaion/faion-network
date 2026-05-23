@@ -1,69 +1,81 @@
 ---
 slug: risk-threshold-policy
 tier: pro
-group: project-manager
+group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "d33f8f6d8b611986"
-summary: Pre-agreed policy that defines which risk severity gets escalated to whom, when, and via which channel — closing the gap between "log the risk" and "act on the risk".
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pre-agreed escalation policy mapping risk severity bands to named target + channel + SLA; co-signed by sponsor + delivery lead + PMO; explicit de-escalation criteria per band.
+content_id: "0eb8ad9d2d060c9c"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [risk-management, escalation, project-manager, governance, communication]
 ---
-
 # Risk Threshold Policy
 
 ## Summary
 
-**One-sentence:** Pre-agreed escalation policy mapping risk severity (probability × impact) to a named escalation target, channel, and SLA — so PMs do not invent the escalation path mid-incident.
+**One-sentence:** Pre-agreed escalation policy mapping risk severity bands to named target + channel + SLA; co-signed by sponsor + delivery lead + PMO; explicit de-escalation criteria per band.
 
-**One-paragraph:** Risk-register methodology covers identification, scoring, and tracking, but stays silent on the question that matters when a risk turns red: who do I tell, by when, and in what channel? Without a pre-agreed threshold policy, PMs either (a) escalate everything (steering-committee fatigue, lost credibility), (b) escalate too late (last-minute surprises, board-level blame), or (c) escalate to the wrong person (stakeholder mis-routing). This methodology pins a Risk Threshold Policy: a single document per engagement (or per portfolio) that lists each severity band, the named escalation owner per band, the channel (1:1 ping, email summary, scheduled meeting, board memo), the response SLA (1h, 24h, 1 week), and the de-escalation criteria. Mechanism: pre-agree once at engagement kickoff with the sponsor + delivery lead + PMO; refresh at major milestones. Primary output: a `risk-threshold-policy.yaml` co-signed by sponsor + delivery lead.
+**One-paragraph:** Pre-agreed escalation policy that maps risk severity (probability × impact) to a named escalation target, channel, and SLA — so PMs do not invent the escalation path mid-incident. Single document per engagement co-signed by sponsor + delivery lead + PMO at kickoff; refresh at every milestone or every 12 weeks. Bands MUST be discrete (3-5 explicit bands), targets MUST be named individuals (not group inboxes), SLAs MUST be explicit (red ≤2h, amber ≤24h, green = weekly digest), de-escalation criteria MUST be defined per band. Primary output: risk-threshold-policy.yaml co-signed.
+
+**Ефективно для:**
+
+- Engagement ≥4 weeks OR portfolio with multiple concurrent projects
+- Distinct stakeholder tiers exist (client champion, sponsor, agency partner, PMO)
+- Risk register is in use with a defined severity scale
+- Sponsor is named and available for the policy co-sign
 
 ## Applies If (ALL must hold)
 
-- engagement ≥4 weeks OR portfolio with multiple concurrent projects
-- distinct stakeholder tiers exist (e.g. client champion, client sponsor, agency partner, PMO)
-- risk register is in use (`pro/pm/project-manager/risk-register-refresh-30min` or similar)
-- sponsor is named and available for the policy co-sign
+- Engagement ≥4 weeks OR portfolio with multiple concurrent projects
+- Distinct stakeholder tiers exist (client champion, client sponsor, agency partner, PMO)
+- Risk register is in use with defined severity scale
+- Sponsor is named and available for the policy co-sign
 
 ## Skip If (ANY kills it)
 
-- single-stakeholder engagement (one client, one decision-maker) — escalation is trivial, log it informally
-- engagement &lt;2 weeks — overhead exceeds value
-- sponsor refuses to sign a threshold policy — the policy needs sponsor buy-in to function; raise the issue before delivery starts
+- Single-stakeholder engagement — escalation is trivial
+- Engagement <2 weeks — overhead exceeds value
+- Sponsor refuses to sign — raise the issue before delivery starts
 
 ## Prerequisites
 
-- risk register exists with a defined severity scale (e.g. 1-5 × 1-5 = 1-25)
-- stakeholder map with named roles (`pro/ba/business-analyst/stakeholder-analysis`)
-- communication channels enumerated (email, Slack, scheduled steering, exec memo)
-- PMO or governance approver who can co-sign
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Risk register | YAML / Markdown | with defined severity scale |
+| Stakeholder map | YAML | with named roles |
+| Communication channels | list | email, Slack, scheduled steering, exec memo |
+| Co-signer authority | named persons | PMO or governance approver |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager/risk-register-refresh-30min` | Defines the severity scale this policy maps to |
-| `pro/ba/business-analyst/stakeholder-analysis` | Provides the named roles the policy escalates to |
-| `pro/pm/project-manager/escalation-conversation-template` | The runbook for how to deliver the escalation once routed |
+| [[risk-register]] | Defines the severity scale this policy maps to |
+| [[stakeholder-register]] | Provides named roles the policy escalates to |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: explicit severity bands, named target per band, SLA per band, de-escalation criteria, co-signed policy | ~1000 |
-| `content/02-output-contract.xml` | essential | risk-threshold-policy.yaml schema, severity-mapping table, channel taxonomy | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: over-escalation, under-escalation, channel mismatch, stale policy, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: explicit-severity-bands, named-target-per-band, sla-per-band, de-escalation-criteria, co-signed-policy | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
 | `policy_draft_from_stakeholder_map` | sonnet | Combine stakeholder roles + severity scale into proposed routing |
-| `severity_assessment_per_risk` | sonnet | Score new risk against the policy and produce the escalation recommendation |
-| `escalation_message_draft` | sonnet | Draft the actual ping / email / memo from the risk + audience |
-| `policy_lint` | haiku | Verify schema + co-signatures |
+| `severity_assessment_per_risk` | sonnet | Score new risk against policy; produce escalation recommendation |
+| `escalation_message_draft` | sonnet | Draft actual ping / email / memo from risk + audience |
+| `policy_lint` | haiku | Schema + co-signatures check |
 
 ## Templates
 
@@ -77,11 +89,16 @@ tags: [risk-management, escalation, project-manager, governance, communication]
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/lint-policy.py` | Validate policy against schema + signature presence | Pre-commit hook on the policy file |
-| `scripts/route-risk.py` | Given a risk + current policy, output the recommended escalation tuple (owner, channel, SLA) | Daily risk-register refresh |
+| `scripts/lint-policy.py` | Validate policy against schema + signature presence | Pre-commit on policy file |
+| `scripts/route-risk.py` | Given a risk + current policy, output recommended escalation tuple | Daily risk-register refresh |
+| `scripts/validate-risk-threshold-policy.py` | Schema lint + named-target + SLA + de-escalation rule check | Pre-commit |
 
 ## Related
 
 - parent skill: `pro/pm/project-manager/`
-- peer methodologies: `risk-register-refresh-30min`, `escalation-conversation-template`, `stakeholder-analysis`
-- external: [PMBOK 7 — risk management](https://www.pmi.org/pmbok-guide-standards) · [APM Body of Knowledge — escalation](https://www.apm.org.uk/body-of-knowledge/)
+- [[risk-register]]
+- [[stakeholder-register]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

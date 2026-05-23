@@ -1,28 +1,23 @@
-# Risk: R-[XX] — [Short Name]
+<!-- purpose: Single risk deep-dive card with trigger, contingency, and ownership fields -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-## Description
-[Detailed risk description — specific, not generic]
+# Single risk deep-dive card with trigger, contingency, and ownership fields
 
-## Category
-[Technical | External | Organizational | PM]
+**Date:** [ISO date] | **Owner:** [role]
 
-## Assessment
-- **Probability:** [VL/L/M/H/VH] — [Rationale referencing calibration scale]
-- **Impact:** [VL/L/M/H/VH] — [Rationale in $ or days, not adjectives]
-- **Risk Score:** [1-25]
-- **Priority:** [High 15-25 | Medium 8-14 | Low 1-7]
+## Summary
 
-## Response Strategy
-- **Strategy:** [Avoid | Transfer | Mitigate | Accept]
-- **Response Plan:** [Imperative actions to take now or when trigger fires]
-- **Contingency:** [Required if Accept — what happens when risk materialises]
-- **Trigger:** [Observable signal — metric threshold, event, date — not "if it gets bad"]
+[1-paragraph headline + numeric anchor]
 
-## Ownership
-- **Risk Owner:** [Single named individual]
-- **Response Owner:** [Name if different from risk owner]
+## Data
 
-## Tracking
-| Date | Status | Notes |
-|------|--------|-------|
-| [Date] | Open | Initial identification |
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
+
+## Next Action
+
+- [owner] — [imperative sentence] — [date]

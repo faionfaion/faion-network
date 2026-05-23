@@ -1,34 +1,23 @@
-# Deliverable Acceptance Form
+<!-- purpose: Acceptance form with criteria table and signature block -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Project:** [Name] | **Deliverable:** [Name] | **Version:** [X.X] | **Date:** [Date]
+# Acceptance form with criteria table and signature block
 
-## Description
+**Date:** [ISO date] | **Owner:** [role]
 
-[What was delivered]
+## Summary
 
-## Acceptance Criteria
+[1-paragraph headline + numeric anchor]
 
-| Criterion | Status | Notes |
-|-----------|--------|-------|
-| [Criterion 1] | Pass / Fail | [Notes] |
-| [Criterion 2] | Pass / Fail | [Notes] |
+## Data
 
-## Outstanding Items
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
 
-| Item | Severity | Resolution Plan |
-|------|----------|-----------------|
-| [Item] | H/M/L | [Plan with date] |
+## Next Action
 
-## Acceptance Decision
-
-- [ ] Accepted without conditions
-- [ ] Accepted with conditions (listed above)
-- [ ] Not accepted — reason: [reason]
-
-## Signatures
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Project Manager | | | |
-| Sponsor | | | |
-| Accepting Authority | | | |
+- [owner] — [imperative sentence] — [date]

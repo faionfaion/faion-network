@@ -3,73 +3,94 @@ slug: pm-framework-focus-areas
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: PMBoK 8 replaces the rigid five Process Groups with five Focus Areas (Initiating, Planning, Executing, Monitoring and Controlling, Closing) distributed across seven Performance Domains.
-content_id: "60e130e628fc7825"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PMBoK 8 replaces rigid five Process Groups with five Focus Areas (Initiating, Planning, Executing, Monitoring and Controlling, Closing) distributed across seven Performance Domains.
+content_id: "9c8d7e6f5a4b3c2d"
+complexity: light
+produces: rubric
+est_tokens: 3400
 tags: [pmbok-8, focus-areas, process-groups, lifecycle, framework]
 ---
-# PMBoK 8 Five Focus Areas
+# PMBoK 8 Focus Areas
 
 ## Summary
 
-**One-sentence:** PMBoK 8 replaces the rigid five Process Groups with five Focus Areas (Initiating, Planning, Executing, Monitoring and Controlling, Closing) distributed across seven Performance Domains.
+**One-sentence:** PMBoK 8 replaces rigid five Process Groups with five Focus Areas (Initiating, Planning, Executing, Monitoring and Controlling, Closing) distributed across seven Performance Domains.
 
-**One-paragraph:** PMBoK 8 replaces the rigid five Process Groups with five Focus Areas (Initiating, Planning, Executing, Monitoring and Controlling, Closing) distributed across seven Performance Domains. The 40 non-prescriptive processes are a tailorable menu, not a checklist. The same five focus areas apply to both predictive and agile delivery; only the artefacts change (charter vs vision; WBS vs backlog; work packages vs sprints; EVM vs velocity; final report vs retrospective).
+**One-paragraph:** PMBoK 8 replaces rigid five Process Groups with five Focus Areas (Initiating, Planning, Executing, Monitoring and Controlling, Closing) distributed across seven Performance Domains.
+
+**Ефективно для:**
+
+- PM-ів, що мігрують ментальну модель з PMBoK 6/7 на PMBoK 8.
+- PMO governance, що оновлює internal templates під нову structure.
+- L&D teams, що переписують курси під 2026 ECO.
+- Audit reviewers, що оцінюють project artefacts проти PMBoK 8.
 
 ## Applies If (ALL must hold)
 
-- Structuring a project plan in PMBoK 8 vocabulary when sponsors expect process-group-style reporting.
-- Mapping the 40 non-prescriptive processes onto a project (select the applicable subset).
-- Cross-walking a PMBoK 6 plan into PMBoK 8 vocabulary without losing artefacts.
-- Building per-focus-area stage-gate checklists for steering-committee reviews.
-- Tailoring per delivery approach with the same temporal structure.
+- Org uses PMI / PMBoK as its primary framework.
+- PM is updating templates / governance to PMBoK 8.
+- Audit or certification regime expects PMBoK 8 alignment.
+- Team is willing to re-map artefacts from Process Groups to Focus Areas.
 
 ## Skip If (ANY kills it)
 
-- Pure-Scrum teams whose entire framework is the Scrum Guide — focus areas add a meta-layer with no benefit.
-- Single-team continuous delivery where Initiating and Closing collapse into a release note.
-- Agile-coaching contexts where "process" language alienates the team.
-- PMBoK 7 purist environments not yet adopting PMBoK 8 — vocabulary drift creates confusion.
+- Org uses PRINCE2 or IPMA as primary framework.
+- Pure agile org — Focus Areas don't translate cleanly.
+- No upcoming audit / certification refresh.
+- Team rejects PMBoK as bureaucratic.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Scope brief | Markdown | engagement intake |
+| Stakeholder roster | table | PM |
+| Historical reference data | csv / log | PMO data warehouse |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[performance-domains-overview]] | Companion: Focus Areas spread across the 7 domains. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `artefact-mapper` | sonnet | Map each artefact to focus area × domain cell. |
+| `rubric-renderer` | haiku | Emit the rubric report. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/focus-area-rubric.md` | 5×7 matrix: Focus Area × Domain, populated with artefact references. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pm-framework-focus-areas.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[performance-domains-overview]]
+- [[pm-certification-alignment-2026]]
+- [[hybrid-delivery]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observables (framework_primary, refresh_planned, audit_pressure) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.

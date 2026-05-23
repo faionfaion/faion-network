@@ -1,40 +1,23 @@
-# Project Status Report — [Date]
+<!-- purpose: Weekly status report with GREEN/YELLOW/RED per knowledge area -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-## Overall Status: [GREEN / YELLOW / RED]
+# Weekly status report with GREEN/YELLOW/RED per knowledge area
 
-| Dimension | Status | Trend | Notes |
-|-----------|--------|-------|-------|
-| Schedule | GREEN | → | On track |
-| Budget | YELLOW | ↘ | 5% over; mitigation in progress |
-| Scope | GREEN | → | No changes this period |
-| Quality | GREEN | ↗ | Defect rate improving |
-| Risk | YELLOW | → | 2 high risks being managed |
-| Resources | GREEN | → | Fully staffed |
+**Date:** [ISO date] | **Owner:** [role]
 
-_Status derives from numeric thresholds in integrated/plan.yaml — not PM narrative._
+## Summary
 
-## Accomplishments This Period
+[1-paragraph headline + numeric anchor]
 
-- [Accomplishment 1]
-- [Accomplishment 2]
+## Data
 
-## Planned Next Period
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
 
-- [Plan 1]
-- [Plan 2]
+## Next Action
 
-## Issues Needing Attention
-
-| Issue | Impact | Action | Owner | Due |
-|-------|--------|--------|-------|-----|
-| [Issue 1] | [Impact] | [Action] | [Name] | [Date] |
-
-## Key Metrics
-
-| Metric | Target | Actual |
-|--------|--------|--------|
-| Schedule Slip (days) | 0 | [N] |
-| Budget Overrun (%) | 0% | [N]% |
-| Open High Risks | &lt; 2 | [N] |
-| Scope Change (%) | &lt; 10% | [N]% |
-| Defect Escape Rate (%) | &lt; 5% | [N]% |
+- [owner] — [imperative sentence] — [date]

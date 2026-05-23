@@ -1,57 +1,25 @@
-# Statement of Work: [Project/Service Name]
+<!-- purpose: Statement of Work template with acceptance criteria and clause checklist -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** [X.X] | **Date:** [Date] | **Buyer:** [Company] | **Contract Ref:** [Number]
+# Statement of Work template with acceptance criteria and clause checklist
 
-## 1. Background
+## Background
 
-[Context and reason for this work — 3-5 lines]
+[3-5 lines of context]
 
-## 2. Scope of Work
+## Scope
 
 ### In Scope
-- [Item 1]
-- [Item 2]
+- [item]
 
 ### Out of Scope
-- [Exclusion 1]
-- [Exclusion 2]
+- [exclusion]
 
-## 3. Deliverables
+## Deliverables
 
-| ID | Deliverable | Description | Format | Due Date |
-|----|-------------|-------------|--------|----------|
-| D1 | [Name] | [Description] | [Format] | [Date] |
-| D2 | [Name] | [Description] | [Format] | [Date] |
-
-## 4. Acceptance Criteria
-
-| Deliverable | Criterion | Verification Method |
-|-------------|-----------|---------------------|
-| D1 | [Measurable criterion] | [How verified] |
-
-## 5. Timeline
-
-| Milestone | Date | Deliverables | Payment % |
-|-----------|------|--------------|-----------|
-| Kickoff | [Date] | — | 25% |
-| [Milestone] | [Date] | D1 | 50% |
-| Completion | [Date] | All | 25% |
-
-## 6. Assumptions and Dependencies
-
-- [Buyer will provide X by date]
-- [Access to Y required]
-- [Assumption 1]
-
-## 7. Contract Clause Status
-
-| Clause | Status | Notes |
-|--------|--------|-------|
-| IP assignment | present / missing / weak | |
-| Sub-processor disclosure | | |
-| DPA (if PII) | | |
-| Termination-for-convenience | | |
-| Audit right | | |
-| SLA with credits | | |
-| Indemnity (incl. AI-output IP) | | |
-| Warranty period | | |
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

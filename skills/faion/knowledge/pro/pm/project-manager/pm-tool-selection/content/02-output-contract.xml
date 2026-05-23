@@ -1,22 +1,203 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="pm-tool-selection Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="PM Tool Selection Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>JSON Schema draft-07 for the decision-record artefact this methodology produces. Validator rejects artefacts that violate the schema or any forbidden pattern.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pm-tool-selection.json",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "decision_maker",
+    "context",
+    "options",
+    "decision",
+    "consequences",
+    "reversal_trigger"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{4}$"
+    },
+    "decision_maker": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "string",
+      "minLength": 50
+    },
+    "options": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "vendor",
+          "scorecard"
+        ],
+        "properties": {
+          "vendor": {
+            "type": "string"
+          },
+          "scorecard": {
+            "type": "object",
+            "required": [
+              "ecosystem",
+              "governance",
+              "integrations",
+              "agent_api",
+              "tco"
+            ],
+            "properties": {
+              "ecosystem": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "governance": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "integrations": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "agent_api": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "tco": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "string"
+    },
+    "consequences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "reversal_trigger": {
+      "type": "object",
+      "required": [
+        "metric",
+        "threshold",
+        "rationale"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string"
+        },
+        "threshold": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "ADR-0014",
+  "decision_maker": "U_HEAD_OF_DELIVERY",
+  "context": "We have 25 active PM users on Jira; switching cost acceptable; AI-agent automation budget is firm. Need tool that supports REST + Agent-API.",
+  "options": [
+    {
+      "vendor": "Jira",
+      "scorecard": {
+        "ecosystem": 9,
+        "governance": 8,
+        "integrations": 9,
+        "agent_api": 7,
+        "tco": 6
+      }
+    },
+    {
+      "vendor": "Linear",
+      "scorecard": {
+        "ecosystem": 6,
+        "governance": 7,
+        "integrations": 8,
+        "agent_api": 9,
+        "tco": 8
+      }
+    },
+    {
+      "vendor": "Azure DevOps",
+      "scorecard": {
+        "ecosystem": 8,
+        "governance": 9,
+        "integrations": 8,
+        "agent_api": 8,
+        "tco": 7
+      }
+    }
+  ],
+  "decision": "Adopt Linear",
+  "consequences": [
+    "lower TCO",
+    "higher agent-API velocity",
+    "less governance maturity"
+  ],
+  "reversal_trigger": {
+    "metric": "vendor lock-in",
+    "threshold": "if Linear export costs >30% annual TCO",
+    "rationale": "exit costs above 30% of TCO erase savings."
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "14",
+  "decision_maker": "",
+  "context": "we picked one",
+  "options": [
+    {
+      "vendor": "Jira"
+    }
+  ],
+  "decision": "Jira",
+  "consequences": [],
+  "reversal_trigger": {}
+}
+]]></code>
+    <note>decision_id pattern invalid; decision_maker empty; context too short; only 1 option; scorecard missing; consequences empty; reversal_trigger empty.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>options count &lt; 3.</item>
+      <item>scorecard missing any of 5 dimensions.</item>
+      <item>decision_maker == 'committee' or empty.</item>
+      <item>reversal_trigger.threshold non-numeric / unquantified.</item>
+      <item>context shorter than 50 chars (insufficient setup).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-pm-tool-selection.py">Validator script enforcing this schema</reference>
 </text>

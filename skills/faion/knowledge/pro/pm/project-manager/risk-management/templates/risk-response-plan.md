@@ -1,38 +1,25 @@
-# Risk Response Plan: [R-NN] — [Risk Title]
+<!-- purpose: Individual risk response plan with prevention steps and fallback actions -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Category:** [Technical / External / Organizational / Project]
-**Type:** [Threat / Opportunity]
-**Probability:** [Low / Medium / High] ([N]%)
-**Impact:** [Low / Medium / High] ($[X] or [N] days delay)
-**EMV:** $[X]
-**Score:** [low / med / high / crit]
-**Owner:** [Full name — not a role]
-**Review cadence:** Weekly
+# Individual risk response plan with prevention steps and fallback actions
 
-## Triggers (observable signals)
+## Background
 
-- [Signal 1 — concrete, not "things go wrong"]
-- [Signal 2]
+[3-5 lines of context]
 
-## Response Strategy: [Avoid / Transfer / Mitigate / Accept | Exploit / Enhance / Share / Accept]
+## Scope
 
-### Prevention actions
+### In Scope
+- [item]
 
-- [ ] [Action 1]
-- [ ] [Action 2]
+### Out of Scope
+- [exclusion]
 
-### Fallback plan (if risk materializes)
+## Deliverables
 
-1. [Immediate step — Day 0]
-2. [Week 1 action]
-3. [Week 2-N action]
-
-## Contingency Budget
-
-- **Reserved:** $[X] (= EMV if Accept; residual EMV if Mitigate)
-- **Authorization:** [Name] approves draw-down
-
-## Closure Criteria
-
-Risk is closed when: [observable condition, not "it no longer feels risky"].
-Closed by: [name] on [date].
+| ID | Deliverable | Format | Due |
+|----|-------------|--------|-----|
+| D1 | [name] | [fmt] | [date] |

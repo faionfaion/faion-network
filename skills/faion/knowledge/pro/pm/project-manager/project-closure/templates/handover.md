@@ -1,51 +1,23 @@
-# Operations Handover: [Project / System Name]
+<!-- purpose: Operations handover: system overview, docs, support contacts, known issues -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Effective Date:** [Date] | **Prepared By:** [PM Name] | **Accepted By:** [Ops Manager]
+# Operations handover: system overview, docs, support contacts, known issues
 
-## System Overview
+**Date:** [ISO date] | **Owner:** [role]
 
-[Brief description of what is being handed over]
+## Summary
 
-## Technical Details
+[1-paragraph headline + numeric anchor]
 
-| Item | Details |
-|------|---------|
-| Environment | [Production URL / location] |
-| Architecture | [High-level description] |
-| Dependencies | [External systems, services] |
-| Access | [How to access; credentials in 1Password / secrets manager] |
+## Data
 
-## Documentation
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| [name] | [n] | [t] | green / amber / red |
 
-| Document | Location |
-|----------|----------|
-| User Guide | [Link] |
-| Admin Guide | [Link] |
-| Architecture | [Link] |
-| Runbook | [Link] |
+## Next Action
 
-## Support
-
-| Level | Contact | Response SLA |
-|-------|---------|--------------|
-| L1 (user issues) | [Contact] | [Time] |
-| L2 (technical) | [Contact] | [Time] |
-| L3 (vendor) | [Contact] | [Time] |
-
-## Known Issues
-
-| Issue | Workaround | Target Fix |
-|-------|------------|------------|
-| [Issue] | [Workaround] | [Date / Status] |
-
-## Monitoring
-
-| Metric | Tool | Alert Threshold |
-|--------|------|-----------------|
-| [Metric] | [Tool] | [Threshold] |
-
-## Handover Acknowledgement
-
-Operations team confirms receipt and readiness:
-
-**Ops Manager:** ___________________ **Date:** ___________
+- [owner] — [imperative sentence] — [date]
