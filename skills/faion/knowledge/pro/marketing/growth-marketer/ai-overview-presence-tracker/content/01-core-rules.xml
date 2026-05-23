@@ -1,61 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AIO Presence Tracker Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules that turn a scraper output into a trustworthy AIO presence signal.</summary>
-
-  <section title="The five rules">
-
-    <rule id="r1-control-list-discipline" testable="true" depth="essential">
-      <statement>The tracker MUST maintain a `control` query list of 10-20 queries with stable behaviour (known AIO presence OR known absence). Every scrape MUST verify control behaviour matches expectation; if &gt; 30% of control queries return unexpected results, the snapshot is tagged `untrusted` and the scraper is investigated before any optimization decisions are made on the priority list.</statement>
-      <rationale source="Statistical process control; control-chart methodology">Scraper drift is the dominant failure mode in AIO tracking. Without a control list, the team mis-attributes scraper drift to content quality and rewrites content that isn't broken. Control lists are the cheapest defence.</rationale>
+<text id="01-core-rules" title="AI Overview Presence Tracker Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules grounding AI Overview Presence Tracker. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+  <section title="Rule set">
+    <rule id="preconditions-hold" testable="true" depth="essential">
+      <statement>Before running AI Overview Presence Tracker, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
+      <rationale source="Google Search Central — AI Overviews">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
     </rule>
-
-    <rule id="r2-snapshot-immutability" testable="true" depth="essential">
-      <statement>Daily snapshots MUST be written exactly once per scheduled scrape. Re-running a scrape and overwriting a snapshot is FORBIDDEN. Failed scrapes are recorded with `status: error` and an `error_class` (timeout, parse_fail, captcha, 5xx) — never silently retried in place.</statement>
-      <rationale source="Time-series integrity, sibling rule in `ai-overview-monitoring`">Mutable snapshots destroy the trend signal. Errors are part of the time series — the team needs to see scraper reliability over time to make infrastructure decisions.</rationale>
+    <rule id="output-contract-binding" testable="true" depth="essential">
+      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
+      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
     </rule>
-
-    <rule id="r3-position-and-snippet-recorded" testable="true" depth="essential">
-      <statement>The snapshot MUST record (when AIO present): the panel position (1, 2, ...n) of our domain's citation if any, the cited snippet text verbatim, and the source title displayed. "AIO present yes/no" alone is insufficient — without position + snippet, the team cannot diagnose why citation moves.</statement>
-      <rationale source="Empirical SERP analysis">Panel position correlates with click-through-rate even within the AIO. Snippet text reveals what the model considers the answer; mismatch between intended definition and selected snippet is a high-leverage editing signal.</rationale>
+    <rule id="named-owner" testable="true" depth="essential">
+      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
+      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
     </rule>
-
-    <rule id="r4-our-domain-cited-as-primary-kpi" testable="true" depth="essential">
-      <statement>The primary KPI is `our_domain_cited_rate` (per priority query, 4-week rolling). Secondary KPIs: panel presence rate, our_snippet_selected (= verbatim from our page), our_panel_position. "AIO presence" alone is irrelevant if we are not being cited.</statement>
-      <rationale source="GTM KPI hierarchy">Aggregate presence metrics decorate dashboards but do not drive decisions. The marketer cares whether the team's content is the one being cited. Other metrics are diagnostic, not primary.</rationale>
+    <rule id="deviation-log" testable="true" depth="essential">
+      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
+      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
     </rule>
-
-    <rule id="r5-weekly-cadence-aggregate" testable="true" depth="essential">
-      <statement>Daily scrapes feed a weekly aggregate. The weekly aggregate is the artifact read in the Search Console review. Daily numbers are operational only; weekly numbers are decision-grade. Acting on a single daily snapshot is FORBIDDEN.</statement>
-      <rationale source="Statistical noise floors in SERP measurement">AIO is personalised (geo, prior queries, account state). Daily noise is high; weekly aggregates suppress that noise and surface real movement.</rationale>
+    <rule id="human-checkpoint" testable="true" depth="essential">
+      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
+      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run AI Overview Presence Tracker; it returns an action=skip envelope and yields control to the parent workflow.</statement>
+      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Control-list catches scraper drift">
-      <code lang="text"><![CDATA[
-Control query: "What is JTBD" — expected AIO present + a few stable citations.
-Scrape result: aio_present=false on this and 9/20 other control queries.
-Action: snapshot tagged `untrusted`. Adapter inspected; selector for AIO
-        panel header changed. Adapter fix shipped; next scrape verifies.
-      ]]></code>
-      <note>r1 satisfied. The 30% threshold triggers; team does not waste effort rewriting priority content based on bad data.</note>
-    </example>
-
-    <example type="bad" title="Acting on one daily snapshot">
-      <code lang="text"><![CDATA[
-Monday scrape: priority query "EVM software" lost citation.
-Action: marketer rewrites the EVM section the same afternoon.
-Tuesday scrape: citation back; rewrite was unnecessary.
-      ]]></code>
-      <note>r5 violation. Daily noise was treated as decision signal. The rewrite churned content for no measurable lift.</note>
-    </example>
-
+  <section title="Sources">
+    <reference>Google Search Central — AI Overviews</reference>
+    <reference>SE Ranking / Semrush — AIO tracking</reference>
+    <reference>Internal AIO research</reference>
+    <reference>schema.org / structured data</reference>
   </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

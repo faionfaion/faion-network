@@ -1,73 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Launch-Day Warroom Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules every launch-day war room must enforce. These prevent the most common failure: coordination breakdown when traffic spikes.</summary>
-
-  <section title="The five rules">
-
-    <rule id="r1-named-roles-with-backup" testable="true" depth="essential">
-      <statement>Every role (launch director, content captain, ops lead, support triage, exec stand-in) is named with primary + named backup. Reject launches with any role unfilled OR backup missing OR a single person holding two roles.</statement>
-      <rationale source="launch postmortems">Empty or doubled roles produce the "everyone thought someone else was watching" failure. Backups handle the inevitable absence (sick day, network outage, parallel duty).</rationale>
+<text id="01-core-rules" title="Launch-Day Warroom Template Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules grounding Launch-Day Warroom Template. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+  <section title="Rule set">
+    <rule id="preconditions-hold" testable="true" depth="essential">
+      <statement>Before running Launch-Day Warroom Template, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
+      <rationale source="Product Hunt — launch playbooks">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
     </rule>
-
-    <rule id="r2-dress-rehearsal-48h" testable="true" depth="essential">
-      <statement>Run a 60-minute dress rehearsal 48-72 hours before launch. Walk through hourly checkpoints, post test messages to launch channels, simulate one rollback scenario. Reject launches without a recorded dress rehearsal.</statement>
-      <rationale source="incident response training literature">Rehearsals expose template errors and channel-permission bugs at near-zero cost. Teams that rehearse have 3-5× lower MTTR during launch incidents.</rationale>
+    <rule id="output-contract-binding" testable="true" depth="essential">
+      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
+      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
     </rule>
-
-    <rule id="r3-hourly-checkpoints" testable="true" depth="essential">
-      <statement>Launch day runs on hourly checkpoints, each with explicit decisions: traffic_status, channel_post_status, support_queue_depth, error_rate, next_hour_action. Reject silent hours: every hour produces a logged update.</statement>
-      <rationale source="war-room ops literature">Hourly cadence prevents drift and surfaces issues 6× faster than ad-hoc updates. Silence is the loudest failure signal.</rationale>
+    <rule id="named-owner" testable="true" depth="essential">
+      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
+      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
     </rule>
-
-    <rule id="r4-decision-rights-matrix" testable="true" depth="essential">
-      <statement>Every decision class (post tweet, halt email send, pause PH push, scale infra) has a named decider AND threshold. Reject ambiguous decision authority. Decisions over launch-stop authority belong to launch director with exec stand-in tiebreaker.</statement>
-      <rationale source="agile decision-making research">Unambiguous decision rights cut deliberation latency by 50%+ during high-pressure windows. RACI matrices apply during launches too.</rationale>
+    <rule id="deviation-log" testable="true" depth="essential">
+      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
+      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
     </rule>
-
-    <rule id="r5-rollback-playbook" testable="true" depth="essential">
-      <statement>A rollback playbook covers: partial rollback (retract one channel), full rollback (pull PH listing + email retraction + status page update), exec-comms template. Rollback decision criteria documented (e.g., "error rate &gt; 5% sustained 30 min triggers partial"). Reject launches without rollback playbook.</statement>
-      <rationale source="launch-rollback case studies">Launches that go sideways without rollback playbooks compound damage. Pre-defined rollback turns chaos into a known procedure.</rationale>
+    <rule id="human-checkpoint" testable="true" depth="essential">
+      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
+      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Launch-Day Warroom Template; it returns an action=skip envelope and yields control to the parent workflow.</statement>
+      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="War-room runbook with named roles">
-      <code lang="text"><![CDATA[
-Launch: AcmeNext v2 — Product Hunt + email + Twitter
-Window: 2026-05-22 07:00 PT - 19:00 PT
-
-Roles:
-  Launch director:   @jdoe       (backup: @asmith)
-  Content captain:   @kchen      (backup: @rgomez)
-  Ops lead:          @tparker    (backup: @sosborne)
-  Support triage:    @ljohnson   (backup: @nyamada)
-  Exec stand-in:     @mceo
-
-Channels:
-  #launch-control   — decisions, hourly updates (all leads + exec)
-  #launch-content   — copy review, asset publishing (content + director)
-  #launch-support   — incoming issues, customer responses (support)
-  #launch-exec      — exec-only briefings on issues > sev3
-      ]]></code>
-      <note>Illustrates r1 + r3 + r4 in a launch-day setup.</note>
-    </example>
-
-    <example type="bad" title="Chaos by Slack thread">
-      <code lang="text"><![CDATA[
-DM thread of 8 people. No named roles. PM is asking on Slack "who's
-posting to PH at 7am?" Marketing lead asks "should we hold the email
-send if signups slow?" — no answer. Engineer pushes hotfix without
-notifying support, who get blindsided by panicked customers.
-      ]]></code>
-      <note>Illustrates r1, r3, r4 violations. Common shape of launches that fail on coordination.</note>
-    </example>
-
+  <section title="Sources">
+    <reference>Product Hunt — launch playbooks</reference>
+    <reference>Atlassian — incident command</reference>
+    <reference>Reforge — launch coordination</reference>
+    <reference>Internal launch retros</reference>
   </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

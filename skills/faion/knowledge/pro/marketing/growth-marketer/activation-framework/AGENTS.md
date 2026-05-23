@@ -3,72 +3,101 @@ slug: activation-framework
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A 7-step framework for diagnosing and improving activation rate: define the activation event (behavior correlated with D30+ retention), measure baseline, map the funnel step by step, find the biggest drop-offs, reduce friction, increase motivation, and iterate with A/B tests.
-content_id: "d6f17d6467a68a65"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a 7-step activation diagnosis + remediation plan: event definition, baseline, funnel map, drop-off priorities, ICE-scored experiments.
+content_id: "051be133f17c2e7a"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [activation, onboarding, funnel-optimization, user-retention, aha-moment]
 ---
-# Activation Framework & Path Optimization
+# Activation Framework
 
 ## Summary
 
-**One-sentence:** A 7-step framework for diagnosing and improving activation rate: define the activation event (behavior correlated with D30+ retention), measure baseline, map the funnel step by step, find the biggest drop-offs, reduce friction, increase motivation, and iterate with A/B tests.
+**One-sentence:** Generates a 7-step activation diagnosis + remediation plan: event definition, baseline, funnel map, drop-off priorities, ICE-scored experiments.
 
-**One-paragraph:** A 7-step framework for diagnosing and improving activation rate: define the activation event (behavior correlated with D30+ retention), measure baseline, map the funnel step by step, find the biggest drop-offs, reduce friction, increase motivation, and iterate with A/B tests. Correct activation event definition is the most critical and most commonly wrong step.
+**One-paragraph:** Generates a 7-step activation diagnosis + remediation plan: event definition, baseline, funnel map, drop-off priorities, ICE-scored experiments. Use it when signups приходять, але week-1 retention слабкий, bottleneck невідомий. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Signups приходять, але week-1 retention слабкий, bottleneck невідомий.
+- Вибір або валідація activation event ('aha moment'), що корелює з D30 retention.
+- Mapping funnel, інструментація відсутніх events, пріоритизація drop-offs.
+- Побудова weekly activation dashboard + ICE-scored experiment backlog.
 
 ## Applies If (ALL must hold)
 
-- Signups are coming in but week-1 retention is mediocre and the bottleneck is unknown.
-- Choosing or validating an activation event ("aha moment") that should correlate with D30 retention.
-- Mapping a funnel, instrumenting missing events, and prioritizing which drop-off to attack first.
-- Building a weekly activation dashboard and experiment backlog.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=spec`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pre-launch: design activation into onboarding from day one; no remediation framework needed.
-- Pre-PMF: low activation may signal wrong product or wrong audience — fix the product first, not the funnel.
-- Sales-led B2B: activation happens in human-led implementation; CSM playbooks beat self-serve frameworks.
-- Single-session utility tools where every visit is an activation.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-activation-framework.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/activation-framework.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/activation-framework.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-activation-framework.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

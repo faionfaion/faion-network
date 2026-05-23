@@ -3,90 +3,100 @@ slug: launch-day-warroom-template
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Coordinated war-room template for launch day — channels, roles, escalation paths, hourly checkpoints, and rollback playbook.
-content_id: "54c71c5118d891a2"
-tags: [launch,war-room,coordination,product-hunt,rollback,escalation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Playbook step: launch-day warroom — named roles, channel topology, hourly checkpoints, escalation tree, rollback playbook.
+content_id: "c3919eeeec25884c"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [launch, war-room, coordination, product-hunt, rollback]
 ---
 # Launch-Day Warroom Template
 
 ## Summary
 
-**One-sentence:** Coordinated war-room template for launch day — channels, roles, escalation paths, hourly checkpoints, and rollback playbook.
+**One-sentence:** Playbook step: launch-day warroom — named roles, channel topology, hourly checkpoints, escalation tree, rollback playbook.
 
-**One-paragraph:** Launch days fail on coordination, not creative. The plan is written and the assets are ready, but on launch morning no one knows who decides when to push the Product Hunt link, who pings the affiliate cohort, or what to do when the API rate-limits. This methodology defines the war-room template: a named role list (launch director, content captain, ops lead, support triage, exec stand-in), a Slack/Discord channel topology (#launch-control, #launch-content, #launch-support, #launch-exec), a 12-hour hourly-checkpoint schedule with explicit decisions per hour, an escalation tree, and a rollback playbook for partial / full launch retraction. Mechanism: pre-launch dress rehearsal, named back-up per role, decision-rights matrix. Primary output: a launch-day runbook every role member acknowledges 48 hours before launch.
+**One-paragraph:** Playbook step: launch-day warroom — named roles, channel topology, hourly checkpoints, escalation tree, rollback playbook. Use it when launch involves >=2 channels (product hunt, x, email, podcast, youtube). The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Launch involves >=2 channels (Product Hunt, X, email, podcast, YouTube).
+- Launch has >=5 contributors (eng, design, marketing, support, comms).
+- Pre-launch dress rehearsal scheduled.
+- Named back-up per role identified.
 
 ## Applies If (ALL must hold)
 
-- launch involves ≥ 2 channels (Product Hunt, X/Twitter, email, podcast, YouTube)
-- launch has ≥ 5 contributors (eng, design, marketing, support, comms)
-- launch has a fixed launch hour (Product Hunt window, scheduled press)
-- prior launch experienced coordination breakdown OR this is the team's first launch
-- team uses Slack / Discord / Teams for real-time coordination
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=playbook-step`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- solo launch (one person doing everything) — war room would be self-talking
-- soft launch / rolling release with no fixed hour
-- internal-only launch (no external audience pressure)
-- launch already running — use incident playbook, not war-room setup
-- ≥ 3 launches per quarter on autopilot — operational maturity, war-room overhead unnecessary
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=playbook-step` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- launch date + hour set ≥ 14 days out
-- contributor list with availability confirmed for launch ± 12h
-- assets ready: tweets, emails, blog post, PH listing, screenshots
-- support contact rotation finalized
-- monitoring + dashboards configured (signups, errors, API latency)
-- exec stand-in named in case decision-rights escalation triggers
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer/growth-experiment-design` | Optional: launch-as-experiment framing |
-| `pro/marketing/gtm-strategist/launch-playbook` | Strategic context the war room executes |
-| `pro/dev/software-developer/api-monitoring-alerting` | Alerts during traffic surge |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: named roles, dress rehearsal, hourly checkpoints, decision-rights matrix, rollback playbook | ~1000 |
-| `content/02-output-contract.xml` | essential | Runbook schema, role assignments, checkpoint table, escalation tree | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes (silent role, decision deadlock, channel chaos, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `runbook_outline_draft` | sonnet | Generate war-room runbook skeleton from template |
-| `role_assignment_synth` | sonnet | Map team roster to roles + backups |
-| `checkpoint_schedule_synth` | sonnet | Generate hour-by-hour schedule with decisions |
-| `escalation_tree_writer` | sonnet | Draft escalation paths |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-launch-day-warroom-template.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/warroom-runbook.md` | Master runbook template |
-| `templates/role-assignment-matrix.md` | Decision-rights × role matrix |
-| `templates/checkpoint-schedule.md` | 12-hour hourly schedule |
-| `templates/rollback-playbook.md` | Retraction procedures |
+| `templates/launch-day-warroom-template.playbook-step.md` | Markdown playbook-step skeleton with 5-line header |
+| `templates/launch-day-warroom-template.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/dress-rehearsal-checklist.py` | Verify pre-launch readiness | T-48h |
-| `scripts/launch-status-rollup.py` | Aggregate channel metrics into one update | Hourly during launch |
+| `scripts/validate-launch-day-warroom-template.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `launch-retro-template`, `growth-experiment-design`
-- external: [Product Hunt launch guide](https://www.producthunt.com/launch) · [Lenny's launch playbook](https://www.lennysnewsletter.com/p/product-launch-playbook)
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

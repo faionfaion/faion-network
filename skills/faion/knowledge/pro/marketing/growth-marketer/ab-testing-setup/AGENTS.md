@@ -3,73 +3,101 @@ slug: ab-testing-setup
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A/B testing setup covers the technical and analytical groundwork for a valid experiment: accurate sample-size calculation (statsmodels NormalIndPower, not the simplified 16×p(1-p)/MDE² teaching formula), traffic-split configuration with deterministic-hash bucketing, SRM monitoring from day 1, and a plan-and-results template that an analyst agent fills in deterministically.
-content_id: "09b23bc4d257e097"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an A/B test plan with statsmodels-accurate sample size, deterministic-hash bucketing, SRM monitoring, and pre/post results template.
+content_id: "aaa9577d88448c61"
+complexity: deep
+produces: spec
+est_tokens: 4900
 tags: [ab-testing, experimentation, sample-size, statistical-power, experiment-design]
 ---
 # A/B Testing Setup
 
 ## Summary
 
-**One-sentence:** A/B testing setup covers the technical and analytical groundwork for a valid experiment: accurate sample-size calculation (statsmodels NormalIndPower, not the simplified 16×p(1-p)/MDE² teaching formula), traffic-split configuration with deterministic-hash bucketing, SRM monitoring from day 1, and a plan-and-results template that an analyst agent fills in deterministically.
+**One-sentence:** Generates an A/B test plan with statsmodels-accurate sample size, deterministic-hash bucketing, SRM monitoring, and pre/post results template.
 
-**One-paragraph:** A/B testing setup covers the technical and analytical groundwork for a valid experiment: accurate sample-size calculation (statsmodels NormalIndPower, not the simplified 16×p(1-p)/MDE² teaching formula), traffic-split configuration with deterministic-hash bucketing, SRM monitoring from day 1, and a plan-and-results template that an analyst agent fills in deterministically.
+**One-paragraph:** Generates an A/B test plan with statsmodels-accurate sample size, deterministic-hash bucketing, SRM monitoring, and pre/post results template. Use it when pre-launch sample-size та duration calculation для запланованого experiment. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Pre-launch sample-size та duration calculation для запланованого experiment.
+- Налаштування traffic-split + SRM monitoring у Statsig / GrowthBook / LaunchDarkly.
+- Audit чернетки test plan проти pre-launch checklist перед запуском трафіку.
+- Підготовка plan + results templates для аналітика, що заповнює їх детерміновано.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch sample-size and duration calculation for any planned experiment.
-- Configuring traffic split, randomization, and SRM monitoring in Statsig, GrowthBook, LaunchDarkly, or equivalent.
-- Auditing a draft test plan against the pre-launch checklist before traffic flows.
-- Generating plan and results templates that analysts fill in consistently across the team.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=spec`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Network-effect surfaces (chat, marketplace, multiplayer) — independent randomization is invalid; use cluster or switchback designs.
-- Heavy personalization where every user already sees a unique variant — plain A/B math doesn't apply.
-- Single-shot critical decisions (pricing model, brand direction) — blast radius too large.
-- Pre-instrumentation: if the primary metric is not tracked end-to-end yet, instrument first; computing sample size is meaningless otherwise.
-- Continuous heavy-tailed outcome metrics (revenue per user) without log-transform or bootstrap — proportion math misleads.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | opus | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-ab-testing-setup.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ab-testing-setup.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/ab-testing-setup.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ab-testing-setup.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

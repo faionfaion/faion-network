@@ -1,72 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Content Refresh SOP — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Five testable rules that every refresh decision and execution must enforce. These guard against the most common failure mode: cosmetic rewrites that re-trigger Google's "substantial update" signal without actually improving the page.</summary>
-
+<text id="01-core-rules" title="Content Refresh SOP Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules grounding Content Refresh SOP. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
   <section title="Rule set">
-
-    <rule id="r1-decay-evidence" testable="true" depth="essential">
-      <statement>Classify a URL as decaying ONLY when at least two of these three signals are true over the last 90 days: clicks dropped &gt;30% vs prior 90 days, avg position dropped &gt;3 ranks, OR engaged-session rate fell &gt;20%. One signal alone is noise.</statement>
-      <rationale source="Animalz Content Decay study (2021), Ahrefs decay analysis">Single-signal triggers fire on seasonality (impressions wobble), SERP feature changes (position fluctuates), and tracker drift. Two signals correlated within the same window correctly flag actual decay 87% of the time in the Animalz dataset.</rationale>
+    <rule id="preconditions-hold" testable="true" depth="essential">
+      <statement>Before running Content Refresh SOP, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
+      <rationale source="Google — Helpful Content guidelines">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
     </rule>
-
-    <rule id="r2-intent-shift-kill" testable="true" depth="essential">
-      <statement>Before refresh, fetch the live top-3 SERP results for the target keyword. If &gt;=2 of the top-3 are a different content format (e.g., your post is long-form, top-3 are now tools / videos / interactive maps), recommend KILL not refresh.</statement>
-      <rationale source="Google SERP feature analyses, ahrefs/semrush format-shift studies">Intent shift kills refresh ROI. Once SERP rewards a tool, prose cannot win even if rewritten. Common in finance ("calculator" intent), DIY ("step-by-step video"), local ("map pack"). Kill = noindex + 301 to closest related asset OR rebuild as the new format.</rationale>
+    <rule id="output-contract-binding" testable="true" depth="essential">
+      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
+      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
     </rule>
-
-    <rule id="r3-last-updated-honest" testable="true" depth="essential">
-      <statement>Update the visible "Last updated" date AND the schema dateModified field ONLY when refresh changed at least one of: primary claim, primary data point, top-of-page intro paragraph, or H1. Cosmetic edits (typo, image swap, link freshen) do NOT justify a date bump.</statement>
-      <rationale source="Google Search Quality Rater Guidelines section 4.6.1, Marie Haynes 2023 case studies">Dishonest date-bumping is a quality-rater flag and pattern-matched algorithmically post-Aug-2023 "Helpful Content Update". Sites caught bumping dates without substantive changes have lost 30-70% organic traffic in subsequent updates.</rationale>
+    <rule id="named-owner" testable="true" depth="essential">
+      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
+      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
     </rule>
-
-    <rule id="r4-evidence-before-prose" testable="true" depth="essential">
-      <statement>Replace or add primary evidence (stat, study citation, named expert quote, screenshot, dated data) BEFORE rewriting any prose. If no new evidence is available, the refresh is downgraded to "leave" — do not ship.</statement>
-      <rationale source="E-E-A-T 2023 update, Google SQRG section 3.1">Refresh ROI comes from new evidence, not prettier sentences. LLM-only prose polish triggers AI-content classifiers without raising quality. Evidence-first ensures each refresh is provably valuable to the reader.</rationale>
+    <rule id="deviation-log" testable="true" depth="essential">
+      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
+      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
     </rule>
-
-    <rule id="r5-redirect-disambiguation" testable="true" depth="essential">
-      <statement>When KILLing a URL: 301 to the closest topical sibling IF a sibling exists with overlapping intent AND ranking authority. Otherwise return 410 Gone. NEVER noindex-leave-orphan — orphans accumulate crawl budget loss and quality-signal dilution.</statement>
-      <rationale source="Google Webmaster guidelines, Search Off the Record podcast Aug-2022 episode on 410 vs 404">Orphan noindex pages are the #3 cause of crawl budget waste in enterprise SEO audits. 410 is a strong signal to deindex fast; 301 preserves equity when sibling intent matches. Choose deliberately — the wrong choice costs equity OR slows deindex.</rationale>
+    <rule id="human-checkpoint" testable="true" depth="essential">
+      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
+      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Content Refresh SOP; it returns an action=skip envelope and yields control to the parent workflow.</statement>
+      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Two-signal decay triggers refresh">
-      <code lang="text"><![CDATA[
-URL: /guide/saas-pricing-strategy (published 2023-02, last touched 2023-08)
-GSC 90d:    clicks 412 -> 198 (-52%)     [signal 1: drop > 30%]
-Rank:       avg pos 4.2 -> 8.7 (+4.5)    [signal 2: drop > 3 ranks]
-GA4 90d:    engaged% 64% -> 61%          [no signal]
-
-Decision: REFRESH (2 signals present)
-Action:   apply 9-step checklist; primary evidence to replace = 2023
-          pricing benchmark stat (now stale); add 2025 SaaS pricing
-          benchmark report citation.
-      ]]></code>
-      <note>Illustrates r1: two-signal threshold, not one-signal trigger.</note>
-    </example>
-
-    <example type="bad" title="Cosmetic refresh with dishonest date">
-      <code lang="text"><![CDATA[
-URL: /guide/best-crm-2024
-Action taken: ran prose through GPT to "freshen language", swapped
-              hero image, updated schema dateModified to today.
-Primary claim:  unchanged ("HubSpot is best for SMBs")
-Evidence:       unchanged (2023 G2 ranking)
-Result:         caught in next HCU update, -45% organic traffic.
-
-Repair: revert dateModified to actual date of last substantive edit.
-        Refresh-or-kill: requires new evidence OR kill. Pick one.
-      ]]></code>
-      <note>Illustrates r3 + r4 violation: date dishonesty plus prose-only refresh.</note>
-    </example>
-
+  <section title="Sources">
+    <reference>Google — Helpful Content guidelines</reference>
+    <reference>Google — E-E-A-T</reference>
+    <reference>Ahrefs — content decay research</reference>
+    <reference>Search Console / GA4 docs</reference>
   </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -3,72 +3,101 @@ slug: growth-referral-programs
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured programs that turn satisfied customers into acquisition channels via the TRIGGER-ACTION-REWARD model.
-content_id: "c84c5b2ba4e89705"
-tags: [referral, growth, acquisition, word-of-mouth, viral]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a referral-program spec: trigger event, incentive structure, K-factor projection, fraud guard, lifecycle emails, landing pages.
+content_id: "ef9b2ab3bf89cbc1"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [referral, k-factor, incentives, lifecycle, growth]
 ---
 # Growth Referral Programs
 
 ## Summary
 
-**One-sentence:** Structured programs that turn satisfied customers into acquisition channels via the TRIGGER-ACTION-REWARD model.
+**One-sentence:** Generates a referral-program spec: trigger event, incentive structure, K-factor projection, fraud guard, lifecycle emails, landing pages.
 
-**One-paragraph:** Structured programs that turn satisfied customers into acquisition channels via the TRIGGER-ACTION-REWARD model. Referred users have 4x LTV vs paid-acquisition users and cost 50-80% less to acquire. Referral programs fail when incentives are too weak, the sharing flow is hidden, or fraud is not prevented. Key design decisions: double-sided vs single-sided reward, reward sizing at 20-50% of CAC, trigger placement at win moments (not first visit), and idempotent reward fulfillment to prevent double-crediting.
+**One-paragraph:** Generates a referral-program spec: trigger event, incentive structure, K-factor projection, fraud guard, lifecycle emails, landing pages. Use it when product має nps >= 30 (users готові рекомендувати). The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Product має NPS >= 30 (users готові рекомендувати).
+- Unit economics дозволяють double-sided incentive.
+- Fraud detection адекватний для self-referral abuse.
+- Lifecycle email + landing infra може приймати referral params.
 
 ## Applies If (ALL must hold)
 
-- Product has PMF and at least a few hundred happy customers (NPS positive, D30 retention > 30%).
-- CAC via paid channels is rising and unit economics allow a 20-50% CAC reward to referrers.
-- LTV is high enough (> 3x CAC) that double-sided incentives are sustainable.
-- An agent loop can own design → tracking → email/in-app promotion → fraud review → KPI reporting.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=spec`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF or NPS still negative — referrals propagate churn, not growth.
-- Low-margin commodities where a $10 give/$10 get reward is not sustainable.
-- B2B with long enterprise sales cycles where sales-assisted introductions outperform self-serve referrals.
-- Compliance-heavy verticals (regulated finance, health) where incentivized referrals trigger jurisdiction-specific disclosure rules.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-growth-referral-programs.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-referral-programs.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/growth-referral-programs.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-referral-programs.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

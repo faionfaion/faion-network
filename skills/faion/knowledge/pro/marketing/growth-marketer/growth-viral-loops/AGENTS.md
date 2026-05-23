@@ -3,74 +3,101 @@ slug: growth-viral-loops
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Viral loops are self-reinforcing growth cycles where a user action creates an artifact that is shared or exposed, motivating new users to join and repeat the action.
-content_id: "06a0e566319fd7f6"
-tags: [viral, growth, k-factor, loops, acquisition]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a viral-loop spec: invitation moment, K-factor target, cycle time, projected growth curve, friction-removal experiments.
+content_id: "b15a3541b6e6caa7"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [viral-loops, k-factor, cycle-time, growth-strategy]
 ---
-# Viral Loops and Growth Mechanics
+# Growth Viral Loops
 
 ## Summary
 
-**One-sentence:** Viral loops are self-reinforcing growth cycles where a user action creates an artifact that is shared or exposed, motivating new users to join and repeat the action.
+**One-sentence:** Generates a viral-loop spec: invitation moment, K-factor target, cycle time, projected growth curve, friction-removal experiments.
 
-**One-paragraph:** Viral loops are self-reinforcing growth cycles where a user action creates an artifact that is shared or exposed, motivating new users to join and repeat the action. The K-factor (K = i * c, invites-per-user times conversion rate) quantifies loop strength. Seven loop types exist: inherent, word-of-mouth, incentivized, social, collaborative, content, and embedded. Select one primary loop type matched to your product before engineering, then instrument it and iterate via viral-optimization.
+**One-paragraph:** Generates a viral-loop spec: invitation moment, K-factor target, cycle time, projected growth curve, friction-removal experiments. Use it when product має natural sharing moment (collaborative / multiplayer / messaging). The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Product має natural sharing moment (collaborative / multiplayer / messaging).
+- Instrumentation per share + per accepted invite.
+- Existing K-factor >=0.4 — є шанс довести до >1 з оптимізацією.
+- Cycle time відстежуваний (від send до accept).
 
 ## Applies If (ALL must hold)
 
-- Designing a growth loop for a new product or vertical (strategic design layer).
-- Choosing among loop types: which fits product DNA, ICP, and current PMF stage?
-- Planning measurement infrastructure (events, K-funnel, cycle-time tracker) before engineering.
-- Companion to viral-optimization (the iterating layer) and ops-churn-prevention (retention side).
-- Designing or auditing a growth loop where user output (content, invites, embedded artifacts) creates distribution that brings new users.
-- Strategic-level work: matching loop to product type, sizing the realistic K for the category, planning measurement infrastructure.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=spec`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF: weak product value means weak inviter motivation and the loop fizzles regardless of mechanics. Fix value, then design loops.
-- Pure sales-led businesses where unit economics already work — adding viral complexity gives marginal lift.
-- Regulated categories (finance, health, gambling) where unsolicited referrals violate FTC/MiFID II/HIPAA or CASL/GDPR compliance rules.
-- Products where sharing imposes social cost on the inviter (sensitive niches) — virality is anti-loyalty.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-growth-viral-loops.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-viral-loops.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/growth-viral-loops.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-viral-loops.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

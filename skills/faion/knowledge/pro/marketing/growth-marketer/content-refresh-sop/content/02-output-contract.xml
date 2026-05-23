@@ -1,50 +1,152 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Content Refresh SOP — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the output shape of a refresh decision + the executed checklist. Agent must satisfy this before publishing or escalating to human review.</summary>
-
-  <output-contract>
-    <required>
-      <field name="url" format="absolute_url"/>
-      <field name="decision" format="enum: refresh | consolidate | kill | leave"/>
-      <field name="decay_signals" required_keys="clicks_delta_pct,position_delta,engaged_session_delta_pct"
-             value_type="numeric_with_window"/>
-      <field name="signals_triggered_count" type="integer" min="0" max="3"/>
-      <field name="serp_intent_check" required_keys="top3_formats,format_shift_detected"/>
-      <field name="checklist_completed" required_keys="title,intro,primary_claim,evidence,schema,internal_links,image_alt,last_updated_changed,redirect_or_noindex"/>
-      <field name="evidence_replacement" min="1" source="new_citation_or_data_with_date"/>
-      <field name="date_bumped" type="boolean" condition="true_only_if_substantive_change=true"/>
-      <field name="reeval_date" format="ISO-8601_date_plus_90_days"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">decision=refresh with signals_triggered_count &lt; 2</pattern>
-      <pattern id="f2">date_bumped=true AND substantive_change=false</pattern>
-      <pattern id="f3">evidence_replacement entries that are LLM-fabricated citations (no resolvable URL or DOI)</pattern>
-      <pattern id="f4">decision=kill with neither redirect_target nor 410_status set</pattern>
-      <pattern id="f5">refresh checklist marked complete while primary_claim unchanged AND evidence unchanged</pattern>
-      <pattern id="f6">cosmetic-only prose rewrite passed off as refresh ("re-worded for clarity" without new claim/evidence)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Group multiple stale stats into one updated stat block; tag with member count.</transformation>
-      <transformation>Trim outdated examples while preserving the rule they illustrate.</transformation>
-      <transformation>Consolidate two near-duplicate URLs into one (decision=consolidate) — the surviving URL takes the better-ranking slug, the other 301s.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/refresh-decision.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist (run before marking refresh DONE)">
-    <list>
-      <item>Two-signal decay rule satisfied (r1) OR decision=leave</item>
-      <item>SERP intent check executed within last 7 days (r2)</item>
-      <item>At least one piece of new evidence added with resolvable citation (r4)</item>
-      <item>If date bumped — at least one of {claim, intro, H1, primary data} actually changed (r3)</item>
-      <item>If kill — redirect target chosen OR 410 status set (r5)</item>
-      <item>Internal link anchors do not cannibalize sibling cluster URLs</item>
-      <item>Image alt text reflects current visual content, not stale 2023 screenshots</item>
-      <item>Re-evaluation date set 90 days out</item>
-      <item>Output validates against templates/refresh-decision.json</item>
-    </list>
+<text id="02-output-contract" title="Content Refresh SOP Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the `playbook-step` artefact this methodology produces. Validator at scripts/validate-content-refresh-sop.py enforces the contract.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/content-refresh-sop.json",
+  "title": "Content Refresh SOP playbook step",
+  "type": "object",
+  "required": [
+    "slug",
+    "owner",
+    "steps",
+    "decision_branches",
+    "deviation_log_reference"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "content-refresh-sop"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "input",
+          "owner",
+          "exit_criterion",
+          "output_location"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "exit_criterion": {
+            "type": "string",
+            "minLength": 10
+          },
+          "output_location": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decision_branches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "when",
+          "then"
+        ],
+        "properties": {
+          "when": {
+            "type": "string"
+          },
+          "then": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deviation_log_reference": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "content-refresh-sop",
+  "owner": "playbook owner",
+  "steps": [
+    {
+      "id": "s1",
+      "input": "brief",
+      "owner": "lead",
+      "exit_criterion": "brief reviewed + scope confirmed",
+      "output_location": "docs/briefs/"
+    },
+    {
+      "id": "s2",
+      "input": "data",
+      "owner": "analyst",
+      "exit_criterion": "dataset >=30 records validated",
+      "output_location": "warehouse:tbl"
+    },
+    {
+      "id": "s3",
+      "input": "draft",
+      "owner": "writer",
+      "exit_criterion": "draft passes editorial check",
+      "output_location": "docs/drafts/"
+    },
+    {
+      "id": "s4",
+      "input": "draft",
+      "owner": "lead",
+      "exit_criterion": "signed off by named reviewer",
+      "output_location": "docs/published/"
+    }
+  ],
+  "decision_branches": [
+    {
+      "when": "data_records < 30",
+      "then": "loop back to s2"
+    }
+  ],
+  "deviation_log_reference": "ops/deviation-log.md#L101"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "content-refresh-sop",
+  "steps": [
+    {
+      "id": "s1"
+    }
+  ]
+}
+]]></code>
+    <note>Step missing exit_criterion, output_location, owner, input; deviation_log_reference missing.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
+    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
+    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+  </section>
+  <reference path="scripts/validate-content-refresh-sop.py">Validator implementing this schema.</reference>
 </text>

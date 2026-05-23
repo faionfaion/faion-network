@@ -1,56 +1,152 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Launch-Day Warroom Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of the launch-day runbook + checkpoint log. Subagent must satisfy this before T-48 dress rehearsal.</summary>
-
-  <output-contract>
-    <required>
-      <field name="launch_name" type="string"/>
-      <field name="launch_window" type="object"
-             required_keys="start_iso,end_iso,timezone"/>
-      <field name="roles" type="object"
-             required_keys="launch_director,content_captain,ops_lead,support_triage,exec_stand_in"
-             value_type="object_with_keys=primary,backup"
-             constraint="every role has primary AND backup; no person holds 2 roles"/>
-      <field name="channels" type="exact_set"
-             value="launch_control,launch_content,launch_support,launch_exec"/>
-      <field name="dress_rehearsal" type="object"
-             required_keys="completed,date,duration_min,issues_found"
-             constraint="completed == true AND date &lt;= launch_start - 48h"/>
-      <field name="checkpoint_schedule" type="array_object"
-             item_required_keys="hour,traffic_status,channel_post_status,support_queue_depth,error_rate,next_hour_action,decider"
-             constraint="every hour in launch_window has an entry"/>
-      <field name="decision_rights" type="array_object"
-             item_required_keys="decision_class,named_decider,threshold,backup_decider"/>
-      <field name="rollback_playbook" type="object"
-             required_keys="partial_rollback_steps,full_rollback_steps,decision_criteria,exec_comms_template"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">Any role unfilled OR backup missing OR person holds 2+ roles (violates r1)</pattern>
-      <pattern id="f2">dress_rehearsal.completed == false OR scheduled &lt; 48h before launch (violates r2)</pattern>
-      <pattern id="f3">checkpoint_schedule with hours missing OR entries with vague "TBD" decisions (violates r3)</pattern>
-      <pattern id="f4">decision_rights entries with named_decider == null OR threshold == null (violates r4)</pattern>
-      <pattern id="f5">rollback_playbook missing any of: partial steps, full steps, criteria, exec comms (violates r5)</pattern>
-      <pattern id="f6">Channels list non-standard (e.g., only #general) — must be the 4 launch-* channels</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Combine launch_support + support_triage into a single role if team is small AND launch volume is bounded.</transformation>
-      <transformation>Extend checkpoint cadence to half-hourly during the first 3 hours; revert to hourly afterward.</transformation>
-      <transformation>Add launch_legal channel if regulated industry; legal review must precede any rollback-comms post.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/warroom-runbook.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every role has primary + backup, no doubles</item>
-      <item>Dress rehearsal completed ≥ 48h before launch</item>
-      <item>Hourly checkpoints scheduled for full window</item>
-      <item>Every decision class has named decider + threshold</item>
-      <item>Rollback playbook covers partial + full + exec comms</item>
-      <item>Channels match the 4-channel topology</item>
-    </list>
+<text id="02-output-contract" title="Launch-Day Warroom Template Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the `playbook-step` artefact this methodology produces. Validator at scripts/validate-launch-day-warroom-template.py enforces the contract.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/launch-day-warroom-template.json",
+  "title": "Launch-Day Warroom Template playbook step",
+  "type": "object",
+  "required": [
+    "slug",
+    "owner",
+    "steps",
+    "decision_branches",
+    "deviation_log_reference"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "launch-day-warroom-template"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "input",
+          "owner",
+          "exit_criterion",
+          "output_location"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "exit_criterion": {
+            "type": "string",
+            "minLength": 10
+          },
+          "output_location": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decision_branches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "when",
+          "then"
+        ],
+        "properties": {
+          "when": {
+            "type": "string"
+          },
+          "then": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deviation_log_reference": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "launch-day-warroom-template",
+  "owner": "playbook owner",
+  "steps": [
+    {
+      "id": "s1",
+      "input": "brief",
+      "owner": "lead",
+      "exit_criterion": "brief reviewed + scope confirmed",
+      "output_location": "docs/briefs/"
+    },
+    {
+      "id": "s2",
+      "input": "data",
+      "owner": "analyst",
+      "exit_criterion": "dataset >=30 records validated",
+      "output_location": "warehouse:tbl"
+    },
+    {
+      "id": "s3",
+      "input": "draft",
+      "owner": "writer",
+      "exit_criterion": "draft passes editorial check",
+      "output_location": "docs/drafts/"
+    },
+    {
+      "id": "s4",
+      "input": "draft",
+      "owner": "lead",
+      "exit_criterion": "signed off by named reviewer",
+      "output_location": "docs/published/"
+    }
+  ],
+  "decision_branches": [
+    {
+      "when": "data_records < 30",
+      "then": "loop back to s2"
+    }
+  ],
+  "deviation_log_reference": "ops/deviation-log.md#L101"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "launch-day-warroom-template",
+  "steps": [
+    {
+      "id": "s1"
+    }
+  ]
+}
+]]></code>
+    <note>Step missing exit_criterion, output_location, owner, input; deviation_log_reference missing.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
+    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
+    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+  </section>
+  <reference path="scripts/validate-launch-day-warroom-template.py">Validator implementing this schema.</reference>
 </text>

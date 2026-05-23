@@ -3,73 +3,100 @@ slug: activation-tactics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Concrete techniques for increasing the percentage of new signups that reach the Aha moment: progressive onboarding, templates/presets, activation checklists, empty state redesign, time-to-value reduction, activation emails, and in-app guidance.
-content_id: "00c9b2835d8c3b63"
-tags: [activation, onboarding, aarrr, experiments, ab-testing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Playbook step: applies friction-reduction + motivation tactics (checklists, email sequences, in-app guides) to top activation drop-offs.
+content_id: "5c6df8ccb87cd156"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [activation, tactics, onboarding, lifecycle-email, friction-reduction]
 ---
-# Activation Tactics & Experiments
+# Activation Tactics
 
 ## Summary
 
-**One-sentence:** Concrete techniques for increasing the percentage of new signups that reach the Aha moment: progressive onboarding, templates/presets, activation checklists, empty state redesign, time-to-value reduction, activation emails, and in-app guidance.
+**One-sentence:** Playbook step: applies friction-reduction + motivation tactics (checklists, email sequences, in-app guides) to top activation drop-offs.
 
-**One-paragraph:** Concrete techniques for increasing the percentage of new signups that reach the Aha moment: progressive onboarding, templates/presets, activation checklists, empty state redesign, time-to-value reduction, activation emails, and in-app guidance. Each tactic is paired with an experiment template for A/B testing.
+**One-paragraph:** Playbook step: applies friction-reduction + motivation tactics (checklists, email sequences, in-app guides) to top activation drop-offs. Use it when top drop-off ідентифікований — потрібна конкретна tactical intervention. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Top drop-off ідентифікований — потрібна конкретна tactical intervention.
+- Налаштування activation checklist + tooltips в onboarding flow.
+- Lifecycle email sequence для re-engage signups, що не дійшли до aha moment.
+- Сегментована onboarding (по use case) для multi-persona продуктів.
 
 ## Applies If (ALL must hold)
 
-- Activation rate below target (typically below 30-40% for D7).
-- Session recordings show users landing on empty states or quitting during onboarding.
-- Time-to-first-value exceeds 5 minutes for a simple use case.
-- Email open rates for Day 0 welcome email are high but click-through is low.
-- You have an A/B testing framework and want a prioritized experiment backlog.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=playbook-step`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF: low activation may signal wrong product/audience, not friction — fix the product first.
-- Sales-led B2B with human-guided implementations — self-serve activation tactics do not apply.
-- When you do not yet track the activation event — instrument first, optimize second.
-- Single-session utility tools where "activation" equals "usage" — no onboarding funnel exists.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=playbook-step` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-activation-tactics.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/activation-tactics.playbook-step.md` | Markdown playbook-step skeleton with 5-line header |
+| `templates/activation-tactics.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-activation-tactics.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

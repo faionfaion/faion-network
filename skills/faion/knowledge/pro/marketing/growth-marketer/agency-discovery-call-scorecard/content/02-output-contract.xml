@@ -1,30 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Discovery Call Scorecard Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agency Discovery Call Scorecard deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="dimensions" type="list" min="3" schema="{name,anchors_1_3_5,weight}" />
-      <field name="instance_scores" type="list" min="1" schema="{instance_id,dimension_scores,evidence_refs}" />
-      <field name="rater_count" type="integer" min="1" />
-      <field name="weighted_total" format="float" />
-    </required>
-    <forbidden>
-      <pattern id="f1">scores without evidence_refs</pattern>
-      <pattern id="f2">post-hoc weight changes after scoring</pattern>
-      <pattern id="f3">missing anchors_1_3_5 for any dimension</pattern>
-      <pattern id="f4">single-rater scores on decisions ≥$10k</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Average scores across raters only after reconciliation when divergence &gt;1.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every score cites evidence</item>
-      <item>Weights frozen pre-scoring</item>
-      <item>Anchors present 1/3/5</item>
-      <item>Reconciliation step recorded when needed</item>
-    </list>
+<text id="02-output-contract" title="Agency Discovery Call Scorecard Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the `rubric` artefact this methodology produces. Validator at scripts/validate-agency-discovery-call-scorecard.py enforces the contract.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-discovery-call-scorecard.json",
+  "title": "Agency Discovery Call Scorecard rubric",
+  "type": "object",
+  "required": [
+    "slug",
+    "axes",
+    "score_range",
+    "decision_threshold",
+    "owner"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "agency-discovery-call-scorecard"
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "weight",
+          "anchors"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "anchors": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "score_range": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "decision_threshold": {
+      "type": "number"
+    },
+    "owner": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "agency-discovery-call-scorecard",
+  "axes": [
+    {
+      "name": "fit",
+      "weight": 0.3,
+      "anchors": [
+        "poor",
+        "good",
+        "excellent"
+      ]
+    },
+    {
+      "name": "budget",
+      "weight": 0.3,
+      "anchors": [
+        "<5k",
+        "5-20k",
+        ">20k"
+      ]
+    },
+    {
+      "name": "urgency",
+      "weight": 0.2,
+      "anchors": [
+        "browsing",
+        "this quarter",
+        "this month"
+      ]
+    },
+    {
+      "name": "decision_maker",
+      "weight": 0.2,
+      "anchors": [
+        "IC",
+        "manager",
+        "owner"
+      ]
+    }
+  ],
+  "score_range": [
+    0,
+    100
+  ],
+  "decision_threshold": 60,
+  "owner": "sales lead"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "agency-discovery-call-scorecard",
+  "axes": []
+}
+]]></code>
+    <note>axes empty (need &gt;=3), missing score_range, decision_threshold, owner.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
+    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
+    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+  </section>
+  <reference path="scripts/validate-agency-discovery-call-scorecard.py">Validator implementing this schema.</reference>
 </text>

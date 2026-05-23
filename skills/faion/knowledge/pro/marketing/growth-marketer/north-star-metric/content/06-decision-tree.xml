@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="North Star Metric Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+
+  <decision-tree>
+    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+
+    <branch when="preconditions_hold == false">
+      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    </branch>
+
+    <branch when="preconditions_hold == true">
+      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+
+      <branch when="owner_named == false">
+        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      </branch>
+
+      <branch when="owner_named == true">
+        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+
+        <branch when="schema_valid == false">
+          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        </branch>
+
+        <branch when="schema_valid == true">
+          <question id="q-signoff">Has the named human reviewer signed off?</question>
+
+          <branch when="signoff == false">
+            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          </branch>
+
+          <branch when="signoff == true">
+            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="happy-path">
+    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+  </example>
+</text>

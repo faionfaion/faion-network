@@ -1,27 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cohort-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cohort-implementation. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Cohort Implementation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules grounding Cohort Implementation. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always use COUNT(DISTINCT user_id), never COUNT(*) in cohort queries.</statement>
-      <rationale source="v1-source">Duplicate events from retry logic, client-side buffering, or ETL replays inflate retention percentages. COUNT(DISTINCT) is the only safe aggregate.</rationale>
+    <rule id="preconditions-hold" testable="true" depth="essential">
+      <statement>Before running Cohort Implementation, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
+      <rationale source="Mixpanel / Amplitude — cohort docs">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Store cohort tables in long-format (cohort, day_offset, retention_pct) and pivot only in BI tools.</statement>
-      <rationale source="v1-source">Wide-pivot in SQL is inflexible — adding a new day_offset value requires a schema change. BI tools pivot interactively. Long-format also enables dbt tests on the retention_pct column.</rationale>
+    <rule id="output-contract-binding" testable="true" depth="essential">
+      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
+      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Materialize cohort_size as a column on every output row.</statement>
-      <rationale source="v1-source">Downstream tools should never recompute cohort_size via subquery. Recomputing is fragile to filter changes and expensive at scale.</rationale>
+    <rule id="named-owner" testable="true" depth="essential">
+      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
+      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Pin the retention metric definition in the model description; a silent change from login to core_action invalidates all historical comparisons.</statement>
-      <rationale source="v1-source">Cohort comparisons are only valid when the retention metric is identical across cohorts. Metric drift is invisible until someone notices a suspicious trend jump.</rationale>
+    <rule id="deviation-log" testable="true" depth="essential">
+      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
+      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use LEFT JOIN events ON user_id, not INNER JOIN, to preserve cohort_size denominator.</statement>
-      <rationale source="v1-source">INNER JOIN silently drops users with no activity in the join window, making cohort_size appear smaller than actual and inflating retention percentages.</rationale>
+    <rule id="human-checkpoint" testable="true" depth="essential">
+      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
+      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Cohort Implementation; it returns an action=skip envelope and yields control to the parent workflow.</statement>
+      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
     </rule>
   </section>
+  <section title="Sources">
+    <reference>Mixpanel / Amplitude — cohort docs</reference>
+    <reference>Mode Analytics — retention SQL</reference>
+    <reference>dbt — cohort modeling</reference>
+    <reference>Reichheld — retention research</reference>
+  </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

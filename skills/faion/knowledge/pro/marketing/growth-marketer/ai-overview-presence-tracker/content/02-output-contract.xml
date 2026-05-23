@@ -1,66 +1,116 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AIO Presence Tracker Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the per-query snapshot, the weekly aggregate, and the KPI definitions.</summary>
-
-  <section title="Required snapshot fields">
-    <list>
-      <item><code>scrape_started_at_utc</code> + <code>scrape_completed_at_utc</code></item>
-      <item><code>geo</code> (ISO country code or `world` for non-geo)</item>
-      <item><code>adapter_version</code></item>
-      <item><code>queries</code>: object query_text → per-query record</item>
-      <item><code>queries.<q>.aio_present</code> (bool)</item>
-      <item><code>queries.<q>.panel_citations</code> (array of {position, domain, title, snippet})</item>
-      <item><code>queries.<q>.our_domain_cited</code> (bool)</item>
-      <item><code>queries.<q>.our_panel_position</code> (integer or null)</item>
-      <item><code>queries.<q>.our_snippet_selected</code> (bool; true iff snippet text matches our page within tolerance)</item>
-      <item><code>queries.<q>.status</code>: enum {ok, error, captcha, parse_fail}</item>
-      <item><code>control_pass_rate</code> (float; required for snapshot to be `trusted`)</item>
-      <item><code>trust_tag</code>: enum {trusted, untrusted}</item>
-    </list>
-    <reference path="templates/snapshot.json">Authoritative JSON Schema.</reference>
+<text id="02-output-contract" title="AI Overview Presence Tracker Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the `report` artefact this methodology produces. Validator at scripts/validate-ai-overview-presence-tracker.py enforces the contract.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-overview-presence-tracker.json",
+  "title": "AI Overview Presence Tracker report",
+  "type": "object",
+  "required": [
+    "slug",
+    "owner",
+    "period_start",
+    "period_end",
+    "metrics",
+    "findings",
+    "deviation_log_reference"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "ai-overview-presence-tracker"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 10
+      }
+    },
+    "deviation_log_reference": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
-
-  <section title="Weekly aggregate fields">
-    <list>
-      <item><code>week_iso</code></item>
-      <item><code>kpi.our_domain_cited_rate</code> (per query, computed across the 7 daily snapshots)</item>
-      <item><code>kpi.aio_presence_rate</code> (per query)</item>
-      <item><code>kpi.our_snippet_selected_rate</code> (per query)</item>
-      <item><code>kpi.our_panel_position_median</code> (per query)</item>
-      <item><code>trend_delta_4w</code>: per-query KPI delta vs 4-week rolling baseline</item>
-      <item><code>untrusted_days</code>: count of days flagged untrusted</item>
-    </list>
-  </section>
-
-  <section title="KPI definitions">
-    <list>
-      <item><code>our_domain_cited_rate</code> = days_our_domain_cited / days_aio_present (per priority query).</item>
-      <item><code>our_snippet_selected</code> = true when AIO snippet text matches our page H2 / definition / table cell within 90% fuzzy match.</item>
-      <item><code>our_panel_position</code> = ordinal position of our citation in the panel's source list (1 = first).</item>
-    </list>
-  </section>
-
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "ai-overview-presence-tracker",
+  "owner": "analytics owner",
+  "period_start": "2026-05-01",
+  "period_end": "2026-05-22",
+  "metrics": [
+    {
+      "name": "activation_rate",
+      "value": 0.31,
+      "unit": "ratio"
+    }
+  ],
+  "findings": [
+    "activation rate up 4pp WoW; biggest lift from onboarding checklist v2"
+  ],
+  "deviation_log_reference": "ops/deviation-log.md#L88"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "ai-overview-presence-tracker",
+  "period_start": "2026-05-01"
+}
+]]></code>
+    <note>Missing required: owner, period_end, metrics, findings, deviation_log_reference.</note>
+  </example>
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>Weekly aggregate computed from `untrusted` snapshots without flag.</description>
-      <reason>r1 violation. Aggregate computed on bad data misleads decisions.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Snapshot stored without scrape_started_at_utc.</description>
-      <reason>Timestamp is required for trend ordering.</reason>
-    </antipattern>
-    <antipattern>
-      <description>queries object reports only aio_present without panel_citations / our_panel_position.</description>
-      <reason>r3 violation. Position + snippet are required for diagnosis.</reason>
-    </antipattern>
+    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
+    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
+    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
   </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Control list passed &gt;= 70% of expectations.</item>
-      <item>trust_tag matches control_pass_rate threshold.</item>
-      <item>Weekly aggregate excludes untrusted days from the kpi rollup OR notes the inclusion.</item>
-      <item>Primary KPI displayed prominently in the weekly report; not buried.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-ai-overview-presence-tracker.py">Validator implementing this schema.</reference>
 </text>

@@ -3,92 +3,101 @@ slug: internal-link-audit
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: SOP for auditing and rewiring internal links across a content site to support topic clusters, distribute authority, and surface orphan pages.
-content_id: "395667c72a6c13fa"
-tags: [seo, internal-linking, topic-cluster, audit, orphan-pages, link-equity]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a quarterly internal-link audit: per-page incoming counts, orphans, over-linked hubs, anchor-text distribution, rewire plan.
+content_id: "a06f9d51ffa36897"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [seo, internal-linking, topic-cluster, audit, orphan-pages]
 ---
 # Internal Link Audit
 
 ## Summary
 
-**One-sentence:** SOP for auditing and rewiring internal links across a content site to support topic clusters, distribute authority, and surface orphan pages.
+**One-sentence:** Generates a quarterly internal-link audit: per-page incoming counts, orphans, over-linked hubs, anchor-text distribution, rewire plan.
 
-**One-paragraph:** SEO methodologies often stop at off-site link building, but topic-cluster strategy stands or falls on internal linking discipline — and few teams have a recurring audit. This methodology defines a quarterly audit: crawl the site, build the internal-link graph, compute per-page incoming-link counts, flag orphans (0 internal links), flag over-linked hubs (&gt; 200 internal links), audit anchor-text distribution per cluster, and produce a rewire plan. Mechanism: tooling-agnostic workflow (Screaming Frog / Sitebulb / in-house crawler), cluster-pillar adjacency graph, anchor-text rubric per cluster, and a change-batch with documented before/after metrics. Primary output: a rewire plan with prioritized link additions / removals, paired with a pre/post metrics commitment to verify the rewire moved cluster ranking.
+**One-paragraph:** Generates a quarterly internal-link audit: per-page incoming counts, orphans, over-linked hubs, anchor-text distribution, rewire plan. Use it when site має >=30 published content pages з topical structure. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Site має >=30 published content pages з topical structure.
+- Team operates >=1 topic cluster (pillar + >=5 cluster pages).
+- Crawl access (Screaming Frog / Sitebulb / in-house) налаштований.
+- Pre/post metrics commitment задокументовано.
 
 ## Applies If (ALL must hold)
 
-- site has ≥ 30 published content pages with topical structure
-- team operates ≥ 1 topic cluster (pillar + ≥ 5 cluster pages)
-- crawl tooling available (Screaming Frog, Sitebulb, Ahrefs, Semrush, in-house)
-- analytics has 90+ days of organic search baseline
-- a content-ops owner exists with publish permissions
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=report`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- pure single-product landing site (no content layer)
-- &lt; 30 pages — manual review beats audit overhead
-- e-commerce category structure where internal linking is driven by faceted nav (use ecommerce-specific SOP)
-- site under active migration (URL changes pending) — audit after migration settles
-- regulated content (medical / legal disclaimers) where editorial change requires legal sign-off
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=report` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- complete site URL list (sitemap.xml + crawl)
-- exported internal-link graph (source URL, target URL, anchor text)
-- topic-cluster map (pillar pages + cluster member pages)
-- 90-day organic baseline per cluster (rankings, impressions, clicks)
-- change-batch staging environment OR PR-based editing workflow
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/seo-manager/topical-authority` | Cluster structure that internal linking reinforces |
-| `pro/marketing/growth-marketer/aarrr-pirate-metrics` | Optional baseline tracking |
-| `pro/marketing/growth-marketer/seo-techniques` | Companion off-site link-building methodology |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: pillar-to-cluster adjacency, orphan elimination, anchor diversity, no over-linked hubs, before/after metrics | ~1000 |
-| `content/02-output-contract.xml` | essential | Rewire plan schema, per-page action list, pre/post commitments | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (cascade re-link, anchor mono-tagging, orphan recreate, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=report | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `crawl_normalizer` | haiku | Convert crawler export to standard graph format |
-| `orphan_detector` | haiku | Find pages with 0 incoming internal links |
-| `anchor_text_classifier` | sonnet | Tag anchors as exact-match, partial, generic, branded |
-| `rewire_plan_synth` | opus | Synthesize per-cluster rewire plan, prioritize by impact |
-| `before_after_metrics_designer` | sonnet | Define metrics to validate rewire |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-internal-link-audit.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/rewire-plan.md` | Per-page action list (add / remove / change anchor) |
-| `templates/anchor-rubric.md` | Anchor-text diversity scoring rubric |
-| `templates/cluster-adjacency-map.md` | Pillar + cluster member map |
-| `templates/before-after-metrics.md` | Pre/post tracking commitment |
+| `templates/internal-link-audit.report.md` | Markdown report skeleton with 5-line header |
+| `templates/internal-link-audit.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/link-graph-builder.py` | Build internal-link graph from crawler CSV | Audit start |
-| `scripts/orphan-finder.py` | List pages with 0 incoming internal links | Audit start |
-| `scripts/anchor-diversity-report.py` | Per-cluster anchor distribution | Audit middle |
-| `scripts/rewire-validator.py` | Diff before/after graph; verify changes applied | Post-rewire |
+| `scripts/validate-internal-link-audit.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
-- peer methodologies: `topical-authority`, `seo-techniques`
-- external: [Screaming Frog docs](https://www.screamingfrog.co.uk/seo-spider/) · [Ahrefs internal-link guide](https://ahrefs.com/blog/internal-links-for-seo/)
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

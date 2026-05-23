@@ -1,30 +1,152 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Content Pillars Niche Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agency Content Pillars Niche deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="steps" type="list" min="4" schema="{id,input,owner,exit_criterion,output_location}" />
-      <field name="decision_branches" type="list" />
-      <field name="owner_of_playbook" type="string" />
-      <field name="deviation_log_reference" format="url_or_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">step without exit_criterion</pattern>
-      <pattern id="f2">playbook without named owner</pattern>
-      <pattern id="f3">decision branch without explicit signal</pattern>
-      <pattern id="f4">deviation log missing</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder steps as long as input/output graph stays acyclic.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has exit_criterion</item>
-      <item>Owner named</item>
-      <item>Branches explicit</item>
-      <item>Deviation log exists</item>
-    </list>
+<text id="02-output-contract" title="Agency Content Pillars (Niche) Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the `playbook-step` artefact this methodology produces. Validator at scripts/validate-agency-content-pillars-niche.py enforces the contract.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-content-pillars-niche.json",
+  "title": "Agency Content Pillars (Niche) playbook step",
+  "type": "object",
+  "required": [
+    "slug",
+    "owner",
+    "steps",
+    "decision_branches",
+    "deviation_log_reference"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "const": "agency-content-pillars-niche"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "input",
+          "owner",
+          "exit_criterion",
+          "output_location"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "exit_criterion": {
+            "type": "string",
+            "minLength": 10
+          },
+          "output_location": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decision_branches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "when",
+          "then"
+        ],
+        "properties": {
+          "when": {
+            "type": "string"
+          },
+          "then": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deviation_log_reference": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "agency-content-pillars-niche",
+  "owner": "playbook owner",
+  "steps": [
+    {
+      "id": "s1",
+      "input": "brief",
+      "owner": "lead",
+      "exit_criterion": "brief reviewed + scope confirmed",
+      "output_location": "docs/briefs/"
+    },
+    {
+      "id": "s2",
+      "input": "data",
+      "owner": "analyst",
+      "exit_criterion": "dataset >=30 records validated",
+      "output_location": "warehouse:tbl"
+    },
+    {
+      "id": "s3",
+      "input": "draft",
+      "owner": "writer",
+      "exit_criterion": "draft passes editorial check",
+      "output_location": "docs/drafts/"
+    },
+    {
+      "id": "s4",
+      "input": "draft",
+      "owner": "lead",
+      "exit_criterion": "signed off by named reviewer",
+      "output_location": "docs/published/"
+    }
+  ],
+  "decision_branches": [
+    {
+      "when": "data_records < 30",
+      "then": "loop back to s2"
+    }
+  ],
+  "deviation_log_reference": "ops/deviation-log.md#L101"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "agency-content-pillars-niche",
+  "steps": [
+    {
+      "id": "s1"
+    }
+  ]
+}
+]]></code>
+    <note>Step missing exit_criterion, output_location, owner, input; deviation_log_reference missing.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
+    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
+    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+  </section>
+  <reference path="scripts/validate-agency-content-pillars-niche.py">Validator implementing this schema.</reference>
 </text>

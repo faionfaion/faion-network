@@ -3,71 +3,100 @@ slug: cohort-implementation
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cohort implementation moves cohort analysis from ad-hoc analytics-tool reports to warehouse-native dbt models that refresh daily, survive schema changes, and feed BI dashboards.
-content_id: "07b5ef646f43bf35"
-tags: [cohort-analysis, retention, dbt, warehouse, analytics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates the SQL + warehouse config for weekly retention cohorts (signup-week x week-N) with event-table schema and chart spec.
+content_id: "0942a5507dfd1b50"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [cohort, retention, sql, warehouse, config]
 ---
-# Cohort Analysis Implementation
+# Cohort Implementation
 
 ## Summary
 
-**One-sentence:** Cohort implementation moves cohort analysis from ad-hoc analytics-tool reports to warehouse-native dbt models that refresh daily, survive schema changes, and feed BI dashboards.
+**One-sentence:** Generates the SQL + warehouse config for weekly retention cohorts (signup-week x week-N) with event-table schema and chart spec.
 
-**One-paragraph:** Cohort implementation moves cohort analysis from ad-hoc analytics-tool reports to warehouse-native dbt models that refresh daily, survive schema changes, and feed BI dashboards. The canonical model uses long-format output (cohort_week, user_id, day_offset) and an incremental materialization strategy. Three query types cover the core use cases: acquisition cohorts, behavioral cohorts, and feature-adoption cohorts.
+**One-paragraph:** Generates the SQL + warehouse config for weekly retention cohorts (signup-week x week-N) with event-table schema and chart spec. Use it when team має warehouse + event-table (snowflake / bigquery / postgres). The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Team має warehouse + event-table (Snowflake / BigQuery / Postgres).
+- Потрібен weekly retention curve по cohort + visual chart.
+- Stable user_id у events, не anonymous distinct_id.
+- Готовність змінити SQL контракт коли event schema еволюціонує.
 
 ## Applies If (ALL must hold)
 
-- Completed framing in cohort-basics and ready to ship production tables, dashboards, and refresh jobs.
-- Migrating from analytics-tool reports to warehouse-native models (BigQuery / Snowflake / Redshift).
-- Building executive dashboards that refresh daily and survive schema changes.
-- Embedding cohort tables in a product analytics surface (Metabase, Looker, Hex).
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=config`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pre-instrumentation: events inconsistent or signup_date unreliable — fix data first.
-- Scale below a few thousand users — analytics-tool built-in or a notebook is sufficient.
-- One-off investigation that will not be re-run — stop at a SQL notebook, do not productionize.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=config` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-cohort-implementation.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/cohort-implementation.config.yaml` | YAML config skeleton with 5-line header |
+| `templates/cohort-implementation.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cohort-implementation.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

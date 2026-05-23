@@ -1,52 +1,22 @@
-# Weekly AARRR — Week of [DATE]
+<!-- purpose: Weekly AARRR dashboard skeleton -->
+<!-- consumes: stages object + bottleneck + tactic queue -->
+<!-- produces: report artefact published to growth channel -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300 tokens when filled -->
 
-## Acquisition
+# AARRR Weekly — `<DATE>`
 
-| Channel | Visitors | Sign-ups | CPA | vs Last Week |
-|---------|----------|----------|-----|--------------|
-| Organic | | | $0 | |
-| Paid | | | | |
-| Referral | | | | |
-| Direct | | | | |
-| **Total** | | | | |
+Owner: `@<handle>`
 
-## Activation
+| Stage | Metric | Value | 30d baseline | Δ% |
+|-------|--------|------:|-------------:|---:|
+| Acquisition | `<metric>` | `<X>` | `<Y>` | `<delta>` |
+| Activation | `<metric>` | `<X>` | `<Y>` | `<delta>` |
+| Retention | `<metric>` | `<X>` | `<Y>` | `<delta>` |
+| Revenue | `<metric>` | `<X>` | `<Y>` | `<delta>` |
+| Referral | `<metric>` | `<X>` | `<Y>` | `<delta>` |
 
-| Metric | This Week | Target | Status |
-|--------|-----------|--------|--------|
-| Activation rate | | 50% | |
-| Time to first value | | <10 min | |
-| Onboarding completion | | 70% | |
+**Bottleneck:** `<stage>`
+**Tactics queued for this stage:**
 
-## Retention
-
-| Cohort | D1 | D7 | D30 |
-|--------|----|----|-----|
-| This week | | — | — |
-| Last week | | | — |
-| 4 weeks ago | | | |
-
-## Revenue
-
-| Metric | Value | vs Last Period |
-|--------|-------|----------------|
-| MRR | | |
-| New MRR | | |
-| Churned MRR | | |
-| ARPU | | |
-| Free-to-paid | | |
-
-## Referral
-
-| Metric | Value | Target |
-|--------|-------|--------|
-| Invites sent | | |
-| Invite conversions | | |
-| K-factor | | >0.1 |
-| NPS | | >50 |
-
-## Priority This Week
-
-**Weakest stage:** [stage]
-**Bottleneck:** [specific metric and gap]
-**Experiment:** [hypothesis to test]
+- `<tactic>` (stage)

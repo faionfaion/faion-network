@@ -3,72 +3,100 @@ slug: conversion-tracking
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Implementation patterns for tracking conversion events across the full user lifecycle — GA4 goal setup, funnel step instrumentation, A/B test exposure and conversion events, SaaS user-lifecycle events (signup, activation, retention, purchase, referral), content engagement, and video tracking.
-content_id: "189b8e353730756a"
-tags: [conversion-tracking, ga4, funnel, event-tracking, analytics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates the conversion-tracking config: event taxonomy, pixel + server-side tags, validation script, QA fixtures across browsers.
+content_id: "296cad23ae4575ef"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [conversion, tracking, events, pixel, server-side]
 ---
 # Conversion Tracking
 
 ## Summary
 
-**One-sentence:** Implementation patterns for tracking conversion events across the full user lifecycle — GA4 goal setup, funnel step instrumentation, A/B test exposure and conversion events, SaaS user-lifecycle events (signup, activation, retention, purchase, referral), content engagement, and video tracking.
+**One-sentence:** Generates the conversion-tracking config: event taxonomy, pixel + server-side tags, validation script, QA fixtures across browsers.
 
-**One-paragraph:** Implementation patterns for tracking conversion events across the full user lifecycle — GA4 goal setup, funnel step instrumentation, A/B test exposure and conversion events, SaaS user-lifecycle events (signup, activation, retention, purchase, referral), content engagement, and video tracking. Includes a reusable FunnelTracker class and an event-registry validator.
+**One-paragraph:** Generates the conversion-tracking config: event taxonomy, pixel + server-side tags, validation script, QA fixtures across browsers. Use it when кілька джерел трафіку, потрібен unified event taxonomy. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Кілька джерел трафіку, потрібен unified event taxonomy.
+- Server-side tagging доступний (GTM Server / Cloudflare Worker).
+- Privacy mode browsers + ad-blockers — потрібен CAPI / Conversions API.
+- QA fixtures + validation script запускаються при кожній зміні tracking.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch: setting up GA4 + privacy-friendly analytics and a server-side event log before first users.
-- Implementing a SaaS funnel (signup → activation → trial → paid → expansion) with consistent naming.
-- Replatforming or migrating analytics — codifying schema prevents lossy reinstrumentation.
-- Need a single source-of-truth for conversion events backing A/B tests and exec dashboards.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=config`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pure 1:1 sales with fewer than 100 prospects/month — CRM tracking is simpler and sufficient.
-- Pre-launch landing-page test where a sign-up form already gives the answer.
-- Highly regulated environments (healthcare PHI, COPPA) without a prior privacy/legal review of payloads.
-- Cannot commit to maintaining the schema; broken events are worse than no events.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=config` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-conversion-tracking.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/conversion-tracking.config.yaml` | YAML config skeleton with 5-line header |
+| `templates/conversion-tracking.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-conversion-tracking.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

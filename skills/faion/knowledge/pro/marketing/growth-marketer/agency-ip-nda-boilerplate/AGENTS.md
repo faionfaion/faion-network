@@ -3,77 +3,101 @@ slug: agency-ip-nda-boilerplate
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for agency ip nda boilerplate that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "0f8d374ac3d0f1b8"
-tags: [agency, marketing, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a spec for agency IP + NDA boilerplate: client-owns-deliverables, agency-owns-processes, contractor-assigns-to-agency clauses.
+content_id: "aa730405b8ec3b9a"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [agency, legal, ip, nda, boilerplate]
 ---
-# Agency IP NDA Boilerplate
+# Agency IP / NDA Boilerplate
 
 ## Summary
 
-**One-sentence:** Reusable template for agency ip nda boilerplate that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Generates a spec for agency IP + NDA boilerplate: client-owns-deliverables, agency-owns-processes, contractor-assigns-to-agency clauses.
 
-**One-paragraph:** Reusable template for agency ip nda boilerplate that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. ops-legal-basics is generic. Agencies have a specific IP problem: client owns deliverables, agency owns processes, contractor must assign IP to agency before agency can assign to client. Without a methodology + boilerplate, every new contractor or client is a one-off legal exercise.
+**One-paragraph:** Generates a spec for agency IP + NDA boilerplate: client-owns-deliverables, agency-owns-processes, contractor-assigns-to-agency clauses. Use it when agency бере нового client або contractor і ip boundary неясна. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Agency бере нового client або contractor і IP boundary неясна.
+- Client-owned deliverables vs agency-owned processes артикульовано.
+- Contractor IP assignment до agency перед client assignment.
+- Named legal reviewer signs off boilerplate version.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by agency ip nda boilerplate (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=spec`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-agency-ip-nda-boilerplate.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/agency-ip-nda-boilerplate.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/agency-ip-nda-boilerplate.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-ip-nda-boilerplate.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
-- peer methodologies: see siblings under `pro/marketing/growth-marketer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

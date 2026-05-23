@@ -3,71 +3,101 @@ slug: activation-metrics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for defining, measuring, and improving the activation rate — the percentage of signups who reach their first value moment (the "Aha moment").
-content_id: "70985e50393475c1"
-tags: [activation, metrics, retention, funnel, onboarding]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an activation metrics report: activation rate, time-to-activation, segmented funnel, D30 correlation table for the chosen event.
+content_id: "44722fd2b444d46a"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [activation, metrics, funnel, retention-correlation, reporting]
 ---
 # Activation Metrics
 
 ## Summary
 
-**One-sentence:** A methodology for defining, measuring, and improving the activation rate — the percentage of signups who reach their first value moment (the "Aha moment").
+**One-sentence:** Generates an activation metrics report: activation rate, time-to-activation, segmented funnel, D30 correlation table for the chosen event.
 
-**One-paragraph:** A methodology for defining, measuring, and improving the activation rate — the percentage of signups who reach their first value moment (the "Aha moment"). Covers how to identify the right activation event by correlating candidate actions with D30 retention, how to measure time-bounded activation rates, benchmark ranges by product type, and a worked optimization funnel template.
+**One-paragraph:** Generates an activation metrics report: activation rate, time-to-activation, segmented funnel, D30 correlation table for the chosen event. Use it when weekly звіт по activation rate з segmentation по acquisition channel. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Weekly звіт по activation rate з segmentation по acquisition channel.
+- Time-to-activation distribution за фіксованим window (наприклад 7d).
+- D30 retention lift table для candidate activation events.
+- Funnel step conversion з абсолютними та відносними drops.
 
 ## Applies If (ALL must hold)
 
-- Users sign up but don't return after the first session.
-- Onboarding completion is high but D30 retention is low — possible activation misdefinition.
-- Pre-scaling acquisition: fix activation before spending more on top-of-funnel.
-- Redesigning onboarding flow and need a metric to validate the change.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=report`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF: if core value is undefined, activation measurement is premature.
-- Enterprise SaaS with multi-month sales cycles — activation happens over weeks, not sessions.
-- Products with no analytics infrastructure — defining the metric without tracking it produces no signal.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=report` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=report | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-activation-metrics.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/activation-metrics.report.md` | Markdown report skeleton with 5-line header |
+| `templates/activation-metrics.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-activation-metrics.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

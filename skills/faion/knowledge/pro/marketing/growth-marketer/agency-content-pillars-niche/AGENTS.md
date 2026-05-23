@@ -3,77 +3,100 @@ slug: agency-content-pillars-niche
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agency content pillars niche that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "127e17462203a3a9"
-tags: [agency, marketing, playbook]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Playbook step: defines 4 agency content pillars (positioning / case / opinion / tactic) for a narrow niche with named owners + exit criteria per pillar.
+content_id: "da5167770c99ca76"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [agency, content-marketing, pillars, niche, playbook]
 ---
-# Agency Content Pillars Niche
+# Agency Content Pillars (Niche)
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agency content pillars niche that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Playbook step: defines 4 agency content pillars (positioning / case / opinion / tactic) for a narrow niche with named owners + exit criteria per pillar.
 
-**One-paragraph:** End-to-end playbook for agency content pillars niche that walks an operator from trigger to closed outcome with named artefacts at each step. Generic content marketing exists; agency-specific pillars (positioning / case / opinion / tactic) tuned for narrow niche missing.
+**One-paragraph:** Playbook step: defines 4 agency content pillars (positioning / case / opinion / tactic) for a narrow niche with named owners + exit criteria per pillar. Use it when маркетинг agency у вузькій niche, де generic content marketing не працює. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Маркетинг agency у вузькій niche, де generic content marketing не працює.
+- 4-pillar модель: positioning / case study / opinion / tactic — кожна з owner.
+- Editorial calendar прив'язаний до named owner + exit criterion per piece.
+- Deviation log відкритий для retro у наступному циклі.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agency content pillars niche end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=playbook-step`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=playbook-step` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-agency-content-pillars-niche.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/agency-content-pillars-niche.playbook-step.md` | Markdown playbook-step skeleton with 5-line header |
+| `templates/agency-content-pillars-niche.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-content-pillars-niche.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
-- peer methodologies: see siblings under `pro/marketing/growth-marketer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

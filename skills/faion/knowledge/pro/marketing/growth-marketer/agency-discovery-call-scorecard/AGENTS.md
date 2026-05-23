@@ -3,76 +3,100 @@ slug: agency-discovery-call-scorecard
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Numeric scoring rubric for agency discovery call scorecard that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
-content_id: "c04f87570dfc61b9"
-tags: [agency, marketing, scorecard]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a 0-100 numeric scorecard (fit / budget / urgency / decision-maker) post-discovery-call so agencies compare leads on a single axis.
+content_id: "41435d38f062706a"
+complexity: medium
+produces: rubric
+est_tokens: 4200
+tags: [agency, sales, discovery-call, scorecard, rubric]
 ---
 # Agency Discovery Call Scorecard
 
 ## Summary
 
-**One-sentence:** Numeric scoring rubric for agency discovery call scorecard that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
+**One-sentence:** Generates a 0-100 numeric scorecard (fit / budget / urgency / decision-maker) post-discovery-call so agencies compare leads on a single axis.
 
-**One-paragraph:** Numeric scoring rubric for agency discovery call scorecard that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts. discovery-call-structure exists, but a numeric scorecard (fit / budget / urgency / decision-maker) post-call is missing.
+**One-paragraph:** Generates a 0-100 numeric scorecard (fit / budget / urgency / decision-maker) post-discovery-call so agencies compare leads on a single axis. Use it when agency веде >1 discovery call/тиждень — потрібен порівняльний signal. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Agency веде >1 discovery call/тиждень — потрібен порівняльний signal.
+- Score consumed for binary decision (advance/reject/prioritize).
+- Чотири осі: fit, budget, urgency, decision-maker з weighted points.
+- Weekly retro reviews scorecard calibration drift.
 
 ## Applies If (ALL must hold)
 
-- You evaluate >1 instance against the same criteria addressed by agency discovery call scorecard (calls, vendors, candidates).
-- Scores will be used for a binary decision (advance, reject, prioritize).
-- Each criterion has a defined 1-5 anchor; raters trained on the rubric before scoring.
-- ≥2 raters per instance for any score that gates a >$10k or strategic decision.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=rubric`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- n < 3 instances — gut feel is faster and accuracy is similar.
-- Decisions are single-criterion (price-only, deadline-only) — full rubric is overhead.
-- Strategic, single-shot decisions where qualitative narrative beats numeric blend.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=rubric` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- Rubric file or sheet with anchors written for each criterion 1-5.
-- Rater(s) trained on at least 3 calibration examples before scoring real instances.
-- Storage for scores reachable from downstream decision step (CRM, spreadsheet).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_criterion_score` | sonnet | Anchored 1-5 judgment per dimension |
-| `multi_rater_reconciliation` | opus | Resolve divergent scores with rationale |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-agency-discovery-call-scorecard.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/agency-discovery-call-scorecard.rubric.md` | Markdown rubric scorecard skeleton |
+| `templates/agency-discovery-call-scorecard.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-discovery-call-scorecard.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
-- peer methodologies: see siblings under `pro/marketing/growth-marketer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

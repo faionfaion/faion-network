@@ -3,84 +3,101 @@ slug: ai-overview-presence-tracker
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "e74d43f2b3b57a10"
-summary: A recurring measurement of AI Overview presence per priority query so that AIO optimization tactics become testable rather than aspirational.
-tags: [aio, tracker, seo, growth, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a per-query AIO presence report: aio_present, citations, our_domain_cited, selected_snippet, panel_position over an 8-week window.
+content_id: "5c6f57d0c748e485"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [aio, tracker, seo, growth, marketing]
 ---
 # AI Overview Presence Tracker
 
 ## Summary
 
-**One-sentence:** A recurring measurement of AI Overview (AIO) presence per priority query — does the panel surface, who gets cited, what snippet is selected — so AIO optimization tactics become testable rather than aspirational.
+**One-sentence:** Generates a per-query AIO presence report: aio_present, citations, our_domain_cited, selected_snippet, panel_position over an 8-week window.
 
-**One-paragraph:** Existing methodologies tell growth marketers to "optimize for AI Overviews", but no tracker exists in the pro tier to measure whether the optimization is working. This methodology defines a minimal but rigorous tracker: a query list (priority + watch + control), a per-query record (aio_present, aio_first_citation, our_domain_cited, our_snippet_selected, panel_position), a daily / weekly scrape cadence with a documented adapter, and a per-query 8-week trend view. Output: a `aio-presence/` folder that the team reads in the weekly Search Console + analytics review to decide where to invest more retrofit effort and where to deprioritize.
+**One-paragraph:** Generates a per-query AIO presence report: aio_present, citations, our_domain_cited, selected_snippet, panel_position over an 8-week window. Use it when growth marketer має >= 20 indexed pages таргетуючих aio queries. The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Growth marketer має >= 20 indexed pages таргетуючих AIO queries.
+- Weekly Search Console + analytics review — існуюча cadence.
+- Stable AIO scrape adapter (SE Ranking або equivalent) налаштовано.
+- 8-week trend view per query доступний для retrofit prioritization.
 
 ## Applies If (ALL must hold)
 
-- Growth marketer has &gt;= 20 indexed pages targeting queries with measurable AIO presence in your geography.
-- A weekly Search Console + analytics review is the team's existing cadence.
-- An adapter for AIO scraping is available (Playwright + Google AI Overview SERP, third-party tool, or commercial tracker).
-- Team can change publish strategy based on tracker signals.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=report`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Niche has no AIO coverage in target geography — track manually, do not invest in scraper.
-- Team uses the geek-tier `ai-overview-monitoring` methodology — that supersedes this one for AIO + Perplexity + ChatGPT.
-- Priority list &lt; 10 queries — tracker overhead exceeds the signal.
-- AIO is being de-emphasized by Google in your niche (announced rollback) — defer.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=report` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- `queries.yaml` with priority + watch + control lists.
-- Playwright + headless Chrome installed in CI OR a commercial AIO tracking subscription.
-- A control list of queries with stable behaviour (used to detect scraper drift).
-- A weekly review meeting where the report is read.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer/weekly-search-console-review` (or equivalent) | The tracker plugs into the weekly review cadence. |
-| `geek/marketing/seo-manager/google-ai-overviews-optimization` | Strategic methodology this tracker measures. |
-| `geek/marketing/growth-marketer/ai-overview-monitoring` | Geek-tier upgrade — extends to Perplexity / ChatGPT. |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: control-list discipline, snapshot immutability, position-record, our-domain-cited as primary KPI, weekly cadence | ~1100 |
-| `content/02-output-contract.xml` | essential | Snapshot schema, trend record, KPI definitions | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: scraper drift, geo bias, panel-personalisation | ~1000 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example for produces=report | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scrape-aio-panel` | haiku | Mechanical: headless render + parse |
-| `classify-citation` | sonnet | Bounded: was our domain cited? at what panel position? |
-| `weekly-narrative` | sonnet | Bounded synthesis of deltas |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-ai-overview-presence-tracker.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/queries.yaml` | Priority + watch + control query lists |
-| `templates/snapshot.json` | Per-query snapshot record |
-| `templates/weekly-trend.md` | Markdown report format read in the weekly review |
+| `templates/ai-overview-presence-tracker.report.md` | Markdown report skeleton with 5-line header |
+| `templates/ai-overview-presence-tracker.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/scrape.py` | Run Playwright fetch; emit snapshots | Daily cron |
-| `scripts/weekly-aggregate.py` | 7-day rollup; emit weekly-trend.md | Weekly |
+| `scripts/validate-ai-overview-presence-tracker.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
-- peer methodologies: `ai-overview-monitoring`, `ai-overview-content-template`, `ai-overview-risk-scoring`
-- external: [Google Search Status Dashboard](https://status.search.google.com/) · [Playwright headless](https://playwright.dev/) · [SISTRIX AIO tracker](https://www.sistrix.com/)
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

@@ -3,72 +3,100 @@ slug: google-analytics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GA4 setup, event taxonomy, custom dimensions, Data API reporting, and framework integrations (React/Gatsby, Django, Measurement Protocol).
-content_id: "bfddc5dd2218205b"
-tags: [google-analytics, ga4, analytics, data-api, event-tracking]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates GA4 property config: data streams, enhanced measurement, custom dimensions, conversion events, BigQuery export, sampling guards.
+content_id: "70a7bf2b9e72ceba"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [ga4, analytics, tracking, bigquery, config]
 ---
-# Google Analytics 4 (GA4)
+# Google Analytics 4 Setup
 
 ## Summary
 
-**One-sentence:** GA4 setup, event taxonomy, custom dimensions, Data API reporting, and framework integrations (React/Gatsby, Django, Measurement Protocol).
+**One-sentence:** Generates GA4 property config: data streams, enhanced measurement, custom dimensions, conversion events, BigQuery export, sampling guards.
 
-**One-paragraph:** GA4 setup, event taxonomy, custom dimensions, Data API reporting, and framework integrations (React/Gatsby, Django, Measurement Protocol). The rule: lock the event taxonomy in a repo file before deploying code; register all custom dimensions in GA4 Admin before data flows; always pass client_id from the cookie when sending Measurement Protocol events server-side.
+**One-paragraph:** Generates GA4 property config: data streams, enhanced measurement, custom dimensions, conversion events, BigQuery export, sampling guards. Use it when новий проект потребує ga4 з нуля (ua вже sunset). The methodology pins the artefact shape via JSON Schema in `content/02-output-contract.xml`, so a downstream agent can validate the output mechanically rather than by prose review.
+
+**Ефективно для:**
+
+- Новий проект потребує GA4 з нуля (UA вже sunset).
+- Потрібен BigQuery export для непідлеглих sampling-у звітів.
+- Consent mode v2 обов'язковий для EU traffic.
+- Server-side GTM доступний для resilient conversion tracking.
 
 ## Applies If (ALL must hold)
 
-- Instrumenting a new site/app and needing a complete event taxonomy + gtag/Measurement Protocol code.
-- Agent-driven daily or weekly reporting via the Data API.
-- Auditing an existing GA4 property for misconfigurations (missing user_id, broken funnels, double-counted events).
-- Server-side tracking via Measurement Protocol because client tracking is blocked by ad-blockers.
+- The producing agent has read access to the inputs named in Prerequisites.
+- The downstream consumer expects an artefact whose shape matches `produces=config`.
+- A named human reviewer is available for signoff before any binding action.
+- The task has more than a one-shot scope — output will be re-read or extended later.
 
 ## Skip If (ANY kills it)
 
-- Privacy-strict EU-only audiences without server-side proxy + Consent Mode — GA4 in default mode breaks GDPR/Schrems II for many setups; use Plausible or Matomo instead.
-- High-volume product analytics needing sub-second latency — GA4 data is sampled and delayed; use Mixpanel, Amplitude, or PostHog.
-- BigQuery export not enabled — agent analytical depth is capped at the GA4 UI.
-- B2B sales-led operations where revenue is closed in CRM, not on the site.
+- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
+- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
+- Output consumer wants a different shape than `produces=config` — pick a methodology whose contract matches.
+- Hard real-time path where the output-contract validator can't run in budget.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Brief / inputs | Markdown or JSON | requester / upstream methodology |
+| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
+| Output destination | path or system | downstream owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/growth-marketer/AGENTS.md` | Parent skill vocabulary + neighbouring methodologies |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-inputs` | haiku | Mechanical extraction from upstream artefacts |
+| `apply-rules` | sonnet | Apply `01-core-rules.xml` + decision tree against state |
+| `synthesise-output` | sonnet | Final artefact authoring matching `02-output-contract.xml` |
+| `validate-output` | haiku | Run `scripts/validate-google-analytics.py` against the artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/google-analytics.config.yaml` | YAML config skeleton with 5-line header |
+| `templates/google-analytics.example.json` | Example output JSON conforming to 02-output-contract.xml |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-google-analytics.py` | Validate produced artefact against `02-output-contract.xml` schema | After `synthesise-output`, before commit/publish |
 
 ## Related
 
 - parent skill: `pro/marketing/growth-marketer/`
+- [[ab-testing-setup]]
+- [[north-star-metric]]
+- [[activation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.

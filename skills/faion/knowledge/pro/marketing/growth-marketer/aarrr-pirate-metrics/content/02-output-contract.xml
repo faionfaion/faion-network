@@ -1,22 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="aarrr-pirate-metrics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AARRR Pirate Metrics Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the report this methodology produces. Validator enforces the rule-set constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["report_id", "as_of", "stages", "bottleneck", "tactics_queued", "owner"],
+  "properties": {
+    "report_id": {"type": "string"},
+    "as_of": {"type": "string", "format": "date"},
+    "stages": {
+      "type": "object",
+      "required": ["acquisition", "activation", "retention", "revenue", "referral"],
+      "additionalProperties": {
+        "type": "object",
+        "required": ["metric", "value", "baseline_30d"],
+        "properties": {"metric": {"type": "string"}, "value": {"type": "number"}, "baseline_30d": {"type": "number"}, "delta_pct": {"type": "number"}}
+      }
+    },
+    "bottleneck": {"enum": ["acquisition", "activation", "retention", "revenue", "referral"]},
+    "tactics_queued": {"type": "array", "items": {"type": "object", "required": ["tactic", "stage"], "properties": {"tactic": {"type": "string"}, "stage": {"enum": ["acquisition", "activation", "retention", "revenue", "referral"]}}}},
+    "owner": {"type": "string"}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "aarrr-2026-w20",
+  "as_of": "2026-05-20",
+  "stages": {
+    "acquisition": {"metric": "weekly_signups", "value": 420, "baseline_30d": 410, "delta_pct": 2.4},
+    "activation": {"metric": "d7_activation_pct", "value": 0.31, "baseline_30d": 0.38, "delta_pct": -18.4},
+    "retention": {"metric": "d30_active_pct", "value": 0.42, "baseline_30d": 0.45, "delta_pct": -6.7},
+    "revenue": {"metric": "mrr_growth_pct", "value": 4.1, "baseline_30d": 4.0, "delta_pct": 2.5},
+    "referral": {"metric": "viral_k", "value": 0.18, "baseline_30d": 0.17, "delta_pct": 5.9}
+  },
+  "bottleneck": "activation",
+  "tactics_queued": [
+    {"tactic": "Pre-seed sample data in empty state", "stage": "activation"},
+    {"tactic": "Reduce signup fields to 3", "stage": "activation"}
+  ],
+  "owner": "@ruslan"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{"report_id": "x", "stages": {}, "bottleneck": "unknown", "tactics_queued": [{"tactic": "Make growth happen"}], "owner": "team", "as_of": "2026-05-20"}
+]]></code>
+    <note>Violates one or more of the forbidden patterns listed below.</note>
+  </example>
+
+  <section title="Forbidden">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Any stage missing metric/value/baseline_30d (rule metric-per-stage-with-baseline).</item>
+      <item>bottleneck outside the 5-enum (rule bottleneck-named-before-tactic).</item>
+      <item>tactics_queued items missing stage tag (rule tactic-stage-tagged).</item>
+      <item>stages object missing any of the 5 keys (rule weekly-all-five-published).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-aarrr-pirate-metrics.py">Validator script</reference>
 </text>
