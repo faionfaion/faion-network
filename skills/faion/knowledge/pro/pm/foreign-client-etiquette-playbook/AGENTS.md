@@ -3,78 +3,98 @@ slug: foreign-client-etiquette-playbook
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "814dd5cb96121b40"
-summary: Foreign Client Etiquette Playbook delivers a concrete, testable methodology that turns the recurring task of 'Foreign-Client Engagement Bootstrap' into an auditable artefact, addressing the gap: Communication patterns differ sharply: US-direct, German-precise, Japanese-indirect, 
-tags: [pm, pro, template, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cross-culture communication artefact: per-region directness/indirectness map, named comms patterns (US/DE/JP/UK/AU), red-line phrasing, written-vs-verbal default per culture.
+content_id: "9460ea2b41f67e20"
+complexity: medium
+produces: playbook-step
+est_tokens: 5200
+tags: [pm, pro, etiquette, foreign-client, cross-culture, communication]
 ---
 # Foreign Client Etiquette Playbook
 
 ## Summary
 
-**One-sentence:** Foreign Client Etiquette Playbook delivers a concrete, testable methodology that turns the recurring task of 'Foreign-Client Engagement Bootstrap' into an auditable artefact, addressing the gap: Communication patterns differ sharply: US-direct, German-precise, Japanese-indirect, Nordic-flat-hierarchy. Faion comms-management is generic. A methodology that maps client culture → preferred reporting tone, escalation tolerance, meeting expectations, and silence semantics is missing.
+**One-sentence:** Cross-culture communication artefact: per-region directness/indirectness map, named comms patterns (US/DE/JP/UK/AU), red-line phrasing, written-vs-verbal default per culture.
 
-**One-paragraph:** Communication patterns differ sharply: US-direct, German-precise, Japanese-indirect, Nordic-flat-hierarchy. Faion comms-management is generic. A methodology that maps client culture → preferred reporting tone, escalation tolerance, meeting expectations, and silence semantics is missing. Foreign Client Etiquette Playbook closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Foreign-Client Engagement Bootstrap' (p4-outsource-specialist, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Foreign Client Etiquette Playbook delivers a defensible playbook-step artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- P4 outsource lead, що працює з US-direct / German-precise / Japanese-indirect клієнтами одночасно.
+- Founder-PM на першому foreign engagement, який не має in-house cross-culture playbook.
+- Agency PMO, що навчає junior PM-ів адаптації comms patterns без зайвої формалізації.
+- EU consultant, що відкриває US market і репетирує directness-without-rudeness каліброшку.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Foreign-Client Engagement Bootstrap' (role: p4-outsource-specialist) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- the engagement crosses cultural boundaries (different first-language client + vendor team)
+- communication missteps have material delivery impact (re-work, eroded trust)
+- the PM has 2+ months engagement length to apply the playbook
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- short-term consultation under 2 weeks — playbook overhead doesn't pay back
+- client team and vendor team share first language and culture — playbook orphaned
+- playbook would be substituted for a real local contact — find the local, do not abstract them away
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the playbook-step + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `foreign_client_etiquette_playbook_template_fill` | haiku | Template fill, no judgment |
-| `foreign_client_etiquette_playbook_evidence_check` | sonnet | Bounded comparison + judgment |
-| `foreign_client_etiquette_playbook_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-foreign_client_etiquette_playbook` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/foreign-client-etiquette-playbook.md` | playbook-step skeleton with required fields + 5-line header |
+| `templates/foreign-client-etiquette-playbook.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-foreign-client-etiquette-playbook.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `p4-outsource-specialist/Foreign-Client Engagement Bootstrap`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[foreign-client-kickoff-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

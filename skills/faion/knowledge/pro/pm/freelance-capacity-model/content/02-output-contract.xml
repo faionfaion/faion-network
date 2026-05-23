@@ -1,57 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelance Capacity Model Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Freelance Capacity Model artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Freelance Capacity Model Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/freelance-capacity-model.json",
+  "title": "Freelance Capacity Model",
+  "type": "object",
+  "required": ["artefact_id", "owner", "decision", "rationale", "inputs_used", "version", "last_reviewed"],
+  "additionalProperties": false,
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$", "minLength": 3, "maxLength": 80},
+    "owner": {"type": "string", "minLength": 2, "maxLength": 80, "not": {"pattern": "^(team|we|us|everyone|all)$"}},
+    "decision": {"type": "string", "minLength": 4, "maxLength": 4000},
+    "rationale": {"type": "string", "minLength": 40, "maxLength": 4000},
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "source": {"type": "string", "minLength": 4}
+        }
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "status": {"enum": ["draft", "pending", "active", "deprecated"]},
+    "notes": {"type": "string", "maxLength": 2000}
+  }
+}
+]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "freelance-capacity-model-2026q2-acme",
+  "owner": "ruslan@faion.net",
+  "decision": "Adopt Freelance Capacity Model variant A for Acme engagement starting 2026-06-01.",
+  "rationale": "Acme's footprint matches the preconditions in AGENTS.md and the input log (see inputs_used[0]) confirms recurrence ≥1/cycle. Risk reserve set per rule r3-named-owner.",
+  "inputs_used": [
+    {"name": "engagement-log-acme-2026q1", "source": "wiki://pm/acme/log-2026q1"},
+    {"name": "rate-card-2026", "source": "repo://pricing/rate-card-2026.yaml"}
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "status": "active"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "X",
+  "owner": "team",
+  "decision": "ok",
+  "rationale": "obviously needed",
+  "inputs_used": [],
+  "version": "v1",
+  "last_reviewed": "soon"
+}
+]]></code>
+    <note>artefact_id too short; owner is plural; decision/rationale below minLength; inputs_used empty; version not semver; last_reviewed not ISO date.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-owner-plural">owner matches `^(team|we|us|everyone|all)$` (case-insensitive)</pattern>
+    <pattern id="f-rationale-no-citation">rationale does not name any inputs_used[].name</pattern>
+    <pattern id="f-version-regressed">version is lower than previous record's version</pattern>
+    <pattern id="f-inputs-empty">inputs_used == [] AND decision != "no-op"</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-freelance-capacity-model.py">Validator script</reference>
 </text>

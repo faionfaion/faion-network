@@ -3,78 +3,98 @@ slug: freelancer-client-scorecard
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "9de22c61f1ac11ba"
-summary: "Freelancer Client Scorecard — testable methodology for delivery, scheduling, RACI, throughput. portfolio-strategy is product-oriented. Freelancers need a 5-axis client scorecard (rate, payment, scope discipline, growth potential, energy cost) for quarterly rebalance."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Quarterly 5-axis client scorecard: rate, payment behaviour, scope discipline, growth potential, energy cost — surfaces drop/keep/expand decisions per client.
+content_id: "bb1febbadc3b52ed"
+complexity: medium
+produces: rubric
+est_tokens: 5200
+tags: [pm, pro, freelance, scorecard, client, portfolio]
 ---
 # Freelancer Client Scorecard
 
 ## Summary
 
-**One-sentence:** Freelancer Client Scorecard — testable methodology for delivery, scheduling, RACI, throughput. portfolio-strategy is product-oriented. Freelancers need a 5-axis client scorecard (rate, payment, scope discipline, growth potential, energy cost) for quarterly rebalance.
+**One-sentence:** Quarterly 5-axis client scorecard: rate, payment behaviour, scope discipline, growth potential, energy cost — surfaces drop/keep/expand decisions per client.
 
-**One-paragraph:** Freelancer Client Scorecard closes a known gap in pm practice: portfolio-strategy is product-oriented. Freelancers need a 5-axis client scorecard (rate, payment, scope discipline, growth potential, energy cost) for quarterly rebalance. The methodology is anchored to the recurring activity 'Quarterly portfolio rebalance (cash, clients, capacity) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelancer Client Scorecard delivers a defensible rubric artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- Solo фрілансер з 5-15 активними/недавніми клієнтами і energy-drain patterns.
+- Boutique consultant, що рік-у-рік перевертає portfolio за принципом 80/20.
+- Bootstrapper, що готується відмовити токсичному клієнту і потребує decision-record.
+- Two-person practice, що калібрує client-acquisition discipline через scorecard, не лише revenue.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Quarterly portfolio rebalance (cash, clients, capacity) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- the operator has 3+ active or recent (last 12 months) freelance clients
+- the operator captures or can reconstruct factual data per client (rate, payment lag, scope changes, growth signals)
+- quarterly portfolio rebalance is a recurring discipline the operator commits to
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- operator has only 1-2 clients — scorecard insight is below noise, qualitative review is faster
+- operator is closing the practice — portfolio rebalance is moot
+- operator already runs a competing CRM scorecard with the same axes — do not duplicate
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the rubric + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_client_scorecard_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_client_scorecard_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_client_scorecard_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-freelancer_client_scorecard` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/freelancer-client-scorecard.md` | rubric skeleton with required fields + 5-line header |
+| `templates/freelancer-client-scorecard.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-client-scorecard.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Quarterly portfolio rebalance (cash, clients, capacity) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[freelance-capacity-model]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

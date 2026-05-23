@@ -3,78 +3,99 @@ slug: founder-time-audit-tool
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "7c3e035f4c175e16"
-summary: "Founder Time Audit Tool — testable methodology for delivery, scheduling, RACI, throughput. resource-management methodology covers teams; agencies need a personal-time-allocation audit specifically for the founder bottleneck."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Two-week personal time-allocation audit artefact: delivery vs sales vs ops vs strategic split, founder-bottleneck flag, suggested delegations or drops, next-cycle target band.
+content_id: "0270d20fc41f51e5"
+complexity: medium
+produces: report
+est_tokens: 5200
+tags: [pm, pro, founder, time-audit, delegation, bottleneck]
 ---
 # Founder Time Audit Tool
 
 ## Summary
 
-**One-sentence:** Founder Time Audit Tool — testable methodology for delivery, scheduling, RACI, throughput. resource-management methodology covers teams; agencies need a personal-time-allocation audit specifically for the founder bottleneck.
+**One-sentence:** Two-week personal time-allocation audit artefact: delivery vs sales vs ops vs strategic split, founder-bottleneck flag, suggested delegations or drops, next-cycle target band.
 
-**One-paragraph:** Founder Time Audit Tool closes a known gap in pm practice: resource-management methodology covers teams; agencies need a personal-time-allocation audit specifically for the founder bottleneck. The methodology is anchored to the recurring activity 'Agency-to-recurring-revenue transition (6 months) (role: p5-micro-agency-founder)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Founder Time Audit Tool delivers a defensible report artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- Founder, що відчуває себе bottleneck-ом і має 2 тижні clean time-tracking data.
+- Solo консультант з 2-3 паралельними engagement-ами, що шукає systematic over-commit.
+- Bootstrapper після першого hiring round, що оцінює, які задачі можна делегувати.
+- Co-founder pair, що калібрує розподіл technical/business навантаження.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Agency-to-recurring-revenue transition (6 months) (role: p5-micro-agency-founder)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- the operator is a founder or solo-PM whose own time is the limiting resource
+- two consecutive weeks of time-tracking data exist or can be captured
+- the founder has authority to delegate, drop, or reschedule audited activities
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- founder is in active fundraising and a fixed schedule is non-negotiable — audit insights stale
+- the team already runs OKR + capacity tooling that covers personal allocation — duplication overhead
+- founder lacks delegation authority (e.g. solo-operator with no team) — audit possible but suggested-delegations bullet empty
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the report + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/05-examples.xml` | essential | worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `founder_time_audit_tool_template_fill` | haiku | Template fill, no judgement |
-| `founder_time_audit_tool_evidence_check` | sonnet | Bounded comparison + judgement |
-| `founder_time_audit_tool_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-founder_time_audit_tool` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/founder-time-audit-tool.md` | report skeleton with required fields + 5-line header |
+| `templates/founder-time-audit-tool.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-founder-time-audit-tool.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Agency-to-recurring-revenue transition (6 months) (role: p5-micro-agency-founder)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[founder-as-pm-survival-kit]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

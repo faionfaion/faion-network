@@ -3,78 +3,98 @@ slug: foreign-client-kickoff-checklist
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "2436e007616b0f74"
-summary: Foreign Client Kickoff Checklist delivers a concrete, testable methodology that turns the recurring task of 'Foreign-client project kickoff (2 weeks)' into an auditable artefact, addressing the gap: Outsource kickoffs across US/EU/UK/AU timezones have a recurring 30+ item checkli
-tags: [pm, pro, checklist, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 30-item kickoff checklist for 2-week foreign-client onboarding: stakeholder map, comms cadence, decision-makers, holiday calendar, payment terms, IP regime, escalation route.
+content_id: "15a994b544c413fd"
+complexity: medium
+produces: checklist
+est_tokens: 5200
+tags: [pm, pro, kickoff, foreign-client, checklist, onboarding]
 ---
 # Foreign Client Kickoff Checklist
 
 ## Summary
 
-**One-sentence:** Foreign Client Kickoff Checklist delivers a concrete, testable methodology that turns the recurring task of 'Foreign-client project kickoff (2 weeks)' into an auditable artefact, addressing the gap: Outsource kickoffs across US/EU/UK/AU timezones have a recurring 30+ item checklist (legal, comms, security questionnaires, identity provisioning, time-zone protocol). faion has scoping-workshop + sow but no end-to-end kickoff checklist tuned for foreign-client engagement.
+**One-sentence:** 30-item kickoff checklist for 2-week foreign-client onboarding: stakeholder map, comms cadence, decision-makers, holiday calendar, payment terms, IP regime, escalation route.
 
-**One-paragraph:** Outsource kickoffs across US/EU/UK/AU timezones have a recurring 30+ item checklist (legal, comms, security questionnaires, identity provisioning, time-zone protocol). faion has scoping-workshop + sow but no end-to-end kickoff checklist tuned for foreign-client engagement. Foreign Client Kickoff Checklist closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Foreign-client project kickoff (2 weeks)' (p4-outsource-specialist, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Foreign Client Kickoff Checklist delivers a defensible checklist artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- P4 outsource agency, що запускає 6-12-тиж проект з новим foreign-client.
+- Solo фрілансер, що приймає US/EU клієнта і не може дозволити missing-info ризик.
+- Founder-PM на першому international engagement: timezone, holidays, IP regime, payment cycle.
+- PMO template owner, що стандартизує kickoff across 5-15 active engagements.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Foreign-client project kickoff (2 weeks)' (role: p4-outsource-specialist) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- a new foreign-client engagement is starting and a kickoff window of 1-2 weeks exists
+- the engagement is large enough that kickoff overhead is justified (≥ 4 weeks of work)
+- the PM has authority to gather + record kickoff inputs
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- engagement is under 2 weeks — full kickoff checklist overhead unjustified
+- this is the third+ engagement with the same client — reuse prior checklist, skip from-scratch run
+- kickoff was already done informally and recorded elsewhere — do not duplicate
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the checklist + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `foreign_client_kickoff_checklist_template_fill` | haiku | Template fill, no judgment |
-| `foreign_client_kickoff_checklist_evidence_check` | sonnet | Bounded comparison + judgment |
-| `foreign_client_kickoff_checklist_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-foreign_client_kickoff_checklist` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/foreign-client-kickoff-checklist.md` | checklist skeleton with required fields + 5-line header |
+| `templates/foreign-client-kickoff-checklist.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-foreign-client-kickoff-checklist.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `p4-outsource-specialist/Foreign-client project kickoff (2 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[foreign-client-etiquette-playbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

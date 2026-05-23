@@ -3,78 +3,99 @@ slug: estimation-calibration-loop
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "72798e2322478bd4"
-summary: Estimation Calibration Loop delivers a concrete, testable methodology that turns the recurring task of 'AI-assisted sprint planning with capacity reality-check' into an auditable artefact, addressing the gap: cost-estimation templates exist; nothing for ongoing estimation calibra
-tags: [pm, pro, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Quarterly calibration artefact: estimate-vs-actual per task class, bias per estimator, suggested factor adjustment, target accuracy band, next review trigger.
+content_id: "8d1b97c2ee5c4446"
+complexity: medium
+produces: report
+est_tokens: 5200
+tags: [pm, pro, estimation, calibration, metrics, retrospective]
 ---
 # Estimation Calibration Loop
 
 ## Summary
 
-**One-sentence:** Estimation Calibration Loop delivers a concrete, testable methodology that turns the recurring task of 'AI-assisted sprint planning with capacity reality-check' into an auditable artefact, addressing the gap: cost-estimation templates exist; nothing for ongoing estimation calibration: compare estimate vs actual per task class, surface systematic bias per estimator, retrain. Without this, estimates drift forever and contracts erode margin.
+**One-sentence:** Quarterly calibration artefact: estimate-vs-actual per task class, bias per estimator, suggested factor adjustment, target accuracy band, next review trigger.
 
-**One-paragraph:** cost-estimation templates exist; nothing for ongoing estimation calibration: compare estimate vs actual per task class, surface systematic bias per estimator, retrain. Without this, estimates drift forever and contracts erode margin. Estimation Calibration Loop closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'AI-assisted sprint planning with capacity reality-check' (role-project-manager, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Estimation Calibration Loop delivers a defensible report artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- Команди з історією 60+ днів estimate-vs-actual і атрибуцією estimator-а.
+- Outsource agency, що бідає фіксовану ціну і має eroding margin issue.
+- Founder-PM з 3-5 девелоперами та власною velocity-data, який хоче перейти від guesswork до math.
+- PMO, що калібрує velocity for portfolio-level forecasting, не лише single-sprint.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'AI-assisted sprint planning with capacity reality-check' (role: role-project-manager) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- task estimates exist with corresponding recorded actuals (last 60+ days)
+- estimator attribution is preserved (per person or per role) for bias detection
+- team commits to acting on the loop's output (factor adjustment, retraining, scope rules)
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- no recorded actuals — calibration impossible; fix the tracking first
+- estimates are anonymous — bias attribution would invent estimators
+- team is one person doing variable work — sample size too small to be useful
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the report + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/05-examples.xml` | essential | worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `estimation_calibration_loop_template_fill` | haiku | Template fill, no judgment |
-| `estimation_calibration_loop_evidence_check` | sonnet | Bounded comparison + judgment |
-| `estimation_calibration_loop_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-estimation_calibration_loop` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/estimation-calibration-loop.md` | report skeleton with required fields + 5-line header |
+| `templates/estimation-calibration-loop.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-estimation-calibration-loop.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `role-project-manager/AI-assisted sprint planning with capacity reality-check`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[fixed-price-three-point-estimation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

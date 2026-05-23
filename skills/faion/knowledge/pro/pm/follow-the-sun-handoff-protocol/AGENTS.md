@@ -3,78 +3,98 @@ slug: follow-the-sun-handoff-protocol
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "84cc9c75411fe2b0"
-summary: Follow The Sun Handoff Protocol delivers a concrete, testable methodology that turns the recurring task of 'Async cross-timezone delivery cadence (P4 outsource)' into an auditable artefact, addressing the gap: Specific to P4 outsource PMs running EU + LATAM or APAC + NA teams. No
-tags: [pm, pro, protocol, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Async-cross-timezone delivery cadence: 24-hour rotation with anchored handoff windows, baton artefact (state + blockers + next-N tasks), owner-of-day, baton SLA.
+content_id: "11f94e11af10c02c"
+complexity: medium
+produces: playbook-step
+est_tokens: 5200
+tags: [pm, pro, follow-the-sun, handoff, async, timezone, outsource]
 ---
-# Follow The Sun Handoff Protocol
+# Follow-The-Sun Handoff Protocol
 
 ## Summary
 
-**One-sentence:** Follow The Sun Handoff Protocol delivers a concrete, testable methodology that turns the recurring task of 'Async cross-timezone delivery cadence (P4 outsource)' into an auditable artefact, addressing the gap: Specific to P4 outsource PMs running EU + LATAM or APAC + NA teams. No methodology for end-of-day handoff doc, blocking-question routing, ownership-transfer signaling. Critical for projects that need 18h+ working day coverage.
+**One-sentence:** Async-cross-timezone delivery cadence: 24-hour rotation with anchored handoff windows, baton artefact (state + blockers + next-N tasks), owner-of-day, baton SLA.
 
-**One-paragraph:** Specific to P4 outsource PMs running EU + LATAM or APAC + NA teams. No methodology for end-of-day handoff doc, blocking-question routing, ownership-transfer signaling. Critical for projects that need 18h+ working day coverage. Follow The Sun Handoff Protocol closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Async cross-timezone delivery cadence (P4 outsource)' (role-project-manager, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Follow-The-Sun Handoff Protocol delivers a defensible playbook-step artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- P4 outsource agency: EU + LATAM або APAC + NA, 24-hour follow-the-sun рішення.
+- Distressed-project rescue, що додає second-shift команду до існуючої первинної.
+- Open-source maintainer team з global contributors і потребою owner-of-day розкладу.
+- Founder-PM з 2 розкиданими timezones, що тестує модель перед масштабуванням.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Async cross-timezone delivery cadence (P4 outsource)' (role: role-project-manager) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- team spans at least two non-overlapping timezones with under 2 hours overlap
+- work is decomposable into tasks each closable within one timezone's working day
+- single product / repo / workstream — not parallel independent streams
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- co-located or single-timezone team — protocol overhead unjustified
+- tasks routinely span multiple days and cannot be checkpointed at handoff — fix decomposition first
+- team has fewer than one engineer per timezone — protocol needs at least one named owner per zone
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the playbook-step + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `follow_the_sun_handoff_protocol_template_fill` | haiku | Template fill, no judgment |
-| `follow_the_sun_handoff_protocol_evidence_check` | sonnet | Bounded comparison + judgment |
-| `follow_the_sun_handoff_protocol_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-follow_the_sun_handoff_protocol` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/follow-the-sun-handoff-protocol.md` | playbook-step skeleton with required fields + 5-line header |
+| `templates/follow-the-sun-handoff-protocol.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-follow-the-sun-handoff-protocol.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `role-project-manager/Async cross-timezone delivery cadence (P4 outsource)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[cross-timezone-standup-rotation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.
