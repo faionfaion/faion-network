@@ -1,47 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="user-research-at-scale Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for user-research-at-scale as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running sentiment analysis on non-English transcripts without routing by language.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sentiment models miss sarcasm, code-switching, and culture-specific affect in non-English text. Polarity flips on negation in low-resource languages without language-aware routing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Letting the theme-coder invent codes when the codebook is unclear rather than using the proposed_codes overflow channel.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Invented codes contaminate the taxonomy and produce theme drift across batches. Strict allow-list enforcement with a separate proposed_codes channel keeps the codebook clean.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hallucinating participant IDs in the report when citing quotes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents invent participant IDs that do not exist in the corpus. Require verbatim span offsets (start_char, end_char) tied to a specific session file, not paraphrases.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Re-running coding on the same transcript without caching, burning 10x tokens.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hash the transcript content and cache the coded output. Skip transcripts that already have a cached result. Uncached re-runs are pure waste.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Feeding full transcript bundles &gt; 200k tokens into a long-context model without chunking.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long-context models silently truncate at token boundaries. Chunk at session boundaries with overlap and verify completeness before synthesis.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Pattern-analyst over-indexing on the first segment in the prompt.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLMs weight earlier context more heavily. Randomize segment order across runs and compare findings to detect position bias.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Mixing timestamp formats from different platforms (Maze milliseconds, UserTesting ISO, Otter seconds) without normalization.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mixed timestamps break quote offset matching and prevent cross-platform de-duplication. Normalize in the transcript-cleaner stage before any downstream use.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Agents quietly dropping non-English sessions when the prompt does not explicitly handle them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Silently dropping sessions produces a biased corpus. Assert language coverage in tests and route non-English sessions to a translation step before coding.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="User Research at Scale Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real deployments of User Research at Scale. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="codebook-drift" severity="high">
+      <symptom>Weekly codes grew from 80 to 240 in 3 weeks; comparability lost.</symptom>
+      <root-cause source="Internal — Q4 2025 audit">Auto-extension without HITL.</root-cause>
+      <fix>Freeze book; route novelty to proposed_codes; require HITL accept before merge.</fix>
+    </antipattern>
+    <antipattern id="hallucinated-finding" severity="high">
+      <symptom>AI declared 'insight' from 6 observations.</symptom>
+      <root-cause source="Internal — publish-incident">No N-floor in publish gate.</root-cause>
+      <fix>Enforce evidence_count&gt;=50, session_count&gt;=10, segment_count&gt;=2 at publish.</fix>
+    </antipattern>
+    <antipattern id="pii-leak" severity="high">
+      <symptom>Transcripts processed through non-ZDR provider.</symptom>
+      <root-cause source="Anthropic ZDR + DSA">Author used default LLM endpoint.</root-cause>
+      <fix>Route through ZDR-eligible endpoints; lint outbound calls.</fix>
+    </antipattern>
+    <antipattern id="duplicate-dovetail-notes" severity="medium">
+      <symptom>Same note appears 3x in Dovetail after retries.</symptom>
+      <root-cause source="Internal — duplicate-record incident">API writes lacked idempotency keys.</root-cause>
+      <fix>Hash (source_url + date) as idempotency key; reject duplicates.</fix>
+    </antipattern>
   </section>
 </text>

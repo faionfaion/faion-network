@@ -3,74 +3,102 @@ slug: product-development-trends-2026
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A research lens for the 2026 product-development landscape: four primary trends (AI-augmented ideation, continuous customer feedback, rapid pivots, cross-functional teams) with evidence-collection and signal-scoring methodology.
-content_id: "b694e59a8c77a33d"
-tags: [trends-2026, product-development, market-research, ai-ideation, cross-functional]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Snapshot specialisation of trend research locked to 2026 signals (on-device LLM, agent-as-product, vibe-coding, privacy-first, sustainability), with hard freshness cutoff (no sources older than 18 months).
+content_id: "baaa48c1973ce55f"
+complexity: medium
+produces: report
+est_tokens: 4800
+tags: [trends, 2026, horizon-scan, snapshot]
 ---
 # Product Development Trends 2026
 
 ## Summary
 
-**One-sentence:** A research lens for the 2026 product-development landscape: four primary trends (AI-augmented ideation, continuous customer feedback, rapid pivots, cross-functional teams) with evidence-collection and signal-scoring methodology.
+**One-sentence:** Snapshot specialisation of trend research locked to 2026 signals (on-device LLM, agent-as-product, vibe-coding, privacy-first, sustainability), with hard freshness cutoff (no sources older than 18 months).
 
-**One-paragraph:** A research lens for the 2026 product-development landscape: four primary trends (AI-augmented ideation, continuous customer feedback, rapid pivots, cross-functional teams) with evidence-collection and signal-scoring methodology. Produces a trend brief grounded in URL-cited primary sources with a 90-day recency gate.
+**One-paragraph:** Year-locked trend snapshot built on product-development-trends, scoped to the 2026 signal set: on-device LLM inference, agent-as-product paradigm, AI-native CRMs, privacy-first shifts post-DSA, vibe-coding, sustainability badges. Enforces an 18-month source-age cap and a 2025-Q4-to-2026-Q4 retrieval window.
+
+**Ефективно для:**
+
+- 2026 річний планувальний цикл - треба зафіксувати поточні trends.
+- Перевірка чи 2024-2025 bets ще релевантні у 2026.
+- Investor narrative '2026 trend posture'.
+- Pricing / packaging оновлення в світлі 2026 signals.
+- Hiring 2026 - під які trends ми скейлимо.
 
 ## Applies If (ALL must hold)
 
-- Quarterly product strategy review needing an external view of where development practice is moving.
-- Drafting a product pivot brief requiring a defensible answer to "what is industry-standard in 2026".
-- Onboarding a new PM or research lead who must align on the modern Agile + Data-Driven + Cross-Functional model.
-- Adding a "trends" section to .aidocs/product_docs/market-research.md or executive-summary.md.
-- Selecting which methodology folders in pro/research/researcher/ to activate next.
+- 2026 annual planning cycle; lock current trend posture.
+- Re-validation of 2024-2025 bets against 2026 signals.
+- Investor narrative '2026 trend posture' section.
+- Pricing / packaging refresh in light of 2026 signals.
+- Hiring 2026 - under which trends do we scale headcount?
 
 ## Skip If (ANY kills it)
 
-- Pure tactical execution (sprint planning, story splitting) — use pm-agile or sdd-planning.
-- Single-feature validation answerable by one customer interview — use user-researcher/problem-validation.
-- Pricing tear-down or TAM/SAM/SOM math — use market-researcher/pricing-research and market-researcher/tam-sam-som.
-- Engineering-practice changes (CI, testing) — use cicd-engineer and code-quality skills.
-- Less than 6 weeks since the last trends pass with no triggering event.
+- Non-2026 cycles (use product-development-trends instead).
+- Trends with no 2026-specific divergence (use the parent methodology).
+- Pre-PMF startups with no users; trend bets are noise.
+- Hardware companies where 2026 signals lag.
+- Internal tools.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| 2026 candidate trend list | markdown | PM + research team |
+| Q4 2025 retrospective | markdown | previous trend cycle |
+| Source-freshness check | automated | CI / WebFetch |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[product-development-trends]] | supplies the 4-axis scoring rubric this snapshot specialises |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `freshness-gate` | haiku | Reject sources older than 18 months. |
+| `score-2026-signals` | sonnet | Apply 4-axis scoring to the 2026 candidate set. |
+| `verdict-2026` | opus | Bet/monitor/ignore with 2026-specific kill criteria. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/trend-brief-2026.md` | 2026 trend brief skeleton with the 6 canonical 2026 trend buckets |
+| `templates/collect-trends.py` | Pull 2026 source signals with freshness gate |
+| `templates/score-signals.py` | Apply 4-axis scoring to 2026 candidates |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-development-trends-2026.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[product-development-trends]]
+- [[trend-analysis]]
+- [[competitive-intelligence]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.

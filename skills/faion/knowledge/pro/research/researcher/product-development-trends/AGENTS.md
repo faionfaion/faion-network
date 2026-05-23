@@ -3,73 +3,101 @@ slug: product-development-trends
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A research lens for current product-development practice trends: AI-augmented ideation, continuous customer feedback loops, rapid-pivot cadence, and cross-functional team structures.
-content_id: "35a8a51de6541961"
-tags: [trends, product-development, market-research, methodology, discovery]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Scores emerging trends on a 4-axis rubric (signal strength + adoption velocity + revenue alignment + decay risk) producing a quarterly trend brief with explicit 'bet / monitor / ignore' verdicts.
+content_id: "17da402557bd3dc7"
+complexity: medium
+produces: report
+est_tokens: 4800
+tags: [trends, horizon-scan, strategy, research]
 ---
 # Product Development Trends
 
 ## Summary
 
-**One-sentence:** A research lens for current product-development practice trends: AI-augmented ideation, continuous customer feedback loops, rapid-pivot cadence, and cross-functional team structures.
+**One-sentence:** Scores emerging trends on a 4-axis rubric (signal strength + adoption velocity + revenue alignment + decay risk) producing a quarterly trend brief with explicit 'bet / monitor / ignore' verdicts.
 
-**One-paragraph:** A research lens for current product-development practice trends: AI-augmented ideation, continuous customer feedback loops, rapid-pivot cadence, and cross-functional team structures. Produces a trend brief with URL-cited primary sources. This is the general (non-year-pinned) version; for 2026-specific signal collection and scoring, use product-development-trends-2026 instead.
+**One-paragraph:** Systematic quarterly trend research that filters hype: each candidate trend is scored on 4 axes (signal strength, adoption velocity, revenue alignment, decay risk), classified as bet / monitor / ignore, and traced back to >=3 independent sources (one academic / filing, one practitioner, one market signal). Output: trend-brief.md with the picks + rationale + kill-criteria per bet.
+
+**Ефективно для:**
+
+- Quarterly strategy review: куди йти у наступному кварталі.
+- Roadmap-планування: чи варто інвестувати в AI / on-device / privacy / etc.
+- Investor update з 'trend snapshot' секцією.
+- Hiring rationale: під який trend ми наймаємо.
+- Newsletter / content marketing: серія 'trend digest'.
 
 ## Applies If (ALL must hold)
 
-- Quarterly methodology alignment before opening the SDD roadmap or spec.
-- Briefing a new PM, researcher, or engineer on current team-shape and discovery cadence norms.
-- Pre-PRD discovery: surfacing AI-augmented ideation candidates before locking feature specs.
-- Competitive briefs where a methodology upgrade is the differentiator (e.g. agile → continuous discovery).
+- Quarterly strategy review on where to bet next.
+- Roadmap planning: AI / on-device / privacy / sustainability / etc.
+- Investor update with a 'trend snapshot' section.
+- Hiring rationale: under which trend are we adding headcount?
+- Content marketing 'trend digest' series.
 
 ## Skip If (ANY kills it)
 
-- Sprint planning or story splitting — use pm-agile or sdd-planning instead.
-- Single-feature validation — use user-researcher/problem-validation.
-- Pricing or TAM/SAM/SOM analysis — use market-researcher/pricing-research and tam-sam-som.
-- Less than 6 weeks since last trend pass with no triggering event (funding round, major competitor move, regulatory shift).
-- Regulated domains (medical devices, fintech, avionics) where waterfall + audit trail is a contractual requirement.
+- Acute delivery cycle (next sprint) - trends are quarterly+.
+- Crisis mode (revenue cliff, outage) - solve the crisis first.
+- Pure execution org with no R&D budget.
+- Niche internal tool where outside trends do not apply.
+- When the only goal is to add a buzzword to the deck.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Candidate trend list | markdown | PM + research team |
+| Product positioning doc | markdown | marketing |
+| Quarterly revenue target | currency | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[trend-analysis]] | supplies the raw signal sources that this methodology scores |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `signal-pull` | haiku | Mechanical pull of academic / filings / practitioner sources. |
+| `score-axes` | sonnet | Score signal strength + velocity + alignment + decay. |
+| `verdict-bet-monitor-ignore` | opus | Strategic verdict + kill criteria per bet. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/trend-brief.md` | Quarterly trend brief skeleton with bet/monitor/ignore tables |
+| `templates/score-signals.py` | Score a candidate trend across 4 axes; print JSON |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-development-trends.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[product-development-trends-2026]]
+- [[trend-analysis]]
+- [[competitive-intelligence]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.

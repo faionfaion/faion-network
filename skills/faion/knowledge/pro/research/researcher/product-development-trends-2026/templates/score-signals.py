@@ -1,3 +1,8 @@
+# purpose: Apply 4-axis scoring to 2026 candidates
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 #!/usr/bin/env python3
 """
 score-signals.py — score trend signals on recency, evidence, applicability; drop weak ones.

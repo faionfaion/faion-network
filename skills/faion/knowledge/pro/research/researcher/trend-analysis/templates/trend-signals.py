@@ -1,3 +1,8 @@
+# purpose: Pull + normalize the 5 signal classes; emit JSON
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1500 tokens when loaded as context
 # trend_signals.py — minimal multi-source trend collector
 # Input: trend term as CLI argument
 # Output: JSON with signals from Google Trends, HN Algolia, GitHub

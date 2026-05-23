@@ -3,82 +3,103 @@ slug: research-repository-ops
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3a2de43550e5d866"
-summary: Research Repository OPS — pinned ops for the UX/UI designer: fixed shape + named owner + evidence anchors + outcome review, so ai-assisted research synthesis: interview transcripts → tagged insights → design-backlog stops being folklore and starts being a reviewable operating tool.
-tags: [research, pro, ops, repository]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Day-2 ops for a research repository: ingestion, tagging, deduplication, retention, access control, weekly health report, and a kill-switch for stale studies.
+content_id: "fc3bd51cdffc6c36"
+complexity: medium
+produces: report
+est_tokens: 4400
+tags: [research-repo, ops, dovetail, retention, tagging]
 ---
-# Research Repository OPS
+# Research Repository Operations
 
 ## Summary
 
-**One-sentence:** Research Repository OPS — pinned ops for the UX/UI designer: fixed shape + named owner + evidence anchors + outcome review, so ai-assisted research synthesis: interview transcripts → tagged insights → design-backlog stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Day-2 ops for a research repository: ingestion, tagging, deduplication, retention, access control, weekly health report, and a kill-switch for stale studies.
 
-**One-paragraph:** In user / market research, the UX/UI designer runs ai-assisted research synthesis: interview transcripts → tagged insights → design-backlog on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Diary studies, contextual inquiries, interview transcripts have no canonical home. Research insights die in Notion pages. ResearchOps repo methodology is industry standard (Dovetail, EnjoyHQ, Aurelius patterns). `research-repository-ops` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the UX/UI designer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored ops committed to the team's knowledge space.
+**One-paragraph:** Operational methodology for running a research repository (Dovetail / Notion / Airtable) after initial setup. Defines weekly ingestion + tagging + deduplication routines, a retention policy (older than 24 months -> archive), access control reviews, weekly health-report emission, and a kill-switch for stale or contested studies.
+
+**Ефективно для:**
+
+- Repository вже існує; треба запустити день-2 ops (не setup).
+- Studies накопичились без тегів - треба бек-філ.
+- Дублі (один інтервʼю в трьох слотах) - треба дедуп.
+- Retention pass: що архівувати, що видалити, що зберегти.
+- Access review (хто має admin, хто read-only).
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ux-ui-designer/AI-assisted research synthesis: interview transcripts → tagged insights → design-backlog`
-- the UX/UI designer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Repository exists; need day-2 ops, not initial setup.
+- Studies accumulated without consistent tagging; backfill required.
+- Duplicate records (same interview in multiple slots); need dedup.
+- Retention pass: archive / delete / keep older studies.
+- Access review (who is admin, who is read-only).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Initial repository selection / setup (use research-repository-setup).
+- One-off study without a repository.
+- Pure analysis methodology (this is ops, not findings).
+- Compliance-mandated audit (separate workflow).
+- Repository being decommissioned.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the UX/UI designer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repository platform credentials | API keys | research-ops admin |
+| Tag taxonomy | YAML | previous setup |
+| Retention policy doc | markdown | legal + research lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/research/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[research-repository-setup]] | provided the initial taxonomy + permissions baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `ingestion-sync` | haiku | Mechanical sync of new sessions from upstream sources. |
+| `tagging-backfill` | sonnet | Apply taxonomy tags to unrated studies. |
+| `dedup` | haiku | Hash-based duplicate detection + merge. |
+| `retention-pass` | sonnet | Archive / delete / keep decisions per study. |
+| `health-report` | sonnet | Weekly metrics + escalations. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/repo-health-report.md` | Weekly repository health-report skeleton |
+| `templates/ops-playbook.md` | Day-2 ops playbook (weekly tasks + monthly tasks) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-research-repository-ops.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[research-repository-setup]]
+- [[user-research-at-scale]]
+- [[continuous-discovery]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.

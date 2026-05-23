@@ -1,39 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Thematic Analysis Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Thematic Analysis output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Thematic Analysis Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid report artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/thematic-analysis.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/thematic-analysis.json</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/thematic-analysis.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "findings",
+    "decision",
+    "rationale"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ]
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "severity"
+        ]
+      }
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 5
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "thematic-analysis-q2-2026",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {
+      "name": "interviews-q2",
+      "source": "research/q2/transcripts/"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "Pattern detected across 7 interviews",
+      "severity": "high"
+    }
+  ],
+  "decision": "Ship a v2 patch addressing the top-severity finding.",
+  "rationale": "Finding f1 was anchored to 7 distinct interviews with consistent root cause; the decision follows the rubric in 01-core-rules.xml."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "findings": [],
+  "rationale": "obvious"
+}
+]]></code>
+    <note>Owner is plural pronoun (or generic group); required fields empty or missing.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`, `everyone`, `engineering`) or empty string</pattern>
+    <pattern id="inputs-empty">`inputs_used` is empty</pattern>
+    <pattern id="version-not-semver">`version` does not match `^[0-9]+\.[0-9]+\.[0-9]+$`</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-thematic-analysis.py">Stdlib-only validator implementing this schema.</reference>
 </text>

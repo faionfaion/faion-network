@@ -1,44 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Win-Loss Interview Program Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Win-Loss Interview Program output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Win-Loss Interview Program Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) that pins the shape of a valid report artefact. Subagents validate against this before returning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="sample_frame" type="object" required="true">{won_n, lost_n, total_target}</field>
-      <field name="interviewer" type="string" required="true">named, NOT the rep who sold</field>
-      <field name="script" type="string" required="true">approved interview guide</field>
-      <field name="timing_policy" type="string" required="true">≤30 days post-close</field>
-      <field name="synthesis_distribution" type="list" required="true">[{audience, document}]</field>
-      <field name="review_quarter" type="string" required="true">YYYY-Qn</field>
-      <field name="owner" type="string" required="true">named PM or researcher</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">sample ratio outside 30:70 to 70:30 won:lost</pattern>
-      <pattern id="f2">interviewer == rep who sold</pattern>
-      <pattern id="f3">script contains leading questions</pattern>
-      <pattern id="f4">interviews &gt;60 days post-close</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/win-loss-interview-program.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>sample_frame populated with a typed value</item>
-      <item>interviewer populated with a typed value</item>
-      <item>script populated with a typed value</item>
-      <item>timing_policy populated with a typed value</item>
-      <item>synthesis_distribution populated with a typed value</item>
-      <item>review_quarter populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/win-loss-interview-program.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "findings",
+    "decision",
+    "rationale"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ]
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "severity"
+        ]
+      }
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 5
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "win-loss-interview-program-q2-2026",
+  "owner": "Ruslan Faion <ruslan@faion.net>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {
+      "name": "interviews-q2",
+      "source": "research/q2/transcripts/"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "Pattern detected across 7 interviews",
+      "severity": "high"
+    }
+  ],
+  "decision": "Ship a v2 patch addressing the top-severity finding.",
+  "rationale": "Finding f1 was anchored to 7 distinct interviews with consistent root cause; the decision follows the rubric in 01-core-rules.xml."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": "team",
+  "findings": [],
+  "rationale": "obvious"
+}
+]]></code>
+    <note>Owner is plural pronoun (or generic group); required fields empty or missing.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="owner-plural">`owner` is a plural pronoun (`team`, `we`, `us`, `everyone`, `engineering`) or empty string</pattern>
+    <pattern id="inputs-empty">`inputs_used` is empty</pattern>
+    <pattern id="version-not-semver">`version` does not match `^[0-9]+\.[0-9]+\.[0-9]+$`</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-win-loss-interview-program.py">Stdlib-only validator implementing this schema.</reference>
 </text>

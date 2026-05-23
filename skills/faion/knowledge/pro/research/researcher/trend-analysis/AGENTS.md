@@ -3,73 +3,101 @@ slug: trend-analysis
 tier: pro
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A systematic pipeline for identifying and evaluating emerging market trends before acting on them.
-content_id: "bf474c5624667233"
-tags: [trend-analysis, market-research, competitive-intelligence, market-timing, adoption-curve]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Multi-source signal aggregation (search interest + research papers + funding + GitHub stars + social) producing a trend score (0-100) and decay-curve estimate; rejects single-source narratives.
+content_id: "092655a085ae568b"
+complexity: medium
+produces: report
+est_tokens: 4600
+tags: [trends, signals, decay-curve, horizon-scan]
 ---
 # Trend Analysis
 
 ## Summary
 
-**One-sentence:** A systematic pipeline for identifying and evaluating emerging market trends before acting on them.
+**One-sentence:** Multi-source signal aggregation (search interest + research papers + funding + GitHub stars + social) producing a trend score (0-100) and decay-curve estimate; rejects single-source narratives.
 
-**One-paragraph:** A systematic pipeline for identifying and evaluating emerging market trends before acting on them. Uses the STEEP framework (Social/Technology/Economic/Environmental/Political) and a weighted 5-criterion Trend Strength Score to filter signal from noise and position entry at the optimal adoption-curve stage.
+**One-paragraph:** Authoring methodology for trend analysis. Aggregates 5 signal classes (search interest, research-paper count, funding rounds, GitHub stars, social mentions) into a composite score 0-100; fits a 4-quarter decay curve; flags hype cycles vs structural trends. Refuses single-source trend narratives ('Twitter is buzzing about X').
+
+**Ефективно для:**
+
+- Quarterly trend brief - треба порівняти 3-5 candidate trends.
+- Investor deck slide 'why now' з кількісними signals.
+- Hiring / R&D rationale: підтвердити trend перед інвестицією.
+- Content marketing: серія 'trend digest' з consistent методологією.
+- Кваліфікація 'is this hype or structural?'.
 
 ## Applies If (ALL must hold)
 
-- Pre-niche selection: deciding if a vertical has tailwind before committing 6+ months.
-- Quarterly portfolio review: re-scoring active bets against fresh signals.
-- New-product wedge hunting: pairing STEEP output with personal-fit filter.
-- Competitor threat scan: detecting stage shifts (early → mainstream → decline).
-- Content/SEO planning: catching search-term inflection before incumbents arrive.
+- Quarterly trend brief comparing 3-5 candidate trends.
+- Investor deck 'why now' slide backed by quantitative signals.
+- Hiring / R&D rationale: confirm a trend before investing.
+- Content marketing 'trend digest' with consistent methodology.
+- Qualifying 'is this hype or structural?' on a candidate.
 
 ## Skip If (ANY kills it)
 
-- Sub-week tactical decisions (today's content topic, a single ad creative).
-- Validating an already-paying problem — customer interviews beat trend extraction here.
-- Deeply local B2B niches where no public signal source exists (Trends/HN/PH all blank).
-- When you already have product-market fit — trend-hopping is the failure mode this warns against.
+- Acute delivery cycle (next sprint).
+- Trends with no quantitative signal yet (too early).
+- Trends fully covered by an authoritative report (just cite it).
+- Internal-only research with no decision attached.
+- When the only goal is to fill a newsletter section.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Candidate trend list | markdown | PM / research |
+| Tooling access | Google Trends API + Crossref + Crunchbase + GitHub + X/Reddit | data ops |
+| Score rubric | from product-development-trends | previous cycle |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[product-development-trends]] | consumes the trend scores this methodology emits |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip gate | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
+| `content/05-examples.xml` | essential | Worked example trace | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `signal-pull` | haiku | Mechanical pull of search/paper/funding/stars/social signals. |
+| `normalize-and-score` | sonnet | Normalize across signal classes; compute composite 0-100. |
+| `decay-fit` | sonnet | Fit 4-quarter decay curve; flag hype vs structural. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/trend-report.md` | Trend report skeleton (signals + score + decay + verdict) |
+| `templates/trend-signals.py` | Pull + normalize the 5 signal classes; emit JSON |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trend-analysis.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/research/researcher/`
+- [[product-development-trends]]
+- [[product-development-trends-2026]]
+- [[competitive-intelligence]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
