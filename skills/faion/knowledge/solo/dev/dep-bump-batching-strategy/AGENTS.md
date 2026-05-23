@@ -3,78 +3,98 @@ slug: dep-bump-batching-strategy
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "bddfa8864844ca3a"
-summary: Dep Bump Batching Strategy delivers a concrete, testable methodology that turns the recurring task of 'Dependency audit + bump' into an auditable artefact, addressing the gap: How to split patch/minor/major bumps across PRs is solved by experience, not by faion content. Bumps are
-tags: [dev, solo, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Splits patch/minor/major dependency bumps into batched PRs with documented blast-radius, test gates, and rollback hooks; produces a batching plan artefact with one row per bump and a named owner."
+content_id: "844ee2a74139eb2b"
+complexity: medium
+produces: playbook-step
+est_tokens: 4900
+tags: ["dev", "solo", "dependencies", "release-management", "batching"]
 ---
 # Dep Bump Batching Strategy
 
 ## Summary
 
-**One-sentence:** Dep Bump Batching Strategy delivers a concrete, testable methodology that turns the recurring task of 'Dependency audit + bump' into an auditable artefact, addressing the gap: How to split patch/minor/major bumps across PRs is solved by experience, not by faion content. Bumps are weekly / bi-weekly cadence for any active project.
+**One-sentence:** Splits patch/minor/major dependency bumps into batched PRs with documented blast-radius, test gates, and rollback hooks; produces a batching plan artefact with one row per bump and a named owner.
 
-**One-paragraph:** How to split patch/minor/major bumps across PRs is solved by experience, not by faion content. Bumps are weekly / bi-weekly cadence for any active project. Dep Bump Batching Strategy closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Dependency audit + bump' (role-software-developer, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Splits patch/minor/major dependency bumps into batched PRs with documented blast-radius, test gates, and rollback hooks; produces a batching plan artefact with one row per bump and a named owner. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Weekly maintenance windows where 5–30 deps need bumping at once.
+- Pre-release stabilisation when bump fatigue otherwise stalls the train.
+- Audit-driven CVE response when patches arrive in clusters.
+- Solo founders who must batch review-able PRs without a co-reviewer.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Dependency audit + bump' (role: role-software-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Project has ≥10 third-party dependencies and a weekly or bi-weekly bump cadence.
+- CI is green on `main` before the bump session starts (no carry-over regressions).
+- A single named owner can take the resulting batched PRs through review.
+- The dependency manifest is the source of truth (`package.json`, `pyproject.toml`, `Cargo.toml`, etc.).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- One-off project with no upcoming releases — overhead does not pay back.
+- No automated test suite covering the dependency surface — bumps cannot be gated.
+- Mandatory same-day security CVE patch — use an emergency single-bump flow instead.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[blast-radius-scoring-rubric]] | upstream context this methodology builds on |
+| [[changelog-automation-conventional-commits]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `dep_bump_batching_strategy_template_fill` | haiku | Template fill, no judgment |
-| `dep_bump_batching_strategy_evidence_check` | sonnet | Bounded comparison + judgment |
-| `dep_bump_batching_strategy_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-dep-bump-batching-strategy-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-dep-bump-batching-strategy.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-dep-bump-batching-strategy.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/` (see neighbouring methodologies)
-- triggering activity: `role-software-developer/Dependency audit + bump`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[blast-radius-scoring-rubric]]
+- [[changelog-automation-conventional-commits]]
+- [[library-evaluation-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

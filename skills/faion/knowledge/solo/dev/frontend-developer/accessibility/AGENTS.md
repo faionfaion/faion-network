@@ -3,71 +3,99 @@ slug: accessibility
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Web accessibility: make interfaces perceivable, operable, understandable, and robust for all users including those using assistive technologies.
-content_id: "db4276a0dedfedda"
-tags: [accessibility, wcag, aria, a11y, semantic-html]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Specification of accessibility expectations for a frontend codebase: WCAG-AA conformance target, tooling baseline, per-role responsibilities, and regression-prevention contract; produces an a11y spec that the team agrees to and that subsequent audits assert against."
+content_id: "2000145e98e78395"
+complexity: deep
+produces: spec
+est_tokens: 4900
+tags: ["frontend", "solo", "a11y", "wcag", "inclusive-design"]
 ---
-# Accessibility (WCAG)
+# Accessibility
 
 ## Summary
 
-**One-sentence:** Web accessibility: make interfaces perceivable, operable, understandable, and robust for all users including those using assistive technologies.
+**One-sentence:** Specification of accessibility expectations for a frontend codebase: WCAG-AA conformance target, tooling baseline, per-role responsibilities, and regression-prevention contract; produces an a11y spec that the team agrees to and that subsequent audits assert against.
 
-**One-paragraph:** Web accessibility: make interfaces perceivable, operable, understandable, and robust for all users including those using assistive technologies. WCAG 2.1/2.2 AA is the target conformance level. Accessibility is a default practice, not an opt-in feature.
+**One-paragraph:** Specification of accessibility expectations for a frontend codebase: WCAG-AA conformance target, tooling baseline, per-role responsibilities, and regression-prevention contract; produces an a11y spec that the team agrees to and that subsequent audits assert against. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Solo founders deciding the a11y target before the codebase exists.
+- Teams adopting WCAG-AA for the first time after a customer complaint.
+- Component-library publishers who must guarantee a11y to consumers.
+- Pre-funding compliance prep (EU EAA, ADA Title III risk).
 
 ## Applies If (ALL must hold)
 
-- Every web project — accessibility is a default, not an opt-in.
-- Public-facing apps subject to ADA, EAA (June 2025 EU mandate), Section 508, AODA.
-- Enterprise/government RFPs that require WCAG 2.1 AA or 2.2 AA conformance.
-- E-commerce and fintech where assistive-tech failures convert directly into lost revenue + lawsuits.
-- Any agent-generated UI: LLMs systematically under-deliver on a11y unless forced.
+- Project ships a user-facing UI consumed outside the engineering team.
+- Org commits (or must commit) to a named WCAG conformance level (A, AA, or AAA).
+- Operator can enforce CI gates and PR checklists.
+- Component library or design system exists where a11y baseline can be set once.
 
 ## Skip If (ANY kills it)
 
-- Internal CLI/server-only tools with no UI surface (still apply for any web admin panel).
-- Throwaway experiments — but even then, accessible markup is rarely more expensive than div soup.
+- Pure internal tool used by 1–2 named operators — overhead exceeds value.
+- API-only product with no user-facing UI.
+- Org explicitly disclaims a11y commitments (rare; usually a compliance risk in itself).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[a11y-audit-per-screen-checklist]] | upstream context this methodology builds on |
+| [[accessibility-as-code]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-accessibility-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-accessibility.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-accessibility.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
+- [[a11y-audit-per-screen-checklist]]
+- [[accessibility-as-code]]
+- [[design-tokens-basics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

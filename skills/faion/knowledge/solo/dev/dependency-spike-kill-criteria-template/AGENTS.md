@@ -3,78 +3,99 @@ slug: dependency-spike-kill-criteria-template
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "16f3f03b281cee47"
-summary: Dependency Spike Kill Criteria Template delivers a concrete, testable methodology that turns the recurring task of 'Library evaluation spike' into an auditable artefact, addressing the gap: trade-off-* and decision-tree-* methodologies are present but high-level. A concrete spike
-tags: [dev, solo, template, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pre-commits the disqualifiers that will end a dependency spike before time is sunk; produces a spec with named criteria, measurable thresholds, and a kill-or-continue verdict captured at spike end."
+content_id: "d0d48dc05f347b88"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["dev", "solo", "spikes", "kill-criteria", "dependency-evaluation"]
 ---
-# Dependency Spike Kill Criteria Template
+# Dependency Spike Kill-Criteria Template
 
 ## Summary
 
-**One-sentence:** Dependency Spike Kill Criteria Template delivers a concrete, testable methodology that turns the recurring task of 'Library evaluation spike' into an auditable artefact, addressing the gap: trade-off-* and decision-tree-* methodologies are present but high-level. A concrete spike-brief template with kill-criteria fields is missing.
+**One-sentence:** Pre-commits the disqualifiers that will end a dependency spike before time is sunk; produces a spec with named criteria, measurable thresholds, and a kill-or-continue verdict captured at spike end.
 
-**One-paragraph:** trade-off-* and decision-tree-* methodologies are present but high-level. A concrete spike-brief template with kill-criteria fields is missing. Dependency Spike Kill Criteria Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Library evaluation spike' (role-software-developer, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Pre-commits the disqualifiers that will end a dependency spike before time is sunk; produces a spec with named criteria, measurable thresholds, and a kill-or-continue verdict captured at spike end. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Replacing a build-it-yourself component with an off-the-shelf library.
+- Adopting an emerging framework where community signals are still mixed.
+- Vendor-bundle decisions (auth provider, payments, queue) where lock-in is high.
+- Pre-empting yak-shave spirals where 'just one more day' eats a week.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Library evaluation spike' (role: role-software-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- A new third-party dependency is being evaluated for adoption (not an upgrade of an existing one).
+- Spike has a planned time-box (≤2 days) the operator commits to before starting.
+- The dependency would touch at least one critical path (auth, payments, data integrity, runtime perf).
+- A named operator can run and judge the spike.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Dependency is trivial (logging helper, type shim) — kill criteria add more weight than they save.
+- Decision is already made for non-technical reasons (vendor mandate, customer requirement) — spike is theatre.
+- No time-box committed — without a box the spike runs forever regardless of criteria.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[library-evaluation-rubric]] | upstream context this methodology builds on |
+| [[blast-radius-scoring-rubric]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `dependency_spike_kill_criteria_template_template_fill` | haiku | Template fill, no judgment |
-| `dependency_spike_kill_criteria_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `dependency_spike_kill_criteria_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-dependency-spike-kill-criteria-template-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-dependency-spike-kill-criteria-template.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-dependency-spike-kill-criteria-template.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/` (see neighbouring methodologies)
-- triggering activity: `role-software-developer/Library evaluation spike`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[library-evaluation-rubric]]
+- [[blast-radius-scoring-rubric]]
+- [[hidden-tech-debt-trace]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

@@ -3,78 +3,99 @@ slug: deploy-notes-template-with-rollback
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "0bc0ca3b6af4a1c6"
-summary: Deploy Notes Template With Rollback delivers a concrete, testable methodology that turns the recurring task of 'Deploy-to-staging + smoke + sign-off' into an auditable artefact, addressing the gap: Continuous-delivery methodologies cover pipelines, not communication artifacts. De
-tags: [dev, solo, template, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pre-deploy spec capturing the change set, blast-radius, rollback recipe, and post-deploy verification steps so a single operator can recover without context; produces a deploy-notes artefact pinned to the deployable artifact id."
+content_id: "a19a979d7353915a"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["dev", "solo", "deploy", "rollback", "release-notes"]
 ---
-# Deploy Notes Template With Rollback
+# Deploy Notes Template with Rollback
 
 ## Summary
 
-**One-sentence:** Deploy Notes Template With Rollback delivers a concrete, testable methodology that turns the recurring task of 'Deploy-to-staging + smoke + sign-off' into an auditable artefact, addressing the gap: Continuous-delivery methodologies cover pipelines, not communication artifacts. Deploy notes + rollback recipe is a daily artifact in any product team.
+**One-sentence:** Pre-deploy spec capturing the change set, blast-radius, rollback recipe, and post-deploy verification steps so a single operator can recover without context; produces a deploy-notes artefact pinned to the deployable artifact id.
 
-**One-paragraph:** Continuous-delivery methodologies cover pipelines, not communication artifacts. Deploy notes + rollback recipe is a daily artifact in any product team. Deploy Notes Template With Rollback closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Deploy-to-staging + smoke + sign-off' (role-software-developer, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Pre-deploy spec capturing the change set, blast-radius, rollback recipe, and post-deploy verification steps so a single operator can recover without context; produces a deploy-notes artefact pinned to the deployable artifact id. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Solo founders running production deploys without a co-on-call.
+- Friday-afternoon hotfixes when memory and adrenaline make written context essential.
+- DB schema changes where ordering of code + migration determines reversibility.
+- Vendor-driven deploys (Stripe webhook update, OAuth migration) with rollback windows.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Deploy-to-staging + smoke + sign-off' (role: role-software-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- A code change is about to be deployed to a production-equivalent environment.
+- The deployable artifact has a stable identifier (SHA, image tag, version tag).
+- Rollback is possible (previous artifact still pullable / DB migrations are reversible or guarded).
+- A single named operator will run the deploy and hold ownership of the outcome.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Pre-production environment (staging, dev) with throw-away data — overhead not justified.
+- No previous artifact to roll back to (first-ever deploy) — use a launch checklist instead.
+- Forward-only DB migration with no down-script — escalate to a migration-impact mapping first.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[migration-impact-mapping]] | upstream context this methodology builds on |
+| [[qa-rollback-trigger-canon]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `deploy_notes_template_with_rollback_template_fill` | haiku | Template fill, no judgment |
-| `deploy_notes_template_with_rollback_evidence_check` | sonnet | Bounded comparison + judgment |
-| `deploy_notes_template_with_rollback_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-deploy-notes-template-with-rollback-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-deploy-notes-template-with-rollback.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-deploy-notes-template-with-rollback.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/` (see neighbouring methodologies)
-- triggering activity: `role-software-developer/Deploy-to-staging + smoke + sign-off`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[migration-impact-mapping]]
+- [[qa-rollback-trigger-canon]]
+- [[blast-radius-scoring-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

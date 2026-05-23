@@ -1,54 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Feature Flag Cleanup Discipline Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules that bind every feature flag to a retirement contract from the moment it is created. Cleanup is a first-class discipline, not a hopeful afterthought.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>No flag ships without an expiry date, a named removal owner, and a one-sentence kill criterion stored in a versioned flag-ledger (e.g. `flags.yml` or its remote equivalent). The PR that introduces the flag must add the ledger entry; CI rejects the PR if any of the three fields is empty or missing.</statement>
-      <rationale source="Feature-flag retirement gap in multi-month flows">Flags created without expiry, owner, or kill criterion become orphaned the moment the original author switches context; the toggle layer becomes a graveyard of permanent forks pretending to be temporary.</rationale>
+<text id="01-core-rules" title="Feature Flag Cleanup Discipline Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the Feature Flag Cleanup Discipline methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+
+  <section title="Rule set">
+    <rule id="expiry-mandatory" testable="true" depth="essential">
+      <statement>Every flag declared MUST carry an expiry date written when the flag is added. Flags without expiry are rejected at PR review.</statement>
+      <rationale source="Discipline gap">without expiry, the flag becomes a permanent fixture.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every flag has exactly one of four states: <code>rolling-out</code>, <code>full-on</code>, <code>full-off</code>, <code>kill-switch</code>. Once a flag reaches <code>full-on</code> or <code>full-off</code> and stays there for two sprints, it is automatically marked <code>ready-to-remove</code> and a cleanup ticket is opened against the removal owner.</statement>
-      <rationale source="Flag-retirement discipline (stale-state detection)">A flag that has been fully-on or fully-off for weeks is no longer a flag — it is a dead branch in the codebase. The state machine forces the conversation: keep as kill-switch (rename), or delete.</rationale>
+    <rule id="owner-mandatory" testable="true" depth="essential">
+      <statement>Every flag carries a single named owner. The owner is responsible for the cleanup PR.</statement>
+      <rationale source="Internal practice">Un-owned flags are un-removed flags.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every sprint includes a flag-sweep task whose definition of done is: (a) reconcile ledger ↔ flag store ↔ code references; (b) close all <code>ready-to-remove</code> flags; (c) flag any drift (orphan in code, orphan in store, orphan in ledger) as a blocker.</statement>
-      <rationale source="Multi-month migration tech-debt accumulation">Without a recurring sweep, the three sources of truth — ledger, flag-service, code — drift apart, and the operator can no longer answer "is this flag still doing anything?" with confidence.</rationale>
+    <rule id="expiry-grace-period" testable="true" depth="essential">
+      <statement>If expiry is reached and flag is still on, owner has a 14-day grace to either re-state expiry (with reason) or ship the cleanup PR. Indefinite extensions are rejected.</statement>
+      <rationale source="Internal practice">Grace prevents panic-deletes but caps the slip.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Removal is a single mechanical PR: delete the flag-read in code, delete the ledger entry, archive (not delete) the flag in the flag store with a "removed in PR #N" note. The PR template explicitly forbids bundling flag removal with unrelated feature work.</statement>
-      <rationale source="Hidden tech-debt from accumulated stale flags">When flag removal is mixed with feature work, the diff hides the deletion and reviewers cannot certify that the toggle is gone; orphan reads survive and the "removed" flag continues to gate behaviour through stale defaults.</rationale>
+    <rule id="cleanup-pr-mechanical" testable="true" depth="essential">
+      <statement>Cleanup PR removes BOTH branches (the old code path AND the flag declaration); leaving the disabled branch behind is rejected.</statement>
+      <rationale source="Internal practice">Half-removed flags are worse than the original debt.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Any flag whose expiry date has passed by more than one sprint without removal is escalated: the ledger entry is auto-promoted to status <code>overdue</code>, the next sprint plan is blocked from starting new flag-gated work until at least one <code>overdue</code> flag is killed, and the overdue list is included in the release notes.</statement>
-      <rationale source="Retirement-side discipline closes the rollout-only gap">An expiry without an escalation is a wish, not a deadline. The "no new flags until one overdue dies" rule keeps the toggle layer's debt budget honest and prevents the long tail of forgotten flags from compounding.</rationale>
+    <rule id="verified-removed-required" testable="true" depth="essential">
+      <statement>Cleanup PR MUST attach evidence the disabled path is gone (grep / coverage report). Self-asserted removal is rejected.</statement>
+      <rationale source="Trust-but-verify">removed flags have re-appeared in the codebase before.</rationale>
     </rule>
+    <rule id="metric-snapshot-attached" testable="true" depth="essential">
+      <statement>Cleanup PR attaches a final flag-evaluation metric snapshot (last 7d hit count) so traffic shape at removal is documented.</statement>
+      <rationale source="Audit signal">removing a high-traffic flag without a metric snapshot is unverifiable.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running Feature Flag Cleanup Discipline under degraded conditions.</statement>
+      <rationale source="Internal">decision-tree contract. The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical example">
-    <example type="good" title="Birth-to-kill of a migration flag">
-      <code lang="text"><![CDATA[
-Day 0 (rollout PR):
-  flags.yml entry added:
-    key: orders.v2_pipeline
-    expires: 2026-09-15
-    owner: ruslan
-    kill_when: "v2 carries >=98% of order events for 14 consecutive days with zero P1 incidents"
-    state: rolling-out
 
-Sprint 6:
-  Metric crossed threshold → state: full-on for 14 days
-  Sprint 8 sweep flips state to ready-to-remove, cleanup ticket opened
-
-Sprint 9:
-  Removal PR #842:
-    - delete flag read in src/orders/pipeline.py
-    - delete flags.yml entry
-    - archive flag in LaunchDarkly with note "removed in PR #842"
-  PR is single-purpose, no other feature work in the diff
-
-Sprint 10 release notes:
-  "Flags retired this release: orders.v2_pipeline. Overdue: 0."
-]]></code>
-      <note>Every step is mechanical, observable, and produces a paper trail. The flag never enters the long tail of forgotten toggles.</note>
-    </example>
-  </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

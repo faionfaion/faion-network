@@ -3,77 +3,98 @@ slug: accessibility-as-code
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for accessibility as code that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "216f553b9111dd9e"
-tags: [accessibility, dev, playbook]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pattern for asserting accessibility invariants in code: unit-level component contracts, integration-level axe assertions, and CI gates that block on critical violations; produces a code scaffold + CI config making a11y regressions impossible to merge silently."
+content_id: "9c62f72ca2dbe343"
+complexity: deep
+produces: code
+est_tokens: 4900
+tags: ["frontend", "solo", "a11y", "automation", "ci"]
 ---
-# Accessibility As Code
+# Accessibility as Code
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for accessibility as code that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Pattern for asserting accessibility invariants in code: unit-level component contracts, integration-level axe assertions, and CI gates that block on critical violations; produces a code scaffold + CI config making a11y regressions impossible to merge silently.
 
-**One-paragraph:** End-to-end playbook for accessibility as code that walks an operator from trigger to closed outcome with named artefacts at each step. Accessibility methodologies live in `ux/accessibility-specialist/` but a working dev needs axe-core in CI, eslint-plugin-jsx-a11y rules, contrast-checking in design tokens. Solo `dev/software-developer/accessibility` is a single doc, not an enforcement playbook.
+**One-paragraph:** Pattern for asserting accessibility invariants in code: unit-level component contracts, integration-level axe assertions, and CI gates that block on critical violations; produces a code scaffold + CI config making a11y regressions impossible to merge silently. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Component libraries where a11y is a publishable contract.
+- SaaS apps that must catch regressions before customer-visible.
+- Solo founders avoiding manual audits every release.
+- Migrations from a manual audit cadence to a continuous one.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by accessibility as code end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Project has component-level testing infrastructure (Vitest, Jest, Storybook test-runner).
+- Project has integration / e2e testing (Playwright, Cypress).
+- CI is configured and can run a11y jobs without exceeding budget.
+- Conformance target (A, AA, AAA) is already named.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Project has no automated tests yet — start with the accessibility spec first.
+- CI budget cannot accommodate an extra job — reduce scope first.
+- All a11y work is manual (audit-only) — different methodology applies.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/frontend-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[accessibility]] | upstream context this methodology builds on |
+| [[a11y-audit-per-screen-checklist]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-accessibility-as-code-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-accessibility-as-code.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-accessibility-as-code.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
-- peer methodologies: see siblings under `solo/dev/frontend-developer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[accessibility]]
+- [[a11y-audit-per-screen-checklist]]
+- [[ci-quality-gate-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

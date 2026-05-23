@@ -1,44 +1,116 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Exploratory Testing Charters Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Exploratory Testing Charters output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Exploratory Testing Charters Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid Exploratory Testing Charters artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="charter" type="string" required="true">mission statement: 'Explore X with Y to find Z'</field>
-      <field name="session_duration_min" type="integer" required="true">60-120</field>
-      <field name="heuristics_used" type="list" required="true">2-4 from catalogue</field>
-      <field name="bugs_found" type="list" required="true">[{id, severity, repro_steps, file}]</field>
-      <field name="debrief_text" type="string" required="true">1-2 paragraph session summary</field>
-      <field name="pair_or_solo" type="string" required="true">pair|solo|pmw</field>
-      <field name="owner" type="string" required="true">named tester / dev</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">charter is missing OR not mission-shaped</pattern>
-      <pattern id="f2">session_duration_min &gt; 150 (fatigue zone) OR &lt; 30</pattern>
-      <pattern id="f3">heuristics_used is empty</pattern>
-      <pattern id="f4">debrief_text missing</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/exploratory-testing-charters.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>charter populated with a typed value</item>
-      <item>session_duration_min populated with a typed value</item>
-      <item>heuristics_used populated with a typed value</item>
-      <item>bugs_found populated with a typed value</item>
-      <item>debrief_text populated with a typed value</item>
-      <item>pair_or_solo populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/exploratory-testing-charters.json",
+  "title": "Exploratory Testing Charters",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "mission",
+    "timebox",
+    "threats",
+    "debrief",
+    "owner",
+    "last_touched",
+    "template_version",
+    "status"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date or UUID",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    },
+    "status": {
+      "type": "string",
+      "description": "draft|ready_for_review|approved|archived",
+      "minLength": 1
+    },
+    "mission": {
+      "type": "string",
+      "minLength": 1,
+      "description": "one-sentence mission"
+    },
+    "timebox": {
+      "type": "string",
+      "description": "ISO-8601 duration (e.g. PT90M)"
+    },
+    "threats": {
+      "type": "array",
+      "minItems": 3,
+      "description": "threat hypotheses"
+    },
+    "debrief": {
+      "type": "object",
+      "description": "{time_spent_session_min, time_spent_setup_min, time_spent_investigation_min, coverage, issues, notes, follow_up_action}"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "exploratory-testing-charters-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "mission": "draft",
+  "timebox": "draft",
+  "threats": [
+    "item-1",
+    {
+      "key": "value-1"
+    },
+    {
+      "key": "value-2"
+    }
+  ],
+  "debrief": {
+    "key": "value"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence — rejected by `validate-exploratory-testing-charters.py` with exit 1.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+    <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "everyone").</pattern>
+    <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter.</pattern>
+    <pattern id="f4">Required array fields shipped empty when the schema declares minItems &gt;= 1.</pattern>
+    <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a reviewer field naming a human distinct from the producing agent.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-exploratory-testing-charters.py">Validator script — exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

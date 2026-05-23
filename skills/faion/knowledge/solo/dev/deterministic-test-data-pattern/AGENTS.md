@@ -3,37 +3,98 @@ slug: deterministic-test-data-pattern
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Cross-stack pattern for deterministic test data — factories, frozen clocks, seeded RNG, per-test DB isolation, golden datasets, time/randomness pinning — that eliminates the bulk of suite flakiness.
-content_id: 07a972a558403f04
+summary: "Pattern for generating test data that is reproducible across runs, machines, and CI shards; produces a fixtures module with seeded factories, time-frozen clocks, and stable id generators replacing ad-hoc faker calls."
+content_id: "92eecb97d9f865f6"
+complexity: medium
+produces: code
+est_tokens: 4900
+tags: ["dev", "solo", "testing", "fixtures", "determinism"]
 ---
-
 # Deterministic Test Data Pattern
 
 ## Summary
 
-Flake-elimination methodologies fix individual tests; this one fixes the test-data layer underneath them. Factories, frozen clocks, seeded RNG, per-test DB isolation, golden datasets, anonymised production snapshots, seed/teardown order, dataset versioning, and cross-environment parity are typically scattered across stacks (one team has factory-boy, another has fixtures, a third has snapshot copies). This methodology defines a single cross-stack pattern so that any test, in any stack, gets the same five guarantees about its data: deterministic identity, frozen time, seeded randomness, isolated state, and parity with prod schema.
+**One-sentence:** Pattern for generating test data that is reproducible across runs, machines, and CI shards; produces a fixtures module with seeded factories, time-frozen clocks, and stable id generators replacing ad-hoc faker calls.
 
-## Applies If
+**One-paragraph:** Pattern for generating test data that is reproducible across runs, machines, and CI shards; produces a fixtures module with seeded factories, time-frozen clocks, and stable id generators replacing ad-hoc faker calls. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
 
-- The test suite shows flakiness traceable to data, time, ordering, or random values (not network or UI timing alone).
-- The team owns ≥2 services or stacks (e.g. Python backend + Node frontend + a worker) where test-data patterns currently differ.
-- An E2E or integration tier exists that touches a real DB, queue, or external service stub.
-- The team can change test setup code without breaking shipped behaviour.
+**Ефективно для:**
 
-## Skip If
+- Snapshot diffs that change every run because of timestamps or uuids.
+- CI shards where order-of-execution affects test outcome.
+- Cross-OS test runs where locale or timezone shifts dates.
+- Solo devs who cannot afford an afternoon chasing a flake.
 
-- Pure unit tests with no external state — function-level testing inherits determinism from the runtime.
-- The suite's flakiness is dominated by environment timing (CI runner load, network) — fix the timing tier first, then revisit data determinism.
+## Applies If (ALL must hold)
 
-## Content
-See `content/01-core-rules.xml`.
+- Test suite has ≥1 flaky test traceable to non-deterministic inputs (random seeds, wall-clock time, uuid4 in assertions).
+- Tests run in CI on multiple shards or against multiple OS / Node / Python versions.
+- The codebase uses a faker / factory_boy / fishery / similar library.
+- Snapshot tests exist or are about to be added.
+
+## Skip If (ANY kills it)
+
+- All test data is hand-written constants — pattern adds no value.
+- Only e2e tests against live services — determinism is achieved upstream, not in fixtures.
+- Tests intentionally exercise randomness (fuzzers, property tests) — those use different discipline.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[flaky-test-elimination]] | upstream context this methodology builds on |
+| [[flaky-test-triage-playbook]] | sibling discipline cited in decision tree |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-deterministic-test-data-pattern-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-deterministic-test-data-pattern.py --self-test` |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-deterministic-test-data-pattern.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
-- [[qa-flake-ledger-template]]
-- [[qa-test-data-catalog]]
+
+- [[flaky-test-elimination]]
+- [[flaky-test-triage-playbook]]
 - [[characterization-test-recipes]]
-- [[test-pyramid-policy-enforcement]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

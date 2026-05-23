@@ -3,69 +3,99 @@ slug: exploratory-testing-charters
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Session-based, charter-driven, heuristic-based exploratory testing (Bach/Bolton) — the discipline faion's scripted/automated testing corpus is missing.
-content_id: "3b981f54a7f40a89"
-tags: [exploratory-testing-charters, dev, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Session-based exploratory-testing charter format: a one-page mission with named area, threat hypothesis, time-box, and debrief schema; produces a charter spec the tester executes and a debrief report logged against it."
+content_id: "efb543fb7629c559"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: ["dev", "solo", "exploratory-testing", "session-based", "charter"]
 ---
-
 # Exploratory Testing Charters
 
 ## Summary
 
-**One-sentence:** Session-based, charter-driven, heuristic-based exploratory testing (Bach/Bolton) — the discipline faion's scripted/automated testing corpus is missing.
+**One-sentence:** Session-based exploratory-testing charter format: a one-page mission with named area, threat hypothesis, time-box, and debrief schema; produces a charter spec the tester executes and a debrief report logged against it.
 
-**One-paragraph:** Faion's entire testing corpus is scripted/automated. Modern QA pairs automation with structured exploratory testing. Output: charter template + heuristic catalogue + session-debrief template.
+**One-paragraph:** Session-based exploratory-testing charter format: a one-page mission with named area, threat hypothesis, time-box, and debrief schema; produces a charter spec the tester executes and a debrief report logged against it. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Pre-release smoke on a feature that automated tests cover only happy-path.
+- Onboarding a new tester to a legacy module — charters double as guided tour.
+- Post-incident exploration of the area around the root cause.
+- Solo founders who must test like a tester for a 90-minute window per release.
 
 ## Applies If (ALL must hold)
 
-- product has a UI or API surface used by humans
-- tester or developer has ≥1h per week for exploratory sessions
-- team values bug discovery beyond regression coverage
+- Feature, area, or release candidate exists where automated tests give incomplete coverage.
+- Tester has ≥1 uninterrupted block of 60–120 minutes for the session.
+- Charter has a single named author + tester (same person allowed for solo).
+- A log location (markdown, ticket) exists for the debrief.
 
 ## Skip If (ANY kills it)
 
-- infrastructure-only systems with no human-facing surface
-- team treats QA as 100% automation gate — different philosophy
-- single-script test product (calculator, single transform)
+- Pure regression check — automated tests are the right tool.
+- No tester time available — un-executed charters are noise.
+- Area is too broad (whole product) — narrow the charter first or it becomes wandering.
 
 ## Prerequisites
 
-- list of risk areas in the current release
-- test heuristics reference (Bach SFDIPOT, ISTQB-EXT, Karen Johnson cheat sheet)
-- session note format (text doc, Notion, dedicated tool)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent skill — provides operating context for this methodology |
-| `solo/dev/automation-tooling` | peer methodology — produces inputs or consumes outputs |
-| `free/dev/testing-developer` | peer methodology — produces inputs or consumes outputs |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[qa-bug-bash-runbook]] | upstream context this methodology builds on |
+| [[qa-session-based-test-management]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-exploratory-testing-charters-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-exploratory-testing-charters.py --self-test` |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-exploratory-testing-charters.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- peer methodology: `solo/dev/automation-tooling`
-- peer methodology: `free/dev/testing-developer`
-- peer methodology: `pro/dev/perf-test-basics`
-- external: https://www.satisfice.com/exploratory-testing (James Bach); http://www.developsense.com/blog/ (Michael Bolton); https://kaner.com/?p=104
+- [[qa-bug-bash-runbook]]
+- [[qa-session-based-test-management]]
+- [[qa-prioritization-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

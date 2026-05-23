@@ -3,41 +3,99 @@ slug: flaky-test-triage-playbook
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-content_id: "fd222b314976290c"
-summary: "Process playbook for flaky tests: detect via mechanical signal, quarantine within budget, bucket by responsible owner and severity, fix by class, close the loop with a 'held N runs' confirmation — the lifecycle existing testing-patterns refer to but do not specify."
-tags: [dev, solo, qa, flaky-tests, triage, lifecycle, pipeline]
+summary: "Triage step that runs BEFORE flake-elimination: detect, score, route, and decide which flakes to fix vs quarantine vs delete; produces a triage report ranking flakes by cost-of-flake and routing each to the right next step."
+content_id: "4c40a18787f15e4d"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: ["dev", "solo", "testing", "triage", "flake"]
 ---
 # Flaky Test Triage Playbook
 
 ## Summary
 
-Existing testing-patterns content mentions flakes but never gives a triage process — only a vague directive to "fix flaky tests". This playbook supplies the missing lifecycle: a five-stage pipeline (detect → quarantine → bucket → fix → close) where each stage has an entry condition, an artefact, and an exit gate. Detection is mechanical, quarantine respects a hard budget, bucketing assigns the right owner before any fix is attempted, fixing follows class-specific patterns, and closing requires N consecutive green runs before the flake leaves the ledger. The playbook is complementary to the test-pyramid rebalance work because misclassified flakes often hint that an E2E test should have been a contract or unit test.
+**One-sentence:** Triage step that runs BEFORE flake-elimination: detect, score, route, and decide which flakes to fix vs quarantine vs delete; produces a triage report ranking flakes by cost-of-flake and routing each to the right next step.
 
-## Applies If
+**One-paragraph:** Triage step that runs BEFORE flake-elimination: detect, score, route, and decide which flakes to fix vs quarantine vs delete; produces a triage report ranking flakes by cost-of-flake and routing each to the right next step. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
 
-- The team is running a regression suite or E2E suite with at least 100 tests and weekly CI runs.
-- A flake-detection signal exists or can be added (CI re-run rate, retry counters, or a daily aggregator).
-- The team owns a single flake ledger (file, board, or sheet) that everyone agrees to update.
-- A test pyramid rebalance is plausible (some flakes may be hints to move tests down the pyramid).
+**Ефективно для:**
 
-## Skip If
+- Multi-tenant codebases inheriting flaky tests from acquisitions or rewrites.
+- Pre-release stabilisation when the flake tail blocks releases.
+- Solo founders who must triage before they fix because they cannot fix all.
+- Audit prep where 'we have no flakes' must be measured, not asserted.
 
-- Single dev hobby suite where lifecycle overhead is more expensive than ad-hoc fixes.
-- The team already has a working triage SOP that maps to the same five stages — keep yours; do not stack.
-- The suite is being decommissioned; do not invest in lifecycle process for tests due to disappear.
+## Applies If (ALL must hold)
 
-## Content
+- Suite has ≥3 known-flaky tests (mute markers, retry decorators, or ≥1 flake/week).
+- CI history is queryable (job logs, retry counts) for the past 30 days.
+- Operator can mute / quarantine tests without blocking releases.
+- A weekly triage cadence is committed.
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Five testable rules defining each lifecycle stage (detect, quarantine, bucket, fix, close-loop) with explicit entry/exit gates |
+## Skip If (ANY kills it)
+
+- Only one flaky test exists — skip to elimination directly.
+- No CI history available — install measurement first.
+- Suite is being rewritten — triaging the old suite wastes effort.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[flaky-test-elimination]] | upstream context this methodology builds on |
+| [[qa-flaky-test-root-cause-taxonomy]] | sibling discipline cited in decision tree |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-flaky-test-triage-playbook-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-flaky-test-triage-playbook.py --self-test` |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-flaky-test-triage-playbook.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- triggering activity: `Regression suite hardening: flaky test elimination`, `Test pyramid rebalance: too-many-e2e to contract + unit`
-- neighbouring: `solo/dev/flaky-test-elimination`, `solo/dev/qa-flake-ledger-template`, `pro/dev/test-pyramid-rebalance-playbook`
+- [[flaky-test-elimination]]
+- [[qa-flaky-test-root-cause-taxonomy]]
+- [[qa-flake-ledger-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

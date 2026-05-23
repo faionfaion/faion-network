@@ -1,30 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Accessibility As Code Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Accessibility As Code deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="steps" type="list" min="4" schema="{id,input,owner,exit_criterion,output_location}" />
-      <field name="decision_branches" type="list" />
-      <field name="owner_of_playbook" type="string" />
-      <field name="deviation_log_reference" format="url_or_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">step without exit_criterion</pattern>
-      <pattern id="f2">playbook without named owner</pattern>
-      <pattern id="f3">decision branch without explicit signal</pattern>
-      <pattern id="f4">deviation log missing</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder steps as long as input/output graph stays acyclic.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has exit_criterion</item>
-      <item>Owner named</item>
-      <item>Branches explicit</item>
-      <item>Deviation log exists</item>
-    </list>
+<text id="02-output-contract" title="Accessibility as Code Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid Accessibility as Code artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/accessibility-as-code.json",
+  "title": "Accessibility as Code",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "framework",
+    "unit_test_patterns",
+    "integration_test_routes",
+    "ci_job_id",
+    "known_issues_policy",
+    "owner",
+    "last_touched",
+    "template_version",
+    "status"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date or UUID",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    },
+    "status": {
+      "type": "string",
+      "description": "draft|ready_for_review|approved|archived",
+      "minLength": 1
+    },
+    "framework": {
+      "type": "string",
+      "description": "react|vue|svelte|...; testing stack"
+    },
+    "unit_test_patterns": {
+      "type": "array",
+      "minItems": 1,
+      "description": "list of test patterns asserting role + name"
+    },
+    "integration_test_routes": {
+      "type": "array",
+      "minItems": 1,
+      "description": "routes axe runs against"
+    },
+    "ci_job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "known_issues_policy": {
+      "type": "string",
+      "minLength": 1,
+      "description": "policy for suppression + expiry"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "accessibility-as-code-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "framework": "draft",
+  "unit_test_patterns": [
+    "item-1"
+  ],
+  "integration_test_routes": [
+    "item-1"
+  ],
+  "ci_job_id": "draft",
+  "known_issues_policy": "draft"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence — rejected by `validate-accessibility-as-code.py` with exit 1.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+    <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "everyone").</pattern>
+    <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter.</pattern>
+    <pattern id="f4">Required array fields shipped empty when the schema declares minItems &gt;= 1.</pattern>
+    <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a reviewer field naming a human distinct from the producing agent.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-accessibility-as-code.py">Validator script — exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

@@ -3,77 +3,98 @@ slug: a11y-audit-per-screen-checklist
 tier: solo
 group: dev
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Concrete operating checklist covering a11y audit per screen checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
-content_id: "db361c6b5a755313"
-tags: [a11y, checklist, dev]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-screen accessibility audit checklist running 9 critical WCAG-AA checks (semantic landmarks, focus order, contrast, alt text, ARIA correctness, keyboard nav, error messaging, motion-respect, screen-reader labels); produces a per-screen pass/fail row set with named fixes."
+content_id: "6b3c94d224c19012"
+complexity: medium
+produces: checklist
+est_tokens: 4900
+tags: ["frontend", "solo", "a11y", "audit", "checklist"]
 ---
-# A11y Audit Per Screen Checklist
+# A11y Audit per-Screen Checklist
 
 ## Summary
 
-**One-sentence:** Concrete operating checklist covering a11y audit per screen checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
+**One-sentence:** Per-screen accessibility audit checklist running 9 critical WCAG-AA checks (semantic landmarks, focus order, contrast, alt text, ARIA correctness, keyboard nav, error messaging, motion-respect, screen-reader labels); produces a per-screen pass/fail row set with named fixes.
 
-**One-paragraph:** Concrete operating checklist covering a11y audit per screen checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped. Accessibility methodology is general. A per-screen checklist (axe + keyboard + SR + contrast in <30 min) is the atomic daily form.
+**One-paragraph:** Per-screen accessibility audit checklist running 9 critical WCAG-AA checks (semantic landmarks, focus order, contrast, alt text, ARIA correctness, keyboard nav, error messaging, motion-respect, screen-reader labels); produces a per-screen pass/fail row set with named fixes. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- SaaS dashboards with ≥10 screens needing systematic AA coverage.
+- Marketing pages where contrast and motion are visible compliance risks.
+- Storybook component libraries pre-publish.
+- Solo founders shipping under EU 'European Accessibility Act' obligations.
 
 ## Applies If (ALL must hold)
 
-- You operate the recurring activity addressed by a11y audit per screen checklist at least once per cycle (weekly, sprint, quarter, or annual).
-- You have authority to act on each item — checklist items without owners or budget are deferred.
-- Skipped items must be auditable: a written reason replaces the action.
-- Time-box: full pass completes within the cycle window (e.g., 30-90 min for weekly, 1-2 days for annual).
+- Project has ≥1 user-facing screen targeting WCAG-AA conformance.
+- Screens have a stable URL or storybook story id auditable in isolation.
+- Operator has authority to ship fixes against findings.
+- Browser-based audit tooling (axe-devtools, Lighthouse) is available.
 
 ## Skip If (ANY kills it)
 
-- One-off events with no recurrence — checklist value is in the rhythm.
-- Activities without a named owner — items will not be done, only ticked.
-- Teams running a more granular checklist already — adding a meta-layer creates conflict.
+- Internal-only tooling with one user — overhead exceeds value.
+- Screen is still in design exploration — wait until DOM is stable.
+- Org has a centralised a11y review process — duplicate effort.
 
 ## Prerequisites
 
-- Calendar slot dedicated to the cycle (recurring meeting / focus block).
-- Read-access to the source systems each item inspects (analytics, billing, repo).
-- Last cycle's output filed where current cycle can compare year-over-year.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/frontend-developer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[accessibility]] | upstream context this methodology builds on |
+| [[accessibility-as-code]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `checklist_dry_run` | haiku | Template walk, no judgment needed |
-| `anomaly_flag` | sonnet | Compare current cycle vs prior, flag deltas |
-| `decision_synthesis` | opus | Consolidate flags into a corrective-action list |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-a11y-audit-per-screen-checklist-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-a11y-audit-per-screen-checklist.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-a11y-audit-per-screen-checklist.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/frontend-developer/`
-- peer methodologies: see siblings under `solo/dev/frontend-developer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[accessibility]]
+- [[accessibility-as-code]]
+- [[a11y-audit-per-screen-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

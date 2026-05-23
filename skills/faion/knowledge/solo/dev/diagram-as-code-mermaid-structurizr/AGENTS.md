@@ -3,78 +3,98 @@ slug: diagram-as-code-mermaid-structurizr
 tier: solo
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "7d1e4d0af39659f8"
-summary: Diagram As Code Mermaid Structurizr delivers a concrete, testable methodology that turns the recurring task of 'Architecture review meeting facilitation' into an auditable artefact, addressing the gap: c4-model exists but doesn't prescribe a diagram-as-code toolchain. Architects 
-tags: [dev, solo, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pattern for keeping architecture diagrams in version control as text (Mermaid for inline docs, Structurizr DSL for C4 models); produces a diagrams directory with a render script, a lint pass, and a doc-link policy preventing drift."
+content_id: "ab6daed372e7fccd"
+complexity: medium
+produces: code
+est_tokens: 4900
+tags: ["dev", "solo", "diagrams", "mermaid", "structurizr", "documentation"]
 ---
-# Diagram As Code Mermaid Structurizr
+# Diagram-as-Code with Mermaid / Structurizr
 
 ## Summary
 
-**One-sentence:** Diagram As Code Mermaid Structurizr delivers a concrete, testable methodology that turns the recurring task of 'Architecture review meeting facilitation' into an auditable artefact, addressing the gap: c4-model exists but doesn't prescribe a diagram-as-code toolchain. Architects need a methodology that pins Mermaid for L1/L2, PlantUML for sequence, Structurizr DSL for L3 — with linting and CI-rendered SVG embedded into the ADR. Closes the 'architecture lives in Miro and disappears' pain.
+**One-sentence:** Pattern for keeping architecture diagrams in version control as text (Mermaid for inline docs, Structurizr DSL for C4 models); produces a diagrams directory with a render script, a lint pass, and a doc-link policy preventing drift.
 
-**One-paragraph:** c4-model exists but doesn't prescribe a diagram-as-code toolchain. Architects need a methodology that pins Mermaid for L1/L2, PlantUML for sequence, Structurizr DSL for L3 — with linting and CI-rendered SVG embedded into the ADR. Closes the 'architecture lives in Miro and disappears' pain. Diagram As Code Mermaid Structurizr closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Architecture review meeting facilitation' (role-software-architect, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Pattern for keeping architecture diagrams in version control as text (Mermaid for inline docs, Structurizr DSL for C4 models); produces a diagrams directory with a render script, a lint pass, and a doc-link policy preventing drift. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- C4-style system context and container diagrams for distributed services.
+- Sequence diagrams for tricky auth flows or webhook handshakes.
+- Entity-relationship diagrams alongside schema files.
+- Solo founders who cannot maintain a parallel design tool.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Architecture review meeting facilitation' (role: role-software-architect) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Project has ≥1 architecture diagram currently maintained as PNG / Figma / Lucid that drifts from code.
+- Authors can read+write Markdown.
+- CI can run a small renderer (mermaid-cli, structurizr-cli) without proprietary licenses.
+- Diagrams are referenced from prose docs that live in the same repo.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Diagrams are throw-away brainstorm artefacts — overhead exceeds value.
+- Visual fidelity (logos, screenshots, animations) is the deliverable — DSLs cannot match.
+- Org mandates a specific diagramming tool incompatible with text formats (e.g. tied to Visio).
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/dev/` parent context | vocabulary, neighbouring methodologies |
+| [[diagram-as-code-mermaid-structurizr]] | upstream context this methodology builds on |
+| [[changelog-automation-conventional-commits]] | sibling discipline cited in decision tree |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `diagram_as_code_mermaid_structurizr_template_fill` | haiku | Template fill, no judgment |
-| `diagram_as_code_mermaid_structurizr_evidence_check` | sonnet | Bounded comparison + judgment |
-| `diagram_as_code_mermaid_structurizr_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-diagram-as-code-mermaid-structurizr-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-diagram-as-code-mermaid-structurizr.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-diagram-as-code-mermaid-structurizr.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/dev/` (see neighbouring methodologies)
-- triggering activity: `role-software-architect/Architecture review meeting facilitation`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[diagram-as-code-mermaid-structurizr]]
+- [[changelog-automation-conventional-commits]]
+- [[ci-quality-gate-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
