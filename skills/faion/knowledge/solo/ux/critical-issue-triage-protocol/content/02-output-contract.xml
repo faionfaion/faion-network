@@ -1,53 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Triage Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>The triage protocol produces a single table per session, committed alongside the session notes. The table is the input to backlog grooming and to the same-day-fix ticket creation.</summary>
+<text id="02-output-contract" title="Critical-Issue Triage Protocol Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid artefact, plus one valid example, one invalid example, and a closed list of forbidden patterns the validator rejects.</summary>
 
-  <section title="Required triage-table fields">
-    <list>
-      <item><code>finding_id</code> — stable identifier.</item>
-      <item><code>description</code> — one sentence.</item>
-      <item><code>severity</code> — 0-4 with one-line evidence.</item>
-      <item><code>frequency_band</code> — SINGLE / FEW / MANY / MOST plus raw "k/N".</item>
-      <item><code>context_modifier</code> — REVENUE-CRITICAL / REGULATED / INTERNAL or none.</item>
-      <item><code>effective_severity</code> — severity after modifier applied.</item>
-      <item><code>action</code> — SAME-DAY-FIX / NEXT-SPRINT / BACKLOG / DISCARD.</item>
-      <item><code>owner</code> — named individual.</item>
-      <item><code>rationale</code> — one line, mandatory for overrides.</item>
-      <item><code>created_ticket</code> — issue tracker link if action != DISCARD.</item>
-    </list>
-  </section>
-
-  <section title="Required outputs">
-    <list>
-      <item><code>triage-table-session-NNN.md</code> committed.</item>
-      <item>For each SAME-DAY-FIX: a ticket created and linked.</item>
-      <item>Escalation log entry if any SAME-DAY-FIX action.</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <schema format="json-schema-draft-07">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/critical-issue-triage-protocol.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "session_id",
+    "sample_size_n",
+    "findings",
+    "actions_summary"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "sample_size_n": {
+      "type": "integer"
+    },
+    "findings": {
+      "type": "array"
+    },
+    "actions_summary": {
+      "type": "object"
+    },
+    "overrides": {
+      "type": "array"
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>Severity assigned without one-line evidence.</description>
-      <reason>Violates r1. Future triages can't compare or audit.</reason>
-    </antipattern>
-    <antipattern>
-      <description>SAME-DAY-FIX action without a created ticket OR without an owner.</description>
-      <reason>Same-day means a real human, on the calendar, today. Without it the action is a hope.</reason>
-    </antipattern>
-    <antipattern>
-      <description>BACKLOG action for a sev-4 finding with no override rationale.</description>
-      <reason>Sev-4 + BACKLOG is a serious downgrade requiring written justification.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>30-minute triage box honored (start/end timestamps).</item>
-      <item>Every finding from the session appears in the table.</item>
-      <item>Severity + frequency + modifier all populated.</item>
-      <item>Action is matrix-derived (or has a written override).</item>
-      <item>Owners named (no "team").</item>
-      <item>SAME-DAY-FIX actions have tickets and an escalation log entry.</item>
+      <pattern id="f1">owner is a plural pronoun or empty.</pattern>
+      <pattern id="f2">findings array empty AND session_id non-empty (use discard-record instead).</pattern>
+      <pattern id="f3">any finding&apos;s severity outside 0..4 OR frequency outside {SINGLE,FEW,MANY,MOST}.</pattern>
+      <pattern id="f4">an override entry without a written justification string.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "critical-issue-triage-protocol-example",
+  "owner": "@solo-founder",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "session_id": "session_id value",
+  "sample_size_n": 1,
+  "findings": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "actions_summary": {
+    "key": "value"
+  },
+  "overrides": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ]
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "not-semver"
+}
+]]></code>
+    <note>Invalid — required fields missing OR forbidden patterns matched (e.g. version not semver).</note>
+  </example>
+
+  <reference path="scripts/validate-critical-issue-triage-protocol.py">Stdlib-only validator implementing this schema.</reference>
 </text>

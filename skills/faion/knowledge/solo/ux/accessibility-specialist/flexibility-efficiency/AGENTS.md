@@ -4,72 +4,94 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Nielsen Heuristic #7: design for both novice and expert users simultaneously by providing accelerators (keyboard shortcuts, bulk operations, templates) that novices can ignore but experts use daily, plus progressive disclosure and multiple paths for the same goal.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Nielsen Heuristic #7 applied: design for both novice and expert users simultaneously by providing accelerators (keyboard shortcuts, bulk operations, templates) that novices can ignore but experts use daily, plus progressive disclosure and multiple paths to the same goal.
 content_id: "850eca43a1a85ff9"
+complexity: medium
+produces: rubric
+est_tokens: 3600
 tags: [ux, heuristics, keyboard-shortcuts, efficiency, accessibility]
 ---
 # Flexibility and Efficiency of Use
 
 ## Summary
 
-**One-sentence:** Nielsen Heuristic #7: design for both novice and expert users simultaneously by providing accelerators (keyboard shortcuts, bulk operations, templates) that novices can ignore but experts use daily, plus progressive disclosure and multiple paths for the same goal.
+**One-sentence:** Nielsen Heuristic #7 applied: design for both novice and expert users simultaneously by providing accelerators (keyboard shortcuts, bulk operations, templates) that novices can ignore but experts use daily, plus progressive disclosure and multiple paths to the same goal.
 
-**One-paragraph:** Nielsen Heuristic #7: design for both novice and expert users simultaneously by providing accelerators (keyboard shortcuts, bulk operations, templates) that novices can ignore but experts use daily, plus progressive disclosure and multiple paths for the same goal. Interfaces tuned only for beginners frustrate power users who repeat the same tasks hundreds of times per day. Interfaces tuned only for experts overwhelm newcomers. Layered flexibility — visible affordances plus hidden accelerators — lets one interface serve the full user spectrum without cognitive overload at either end.
+**One-paragraph:** Nielsen Heuristic #7 applied: design for both novice and expert users simultaneously by providing accelerators (keyboard shortcuts, bulk operations, templates) that novices can ignore but experts use daily, plus progressive disclosure and multiple paths to the same goal. The methodology pins the artefact: a flexibility rubric scoring a UI on accelerator coverage, customisation depth, and parallel-path availability, with a remediation list per gap.
+
+**Ефективно для:**
+
+- Productivity SaaS with both first-time users and daily power users.
+- UI reviews looking for hidden expert paths (shortcuts, bulk ops).
+- Accessibility reviewers checking multi-modal access to the same goal.
+- Audit surface: rubric score is reviewable and reproducible.
 
 ## Applies If (ALL must hold)
 
-- Designing or auditing productivity tools, admin panels, developer tools, or any app with repeat-use workflows.
-- Adding keyboard shortcut coverage to an existing web application.
-- Auditing whether an interface serves both novice onboarding and power-user acceleration.
-- Planning customization features (saved layouts, quick actions, pinned items) for SaaS products.
-- Evaluating CLI tools or APIs for efficiency affordances.
+- Product is used by both novices and experts.
+- Repetitive workflows exist that experts perform daily.
+- The UI is operated by humans (not API-only).
 
 ## Skip If (ANY kills it)
 
-- One-time-use flows (checkout, onboarding wizard, password reset) — shortcuts add no value here.
-- Consumer apps with mostly casual, infrequent users — shortcut investment is wasted.
-- Early prototype stages before task flows are validated — optimizing efficiency before correctness is premature.
-- Accessibility-first flows where additional modalities must be layered carefully to avoid screen reader conflicts.
+- One-shot wizard with no repeat use.
+- Single-user-type tool (only novices or only experts).
+- Backend / API-only product with no UI.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target screen | URL / mockup | Product |
+| Persona list | markdown | Research |
+| Workflow inventory | list | Product analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `none` | This methodology has no upstream dependency. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-flexibility-efficiency` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-flexibility-efficiency` | haiku | Schema check + threshold checks; deterministic. |
+| `review-flexibility-efficiency` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/flexibility-efficiency.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/flexibility-efficiency.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-flexibility-efficiency.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/accessibility-specialist/`
+- [[recognition-over-recall]]
+- [[match-real-world]]
+- [[visibility-of-system-status]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -1,57 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Handoff Spec Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Handoff Spec Template artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Handoff Spec Template Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid artefact, plus one valid example, one invalid example, and a closed list of forbidden patterns the validator rejects.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <schema format="json-schema-draft-07">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/handoff-spec-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "component_name",
+    "figma_url",
+    "code_map",
+    "states",
+    "tokens_used",
+    "motion",
+    "accessibility",
+    "edge_cases"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "component_name": {
+      "type": "string"
+    },
+    "figma_url": {
+      "type": "string"
+    },
+    "code_map": {
+      "type": "object"
+    },
+    "states": {
+      "type": "object"
+    },
+    "tokens_used": {
+      "type": "array"
+    },
+    "motion": {
+      "type": "array"
+    },
+    "accessibility": {
+      "type": "object"
+    },
+    "edge_cases": {
+      "type": "array"
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
   <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
     <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
+      <pattern id="f1">any state&apos;s color/spacing value is a raw hex/px string instead of a token reference.</pattern>
+      <pattern id="f2">states object missing any of the 8 canonical state keys without an N/A reason.</pattern>
+      <pattern id="f3">motion entries lacking duration_ms or easing.</pattern>
+      <pattern id="f4">owner is a plural pronoun or empty.</pattern>
     </list>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "handoff-spec-template-example",
+  "owner": "@solo-founder",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "component_name": "component_name value",
+  "figma_url": "figma_url value",
+  "code_map": {
+    "key": "value"
+  },
+  "states": {
+    "key": "value"
+  },
+  "tokens_used": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "motion": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "accessibility": {
+    "key": "value"
+  },
+  "edge_cases": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ]
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "not-semver"
+}
+]]></code>
+    <note>Invalid — required fields missing OR forbidden patterns matched (e.g. version not semver).</note>
+  </example>
+
+  <reference path="scripts/validate-handoff-spec-template.py">Stdlib-only validator implementing this schema.</reference>
 </text>

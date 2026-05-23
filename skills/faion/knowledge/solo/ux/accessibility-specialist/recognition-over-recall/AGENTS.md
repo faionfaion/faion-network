@@ -4,71 +4,94 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Users must remember information from one part of the interface to use in another.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Nielsen Heuristic #6 applied: minimise the user's memory load by making objects, actions, and options visible — recognising a label is easier than recalling it from a prior screen.
 content_id: "c767d6692d17824a"
+complexity: medium
+produces: rubric
+est_tokens: 3500
 tags: [usability-heuristic, cognition, ux, memory-load, accessibility]
 ---
 # Recognition Rather Than Recall
 
 ## Summary
 
-**One-sentence:** Users must remember information from one part of the interface to use in another.
+**One-sentence:** Nielsen Heuristic #6 applied: minimise the user's memory load by making objects, actions, and options visible — recognising a label is easier than recalling it from a prior screen.
 
-**One-paragraph:** Users must remember information from one part of the interface to use in another. They need to recall command syntax or codes. Options are hidden until users know to look for them. Instructions disappear before users can follow them. Memory becomes a barrier to use. Without recognition support: cognitive overload, slower task completion, more errors, frustration.
+**One-paragraph:** Nielsen Heuristic #6 applied: minimise the user's memory load by making objects, actions, and options visible — recognising a label is easier than recalling it from a prior screen. The methodology pins the artefact: a rubric scoring the UI on context-carry-over, recently-used surfaces, autosuggest coverage, and reference panel availability.
+
+**Ефективно для:**
+
+- Multi-step workflows where the user must remember earlier choices.
+- Reviewers catching hidden state that forces recall.
+- Accessibility reviewers helping users with cognitive load issues.
+- Audit surface: rubric score per screen.
 
 ## Applies If (ALL must hold)
 
-- UI audit: reviewing an existing interface for cognitive load issues
-- Design review: checking new component designs before implementation
-- Accessibility review: recognition aids are disproportionately important for users with cognitive disabilities
-- Command-palette or search interface design: autocomplete and suggestions are the primary recognition mechanism
-- Onboarding flow design: new users have zero recall of your UI; every step must surface what to do next
+- Workflow has ≥3 sequential screens / states.
+- User decisions depend on data from prior screens.
+- Form filling or selection from large option sets is present.
 
 ## Skip If (ANY kills it)
 
-- When the interface is exclusively for expert power-users who have internalized shortcuts (e.g., vim, git CLI) — recall is the design intent
-- When screen real estate is genuinely constrained (e.g., mobile watch apps) — some hiding is unavoidable; add tooltips
-- When adding recognition aids would create visual noise that harms scannability — balance with aesthetic simplicity
+- Single-screen task with no prior context.
+- Trivial one-input form.
+- Audience is system-level (rare exception).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow map | diagram | Product |
+| UI screens | URLs / mockups | Frontend |
+| Option sets / catalogues | data | Backend |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `none` | This methodology has no upstream dependency. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-recognition-over-recall` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-recognition-over-recall` | haiku | Schema check + threshold checks; deterministic. |
+| `review-recognition-over-recall` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/recognition-over-recall.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/recognition-over-recall.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-recognition-over-recall.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/accessibility-specialist/`
+- [[match-real-world]]
+- [[flexibility-efficiency]]
+- [[visibility-of-system-status]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

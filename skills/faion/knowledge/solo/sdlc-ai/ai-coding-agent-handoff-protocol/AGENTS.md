@@ -4,35 +4,94 @@ tier: solo
 group: sdlc-ai
 domain: sdlc-ai
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Spec → AI-agent task → human review discipline that stops vibe-coded breakage by enforcing a written hand-off contract, a bounded change scope, and a mandatory diff-review gate before merge.
-content_id: 0dee031f6876288f
+content_id: "0dee031f6876288f"
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [handoff, ai-coding, review-gate, scope-control, sdlc-ai]
 ---
-
 # AI Coding Agent Handoff Protocol
 
 ## Summary
-A protocol for solo SaaS builders working with Claude Code / Cursor / Copilot agents that turns "vibe coding" into a repeatable spec → agent → review loop. Outcome: every agent-authored change starts from a written spec, ships within an explicit scope fence, and is gated by a human diff review before merge — so production never receives a change the human did not at least skim.
 
-## Applies If
-- You use a coding agent (Claude Code, Cursor, Copilot) for non-trivial changes
-- You are the sole reviewer of your code (no other engineer to catch agent drift)
-- You have shipped at least one agent-induced bug to production
-- You work on a codebase with users / revenue / compliance stakes
+**One-sentence:** Spec → AI-agent task → human review discipline that stops vibe-coded breakage by enforcing a written hand-off contract, a bounded change scope, and a mandatory diff-review gate before merge.
 
-## Skip If
-- You are exploring throwaway prototypes with no production target
-- You have a second engineer who reviews every PR (use standard PR rubric)
-- The change is a one-off script you will delete before end of day
-- You have not yet used an AI coding agent (start with pair-with-ai-agent-protocol first)
+**One-paragraph:** Spec → AI-agent task → human review discipline that stops vibe-coded breakage by enforcing a written hand-off contract, a bounded change scope, and a mandatory diff-review gate before merge. The methodology pins the artefact: a TASK.md envelope listing brief, allowed file paths, forbidden changes, acceptance criteria, and the review checklist the human applies post-run.
 
-## Content
-See `content/01-core-rules.xml`.
+**Ефективно для:**
+
+- Solo founders delegating coding tasks to AI agents under time pressure.
+- Pipelines where agents produce diffs that humans must approve.
+- Reviewers who need a structured artefact instead of free-form prompts.
+- Audit surface: every agent run has a hand-off + review record.
+
+## Applies If (ALL must hold)
+
+- An AI coding agent is delegated work in this repo.
+- Changes touch ≥1 file that humans care about (production code).
+- There is a review gate before merge.
+
+## Skip If (ANY kills it)
+
+- Throwaway scratchpad / one-off scripts.
+- Agent runs read-only / analytical tasks (no diff produced).
+- No human reviewer available at all — find one before delegating.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task brief | markdown | User |
+| Repo state | git | Local clone |
+| Review checklist | markdown | Convention |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `solo/sdlc-ai/ai-convention-anchoring` | Provides the convention layer the agent must honour. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-ai-coding-agent-handoff-protocol` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-ai-coding-agent-handoff-protocol` | haiku | Schema check + threshold checks; deterministic. |
+| `review-ai-coding-agent-handoff-protocol` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/ai-coding-agent-handoff-protocol.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ai-coding-agent-handoff-protocol.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-ai-coding-agent-handoff-protocol.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
-- [[pair-with-ai-agent-protocol]]
-- [[ai-prompt-as-commit-artifact]]
-- [[context-window-curation-for-coding-agents]]
-- [[ai-over-reliance-self-audit]]
+
+- [[agents-md-per-module-bootstrap]]
+- [[ai-convention-anchoring]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -4,76 +4,94 @@ tier: solo
 group: sdlc-ai
 domain: sdlc-ai
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agents md per module bootstrap that walks an operator from trigger to closed outcome with named artefacts at each step.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Bootstrap an AGENTS.md (+ CLAUDE.md symlink) inside every module / subpackage so AI coding agents always read essential local context (what this dir IS + commands + gotchas) at directory entry instead of hallucinating it.
 content_id: "e441551cdcb13dbf"
-tags: [agents, playbook, sdlc-ai]
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [agents-md, bootstrap, context-pyramid, sdlc-ai, documentation]
 ---
-# Agents Md Per Module Bootstrap
+# AGENTS.md Per-Module Bootstrap
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agents md per module bootstrap that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Bootstrap an AGENTS.md (+ CLAUDE.md symlink) inside every module / subpackage so AI coding agents always read essential local context (what this dir IS + commands + gotchas) at directory entry instead of hallucinating it.
 
-**One-paragraph:** End-to-end playbook for agents md per module bootstrap that walks an operator from trigger to closed outcome with named artefacts at each step. Faion's own convention requires AGENTS.md per dir, but no methodology teaches a dev how to seed them across a greenfield repo so AI assists stay on-style from day one.
+**One-paragraph:** Bootstrap an AGENTS.md (+ CLAUDE.md symlink) inside every module / subpackage so AI coding agents always read essential local context (what this dir IS + commands + gotchas) at directory entry instead of hallucinating it. The methodology pins the artefact: 20–80 lines of essential context, a file table, key types, and a pointer to detailed reference docs under `.agents/`.
+
+**Ефективно для:**
+
+- Polyrepo or multi-package codebases where agents jump between dirs.
+- Onboarding new agents/contributors to large unfamiliar trees.
+- Reviewers verifying that every module has a doc front-door.
+- Audit surface: a script can find dirs missing AGENTS.md.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agents md per module bootstrap end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Codebase has ≥3 modules / subpackages.
+- AI coding agents operate inside the codebase.
+- Repo follows the CLAUDE.md → @AGENTS.md convention.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Single-file project; AGENTS.md at root is enough.
+- Dir contains only an empty __init__.py with no logic.
+- Repo does not run AI coding agents.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo root | directory | Workspace |
+| Module list | list | Project layout |
+| Doc convention | markdown | AGENTS.md spec |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/sdlc-ai/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `solo/sdlc-ai/ai-convention-anchoring` | Provides the convention pyramid AGENTS.md sits inside. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `draft-agents-md-per-module-bootstrap` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-agents-md-per-module-bootstrap` | haiku | Schema check + threshold checks; deterministic. |
+| `review-agents-md-per-module-bootstrap` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/agents-md-per-module-bootstrap.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/agents-md-per-module-bootstrap.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agents-md-per-module-bootstrap.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/sdlc-ai/`
-- peer methodologies: see siblings under `solo/sdlc-ai/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-convention-anchoring]]
+- [[ai-coding-agent-handoff-protocol]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

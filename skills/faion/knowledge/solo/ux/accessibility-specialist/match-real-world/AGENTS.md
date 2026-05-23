@@ -4,71 +4,94 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Users encounter unfamiliar jargon and technical terms.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Nielsen Heuristic #2 applied: speak the user's language, not the system's — use words, phrases, icons, and ordering that match the target audience's real-world conventions rather than internal data-model terms.
 content_id: "f297804d45736088"
+complexity: medium
+produces: rubric
+est_tokens: 3500
 tags: [usability-heuristic, language, ux, conventions, localization]
 ---
 # Match Between System and Real World
 
 ## Summary
 
-**One-sentence:** Users encounter unfamiliar jargon and technical terms.
+**One-sentence:** Nielsen Heuristic #2 applied: speak the user's language, not the system's — use words, phrases, icons, and ordering that match the target audience's real-world conventions rather than internal data-model terms.
 
-**One-paragraph:** Users encounter unfamiliar jargon and technical terms. Icons and labels do not match what users expect. Information is organized in system-centric rather than user-centric ways. Concepts from the real world are misrepresented or ignored. Without matching the real world: user confusion, learning curve increases, errors from misunderstanding, reduced adoption.
+**One-paragraph:** Nielsen Heuristic #2 applied: speak the user's language, not the system's — use words, phrases, icons, and ordering that match the target audience's real-world conventions rather than internal data-model terms. The methodology pins the artefact: a glossary mapping each UI string to (audience term, system term, source) and a rubric scoring the UI on jargon, ordering, and localisation fidelity.
+
+**Ефективно для:**
+
+- Multi-audience products where internal terminology leaks to UI.
+- Localised products mapping to non-English conventions (date formats, currency).
+- Reviewers catching jargon during copy review.
+- Audit surface: rubric score per screen.
 
 ## Applies If (ALL must hold)
 
-- Content audit: reviewing all UI labels, error messages, and instructions for technical language
-- Localization prep: ensuring terminology matches user vocabulary before translation
-- Error message redesign: replacing system-generated error codes with plain language
-- Onboarding copy review: new users encounter the most jargon because they lack domain context
-- B2B product launches into a new industry vertical: the same feature may need entirely different terminology for finance vs. healthcare vs. logistics users
+- Product copy is user-visible.
+- Target audience uses distinct terminology from the system internals.
+- Localisation matters (≥1 non-English market).
 
 ## Skip If (ANY kills it)
 
-- Developer tools and CLIs intentionally targeted at technical users — technical language is correct for the audience
-- Internal admin panels where all users are trained staff familiar with system terminology
-- When users have explicitly indicated they prefer technical precision over simplicity (e.g., API documentation)
+- Internal admin tool used only by engineers.
+- Pure-code surface (CLI for developers) where system terms are correct.
+- Audience is the system maintainer.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| UI copy inventory | list | Frontend |
+| Audience glossary | csv | Research |
+| Localisation files | json | i18n |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `none` | This methodology has no upstream dependency. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-match-real-world` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-match-real-world` | haiku | Schema check + threshold checks; deterministic. |
+| `review-match-real-world` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/match-real-world.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/match-real-world.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-match-real-world.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/accessibility-specialist/`
+- [[recognition-over-recall]]
+- [[flexibility-efficiency]]
+- [[help-documentation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

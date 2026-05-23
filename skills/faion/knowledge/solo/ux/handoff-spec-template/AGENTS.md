@@ -4,77 +4,97 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Single Markdown artefact that closes design→engineering handoff loss: states, tokens, motion, accessibility, edge cases, and code map are all named in one file with token references and pixel-accurate measurements.
 content_id: "83547f89fb57b2a6"
-summary: "Handoff Spec Template — testable methodology for design, research, accessibility, severity. User pain explicitly named 'handoff loss'; no faion methodology defines the structured spec format (states / tokens / motion / a11y / edge cases / code map)."
-tags: [ux, solo, methodology]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["handoff", "design-to-dev", "spec", "states", "accessibility"]
 ---
 # Handoff Spec Template
 
 ## Summary
 
-**One-sentence:** Handoff Spec Template — testable methodology for design, research, accessibility, severity. User pain explicitly named 'handoff loss'; no faion methodology defines the structured spec format (states / tokens / motion / a11y / edge cases / code map).
+**One-sentence:** Single Markdown artefact that closes design→engineering handoff loss: states, tokens, motion, accessibility, edge cases, and code map are all named in one file with token references and pixel-accurate measurements.
 
-**One-paragraph:** Handoff Spec Template closes a known gap in ux practice: User pain explicitly named 'handoff loss'; no faion methodology defines the structured spec format (states / tokens / motion / a11y / edge cases / code map). The methodology is anchored to the recurring activity 'Dev handoff doc writing (per feature) (role: role-ux-ui-designer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Most design→engineering handoff loss comes from missing states, undocumented motion, and ambiguous accessibility. This template pins a six-section spec: every component carries an explicit list of states (default/hover/active/focus/disabled/loading/error/empty), token references (no raw hex), motion specs (duration + easing), accessibility annotations (focus order, labels, contrast), edge cases (long text, RTL, slow network), and a code map that names the file + component to extend.
+
+**Ефективно для:**
+
+- Solo founder doing design + eng work who needs a single artefact to remember every state.
+- Designer + remote engineer handoff where Loom-only handoffs miss states.
+- AI agent generating React/Vue components that need explicit state coverage to avoid hallucinated defaults.
+- Pre-launch QA where missing-state bugs surface in production.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Dev handoff doc writing (per feature) (role: role-ux-ui-designer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- A component or screen design is ready for engineering and has at least 2 interactive states.
+- Design tokens (or a token-equivalent palette) are already defined.
+- Code repository structure is known so the code map can name files.
+- Engineering owner (or AI agent) is ready to consume the spec.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Static marketing image with no interactive states.
+- Throwaway prototype with no production users.
+- Design system primitive that lives in Storybook with its own spec — extend the Storybook entry instead.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Figma frame or screen | Figma URL | Design canvas |
+| Design tokens reference | JSON or Figma variables | Design system repo |
+| Code map: file + component | string | Frontend repo |
+| Accessibility audit baseline | WCAG checklist | a11y review tool |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/ux/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/ux/ui-designer/design-to-dev-handoff` | Process layer this spec sits inside. |
+| `solo/ux/ui-designer/design-tokens-fundamentals` | Token references used by this spec. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `handoff_spec_template_template_fill` | haiku | Template fill, no judgement |
-| `handoff_spec_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `handoff_spec_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-states-and-motion` | sonnet | Per-component judgement on state coverage and motion params. |
+| `validate-tokens-and-a11y` | haiku | Deterministic token reference check + WCAG threshold check. |
+| `cross-component-audit` | opus | Multi-spec audit for consistency across a screen flow. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/handoff-spec-template.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/handoff-spec-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-handoff-spec-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/` (see neighbouring methodologies)
-- triggering activity: `Dev handoff doc writing (per feature) (role: role-ux-ui-designer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[design-to-dev-handoff]]
+- [[edge-case-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

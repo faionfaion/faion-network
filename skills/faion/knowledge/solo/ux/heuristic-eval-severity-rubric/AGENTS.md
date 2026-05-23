@@ -4,77 +4,96 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Calibrated 0..4 severity scale for Nielsen-style heuristic evaluation with anchored examples per level so two evaluators rate the same violation within ±1 of each other.
 content_id: "37cfe6af0d64c638"
-summary: "Heuristic Eval Severity Rubric — testable methodology for design, research, accessibility, severity. Nielsen's heuristics methodology lacks a 0–4 severity rubric with calibrated examples; without it, ratings drift between designers."
-tags: [ux, solo, methodology]
+complexity: medium
+produces: rubric
+est_tokens: 3600
+tags: ["heuristic-evaluation", "severity", "rubric", "calibration", "ux"]
 ---
 # Heuristic Eval Severity Rubric
 
 ## Summary
 
-**One-sentence:** Heuristic Eval Severity Rubric — testable methodology for design, research, accessibility, severity. Nielsen's heuristics methodology lacks a 0–4 severity rubric with calibrated examples; without it, ratings drift between designers.
+**One-sentence:** Calibrated 0..4 severity scale for Nielsen-style heuristic evaluation with anchored examples per level so two evaluators rate the same violation within ±1 of each other.
 
-**One-paragraph:** Heuristic Eval Severity Rubric closes a known gap in ux practice: Nielsen's heuristics methodology lacks a 0–4 severity rubric with calibrated examples; without it, ratings drift between designers. The methodology is anchored to the recurring activity 'Heuristic evaluation on a new screen (1hr) (role: role-ux-ui-designer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Nielsen's heuristics methodology lacks an in-band severity rubric — evaluators drift on what 'major' means. This rubric pins a 0..4 scale anchored by examples: 0 cosmetic (no user impact), 1 minor (workaround obvious), 2 major (workaround painful), 3 catastrophic (task blocked), 4 catastrophic + safety/accessibility/regulatory. Each level carries a calibration example; pair-rating drift is measured and re-calibrated quarterly.
+
+**Ефективно для:**
+
+- Solo designer running quarterly heuristic walkthroughs who needs comparable scores over time.
+- Two designers doing pair heuristic evaluation who need to converge on severity.
+- AI agent generating heuristic reports that must rate findings within the rubric.
+- Audit context where rating drift would invalidate the report.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Heuristic evaluation on a new screen (1hr) (role: role-ux-ui-designer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- A heuristic evaluation (Nielsen 10 or comparable) is being run.
+- At least 2 evaluators or 1 evaluator + 1 reviewer.
+- Findings will be acted on (triage, fix, document) — not discarded.
+- Calibration examples are available or can be drafted.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Free-form discount usability test, not a heuristic eval — use critical-issue-triage-protocol.
+- Single evaluator with no review — rubric overhead exceeds benefit.
+- Heuristic eval is informal warm-up, not committed to triage.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Heuristic list (Nielsen 10 or variant) | list | Established heuristic source |
+| Calibration examples per level | array of examples | Prior eval or rubric library |
+| Pair-rating drift threshold | integer (max ±1) | Team agreement |
+| Findings list | array | Eval session output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/ux/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/ux/critical-issue-triage-protocol` | Triage consumes severity ratings. |
+| `solo/ux/anti-pattern-rationale-template` | Repeated severity-3+ findings feed the bank. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `heuristic_eval_severity_rubric_template_fill` | haiku | Template fill, no judgement |
-| `heuristic_eval_severity_rubric_evidence_check` | sonnet | Bounded comparison + judgement |
-| `heuristic_eval_severity_rubric_synthesis` | opus | Cross-input synthesis + final write-up |
+| `rate-finding` | sonnet | Per-finding judgement using the rubric. |
+| `calibration-drift-check` | haiku | Deterministic delta calc between paired ratings. |
+| `rubric-refresh` | opus | Quarterly recalibration with anchor refresh. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/heuristic-eval-severity-rubric.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/heuristic-eval-severity-rubric.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-heuristic-eval-severity-rubric.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/` (see neighbouring methodologies)
-- triggering activity: `Heuristic evaluation on a new screen (1hr) (role: role-ux-ui-designer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[critical-issue-triage-protocol]]
+- [[anti-pattern-rationale-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
