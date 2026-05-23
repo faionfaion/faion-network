@@ -3,78 +3,93 @@ slug: feature-launch-checklist
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c013f6d7d2a140dc"
-summary: Feature Launch Checklist delivers a concrete, testable methodology that turns the recurring task of 'GTM Plan for New Product Feature (4 weeks)' into an auditable artefact, addressing the gap: Solo growth marketers need a single canonical checklist that covers messaging, assets, 
-tags: [marketing, solo, checklist, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a 20-item GTM checklist artefact for a new product feature: messaging, assets, channels, support enablement, success metrics — gated by a named owner and a launch date.
+content_id: "e47cde769ea9331c"
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: ["feature-launch", "gtm", "checklist", "marketing", "solo"]
 ---
 # Feature Launch Checklist
 
 ## Summary
 
-**One-sentence:** Feature Launch Checklist delivers a concrete, testable methodology that turns the recurring task of 'GTM Plan for New Product Feature (4 weeks)' into an auditable artefact, addressing the gap: Solo growth marketers need a single canonical checklist that covers messaging, assets, channels, tracking, and retro for any feature launch. Current GTM coverage is strategic but lacks a per-launch operational checklist.
+**One-sentence:** Produces a 20-item GTM checklist artefact for a new product feature: messaging, assets, channels, support enablement, success metrics — gated by a named owner and a launch date.
 
-**One-paragraph:** Solo growth marketers need a single canonical checklist that covers messaging, assets, channels, tracking, and retro for any feature launch. Current GTM coverage is strategic but lacks a per-launch operational checklist. Feature Launch Checklist closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'GTM Plan for New Product Feature (4 weeks)' (role-growth-marketing, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Feature Launch Checklist produces a checklist artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated checklist ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo SaaS founder shipping a feature in ≤4 weeks who needs one canonical artefact that prevents the eight classic missed-asset / missed-channel launch bugs.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'GTM Plan for New Product Feature (4 weeks)' (role: role-growth-marketing) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- New product feature is shipping in ≤4 weeks
+- Feature has at least one user-visible touchpoint (UI, API, billing change)
+- There is a named launch owner
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Internal-only refactor with no user-visible surface
+- Bug-fix release — use changelog, not launch checklist
+- Launch already shipped — use post-launch retro instead
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec | doc | product backlog |
+| Target launch date | ISO date | roadmap |
+| Available distribution channels | list | marketing inventory |
+| Pricing/packaging impact | spec | billing module |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `first-5-paying-customers-checklist` | Adjacent — converts launch reach into revenue. |
+| `growth-product-hunt-launch` | If PH is in the channel mix, plug in the PH playbook. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-20-items-mandatory, r2-named-launch-owner, r3-launch-date-fixed, r4-channel-min-3, r5-success-metric-pre-declared, r6-support-enabled | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `feature_launch_checklist_template_fill` | haiku | Template fill, no judgment |
-| `feature_launch_checklist_evidence_check` | sonnet | Bounded comparison + judgment |
-| `feature_launch_checklist_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-feature-launch-checklist` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-feature-launch-checklist` | haiku | Schema check + threshold checks; deterministic. |
+| `review-feature-launch-checklist` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/feature-launch-checklist.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/feature-launch-checklist.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-feature-launch-checklist.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `role-growth-marketing/GTM Plan for New Product Feature (4 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[first-5-paying-customers-checklist]]
+- [[growth-product-hunt-launch]]
+- [[growth-hacker-news-launch]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

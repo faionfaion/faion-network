@@ -3,90 +3,93 @@ slug: affiliate-program-solo
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "97e5a4ea25ab6ad2"
-summary: Solo-scale affiliate / referral program setup using built-in platform tools (Lemon Squeezy, Gumroad, Stripe, Rewardful) with fraud and refund safeguards.
-tags: [affiliate, referral, solo, indie-hacker, lemon-squeezy, rewardful, fraud-prevention]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an affiliate program spec sized for solopreneurs — platform choice, payout rules, fraud guardrails, refund policy, attribution window — using Lemon Squeezy / Gumroad / Stripe / Rewardful built-ins.
+content_id: "a123e21a8b4f0e64"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["affiliate", "referral", "solo", "indie-hacker", "fraud-prevention"]
 ---
 # Solo-Scale Affiliate Program
 
 ## Summary
 
-**One-sentence:** Solo-scale affiliate / referral program setup using built-in platform tools (Lemon Squeezy, Gumroad, Stripe, Rewardful) with fraud and refund safeguards.
+**One-sentence:** Generates an affiliate program spec sized for solopreneurs — platform choice, payout rules, fraud guardrails, refund policy, attribution window — using Lemon Squeezy / Gumroad / Stripe / Rewardful built-ins.
 
-**One-paragraph:** Existing pro-tier affiliate marketing methodology assumes a marketing team; the solo indie hacker needs a cheap, self-service path. Mechanism: pick the right tool tier (LS native if you're on Lemon Squeezy, Gumroad native if Gumroad, Rewardful + Stripe if you need flexibility, Stripe coupons + manual payout if &lt; 5 affiliates), set commission (15-30% recurring is standard, 50% on first month is aggressive), build fraud guardrails (cookie window, anti-self-referral check, payout hold, refund clawback), and launch via 1-tweet + 1-newsletter + 1-DM-batch. Outcome: a working program with 5-20 affiliates in 30 days that doesn't burn margin to fraud.
+**One-paragraph:** Solo-Scale Affiliate Program produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder with ≥$5K MRR who needs an affiliate channel set up via built-in platform tools (not custom code) with payout + fraud + refund rules pinned before the first dispute.
 
 ## Applies If (ALL must hold)
 
-- you operate a paid SaaS / digital product / info product as a solo founder
-- MRR ≥ $500 OR you have ≥ 100 paying users
-- payment platform is Lemon Squeezy, Gumroad, Stripe, Paddle, or similar
-- you can spend 2-6 hours setup + 30-60 min/month on payout management
-- product has clear referral mechanics (not enterprise sales with 6-month cycles)
+- Product has ≥$5K MRR or ≥100 paid customers (signal to monetise referrals)
+- Billing on a platform with built-in affiliate (Lemon Squeezy / Gumroad / Stripe + Rewardful)
+- Founder has bandwidth to onboard + monitor ≤20 affiliates initially
 
 ## Skip If (ANY kills it)
 
-- pre-revenue (no MRR / no products sold) — no commission to pay
-- enterprise / B2B with multi-month sales cycle — affiliate attribution breaks down
-- regulated industry where commission disclosure is fraught (healthcare, financial) — use referral credits instead
-- you don't have a refund window or refund processing — fraud risk too high
-- product is free with no upgrade path — nothing to affiliate
+- <$5K MRR — referrals will not move the needle yet
+- Custom billing without affiliate hooks — different methodology (build vs buy)
+- B2B enterprise sale handled via partners — different programme
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- payment platform identified + admin access
-- commission policy decided (% rate, recurring vs. first-month-only, payout schedule)
-- refund window length (defines fraud clawback timing)
-- target affiliate persona ("creators in {niche}", "existing users", "your newsletter readers")
-- launch channels: own newsletter, X / Twitter, IndieHackers, niche communities
-- a referral-tracking link format that you control (UTM, ?ref=, /r/{code})
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pricing + margin model | spec | billing |
+| Refund policy (days, conditions) | doc | ToS |
+| Affiliate platform choice | service | lemonsqueezy|gumroad|rewardful |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/gtm-strategist/ops-pricing-strategy` | Commission % depends on margins set there |
-| `solo/marketing/gtm-strategist/ops-subscription-models` | Recurring vs. one-time affects payout structure |
-| `pro/marketing/gtm-strategist/growth-affiliate-marketing` | Pro-tier reference for graduating later |
+| `ops-pricing-strategy` | Margin floor determines affordable commission. |
+| `ops-customer-support` | Refunds drive clawbacks; align policies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: platform-native first, commission within margin, fraud guards required, refund clawback, disclose terms in writing | ~900 |
-| `content/02-output-contract.xml` | essential | Program-config schema, payout-batch schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (margin death, self-referral, cookie stuffing, refund leak, payout delay, FTC non-disclosure) | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-platform-builtin-only, r2-commission-leq-margin, r3-cookie-window-30-90-days, r4-fraud-rules-up-front, r5-named-owner-and-cap, r6-refund-clawback-policy | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `platform_tier_recommendation` | sonnet | Match user's existing stack to the right tool tier |
-| `commission_calc_from_margin` | haiku | Deterministic computation from margin + LTV |
-| `fraud_guard_config_synthesis` | sonnet | Compose cookie window + anti-self + payout-hold settings |
-| `launch_message_draft` | sonnet | Tweet / newsletter / DM templates |
+| `draft-affiliate-program-solo` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-affiliate-program-solo` | haiku | Schema check + threshold checks; deterministic. |
+| `review-affiliate-program-solo` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/program-policy.md` | Public-facing affiliate terms page |
-| `templates/launch-tweet.md` | Tweet announcing the program with referral mechanics |
-| `templates/affiliate-onboarding-email.md` | Welcome email for new affiliates with their unique link |
-| `templates/payout-run-checklist.md` | Monthly payout safety checklist (refund window, fraud check) |
+| `templates/affiliate-program-solo.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/affiliate-program-solo.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/compute-commission-from-margin.py` | Solve for max safe % given margin + LTV + churn | At program design |
-| `scripts/audit-payout-batch.py` | Pre-payout: flag self-referrals, refund-window pending, suspicious traffic | Before each payout run |
+| `scripts/validate-affiliate-program-solo.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/`
-- peer methodologies: `growth-indiehackers-strategy`, `growth-product-hunt-launch`, `ops-subscription-models`
-- external: [Rewardful](https://www.rewardful.com/) · [Lemon Squeezy affiliates docs](https://docs.lemonsqueezy.com/help/affiliates) · [FTC endorsement guides](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
+- [[ops-pricing-strategy]]
+- [[ops-customer-support]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

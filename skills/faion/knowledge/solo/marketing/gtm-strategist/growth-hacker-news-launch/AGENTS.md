@@ -3,72 +3,93 @@ slug: growth-hacker-news-launch
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A launch strategy for Hacker News (Show HN) focused on substance over marketing: build account reputation through genuine participation first, write descriptive non-hypey titles, post at 8–10 AM ET on weekdays, and stay engaged with all feedback for 24–48 hours.
-content_id: "dd2aa3043427eaa2"
-tags: [hacker-news, product-launch, community-marketing, developer-audience, growth]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Show HN launch spec: 4-week reputation runway, non-hypey title, post timing window, 24-48h engagement plan, sanity-check on title and karma threshold — for developer-audience products with substance.
+content_id: "eb103542f8df58ad"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["hacker-news", "product-launch", "developer-audience", "solo"]
 ---
 # Hacker News Launch Strategy
 
 ## Summary
 
-**One-sentence:** A launch strategy for Hacker News (Show HN) focused on substance over marketing: build account reputation through genuine participation first, write descriptive non-hypey titles, post at 8–10 AM ET on weekdays, and stay engaged with all feedback for 24–48 hours.
+**One-sentence:** Generates a Show HN launch spec: 4-week reputation runway, non-hypey title, post timing window, 24-48h engagement plan, sanity-check on title and karma threshold — for developer-audience products with substance.
 
-**One-paragraph:** A launch strategy for Hacker News (Show HN) focused on substance over marketing: build account reputation through genuine participation first, write descriptive non-hypey titles, post at 8–10 AM ET on weekdays, and stay engaged with all feedback for 24–48 hours. HN rewards technical depth and authenticity; it penalizes marketing language and friction.
+**One-paragraph:** Hacker News Launch Strategy produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo developer founder shipping a dev-tool / OSS / SaaS who needs a Show HN launch spec with reputation runway, title rules, and engagement plan — to avoid the 'flagged after 2 hours' fate.
 
 ## Applies If (ALL must hold)
 
-- Launching a developer tool, open-source project, or technical product.
-- Publishing a deep technical blog post or research finding.
-- Product has a public demo that requires no signup to experience.
-- Account has existing karma from genuine participation (2+ weeks).
+- Product is dev-tool, OSS, SaaS, or research aimed at HN audience
+- Founder has or can build ≥4 weeks of authentic HN participation
+- Demo URL works on day-of-launch without auth
 
 ## Skip If (ANY kills it)
 
-- Consumer apps, lifestyle products, or anything non-technical — wrong audience entirely.
-- Marketing-speak product or landing page — HN will flag it before you can fix it.
-- No time to stay engaged for a full day post-launch — momentum requires real-time responses.
-- New account with no comment history — first post looks like spam and gets flagged.
+- Non-developer audience (consumer, fashion, finance retail) — HN is wrong room
+- No working demo / login wall — HN flags it instantly
+- Built specifically for HN attention without product-market signal — refocus first
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| HN account with ≥4 weeks of authentic activity | account | news.ycombinator.com |
+| Working demo URL (no signup wall) | URL | deployment |
+| Substance-first title draft | string | founder copy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `growth-product-hunt-launch` | Adjacent launch channel. |
+| `growth-indiehackers-strategy` | Pre-launch community presence. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-reputation-runway-4-weeks, r2-title-substance-not-hype, r3-post-time-window-tue-thu-am-et, r4-engagement-window-24-48h, r5-demo-no-auth-wall, r6-one-shot-or-relaunch-after-month | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-growth-hacker-news-launch` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-growth-hacker-news-launch` | haiku | Schema check + threshold checks; deterministic. |
+| `review-growth-hacker-news-launch` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-hacker-news-launch.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/growth-hacker-news-launch.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-hacker-news-launch.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/`
+- [[growth-product-hunt-launch]]
+- [[growth-indiehackers-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

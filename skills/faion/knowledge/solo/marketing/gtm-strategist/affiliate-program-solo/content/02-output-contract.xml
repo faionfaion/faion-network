@@ -1,64 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Solo Affiliate Program Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the program config, terms page, and monthly payout-batch artifacts.</summary>
+<text id="02-output-contract" title="Solo-Scale Affiliate Program Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="program_config">
-        <subfield name="platform" enum="lemon_squeezy,gumroad,paddle,stripe_rewardful,stripe_custom"/>
-        <subfield name="commission_percent" type="number" min="0" max="60"/>
-        <subfield name="commission_recurring" type="boolean"/>
-        <subfield name="cookie_window_days" type="integer" min="7" max="60"/>
-        <subfield name="payout_hold_days" type="integer" min="14"/>
-        <subfield name="payout_minimum_usd" type="number" min="10"/>
-        <subfield name="payout_schedule" enum="monthly,net_30,net_45"/>
-        <subfield name="refund_window_days" type="integer"/>
-      </field>
-      <field name="margin_check">
-        <subfield name="gross_margin_percent" type="number"/>
-        <subfield name="processor_fee_percent" type="number"/>
-        <subfield name="refund_reserve_percent" type="number"/>
-        <subfield name="operating_margin_after_commission_percent" type="number" min="20"/>
-      </field>
-      <field name="terms_page" format="markdown" required_sections="commission_terms,cookie_window,payout_schedule,clawback_policy,prohibited_practices,disclosure_requirement"/>
-      <field name="fraud_guards_enabled" format="dict" required_keys="anti_self_referral,cookie_window_cap,payout_hold,new_affiliate_review"/>
-      <field name="monthly_payout_batches" format="list">
-        <subfield name="batch_id" type="string"/>
-        <subfield name="period" type="string"/>
-        <subfield name="audit_pre_payout_passed" type="boolean"/>
-        <subfield name="total_commission_usd" type="number"/>
-        <subfield name="refund_clawback_usd" type="number"/>
-        <subfield name="net_paid_usd" type="number"/>
-      </field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/affiliate-program-solo.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "platform",
+    "commission_pct",
+    "cookie_days",
+    "payout_cap_usd_month",
+    "refund_clawback_days",
+    "fraud_rules",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "lemonsqueezy",
+        "gumroad",
+        "rewardful",
+        "stripe"
+      ]
+    },
+    "commission_pct": {
+      "type": "number"
+    },
+    "cookie_days": {
+      "type": "integer"
+    },
+    "payout_cap_usd_month": {
+      "type": "integer"
+    },
+    "refund_clawback_days": {
+      "type": "integer"
+    },
+    "fraud_rules": {
+      "type": "array"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">commission_percent set without margin_check.operating_margin_after_commission_percent ≥ 20</pattern>
-      <pattern id="f2">cookie_window_days &gt; 60 (industry hygiene; longer windows invite stuffing)</pattern>
-      <pattern id="f3">payout_hold_days &lt; refund_window_days + 7 (clawback fails)</pattern>
-      <pattern id="f4">monthly_payout_batches[].audit_pre_payout_passed == false but net_paid_usd &gt; 0</pattern>
-      <pattern id="f5">terms_page missing any of the 6 required sections</pattern>
-      <pattern id="f6">commission paid to an affiliate flagged with self-referral evidence</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>For one-time-payment products, "commission_recurring" is set false and the formula adjusts to a higher % on the single transaction.</transformation>
-      <transformation>"New affiliate review" applies only to the first 3 conversions per affiliate; after that, batch auto-processes if fraud checks pass.</transformation>
-      <transformation>Founder may grant a "trusted" status to specific affiliates (existing customers, known creators) which lifts the new-affiliate review — but anti-self-referral still applies.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/program-policy.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>program_config saved on the platform and matches the terms page</item>
-      <item>margin_check shows operating_margin ≥ 20% after commission</item>
-      <item>terms_page published at a public URL referenced from your site footer</item>
-      <item>all 4 fraud guards enabled</item>
-      <item>payout_hold_days ≥ refund_window_days + 7</item>
-      <item>audit-payout-batch.py runs and passes before each payout</item>
-      <item>FTC-style disclosure language in the terms page</item>
+      <pattern id="f1">commission_pct &gt; product_margin_pct — violates r2</pattern>
+      <pattern id="f2">cookie_days &lt; 30 OR cookie_days &gt; 90 — violates r3</pattern>
+      <pattern id="f3">fraud_rules.length == 0 — violates r4</pattern>
+      <pattern id="f4">payout_cap_usd_month missing — violates r5</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "affiliate-program-solo-2026-q2",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "platform": "lemonsqueezy",
+  "commission_pct": 1.0,
+  "cookie_days": 1,
+  "payout_cap_usd_month": 1,
+  "refund_clawback_days": 1,
+  "fraud_rules": [],
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "platform": "lemonsqueezy",
+  "commission_pct": 1.0,
+  "cookie_days": 1,
+  "payout_cap_usd_month": 1,
+  "refund_clawback_days": 1,
+  "fraud_rules": [],
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — owner is plural role and required fields stripped, demonstrating the forbidden patterns.</note>
+  </example>
+
+  <reference path="scripts/validate-affiliate-program-solo.py">Schema validator (stdlib only).</reference>
 </text>

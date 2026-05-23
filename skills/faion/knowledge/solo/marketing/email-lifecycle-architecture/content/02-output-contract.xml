@@ -1,44 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Email Lifecycle Architecture Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Email Lifecycle Architecture output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Email Lifecycle Architecture Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="lifecycle_map" type="list" required="true">[{program, stage, trigger, frequency}]</field>
-      <field name="frequency_cap" type="object" required="true">{global_per_week, exempt_transactional}</field>
-      <field name="suppression_list_id" type="string" required="true">global suppression list reference</field>
-      <field name="consent_records" type="object" required="true">{schema, fields_captured}</field>
-      <field name="compliance_basis" type="list" required="true">[{program, legal_basis, region}]</field>
-      <field name="audit_date" type="date" required="true">next quarterly audit</field>
-      <field name="owner" type="string" required="true">named email/lifecycle owner</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/email-lifecycle-architecture.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "lifecycle_map",
+    "frequency_cap",
+    "suppression_list_id",
+    "consent_records",
+    "compliance_basis",
+    "audit_date",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "lifecycle_map": {
+      "type": "array"
+    },
+    "frequency_cap": {
+      "type": "object"
+    },
+    "suppression_list_id": {
+      "type": "string"
+    },
+    "consent_records": {
+      "type": "object"
+    },
+    "compliance_basis": {
+      "type": "array"
+    },
+    "audit_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">frequency_cap is per-program (not global)</pattern>
-      <pattern id="f2">suppression list is per-program (not global)</pattern>
-      <pattern id="f3">consent_records missing source field</pattern>
-      <pattern id="f4">compliance_basis missing for any program targeting EU/UK/CA</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/email-lifecycle-architecture.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>lifecycle_map populated with a typed value</item>
-      <item>frequency_cap populated with a typed value</item>
-      <item>suppression_list_id populated with a typed value</item>
-      <item>consent_records populated with a typed value</item>
-      <item>compliance_basis populated with a typed value</item>
-      <item>audit_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <pattern id="f1">frequency_cap is per-program (not global) — violates r2</pattern>
+      <pattern id="f2">suppression list is per-program (not global) — violates r3</pattern>
+      <pattern id="f3">consent_records missing source field — violates r4</pattern>
+      <pattern id="f4">compliance_basis missing for any program targeting EU/UK/CA — violates r4</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "email-lifecycle-architecture-2026-q2",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "lifecycle_map": [],
+  "frequency_cap": {},
+  "suppression_list_id": "<suppression_list_id>",
+  "consent_records": {},
+  "compliance_basis": [],
+  "audit_date": "2026-05-23",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "lifecycle_map": [],
+  "frequency_cap": {},
+  "suppression_list_id": "<suppression_list_id>",
+  "consent_records": {},
+  "compliance_basis": [],
+  "audit_date": "2026-05-23",
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — owner is plural role and required fields stripped, demonstrating the forbidden patterns.</note>
+  </example>
+
+  <reference path="scripts/validate-email-lifecycle-architecture.py">Schema validator (stdlib only).</reference>
 </text>

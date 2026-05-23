@@ -3,78 +3,96 @@ slug: eeat-signal-pass-template
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a per-post EEAT signal pass artefact (author bio + last-updated + citations + original quotes + schema) gated by the 5-signal completeness rule."
 content_id: "aab798b878c743dd"
-summary: Eeat Signal Pass Template delivers a concrete, testable methodology that turns the recurring task of 'Blog post brief → AI draft → human polish (per-post)' into an auditable artefact, addressing the gap: EEAT is talked about everywhere but no operational checklist exists in faion
-tags: [marketing, solo, template, methodology]
+complexity: medium
+produces: checklist
+est_tokens: 4900
+tags: ["eeat", "seo", "blog", "checklist", "schema", "solo"]
 ---
-# Eeat Signal Pass Template
+# EEAT Signal Pass Template
 
 ## Summary
 
-**One-sentence:** Eeat Signal Pass Template delivers a concrete, testable methodology that turns the recurring task of 'Blog post brief → AI draft → human polish (per-post)' into an auditable artefact, addressing the gap: EEAT is talked about everywhere but no operational checklist exists in faion: author bio, last-updated, citations, original quotes, schema. Bundle it.
+**One-sentence:** Produces a per-post EEAT signal pass artefact (author bio + last-updated + citations + original quotes + schema) gated by the 5-signal completeness rule.
 
-**One-paragraph:** EEAT is talked about everywhere but no operational checklist exists in faion: author bio, last-updated, citations, original quotes, schema. Bundle it. Eeat Signal Pass Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Blog post brief → AI draft → human polish (per-post)' (role-growth-marketing, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** EEAT is talked about everywhere but no operational checklist exists at faion. This methodology pins a per-post pass: author bio link with credentials, last-updated date ≤12 months, ≥3 outbound citations, ≥1 original quote or data point, and article schema markup. Output: a per-post EEAT pass checklist artefact.
+
+**Ефективно для:**
+
+- готова основа для повторюваної задачі «eeat-signal-pass-template» — без винаходу велосипеда.
+- контракт виходу пинить за схемою — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Blog post brief → AI draft → human polish (per-post)' (role: role-growth-marketing) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Post is targeting search visibility (Google / AI engines).
+- Author identity is available (real human with credentials).
+- CMS supports schema markup injection.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Post is internal-only with no public search target.
+- Author refuses to attach name or credentials.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Draft post | markdown / CMS draft | author |
+| Author bio + credentials | doc | operator |
+| CMS schema config | JSON-LD template | developer |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/marketing/` | Parent group / operating context. |
+| `solo/marketing/content-marketer/search-everywhere-optimization` | Parent plan methodology this checklist supports. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the eeat-pass artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | 700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `eeat_signal_pass_template_template_fill` | haiku | Template fill, no judgment |
-| `eeat_signal_pass_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `eeat_signal_pass_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/eeat-signal-pass-template.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/eeat-signal-pass-template.json` | eeat-pass JSON skeleton validating against scripts/. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-eeat-signal-pass-template.py` | Validate the eeat-pass artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `role-growth-marketing/Blog post brief → AI draft → human polish (per-post)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[search-everywhere-optimization]]
+- [[growth-landing-page-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

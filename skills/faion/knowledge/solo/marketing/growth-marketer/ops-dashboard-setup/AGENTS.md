@@ -3,73 +3,93 @@ slug: ops-dashboard-setup
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A framework for centralizing business metrics into a single, actionable view.
-content_id: "bc0b5fbc7556bdd3"
-tags: [dashboard, metrics, reporting, kpis, business-operations]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a single-pane ops dashboard spec — KPI tree, freshness SLA, named owner per widget, alert thresholds — replacing fragmented per-tool reports that nobody checks.
+content_id: "9b250c74715d10c0"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["dashboard", "kpi", "ops", "solo", "metrics"]
 ---
-# Dashboard Setup
+# Ops Dashboard Setup
 
 ## Summary
 
-**One-sentence:** A framework for centralizing business metrics into a single, actionable view.
+**One-sentence:** Generates a single-pane ops dashboard spec — KPI tree, freshness SLA, named owner per widget, alert thresholds — replacing fragmented per-tool reports that nobody checks.
 
-**One-paragraph:** A framework for centralizing business metrics into a single, actionable view. Covers dashboard design principles, metric selection (5-10 max), data source connections, and reporting cadences (daily pulse, weekly review, monthly report). The core rule: every metric on a dashboard must be one you can act on — lagging vanity metrics belong in archives, not on the dashboard.
+**One-paragraph:** Ops Dashboard Setup produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder reading metrics across ≥3 tools who needs ONE dashboard with ≤7 widgets, fresh ≤24h, with owner + alert per widget — before metric fatigue kills review cadence.
 
 ## Applies If (ALL must hold)
 
-- No single view of business health exists across revenue, customers, and marketing
-- Weekly review meetings waste time hunting for numbers across tools
-- Setting up a new SaaS or product business that needs an initial metrics system
-- Quarterly planning requires trend visibility across multiple metric categories
-- Switching analytics tools and need to rebuild reporting infrastructure
+- Metrics live across ≥3 tools today (Stripe, ESP, analytics, CRM, …)
+- There is a recurring review cadence (weekly or monthly)
+- Founder commits to ≤7 KPIs (not a 40-widget vanity wall)
 
 ## Skip If (ANY kills it)
 
-- Business has fewer than 10 customers — a simple spreadsheet outperforms a dashboard
-- Metrics are undefined or inconsistently tracked — fix data collection first
-- No one will review the dashboard regularly — a stale dashboard is worse than none
-- Dashboard tool requires data warehouse setup that hasn't been built yet
+- Pre-revenue with no measurable KPIs — defer until product/market signal exists
+- Single tool already exposes everything needed
+- Enterprise data-platform context — different methodology
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| KPI tree (north-star → drivers) | doc | product/roadmap |
+| Data sources (Stripe, GA, ESP, …) | list | tool inventory |
+| Dashboard hosting (Metabase / Looker / Plausible / Notion) | service | infra inventory |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `plausible-analytics` | Sibling — one of the typical data sources. |
+| `ops-automation-workflow` | Dashboards read automation health signals. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-single-pane, r2-max-7-widgets, r3-freshness-sla, r4-named-owner-per-widget, r5-alert-threshold-per-widget, r6-monthly-review | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-ops-dashboard-setup` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-ops-dashboard-setup` | haiku | Schema check + threshold checks; deterministic. |
+| `review-ops-dashboard-setup` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-dashboard-setup.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ops-dashboard-setup.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-dashboard-setup.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/growth-marketer/`
+- [[plausible-analytics]]
+- [[ops-automation-workflow]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

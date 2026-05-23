@@ -3,73 +3,93 @@ slug: ops-automation-workflow
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for identifying, prioritizing, and building business automations that replace repetitive manual tasks.
-content_id: "e4e2dcade5f66732"
-tags: [automation, workflow, marketing-ops, roi, integration]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an automation inventory + ROI-ranked backlog + design doc for each candidate automation — replaces repetitive ops tasks without sprawling no-code chains nobody owns.
+content_id: "afdbfa67719cb4c4"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["automation", "ops", "roi", "solo", "workflow"]
 ---
-# Automation and Workflow
+# Ops Automation Workflow
 
 ## Summary
 
-**One-sentence:** A methodology for identifying, prioritizing, and building business automations that replace repetitive manual tasks.
+**One-sentence:** Generates an automation inventory + ROI-ranked backlog + design doc for each candidate automation — replaces repetitive ops tasks without sprawling no-code chains nobody owns.
 
-**One-paragraph:** A methodology for identifying, prioritizing, and building business automations that replace repetitive manual tasks. Covers a time-audit process, ROI prioritization matrix, tool selection, and workflow design patterns for lead capture, onboarding, content distribution, and reporting. The core rule: manually define and run a process at least once before automating it — automating an undefined process creates a faster path to wrong outcomes.
+**One-paragraph:** Ops Automation Workflow produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solopreneur with ≥10 hours / week of repetitive ops tasks who needs a ranked automation backlog with ROI math and a named owner per automation — before stacking another untracked Zap.
 
 ## Applies If (ALL must hold)
 
-- Identified repetitive tasks consuming 30+ minutes per day or 1+ hour per week
-- Error-prone manual process where mistakes have downstream cost (payment, data sync)
-- Customer lifecycle event (signup, purchase, milestone) that always triggers the same steps
-- Weekly or daily reporting pulled manually from multiple tools
-- Content distribution that follows the same steps after each new piece
+- ≥10 hours / week of repetitive manual ops tasks identified
+- Stack with at least one automation surface (Zapier, n8n, Make, Apps Script)
+- Founder authority to retire failing automations
 
 ## Skip If (ANY kills it)
 
-- Process not yet defined — automate only what has been run manually and understood
-- Decision-heavy workflow requiring judgment — automation handles triggers, not strategy
-- Rare task (less than monthly) where build time exceeds annual time savings
-- Tool integrations are unstable or in active development — automation will break
+- Tasks need human judgement on each instance — not automation candidates
+- <5 hours / week of repetitive work — payback never lands
+- No automation budget (tool or time to build) for the next 30 days
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repetitive-task inventory with hours/week | table | founder time log |
+| Tool inventory (Zapier / n8n / Make / Apps Script) | list | billing exports |
+| Cost per hour of founder time (USD) | number | p&l |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `ops-dashboard-setup` | Sibling — dashboard reads automation health signals. |
+| `ops-customer-support` | Many candidate automations come from support inbox. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-inventory-before-build, r2-roi-ranked, r3-named-owner-per-automation, r4-monitoring-required, r5-quarterly-cull | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-ops-automation-workflow` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-ops-automation-workflow` | haiku | Schema check + threshold checks; deterministic. |
+| `review-ops-automation-workflow` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-automation-workflow.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ops-automation-workflow.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-automation-workflow.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/growth-marketer/`
+- [[ops-dashboard-setup]]
+- [[ops-customer-support]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

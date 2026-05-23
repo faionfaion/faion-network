@@ -3,74 +3,93 @@ slug: growth-product-hunt-launch
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Four-phase Product Hunt launch system: build 500+ email list (4-8 weeks), secure niche hunter (1000+ followers), launch 12:01 AM PT Tue-Thu, reply within 1 hour.
-content_id: "c440384a959d05e7"
-tags: [product-hunt, product-launch, community-marketing, growth, early-adopters]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a four-phase Product Hunt launch spec: 4-8 week pre-list build, niche hunter selection (≥1000 followers), launch timing (12:01 AM PT Tue-Thu), 1-hour response SLA — engineered for top-5 placement.
+content_id: "847e58da7d50f2f5"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["product-hunt", "launch", "marketing", "community", "solo"]
 ---
 # Product Hunt Launch System
 
 ## Summary
 
-**One-sentence:** Four-phase Product Hunt launch system: build 500+ email list (4-8 weeks), secure niche hunter (1000+ followers), launch 12:01 AM PT Tue-Thu, reply within 1 hour.
+**One-sentence:** Generates a four-phase Product Hunt launch spec: 4-8 week pre-list build, niche hunter selection (≥1000 followers), launch timing (12:01 AM PT Tue-Thu), 1-hour response SLA — engineered for top-5 placement.
 
-**One-paragraph:** Four-phase Product Hunt launch system: build 500+ email list (4-8 weeks), secure niche hunter (1000+ followers), launch 12:01 AM PT Tue-Thu, reply within 1 hour. Never ask for upvotes directly.
+**One-paragraph:** Product Hunt Launch System produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder targeting consumer / prosumer / SaaS audience on Product Hunt who needs a 4-phase launch spec with email list, hunter, launch-day asset matrix, and engagement SLA before the launch window opens.
 
 ## Applies If (ALL must hold)
 
-- Product is polished and launch-ready; need all listing assets (tagline variants, first comment, gallery descriptions, launch email, social posts).
-- Evaluating launch readiness against the 4-week checklist before committing to a date.
-- Drafting canned responses for the 5 most likely comment types in advance.
-- Post-launch: generating a retrospective for IndieHackers from metrics and comment thread.
-- Building a hunter outreach message or waitlist page copy.
+- Product fits PH audience (SaaS, consumer, prosumer, dev-tool)
+- Founder has 4-8 weeks runway pre-launch
+- Has not been launched on PH previously (or last launch >6 months ago)
 
 ## Skip If (ANY kills it)
 
-- Product is not yet functional or has major UX issues — public launch damages credibility permanently.
-- Email list under 200 warm contacts — build audience first; launch date can wait.
-- Planning to launch on a weekend or during a major tech event — timing is non-negotiable.
-- Expecting automated upvoting, fake comments, or inauthentic support coordination.
-- Assuming PH traffic alone sustains growth after day 1 — plan post-launch nurture.
+- Audience is enterprise IT — PH is wrong channel
+- Product launches in <4 weeks — too short for pre-list
+- B2B niche with <100 addressable users — payoff too small
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Email list with ≥500 launch-day subscribers (target) | list | ESP |
+| Hunter contact (≥1000 PH followers, ideally niche-aligned) | person | PH discover |
+| Launch assets: gallery, gif, tagline, FAQ | files | marketing |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `growth-hacker-news-launch` | Sibling launch channel. |
+| `feature-launch-checklist` | Parent — PH is one channel inside the wider launch. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-pre-list-500-min, r2-niche-hunter-1000-followers, r3-launch-12-01-am-pt-tue-thu, r4-respond-within-1-hour, r5-asset-matrix-complete, r6-no-bot-upvotes | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-growth-product-hunt-launch` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-growth-product-hunt-launch` | haiku | Schema check + threshold checks; deterministic. |
+| `review-growth-product-hunt-launch` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/growth-product-hunt-launch.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/growth-product-hunt-launch.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-growth-product-hunt-launch.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/`
+- [[growth-hacker-news-launch]]
+- [[feature-launch-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -3,78 +3,93 @@ slug: freelancer-positioning-content-calendar
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "501fed601f945aa7"
-summary: "Freelancer Positioning Content Calendar — testable methodology for growth, acquisition, content, GTM. 12-month topic rotation matrix mapping niche pillars to weekly posts, sourcing topics from actual work. Avoids 'what do I post' decision fatigue."
-tags: [marketing, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a 12-month topic rotation matrix tying weekly content slots to niche pillars sourced from real client work — kills the 'what do I post' decision and stabilises the positioning signal.
+content_id: "2332d1c9f98c1809"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["freelancer", "positioning", "content-calendar", "marketing", "solo"]
 ---
 # Freelancer Positioning Content Calendar
 
 ## Summary
 
-**One-sentence:** Freelancer Positioning Content Calendar — testable methodology for growth, acquisition, content, GTM. 12-month topic rotation matrix mapping niche pillars to weekly posts, sourcing topics from actual work. Avoids 'what do I post' decision fatigue.
+**One-sentence:** Generates a 12-month topic rotation matrix tying weekly content slots to niche pillars sourced from real client work — kills the 'what do I post' decision and stabilises the positioning signal.
 
-**One-paragraph:** Freelancer Positioning Content Calendar closes a known gap in marketing practice: 12-month topic rotation matrix mapping niche pillars to weekly posts, sourcing topics from actual work. Avoids 'what do I post' decision fatigue. The methodology is anchored to the recurring activity 'Weekly positioning post (LinkedIn / Twitter) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelancer Positioning Content Calendar produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Independent freelancer with a defined niche who needs a 12-month topic calendar that turns client work into weekly content without daily decision fatigue.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Weekly positioning post (LinkedIn / Twitter) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Freelancer has a declared niche (≥1 pillar identified)
+- Active client work that can be the source of stories / case studies
+- Commitment to ≥1 published asset per week for the next 12 months
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No declared niche yet — run positioning-diff-log first
+- No active client work — calendar will starve
+- Pure-product founder (not service) — use content-marketing for SaaS instead
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| List of 3-5 positioning pillars | doc | positioning artefact |
+| Active client engagement log | table | CRM or notes |
+| Publishing channel(s) | list | marketing inventory |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `positioning-diff-log` | Pillars must already exist; this calendar consumes them. |
+| `audience-to-customer-funnel` | Content feeds the awareness stage of the funnel. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-pillars-3-to-5, r2-week-mapped-to-pillar, r3-source-from-real-work, r4-publish-cadence-weekly-min, r5-named-owner, r6-quarterly-review | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_positioning_content_calendar_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_positioning_content_calendar_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_positioning_content_calendar_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-freelancer-positioning-content-calendar` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-freelancer-positioning-content-calendar` | haiku | Schema check + threshold checks; deterministic. |
+| `review-freelancer-positioning-content-calendar` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/freelancer-positioning-content-calendar.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/freelancer-positioning-content-calendar.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-positioning-content-calendar.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/` (see neighbouring methodologies)
-- triggering activity: `Weekly positioning post (LinkedIn / Twitter) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[positioning-diff-log]]
+- [[audience-to-customer-funnel]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
