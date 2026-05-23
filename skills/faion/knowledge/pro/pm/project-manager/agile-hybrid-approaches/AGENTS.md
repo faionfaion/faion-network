@@ -3,73 +3,100 @@ slug: agile-hybrid-approaches
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A decision framework for selecting and tailoring a delivery mode — predictive (waterfall), agile (Scrum/Kanban), or a named hybrid pattern — based on six scored dimensions: requirement clarity, stakeholder engagement, risk tolerance, team agility, contract flexibility, and regulatory burden.
-content_id: "033a37e36a311d7c"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decision framework for selecting predictive / agile / named-hybrid delivery mode via Boehm + Turner 6-dimension score, with mid-project re-evaluation when metrics shift.
+content_id: "4141eb7611ce134a"
+complexity: deep
+produces: decision-record
+est_tokens: 4400
 tags: [hybrid, waterfall, scrum, kanban, delivery-mode]
 ---
-# Agile and Hybrid Approaches
+# Agile Hybrid Approaches
 
 ## Summary
 
-**One-sentence:** A decision framework for selecting and tailoring a delivery mode — predictive (waterfall), agile (Scrum/Kanban), or a named hybrid pattern — based on six scored dimensions: requirement clarity, stakeholder engagement, risk tolerance, team agility, contract flexibility, and regulatory burden.
+**One-sentence:** Decision framework for selecting predictive / agile / named-hybrid delivery mode via Boehm + Turner 6-dimension score, with mid-project re-evaluation when metrics shift.
 
-**One-paragraph:** A decision framework for selecting and tailoring a delivery mode — predictive (waterfall), agile (Scrum/Kanban), or a named hybrid pattern — based on six scored dimensions: requirement clarity, stakeholder engagement, risk tolerance, team agility, contract flexibility, and regulatory burden. "Hybrid" is never a hand-wave; the selected pattern must be named (Water-Scrum-Fall, agile-discovery-then-predictive, predictive-governance-over-agile-execution). LLMs default to "agile" for almost any prompt — force balanced scoring.
+**One-paragraph:** Choosing between predictive (waterfall), agile (Scrum/Kanban), or named hybrid is a leading project-mode decision that's often made by inertia. This methodology codifies the Boehm + Turner home-ground model: score 6 dimensions (requirement volatility, team skill uniformity, failure cost, team size, culture fit, domain uncertainty) → recommend mode. Approach mismatch is detected via metrics (e.g., velocity volatility + escalation rate); re-evaluation is triggered mid-project. The output is a decision record with score + mode + named hybrid tilt + evaluation triggers.
+
+**Ефективно для:**
+
+- Programmes choosing delivery mode at inception.
+- Programmes whose chosen mode is failing — mid-project re-evaluation.
+- Multi-team programmes where different teams should run different modes.
+- Regulated programmes that need predictive evidence + agile delivery.
 
 ## Applies If (ALL must hold)
 
-- Choosing a delivery mode at project kickoff given a known project context
-- Re-evaluating mid-project when symptoms appear (waterfall slipping repeatedly, Scrum failing on fixed-price compliance)
-- Designing a tailored hybrid for fixed-price clients
-- Authoring the Development Approach section of a PMBoK 8 plan
-- Coaching a team transitioning between approaches with explicit ceremony and artefact mappings
+- Programme has a delivery-mode decision to make or revisit.
+- Teams can score the 6 dimensions with evidence.
+- Mode change is feasible within the programme.
+- Re-evaluation cadence (every quarter / phase gate) is observed.
 
 ## Skip If (ANY kills it)
 
-- Tiny projects under 4 weeks with a single well-scoped team — any methodology overhead beats the work itself; use a checklist
-- Mandated-by-contract approaches (DoD waterfall, FDA validated software) — no degrees of freedom
-- Pure operations / BAU work with no defined start/end — use Kanban + SLAs, not project methodology
-- Research-heavy pre-PMF startups — approach selection is premature
+- Mode is locked by contract — no decision available.
+- Team has not run the candidate mode and cannot score culture fit.
+- Programme < 4 weeks — overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Charter + scope baseline | MD | scope-management |
+| Team profile + skill matrix | table | HR |
+| Domain uncertainty notes | MD | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `stakeholder-engagement` | Sponsor + delivery alignment underpins mode change. |
+| `agile-ceremonies-setup` | Operationalises agile mode after decision. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — 6-dimension score required, evidence per dimension, named hybrid tilt, re-evaluation triggers, decision record committed | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the mode-decision record | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: gather → score → recommend → debate → record → re-evaluate | 900 |
+| `content/05-examples.xml` | optional | Worked decision record for a regulated programme | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping score state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-dimensions` | sonnet | Evidence-cited judgment per dimension. |
+| `compute-recommendation` | haiku | Mechanical aggregation. |
+| `named-hybrid-design` | opus | Cross-team synthesis of hybrid tilt + boundaries. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/approach-decision.md` | Decision record skeleton with 6-dim score + hybrid tilt. |
+| `templates/kanban-board.md` | Kanban column template for hybrid teams. |
+| `templates/sprint-planning.md` | Hybrid sprint template (Scrum cadence + Kanban WIP). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agile-hybrid-approaches.py` | Schema-validate the decision record JSON. | Pre-commit + before mode change. |
+| `scripts/approach-score.py` | Compute mode recommendation from 6-dim score. | On dimension change. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[agile-ceremonies-setup]]
+- [[scope-management]]
+- [[stakeholder-engagement]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the agile-hybrid-approaches input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

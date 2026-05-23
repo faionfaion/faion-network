@@ -3,77 +3,94 @@ slug: agency-kickoff-deck-template
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for agency kickoff deck template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "d9806659cffac38f"
-tags: [agency, pm, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 8-12 slide kickoff deck — Why → Scope → Metrics → Owners → Milestones → Risks → Comms → Decision asks — used for agency project kickoff with the client.
+content_id: "225e3ba7f1e31795"
+complexity: medium
+produces: report
+est_tokens: 3600
+tags: [agency, kickoff, deck, template]
 ---
 # Agency Kickoff Deck Template
 
 ## Summary
 
-**One-sentence:** Reusable template for agency kickoff deck template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** 8-12 slide kickoff deck — Why → Scope → Metrics → Owners → Milestones → Risks → Comms → Decision asks — used for agency project kickoff with the client.
 
-**One-paragraph:** Reusable template for agency kickoff deck template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. stakeholder-engagement methodology assumes internal PMO; agencies need an external-client-shaped kickoff template.
+**One-paragraph:** Agency kickoff usually devolves into 40 slides of agency credentials. This methodology pins a 8-12 slide kickoff deck whose centre of gravity is decisions for the client: numbered asks slide at the end, named-owner workstreams, top-5 risks, and explicit comms cadence. Brief is 1 page, deck is short, decisions taken at kickoff are logged. Designed for agencies running ≥4 kickoffs/year that want kickoff hygiene without rebuilding the deck each time.
+
+**Ефективно для:**
+
+- Agency PMs running ≥4 kickoffs per year.
+- Client-side sponsors who need decisions, not credentials.
+- Programmes where workstream-owner clarity is the leading hygiene risk.
+- Distressed-rescue kickoffs where comms cadence must be set fast.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by agency kickoff deck template (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Engagement has signed SOW or LOI.
+- Kickoff meeting scheduled with sponsor + delivery team.
+- Comms cadence will be agreed at kickoff.
+- Workstreams already mapped to named humans on agency side.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Re-engagement where deck would be 'check we're still aligned' — use note instead.
+- Discovery sprint where scope is hypothesis-driven — use proposal-as-question instead.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prior-period output | MD / CSV | agency |
+| Current pipeline / roadmap | list | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `stakeholder-engagement` | Engagement of partners / sponsors anchors the artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — max-12 slides, decision asks mandatory, named owners both sides, top-5 risks, comms cadence explicit | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the agency-kickoff-deck-template artefact | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping artefact state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `scaffold-artefact` | haiku | Template fill from prior-period output. |
+| `fill-evidence` | sonnet | Select correct evidence per row. |
+| `synthesise-decisions` | opus | Cross-period synthesis for corrective decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/kickoff-deck.md` | 8-12 slide deck outline. |
+| `templates/kickoff-brief.md` | 1-page brief feeding the deck. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-kickoff-deck-template.py` | Schema-validate artefact JSON. | Pre-commit + before review. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
-- peer methodologies: see siblings under `pro/pm/project-manager/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[agency-annual-plan-template]]
+- [[stakeholder-engagement]]
+- [[risk-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the agency-kickoff-deck-template input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

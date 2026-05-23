@@ -3,72 +3,98 @@ slug: work-breakdown-structure
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A hierarchical decomposition of total project scope into deliverable-oriented (noun-led) work packages.
-content_id: "c3bcfc94a7e4ecc3"
-tags: [wbs, scope-management, work-packages, project-decomposition, baseline]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: WBS artefact: hierarchical decomposition of project scope into noun-led work packages, each owned by one person, estimable in 8-80h, with 100% coverage and no overlap.
+content_id: "7d179f8e01a9c104"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [wbs, scope-management, pmi, decomposition, work-packages]
 ---
-# Work Breakdown Structure (WBS)
+# Work Breakdown Structure
 
 ## Summary
 
-**One-sentence:** A hierarchical decomposition of total project scope into deliverable-oriented (noun-led) work packages.
+**One-sentence:** WBS artefact: hierarchical decomposition of project scope into noun-led work packages, each owned by one person, estimable in 8-80h, with 100% coverage and no overlap.
 
-**One-paragraph:** A hierarchical decomposition of total project scope into deliverable-oriented (noun-led) work packages. Each leaf is assignable to one owner, estimable in 8–80 hours, and produces a tangible output. The 100% rule requires every parent to equal the sum of its children with no overlap or gaps.
+**One-paragraph:** The Work Breakdown Structure is the canonical PMBoK artefact: a noun-led tree of deliverables produced via decomposition, with every leaf assignable, estimable in 8-80h, and verifiable against the signed scope baseline. The WBS is the spine that schedule, cost, and EVM consume; without it, those downstream artefacts inherit ambiguity.
+
+**Ефективно для:**
+
+- Programmes consuming WBS downstream for schedule, cost, and EVM.
+- Multi-team coordination requiring single source of truth for deliverables.
+- Audit + governance contexts needing baseline traceability.
+- Fixed-bid pricing models where WBS is the contractual artefact.
 
 ## Applies If (ALL must hold)
 
-- Establishing a contractual scope baseline for fixed-bid or government-style work.
-- Cost estimation for proposals where each work package needs an hours/$ line.
-- Programs spanning multiple teams or vendors needing a single ID schema (1.2.3) for integration.
-- Compliance or audit contexts where every deliverable must be traceable to a parent objective.
+- Signed scope baseline exists (scope-management complete).
+- Project will be tracked via earned-value or milestone reporting.
+- Multiple work packages need owner assignment + acceptance criteria.
+- Programme reporting requires hierarchical roll-up.
 
 ## Skip If (ANY kills it)
 
-- Backlog-driven product teams — the product backlog plus epics already plays the WBS role.
-- Discovery or R&D where deliverables are emergent and unknowable up front.
-- Sub-2-week tasks — a checklist or kanban swimlane suffices.
-- Steady-state operations work — use a service catalog, not a WBS.
+- Pure Scrum team — backlog replaces WBS.
+- Solo project — checklist is sufficient.
+- Pre-PMF discovery where scope is hypothesis-driven.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Signed scope baseline | scope-statement.md | scope-management |
+| Charter | signed PDF | sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `scope-management` | Locked scope is the parent of the WBS root. |
+| `schedule-development` | Consumes WBS leaves as schedule activities. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — 100% rule, deliverable-oriented, 8-80h leaves, dictionary, no gold-plating | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for WBS tree + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step decomposition procedure | 800 |
+| `content/05-examples.xml` | optional | Worked WBS snippet at 3 levels | 600 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping WBS state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decompose-deliverables` | sonnet | Domain judgment on noun-led decomposition. |
+| `dictionary-fill` | haiku | Template fill per leaf. |
+| `coverage-audit` | opus | Cross-tree 100%-rule and gold-plating synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wbs-outline.md` | Hierarchical WBS outline. |
+| `templates/wbs-dictionary-entry.md` | Per-leaf dictionary template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-work-breakdown-structure.py` | Schema-validate WBS JSON artefact. | Pre-commit + pre-EVM baseline. |
+| `scripts/wbs-check.py` | Lint WBS outline: numbering, owners, 8-80h leaves. | Pre-commit + before steering review. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[scope-management]]
+- [[schedule-development]]
+- [[cost-estimation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the work-breakdown-structure input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

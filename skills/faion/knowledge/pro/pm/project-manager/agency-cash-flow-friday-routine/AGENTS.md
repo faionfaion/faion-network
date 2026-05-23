@@ -3,77 +3,95 @@ slug: agency-cash-flow-friday-routine
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Concrete operating checklist covering agency cash flow friday routine — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
-content_id: "175703436331e4cc"
-tags: [agency, checklist, pm]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 15-minute weekly cash-flow routine — 5-item checklist covering AR, AP, payroll, fixed costs, runway — committed each Friday with named action when amber.
+content_id: "091350d22c5ce514"
+complexity: medium
+produces: checklist
+est_tokens: 3500
+tags: [agency, cash-flow, checklist, friday-routine]
 ---
-# Agency Cash Flow Friday Routine
+# Agency Cash-Flow Friday Routine
 
 ## Summary
 
-**One-sentence:** Concrete operating checklist covering agency cash flow friday routine — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
+**One-sentence:** 15-minute weekly cash-flow routine — 5-item checklist covering AR, AP, payroll, fixed costs, runway — committed each Friday with named action when amber.
 
-**One-paragraph:** Concrete operating checklist covering agency cash flow friday routine — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped. ops-financial-basics is theoretical; founders need a 30-min Friday checklist (cash, AR, AP, runway, decisions).
+**One-paragraph:** A fixed weekly ritual replacing 'check the bank account when something feels off' with a 15-minute Friday checklist. Each item has a green/amber/red trigger and a named action if amber. The output is a one-line ledger entry per Friday plus action items routed to owners. Designed for solo founders and micro-agencies where one missed week of cash discipline kills the business.
+
+**Ефективно для:**
+
+- Solo founder or micro-agency where one missed week of cash hygiene is existential.
+- Agencies with seasonal AR cycles needing weekly visibility.
+- Agencies running a runway-based decision model (not a quarterly-budget model).
+- Operators easily distracted from finance by client work.
 
 ## Applies If (ALL must hold)
 
-- You operate the recurring activity addressed by agency cash flow friday routine at least once per cycle (weekly, sprint, quarter, or annual).
-- You have authority to act on each item — checklist items without owners or budget are deferred.
-- Skipped items must be auditable: a written reason replaces the action.
-- Time-box: full pass completes within the cycle window (e.g., 30-90 min for weekly, 1-2 days for annual).
+- Owner has authority over outflows + can chase AR.
+- Banking + invoice systems support 15-min weekly export.
+- Friday slot is calendar-protected.
+- Net inflow + runway can be computed in under 5 minutes.
 
 ## Skip If (ANY kills it)
 
-- One-off events with no recurrence — checklist value is in the rhythm.
-- Activities without a named owner — items will not be done, only ticked.
-- Teams running a more granular checklist already — adding a meta-layer creates conflict.
+- Larger agency (>10 FTE) with dedicated finance — cadence misfits.
+- Owner not authorised to chase AR or hold AP — checklist toothless.
+- Agency with VC runway > 18 months — weekly cadence overkill.
 
 ## Prerequisites
 
-- Calendar slot dedicated to the cycle (recurring meeting / focus block).
-- Read-access to the source systems each item inspects (analytics, billing, repo).
-- Last cycle's output filed where current cycle can compare year-over-year.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prior-period output | MD / CSV | agency |
+| Current pipeline / roadmap | list | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `stakeholder-engagement` | Engagement of partners / sponsors anchors the artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — 15-min cap, 5-item checklist, named action when amber, ledger entry, runway trigger | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the agency-cash-flow-friday-routine artefact | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping artefact state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `checklist_dry_run` | haiku | Template walk, no judgment needed |
-| `anomaly_flag` | sonnet | Compare current cycle vs prior, flag deltas |
-| `decision_synthesis` | opus | Consolidate flags into a corrective-action list |
+| `scaffold-artefact` | haiku | Template fill from prior-period output. |
+| `fill-evidence` | sonnet | Select correct evidence per row. |
+| `synthesise-decisions` | opus | Cross-period synthesis for corrective decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/friday-checklist.md` | 5-item checklist with green/amber/red triggers. |
+| `templates/ledger.md` | Weekly ledger row template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-cash-flow-friday-routine.py` | Schema-validate artefact JSON. | Pre-commit + before review. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
-- peer methodologies: see siblings under `pro/pm/project-manager/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[agency-pnl-tracker-template]]
+- [[agency-annual-plan-template]]
+- [[agency-pipeline-hygiene-15min]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the agency-cash-flow-friday-routine input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

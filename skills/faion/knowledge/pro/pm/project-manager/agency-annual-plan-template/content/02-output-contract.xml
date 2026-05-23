@@ -1,31 +1,187 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Annual Plan Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agency Annual Plan Template deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
-    </list>
+<text id="02-output-contract" title="Agency Annual Plan Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the agency-annual-plan-template artefact.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-annual-plan.json",
+  "type": "object",
+  "required": [
+    "agency",
+    "year",
+    "revenue_targets",
+    "utilisation_target",
+    "milestones",
+    "investment_lines"
+  ],
+  "properties": {
+    "agency": {
+      "type": "string"
+    },
+    "year": {
+      "type": "integer"
+    },
+    "revenue_targets": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "quarter",
+          "project",
+          "retainer",
+          "productised"
+        ],
+        "properties": {
+          "quarter": {
+            "enum": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ]
+          },
+          "project": {
+            "type": "number"
+          },
+          "retainer": {
+            "type": "number"
+          },
+          "productised": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "utilisation_target": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "quarter",
+          "milestone",
+          "owner"
+        ],
+        "properties": {
+          "quarter": {
+            "enum": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ]
+          },
+          "milestone": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "investment_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "cap_usd",
+          "expected_return"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cap_usd": {
+            "type": "number"
+          },
+          "expected_return": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "agency": "Acme Studio",
+  "year": 2026,
+  "revenue_targets": [
+    {
+      "quarter": "Q1",
+      "project": 60000,
+      "retainer": 30000,
+      "productised": 5000
+    },
+    {
+      "quarter": "Q2",
+      "project": 65000,
+      "retainer": 35000,
+      "productised": 8000
+    },
+    {
+      "quarter": "Q3",
+      "project": 70000,
+      "retainer": 35000,
+      "productised": 12000
+    },
+    {
+      "quarter": "Q4",
+      "project": 75000,
+      "retainer": 40000,
+      "productised": 15000
+    }
+  ],
+  "utilisation_target": 0.7,
+  "milestones": [
+    {
+      "quarter": "Q2",
+      "milestone": "Launch productised offer A",
+      "owner": "Iryna"
+    }
+  ],
+  "investment_lines": [
+    {
+      "name": "Productised offer engineering",
+      "cap_usd": 8000,
+      "expected_return": "$5k MRR by Q4"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "agency": "x",
+  "year": 2026,
+  "revenue_targets": [],
+  "utilisation_target": 0.7
+}
+]]></code>
+    <note>revenue_targets needs exactly 4 quarters; milestones missing; investment_lines missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="aggregate-only"><description>revenue_targets missing per-line split</description><reason>Hides mix shifts.</reason></forbidden-pattern>
+    <forbidden-pattern id="team-owner"><description>milestone owner='team'</description><reason>Drifts.</reason></forbidden-pattern>
+    <forbidden-pattern id="uncapped-investment"><description>investment_lines item missing cap_usd</description><reason>Cash-flow risk.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-agency-annual-plan-template.py">Validator script</reference>
 </text>

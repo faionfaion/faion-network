@@ -3,72 +3,99 @@ slug: agile-ceremonies-setup
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Defines, configures, and continuously improves the five Scrum events — Sprint Planning, Daily Standup, Sprint Review, Retrospective, and Backlog Refinement — for a team's specific size, timezone spread, and PM tool.
-content_id: "41e9f58c7ac55250"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Configure the five Scrum events sized to team + timezone + tooling so ceremony overhead stays below 10% of sprint capacity with action-item closure tracked.
+content_id: "8e88460727fbd8ff"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [scrum, ceremonies, sprint-planning, retrospectives, agile]
 ---
 # Agile Ceremonies Setup
 
 ## Summary
 
-**One-sentence:** Defines, configures, and continuously improves the five Scrum events — Sprint Planning, Daily Standup, Sprint Review, Retrospective, and Backlog Refinement — for a team's specific size, timezone spread, and PM tool.
+**One-sentence:** Configure the five Scrum events sized to team + timezone + tooling so ceremony overhead stays below 10% of sprint capacity with action-item closure tracked.
 
-**One-paragraph:** Defines, configures, and continuously improves the five Scrum events — Sprint Planning, Daily Standup, Sprint Review, Retrospective, and Backlog Refinement — for a team's specific size, timezone spread, and PM tool. Total ceremony overhead must stay at or below 10% of sprint capacity. Each event has a mandatory time-box, a single sprint goal, and tracked action-item closure.
+**One-paragraph:** Agile ceremonies (planning / daily standup / refinement / review / retrospective) ought to consume <10% of sprint capacity. This methodology configures the five events to fit team size, timezone spread, and PM-tool conventions. Output is a ceremonies configuration artefact (per-event purpose, time-box, attendees, output, owner) plus templates per ceremony. Retrospective action items carry owner + due-date and are tracked across sprints.
+
+**Ефективно для:**
+
+- New Scrum teams establishing their cadence.
+- Teams whose ceremonies have drifted into theatre.
+- Distributed teams across multiple timezones.
+- Teams whose retro actions never close.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping Scrum for a new team: defining cadence, agendas, time-boxes, PM tool wiring.
-- Migrating a waterfall or ad-hoc team to a structured ceremony rhythm.
-- Tuning ceremonies that have decayed (silent retros, status-report standups, drifting reviews).
-- Setting up async / hybrid ceremonies for distributed teams with wide timezone spread.
-- Configuring Jira, Linear, or Azure DevOps to mirror the ceremony cadence.
+- Team runs (or wants to run) Scrum or Scrum-ish cadence.
+- Sprint length is fixed (1, 2, or 3 weeks).
+- Team has a PM-tool home (Jira / Linear / GitHub Projects).
+- Team has named Scrum Master or equivalent facilitator.
 
 ## Skip If (ANY kills it)
 
-- Solo or 2-person teams — overhead exceeds value; lightweight async check-ins suffice.
-- Continuous-delivery Kanban teams with WIP limits and SLA dashboards — ceremonies become anti-patterns.
-- Teams with zero psychological safety — retros become blame sessions and worsen things before they help; fix safety first.
+- Continuous-flow (Kanban) team — different ceremony shape.
+- Solo developer — ceremonies cost more than they return.
+- Team without facilitator authority — ceremonies degrade quickly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Team list + timezones | table | PM |
+| Sprint cadence decision | decision-record | team |
+| PM-tool access | API token / app | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `stakeholder-engagement` | PO and stakeholder reviews depend on engagement plan. |
+| `communications-management` | Channels for standup + ceremony output. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — ceremony purpose stated, time-box per event, retro action owner+due, ceremony overhead <10%, attendees bounded | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for ceremonies config artefact | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns — drifted retros, no-purpose standups, time-boxes ignored, no closure | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: assess → configure → bootstrap → measure → tune | 800 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping config state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-config` | haiku | Template fill from team list. |
+| `measure-overhead` | sonnet | Compute ceremony hours vs sprint capacity. |
+| `retro-action-synthesis` | opus | Cross-sprint pattern recognition for systemic actions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/sprint-planning.md` | Sprint planning template. |
+| `templates/retrospective.md` | Retro template with mandatory action items. |
+| `templates/standup-bot.yaml` | Standup bot config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agile-ceremonies-setup.py` | Schema-validate the config artefact. | Pre-commit + on config changes. |
+| `scripts/create_sprint.sh` | Scaffold a new sprint folder with planning + retro from templates. | At sprint start. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
+- [[agile-hybrid-approaches]]
+- [[communications-management]]
+- [[stakeholder-engagement]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the agile-ceremonies-setup input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

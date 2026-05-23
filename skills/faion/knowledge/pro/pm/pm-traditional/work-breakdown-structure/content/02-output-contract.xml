@@ -1,22 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="work-breakdown-structure Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Work Breakdown Structure Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the WBS tree artefact.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/work-breakdown-structure.json",
+  "type": "object",
+  "required": [
+    "project",
+    "baseline_ref",
+    "nodes"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 3
+    },
+    "baseline_ref": {
+      "type": "string",
+      "minLength": 4
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "level",
+          "is_leaf"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "is_leaf": {
+            "type": "boolean"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "estimate_hours_low": {
+            "type": "number",
+            "minimum": 0
+          },
+          "estimate_hours_high": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 80
+          },
+          "acceptance": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "is_leaf": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "owner",
+                "estimate_hours_low",
+                "estimate_hours_high",
+                "acceptance"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project": "checkout-redesign",
+  "baseline_ref": "scope-statement-v2",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Payment redesign",
+      "level": 1,
+      "is_leaf": false
+    },
+    {
+      "id": "1.1",
+      "name": "Stripe Payment Intents v2 integration",
+      "level": 2,
+      "is_leaf": false
+    },
+    {
+      "id": "1.1.1",
+      "name": "API client refactor",
+      "level": 3,
+      "is_leaf": true,
+      "owner": "Iryna",
+      "estimate_hours_low": 16,
+      "estimate_hours_high": 40,
+      "acceptance": "all old SDK calls replaced; integration tests green"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project": "x",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "y",
+      "level": 1,
+      "is_leaf": true
+    }
+  ]
+}
+]]></code>
+    <note>Project too short; leaf node missing owner/estimate/acceptance; baseline_ref missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="verb-led-element"><description>WBS element name starts with a verb (e.g., 'Implement ingest')</description><reason>Belongs to schedule activities, not WBS deliverables.</reason></forbidden-pattern>
+    <forbidden-pattern id="over-80h-leaf"><description>Leaf with estimate_hours_high &gt; 80</description><reason>Hides estimation risk.</reason></forbidden-pattern>
+    <forbidden-pattern id="gold-plated-node"><description>Node outside signed scope baseline</description><reason>Breaks fixed-bid margin.</reason></forbidden-pattern>
+    <forbidden-pattern id="missing-dictionary"><description>Leaf without owner / estimate / acceptance</description><reason>Outline alone is ambiguous.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-work-breakdown-structure.py">Validator script</reference>
 </text>

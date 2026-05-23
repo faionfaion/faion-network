@@ -3,72 +3,98 @@ slug: wbs-creation
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Without a WBS, estimates are guesses and dependencies are invisible until they block progress.
-content_id: "a8221dfd16c637b7"
-tags: [planning, wbs, scope-management, pmi, decomposition]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decompose project scope into deliverable-oriented, hierarchically numbered work packages, 100% rule applied at every level, leaves 8-80h with full dictionary entries.
+content_id: "76479139d380fd9c"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [wbs, scope-management, pmi, decomposition, work-packages]
 ---
-# Work Breakdown Structure Creation
+# WBS Creation
 
 ## Summary
 
-**One-sentence:** Without a WBS, estimates are guesses and dependencies are invisible until they block progress.
+**One-sentence:** Decompose project scope into deliverable-oriented, hierarchically numbered work packages, 100% rule applied at every level, leaves 8-80h with full dictionary entries.
 
-**One-paragraph:** Without a WBS, estimates are guesses and dependencies are invisible until they block progress. Deliverable-oriented decomposition forces the team to answer "what will be produced?" before "how will we produce it?", which surfaces scope gaps and prevents activity-focused planning that omits unassigned outputs. The WBS dictionary transforms numbered IDs into testable acceptance criteria.
+**One-paragraph:** WBS Creation is the act of producing the hierarchical breakdown: walking the signed scope baseline, decomposing into noun-led deliverables, stopping at 8-80h leaves, authoring the dictionary, and validating 100%-rule coverage and absence of gold-plating. Output is a WBS outline plus dictionary committed alongside the scope baseline.
+
+**Ефективно для:**
+
+- Programmes needing earned-value (EVM) — leaves are the EVM atomic unit.
+- Fixed-bid contracts where scope baseline drives the price.
+- Multi-team programmes needing owner-per-leaf accountability.
+- Audited delivery requiring deliverable-to-baseline traceability.
 
 ## Applies If (ALL must hold)
 
-- New projects where scope is fixed enough to decompose into deliverables (more than four weeks of work).
-- Fixed-bid proposals where each work package needs an hours/cost line for the estimate.
-- Programs requiring a contractual scope baseline with WBS IDs for traceability.
-- Migration or cutover projects where a missing deliverable is expensive.
+- Signed scope baseline exists (scope-management complete).
+- Project will be tracked via earned-value or milestone reporting.
+- Multiple work packages need owner assignment + acceptance criteria.
+- Programme reporting requires hierarchical roll-up.
 
 ## Skip If (ANY kills it)
 
-- Pure-Scrum backlog work where the product backlog serves the same role.
-- Exploratory R&D — the deliverables are unknown before the work begins.
-- Single-week tasks — a checklist is faster.
-- Continuous operations or service catalog work — use the service catalog instead.
+- Pure Scrum team — backlog replaces WBS.
+- Solo project — checklist is sufficient.
+- Pre-PMF discovery where scope is hypothesis-driven.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Signed scope baseline | scope-statement.md | scope-management |
+| Charter | signed PDF | sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `scope-management` | Locked scope is the parent of the WBS root. |
+| `schedule-development` | Consumes WBS leaves as schedule activities. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — 100% rule, deliverable-oriented, 8-80h leaves, dictionary, no gold-plating | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for WBS tree + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step decomposition procedure | 800 |
+| `content/05-examples.xml` | optional | Worked WBS snippet at 3 levels | 600 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping WBS state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decompose-deliverables` | sonnet | Domain judgment on noun-led decomposition. |
+| `dictionary-fill` | haiku | Template fill per leaf. |
+| `coverage-audit` | opus | Cross-tree 100%-rule and gold-plating synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wbs-outline.md` | Hierarchical WBS outline. |
+| `templates/wbs-dictionary-entry.md` | Per-leaf dictionary template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-wbs-creation.py` | Schema-validate WBS JSON artefact. | Pre-commit + pre-EVM baseline. |
+| `scripts/wbs_lint.py` | Lint WBS outline: numbering, owners, 8-80h leaves. | Pre-commit + before steering review. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-traditional/`
+- [[scope-management]]
+- [[schedule-development]]
+- [[cost-estimation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the wbs-creation input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

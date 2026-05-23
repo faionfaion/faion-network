@@ -3,82 +3,99 @@ slug: post-handover-warranty-runbook
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c3bb58f6cbca3e41"
-summary: Post Handover Warranty Runbook — pinned runbook for the outsource delivery specialist: fixed shape + named owner + evidence anchors + outcome review, so handover to client in-house team (3 weeks) stops being folklore and starts being a reviewable operating tool.
-tags: [pm, pro, runbook, post, handover, warranty]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pinned runbook for outsource delivery teams during the 30/60/90-day warranty window — numbered steps with precondition, actor, artefact, rollback, and run-record per execution.
+content_id: "23caa4852200a63e"
+complexity: medium
+produces: playbook-step
+est_tokens: 3800
+tags: [runbook, warranty, handover, outsource, sla]
 ---
-# Post Handover Warranty Runbook
+# Post-Handover Warranty Runbook
 
 ## Summary
 
-**One-sentence:** Post Handover Warranty Runbook — pinned runbook for the outsource delivery specialist: fixed shape + named owner + evidence anchors + outcome review, so handover to client in-house team (3 weeks) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned runbook for outsource delivery teams during the 30/60/90-day warranty window — numbered steps with precondition, actor, artefact, rollback, and run-record per execution.
 
-**One-paragraph:** In project / programme management, the outsource delivery specialist runs handover to client in-house team (3 weeks) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Vendor warranty windows (30/60/90 days) have a recurring on-call shape that does not match either project delivery or pure ops. Needs its own runbook + SLA template. `post-handover-warranty-runbook` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the outsource delivery specialist starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored runbook committed to the team's knowledge space.
+**One-paragraph:** Post-handover warranty windows have a recurring on-call shape that neither pure project delivery nor pure operations covers. This methodology pins the artefact: a fixed-shape runbook with named owner, evidence anchors, wall-clock budget per phase, and a published review cadence. Steps carry preconditions, named actors (role+system), produced artefacts, and explicit rollback or STOP branches. After each execution, a structured run-record is committed to the postmortem feeder folder. The runbook is reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Outsource delivery contracts with 30/60/90-day warranty windows.
+- Handovers to client in-house teams with named runbook owner.
+- Regulated handovers needing audit-trail of execution.
+- Teams running ≥3 instances per year (review cadence pays off).
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p4-outsource-specialist/Handover to client in-house team (3 weeks)`
-- the outsource delivery specialist owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Handover to client in-house team has a published cadence.
+- Outsource delivery specialist owns the artefact.
+- Team uses version-controlled or wiki-style space for the runbook.
+- Trigger event is observable (alert, ticket, calendar, threshold).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot work with no recurrence — single doc, not versioned runbook.
+- Team has < 3 instances per year.
+- Regulator mandates a different shape (use the template).
+- No named owner available — defer until ownership resolves.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the outsource delivery specialist.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Handover spec | MD / signed PDF | delivery contract |
+| SLA window definition | MD | contract |
+| On-call rota | PagerDuty / ICS | operations |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `project-closure-with-lessons-extraction` | Provides closure artefacts that seed the runbook. |
+| `communications-management` | Channels for escalation. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — preconditions, named actor, rollback or STOP, timeboxed phases, post-action record | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the runbook artefact | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: scaffold → populate → walk-test → publish → review | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping runbook state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `scaffold-runbook` | haiku | Template fill from header + section list. |
+| `populate-evidence` | sonnet | Select correct evidence per step. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis of behaviour change. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
+| `templates/skeleton.md` | Canonical section list with not_applicable markers. |
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-post-handover-warranty-runbook.py` | Schema-validate runbook JSON. | Pre-merge. |
+| `scripts/staleness-check.py` | Flag runbooks past their review window. | Weekly cron. |
 
 ## Related
 
-- parent skill: `pro/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[project-closure-with-lessons-extraction]]
+- [[communications-management]]
+- [[stakeholder-engagement]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the post-handover-warranty-runbook input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

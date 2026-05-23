@@ -1,32 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Cash Flow Friday Routine Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agency Cash Flow Friday Routine deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="cycle_id" format="iso_date_or_sprint_id" />
-      <field name="items" type="list" min="3" schema="{id,status,evidence,carryover}" />
-      <field name="pass_rate" format="float_0_to_1" />
-      <field name="carryover_items" type="list_of_ids" />
-      <field name="escalations" type="list" />
-    </required>
-    <forbidden>
-      <pattern id="f1">items marked done without evidence link</pattern>
-      <pattern id="f2">skipped items without one-line reason</pattern>
-      <pattern id="f3">carryover items aged &gt;3 cycles without escalation entry</pattern>
-      <pattern id="f4">items added mid-cycle without owner field</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Group similar items only if they share owner + source-of-truth.</transformation>
-      <transformation>Promote a carryover item to escalation when aging &gt;3.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every item has source link</item>
-      <item>Every skipped item has reason</item>
-      <item>Carryover and escalation lists are non-overlapping</item>
-      <item>Pass rate matches counted items</item>
-    </list>
+<text id="02-output-contract" title="Agency Cash-Flow Friday Routine Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the agency-cash-flow-friday-routine artefact.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-cash-friday.json",
+  "type": "object",
+  "required": [
+    "date",
+    "checks",
+    "ledger_entry",
+    "runway_months"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "status",
+          "action"
+        ],
+        "properties": {
+          "item": {
+            "enum": [
+              "ar_over_30d",
+              "ap_14d_covered",
+              "payroll_30d",
+              "fixed_costs",
+              "runway_months"
+            ]
+          },
+          "status": {
+            "enum": [
+              "green",
+              "amber",
+              "red"
+            ]
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ledger_entry": {
+      "type": "object",
+      "required": [
+        "cash_on_hand",
+        "ar_open",
+        "ap_due_14d"
+      ],
+      "properties": {
+        "cash_on_hand": {
+          "type": "number"
+        },
+        "ar_open": {
+          "type": "number"
+        },
+        "ap_due_14d": {
+          "type": "number"
+        },
+        "net_inflow_expected": {
+          "type": "number"
+        }
+      }
+    },
+    "runway_months": {
+      "type": "number"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "date": "2026-05-22",
+  "checks": [
+    {
+      "item": "ar_over_30d",
+      "status": "amber",
+      "action": "Chase ACME invoice 4123"
+    },
+    {
+      "item": "ap_14d_covered",
+      "status": "green",
+      "action": ""
+    },
+    {
+      "item": "payroll_30d",
+      "status": "green",
+      "action": ""
+    },
+    {
+      "item": "fixed_costs",
+      "status": "green",
+      "action": ""
+    },
+    {
+      "item": "runway_months",
+      "status": "green",
+      "action": ""
+    }
+  ],
+  "ledger_entry": {
+    "cash_on_hand": 45000,
+    "ar_open": 28000,
+    "ap_due_14d": 12000,
+    "net_inflow_expected": 20000
+  },
+  "runway_months": 5.2
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "date": "2026-05-22",
+  "checks": []
+}
+]]></code>
+    <note>checks must have 5 items; ledger_entry + runway_months missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="amber-no-action"><description>amber check with empty action</description><reason>Deferred action becomes a crisis.</reason></forbidden-pattern>
+    <forbidden-pattern id="fewer-than-5-checks"><description>checks array length != 5</description><reason>Misses a cash-death mode.</reason></forbidden-pattern>
+    <forbidden-pattern id="no-ledger"><description>ledger_entry missing</description><reason>Runway becomes folklore.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-agency-cash-flow-friday-routine.py">Validator script</reference>
 </text>

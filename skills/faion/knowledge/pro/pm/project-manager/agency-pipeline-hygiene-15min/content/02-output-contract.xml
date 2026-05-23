@@ -1,32 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Pipeline Hygiene 15min Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agency Pipeline Hygiene 15min deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="cycle_id" format="iso_date_or_sprint_id" />
-      <field name="items" type="list" min="3" schema="{id,status,evidence,carryover}" />
-      <field name="pass_rate" format="float_0_to_1" />
-      <field name="carryover_items" type="list_of_ids" />
-      <field name="escalations" type="list" />
-    </required>
-    <forbidden>
-      <pattern id="f1">items marked done without evidence link</pattern>
-      <pattern id="f2">skipped items without one-line reason</pattern>
-      <pattern id="f3">carryover items aged &gt;3 cycles without escalation entry</pattern>
-      <pattern id="f4">items added mid-cycle without owner field</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Group similar items only if they share owner + source-of-truth.</transformation>
-      <transformation>Promote a carryover item to escalation when aging &gt;3.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every item has source link</item>
-      <item>Every skipped item has reason</item>
-      <item>Carryover and escalation lists are non-overlapping</item>
-      <item>Pass rate matches counted items</item>
-    </list>
+<text id="02-output-contract" title="Agency Pipeline Hygiene 15min Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the agency-pipeline-hygiene-15min artefact.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-pipeline-hygiene.json",
+  "type": "object",
+  "required": [
+    "date",
+    "checks",
+    "ledger_entry"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "status",
+          "action"
+        ],
+        "properties": {
+          "item": {
+            "enum": [
+              "fields_complete",
+              "stage_moves_recorded",
+              "hot_opp_next_step",
+              "loss_reasons_tagged",
+              "sources_tagged"
+            ]
+          },
+          "status": {
+            "enum": [
+              "green",
+              "amber",
+              "red"
+            ]
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ledger_entry": {
+      "type": "object",
+      "required": [
+        "open_opps",
+        "hot_opps",
+        "stuck_over_30d",
+        "closed_won",
+        "closed_lost"
+      ],
+      "properties": {
+        "open_opps": {
+          "type": "integer"
+        },
+        "hot_opps": {
+          "type": "integer"
+        },
+        "stuck_over_30d": {
+          "type": "integer"
+        },
+        "closed_won": {
+          "type": "integer"
+        },
+        "closed_lost": {
+          "type": "integer"
+        },
+        "avg_sales_cycle_days": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "date": "2026-05-22",
+  "checks": [
+    {
+      "item": "fields_complete",
+      "status": "green",
+      "action": ""
+    },
+    {
+      "item": "stage_moves_recorded",
+      "status": "green",
+      "action": ""
+    },
+    {
+      "item": "hot_opp_next_step",
+      "status": "amber",
+      "action": "Call BCorp Tue 10am"
+    },
+    {
+      "item": "loss_reasons_tagged",
+      "status": "green",
+      "action": ""
+    },
+    {
+      "item": "sources_tagged",
+      "status": "green",
+      "action": ""
+    }
+  ],
+  "ledger_entry": {
+    "open_opps": 12,
+    "hot_opps": 3,
+    "stuck_over_30d": 1,
+    "closed_won": 1,
+    "closed_lost": 2,
+    "avg_sales_cycle_days": 38
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "date": "2026-05-22",
+  "checks": []
+}
+]]></code>
+    <note>checks must have 5 items; ledger_entry required.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="untagged-loss"><description>closed_lost opp without reason tag</description><reason>Unreadable win/loss data.</reason></forbidden-pattern>
+    <forbidden-pattern id="untagged-source"><description>new opp without source tag</description><reason>Breaks marketing attribution.</reason></forbidden-pattern>
+    <forbidden-pattern id="no-next-step"><description>hot opp without next-step + owner</description><reason>Opp drifts cold.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-agency-pipeline-hygiene-15min.py">Validator script</reference>
 </text>

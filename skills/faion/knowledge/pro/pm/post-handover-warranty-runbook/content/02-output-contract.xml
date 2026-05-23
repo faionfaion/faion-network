@@ -1,45 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Post Handover Warranty Runbook — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A runbook artefact comprising: a step list (preconditions, action, actor, artefact, rollback), a wall-clock budget per phase, and a post-run record committed to the agreed evidence folder.</summary>
+<text id="02-output-contract" title="Post-Handover Warranty Runbook Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the runbook artefact.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>step.precondition (state, alert, ticket, signal)</item>
-      <item>step.actor (role + system)</item>
-      <item>step.action (verb + object + parameters)</item>
-      <item>step.artefact (link / id of produced artefact)</item>
-      <item>step.rollback OR step.stop_branch</item>
-      <item>phase.budget (wall-clock minutes)</item>
-      <item>run-record (start_ts, end_ts, branches, exceptions, links)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/warranty-runbook.json",
+  "type": "object",
+  "required": [
+    "service",
+    "owner",
+    "version",
+    "last_reviewed",
+    "window_days",
+    "phases"
+  ],
+  "properties": {
+    "service": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "window_days": {
+      "enum": [
+        30,
+        60,
+        90
+      ]
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "budget_minutes",
+          "steps"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "budget_minutes": {
+            "type": "number",
+            "minimum": 1
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "n",
+                "precondition",
+                "actor",
+                "action",
+                "artefact",
+                "rollback_or_stop"
+              ],
+              "properties": {
+                "n": {
+                  "type": "integer"
+                },
+                "precondition": {
+                  "type": "string"
+                },
+                "actor": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                },
+                "artefact": {
+                  "type": "string"
+                },
+                "rollback_or_stop": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "owner": "SRE Iryna",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "window_days": 30,
+  "phases": [
+    {
+      "id": "P1",
+      "budget_minutes": 30,
+      "steps": [
+        {
+          "n": 1,
+          "precondition": "alert HighErrorRate fires",
+          "actor": "on-call SRE (PagerDuty)",
+          "action": "restart service checkout-api",
+          "artefact": "run-record-NN.md",
+          "rollback_or_stop": "systemctl revert previous unit; if 2nd failure within 5m, STOP + escalate to lead"
+        }
+      ]
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "service": "x",
+  "phases": [
+    {
+      "id": "P1"
+    }
+  ]
+}
+]]></code>
+    <note>owner/version/last_reviewed/window_days missing; phase steps array missing.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>vague actors (&quot;someone notifies&quot;)</description>
-      <reason>Vague actors fail under stress.</reason>
-    </antipattern>
-    <antipattern>
-      <description>side-effect steps without rollback or STOP branch</description>
-      <reason>Operator gets stuck mid-procedure.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no phase budgets</description>
-      <reason>Window-blowing runs go undetected until the second alarm.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing run-record after execution</description>
-      <reason>Without records the runbook cannot improve.</reason>
-    </antipattern>
+    <forbidden-pattern id="vague-actor"><description>actor='someone' / 'team'</description><reason>Vague actors fail under stress.</reason></forbidden-pattern>
+    <forbidden-pattern id="side-effect-no-rollback"><description>step without rollback_or_stop</description><reason>Operator stranded mid-procedure.</reason></forbidden-pattern>
+    <forbidden-pattern id="no-budget"><description>phase missing budget_minutes</description><reason>Window-blowing runs undetected.</reason></forbidden-pattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has precondition + actor + artefact + rollback.</item>
-      <item>Each phase carries a wall-clock budget.</item>
-      <item>Run record committed after execution.</item>
-      <item>Escalation criteria explicit.</item>
-      <item>Runbook owner named in header.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-post-handover-warranty-runbook.py">Validator script</reference>
 </text>

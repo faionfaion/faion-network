@@ -3,82 +3,98 @@ slug: project-closure-with-lessons-extraction
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "64f44ddbd01df4c8"
-summary: Project Closure With Lessons Extraction — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so distressed-project rescue (90-day turnaround) stops being folklore and starts being a reviewable operating tool.
-tags: [pm, pro, method, project, closure, with, lessons, extraction]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pinned closure method for distressed-project rescues — outcome-vs-charter variance, behavioural-change lessons with named owners, follow-up items, and reviewable artefact at the next iteration.
+content_id: "c991f7f6ac8ef1cb"
+complexity: deep
+produces: report
+est_tokens: 4400
+tags: [closure, lessons-learned, postmortem, distressed-project]
 ---
-# Project Closure With Lessons Extraction
+# Project Closure with Lessons Extraction
 
 ## Summary
 
-**One-sentence:** Project Closure With Lessons Extraction — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so distressed-project rescue (90-day turnaround) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned closure method for distressed-project rescues — outcome-vs-charter variance, behavioural-change lessons with named owners, follow-up items, and reviewable artefact at the next iteration.
 
-**One-paragraph:** In project / programme management, the project manager runs distressed-project rescue (90-day turnaround) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. project-closure methodology has handover.md template; lessons-learned is separate. No integrated closure that AI-extracts lessons across Slack history + retro notes + risk register and proposes 5-10 portable lessons for the org. Currently it's a manual brain-dump. `project-closure-with-lessons-extraction` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Project closure usually devolves into bullet-point lessons that nobody implements. This methodology pins the artefact: a structured closure report with outcome-vs-charter variance, lessons phrased as behaviour changes (not generalities), named owners per lesson, target adoption dates, and explicit decisions for the next project. The closure report is reviewed at the start of the next project to verify lessons were carried forward. Designed primarily for distressed-project (90-day turnaround) closures but generalises to any closure.
+
+**Ефективно для:**
+
+- Distressed-project turnarounds where lessons must change behaviour next time.
+- Programme closures with multi-stakeholder learning to capture.
+- Regulated programmes requiring documented closure evidence.
+- Outsource delivery closures feeding warranty-runbook construction.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Distressed-project rescue (90-day turnaround)`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Project is closing (delivered, partially delivered, or abandoned).
+- Charter exists for outcome-vs-charter comparison.
+- Team is available for closure interviews.
+- There is a follow-on project where lessons can be applied.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Project is mid-flight and closure was triggered prematurely — pause and reassess.
+- No follow-on context exists; lessons would die in the report.
+- Team disbanded before closure — captured lessons risk being orphaned.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Charter | signed PDF / MD | sponsor |
+| Final deliverables list | MD / CSV | delivery |
+| Outcomes data | metrics export | analytics |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `stakeholder-register` | Interview list draws on register. |
+| `risk-register` | Closed risks feed lessons. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — outcome-vs-charter, behaviour-change lessons, named owner per lesson, target adoption date, next-project review | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the closure report | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: kick-off → gather → interview → synthesise → publish → carry-forward | 900 |
+| `content/05-examples.xml` | optional | Worked closure report snippet for a distressed-project rescue | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping report state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `interview-script` | haiku | Template fill from team list. |
+| `lesson-synthesis` | opus | Translates anecdotes into behaviour changes — high-leverage. |
+| `carry-forward-check` | sonnet | Cross-project applicability assessment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/closure-report.md` | Closure report skeleton with lesson table + decisions. |
+| `templates/lessons-interview.md` | Per-role lessons interview script. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-project-closure-with-lessons-extraction.py` | Schema-validate the closure report. | Pre-publish + before next-project kick-off. |
 
 ## Related
 
-- parent skill: `pro/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[post-handover-warranty-runbook]]
+- [[stakeholder-engagement]]
+- [[risk-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the project-closure-with-lessons-extraction input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

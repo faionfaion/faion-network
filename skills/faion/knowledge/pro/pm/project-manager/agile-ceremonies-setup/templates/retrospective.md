@@ -1,41 +1,24 @@
-# Sprint [N] Retrospective
+<!-- purpose: Retrospective template (Liked / Lacked / Lessons / Longed-for / Actions) -->
+<!-- consumes: sprint outcomes + team observations -->
+<!-- produces: ≥1 action item with owner + due-date -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-700 tokens -->
 
-**Date:** [Date] | **Facilitator:** [Name] | **Attendees:** [List]
+# Retrospective — Sprint <N>
 
-## Sprint Metrics
+## Liked
+- <bullets>
 
-| Metric | Value | Trend |
-|--------|-------|-------|
-| Velocity | [N] pts | up/down/same |
-| Commitment met | [N]% | — |
-| Retro actions closed (prev sprint) | [N]/[total] | — |
+## Lacked
+- <bullets>
 
-## What Went Well
+## Lessons
+- <bullets>
 
-- [Item 1]
-- [Item 2]
+## Longed for
+- <bullets>
 
-## What to Improve
-
-- [Item 1]
-- [Item 2]
-
-## Action Items
-
-| Action | Owner | Sprint Due | Status |
-|--------|-------|------------|--------|
-| [Specific action with verb] | @name | Sprint N+1 | Open |
-
-## Previous Sprint Actions Review
-
-| Action | Owner | Status |
-|--------|-------|--------|
-| [Previous action] | @name | Done / Not Done |
-
-## Team Health Check (1-5)
-
-| Dimension | Score |
-|-----------|-------|
-| Team morale | |
-| Process clarity | |
-| Ceremony effectiveness | |
+## Actions (must have owner + due-date)
+| # | Action | Owner | Due | Status |
+|---|--------|-------|-----|--------|
+| 1 |        |       |     |        |

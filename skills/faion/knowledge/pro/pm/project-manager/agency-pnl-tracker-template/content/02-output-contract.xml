@@ -1,62 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Micro-Agency P&amp;L Tracker Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the weekly snapshot, monthly P&amp;L, and quarterly concentration audit artifacts.</summary>
+<text id="02-output-contract" title="Agency P&amp;L Tracker Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the agency-pnl-tracker-template artefact.</summary>
 
-  <output-contract>
-    <required>
-      <field name="weekly_snapshot">
-        <subfield name="week_of" type="iso_date"/>
-        <subfield name="revenue_lines" required_keys="project,retainer,productized,misc"/>
-        <subfield name="utilization_per_person" type="list"/>
-        <subfield name="utilization_per_person[].name" type="string"/>
-        <subfield name="utilization_per_person[].billable_percent" type="number" min="0" max="100"/>
-        <subfield name="concentration" required_keys="top_1_percent,top_3_percent"/>
-        <subfield name="contractor_margin_per_role" type="list"/>
-        <subfield name="runway_months" type="number"/>
-      </field>
-      <field name="monthly_pnl">
-        <subfield name="month" type="string"/>
-        <subfield name="revenue_lines" required_keys="project,retainer,productized,misc"/>
-        <subfield name="cost_categories" required_keys="contractor,fixed_ops,founder_draw"/>
-        <subfield name="gross_margin_per_line" type="dict"/>
-        <subfield name="net_income" type="number"/>
-        <subfield name="closed_by_date" type="iso_date"/>
-      </field>
-      <field name="alerts_fired" format="list">
-        <subfield name="type" enum="concentration_top_1,concentration_top_3,utilization_low,utilization_overload,contractor_margin_floor,runway_below_3mo"/>
-        <subfield name="value" type="number"/>
-        <subfield name="threshold" type="number"/>
-        <subfield name="mitigation_plan" type="string"/>
-      </field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">revenue_lines collapsed into single "revenue" line (violates r1)</pattern>
-      <pattern id="f2">utilization values derived from estimates rather than time-tracked data</pattern>
-      <pattern id="f3">monthly_pnl.closed_by_date later than the 7th of the following month (violates r5)</pattern>
-      <pattern id="f4">concentration.top_1_percent &gt; 30 AND alerts_fired contains no concentration_top_1 entry</pattern>
-      <pattern id="f5">contractor_margin_per_role missing for any role with hours billed</pattern>
-      <pattern id="f6">runway_months reported as "infinite" when retainer base exists — must show actual runway under retainer drop assumptions</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Concentration thresholds may be temporarily raised (e.g., during an explicit "land a big client" phase) but the raise must be documented in the alert log with end-date.</transformation>
-      <transformation>For sub-3-person agencies, "contractor_margin" rule applies only to contractors, not to the founder's own work.</transformation>
-      <transformation>"Productized" line may be 0 if the agency hasn't launched productized offerings yet — the line still exists as a placeholder for visibility.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/pnl-spreadsheet.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>weekly_snapshot computed each Friday with all 3 revenue lines populated</item>
-      <item>utilization_per_person is from tracked time, not estimates</item>
-      <item>concentration computed monthly with named alert thresholds</item>
-      <item>contractor margin computed per role, not lumped</item>
-      <item>monthly_pnl.closed_by_date ≤ 7th of next month</item>
-      <item>alerts fired have mitigation_plan documented</item>
-      <item>runway_months stress-tested against top-1 retainer loss</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/agency-pnl.json",
+  "type": "object",
+  "required": [
+    "agency",
+    "month",
+    "revenue",
+    "cogs",
+    "opex",
+    "utilisation",
+    "variance_vs_plan"
+  ],
+  "properties": {
+    "agency": {
+      "type": "string"
+    },
+    "month": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$"
+    },
+    "revenue": {
+      "type": "object",
+      "required": [
+        "project",
+        "retainer",
+        "productised"
+      ],
+      "properties": {
+        "project": {
+          "type": "number"
+        },
+        "retainer": {
+          "type": "number"
+        },
+        "productised": {
+          "type": "number"
+        }
+      }
+    },
+    "cogs": {
+      "type": "object",
+      "required": [
+        "contractor_fees",
+        "tooling_per_seat"
+      ],
+      "properties": {
+        "contractor_fees": {
+          "type": "number"
+        },
+        "tooling_per_seat": {
+          "type": "number"
+        }
+      }
+    },
+    "opex": {
+      "type": "object",
+      "required": [
+        "payroll",
+        "fixed_costs",
+        "marketing"
+      ],
+      "properties": {
+        "payroll": {
+          "type": "number"
+        },
+        "fixed_costs": {
+          "type": "number"
+        },
+        "marketing": {
+          "type": "number"
+        }
+      }
+    },
+    "utilisation": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "variance_vs_plan": {
+      "type": "object",
+      "required": [
+        "revenue_variance",
+        "reason"
+      ],
+      "properties": {
+        "revenue_variance": {
+          "type": "number"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "agency": "Acme Studio",
+  "month": "2026-04",
+  "revenue": {
+    "project": 60000,
+    "retainer": 30000,
+    "productised": 5000
+  },
+  "cogs": {
+    "contractor_fees": 18000,
+    "tooling_per_seat": 1500
+  },
+  "opex": {
+    "payroll": 35000,
+    "fixed_costs": 6000,
+    "marketing": 4000
+  },
+  "utilisation": 0.68,
+  "variance_vs_plan": {
+    "revenue_variance": -5000,
+    "reason": "Q2 deal slipped to Q3"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "agency": "x",
+  "month": "2026-04"
+}
+]]></code>
+    <note>revenue/cogs/opex/utilisation/variance_vs_plan missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <forbidden-pattern id="aggregate-revenue"><description>revenue without 3-line split</description><reason>Hides mix shifts.</reason></forbidden-pattern>
+    <forbidden-pattern id="contractor-as-opex"><description>contractor fees in opex.payroll</description><reason>Hides true gross margin.</reason></forbidden-pattern>
+    <forbidden-pattern id="missing-utilisation"><description>utilisation field absent</description><reason>Hides profitability lever.</reason></forbidden-pattern>
+  </section>
+
+  <reference path="scripts/validate-agency-pnl-tracker-template.py">Validator script</reference>
 </text>

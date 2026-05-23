@@ -1,16 +1,15 @@
-# WBS Dictionary Entry
+<!-- purpose: WBS dictionary entry per work package -->
+<!-- consumes: WBS outline rows -->
+<!-- produces: dictionary row with owner + estimate + acceptance -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-400 tokens per row -->
 
-| Field | Value |
-|-------|-------|
-| **ID** | [e.g. 2.1.1] |
-| **Parent** | [e.g. 2.1 User research] |
-| **Name** | [Noun-led name, e.g. "User Interview Transcripts"] |
-| **Description** | [What is included and explicitly excluded] |
-| **Acceptance Criteria** | [How to know this work package is done] |
-| **Owner** | [Named individual or team] |
-| **Estimate** | [Hours — must be 8–80h] |
-| **Dependencies** | [IDs that must complete before this starts] |
-| **Deliverable** | [Tangible output produced] |
+# 1.1.1 — <work package name>
 
-**Date Created:** [Date]
-**Last Updated:** [Date]
+- Owner: <name>
+- Estimate: <8-80h>
+- Inputs:
+- Outputs (deliverable):
+- Acceptance criteria:
+- Assumptions:
+- Dependencies (upstream / downstream):

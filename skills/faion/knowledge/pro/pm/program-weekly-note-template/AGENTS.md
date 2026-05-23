@@ -3,82 +3,97 @@ slug: program-weekly-note-template
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "77a234d0ecd03e37"
-summary: Program Weekly Note Template — pinned template for the project manager: fixed shape + named owner + evidence anchors + outcome review, so multi-team coordination program (continuous, weekly checkpoints) stops being folklore and starts being a reviewable operating tool.
-tags: [pm, pro, template, program, weekly, note]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pinned weekly programme note template — headline, per-workstream progress, top-3 risk moves, decisions, sponsor asks with evidence anchors and outcome review.
+content_id: "75b785eb6527e9e4"
+complexity: medium
+produces: report
+est_tokens: 3800
+tags: [program, weekly-note, status, communication]
 ---
 # Program Weekly Note Template
 
 ## Summary
 
-**One-sentence:** Program Weekly Note Template — pinned template for the project manager: fixed shape + named owner + evidence anchors + outcome review, so multi-team coordination program (continuous, weekly checkpoints) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned weekly programme note template — headline, per-workstream progress, top-3 risk moves, decisions, sponsor asks with evidence anchors and outcome review.
 
-**One-paragraph:** In project / programme management, the project manager runs multi-team coordination program (continuous, weekly checkpoints) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Reporting-basics is generic. Need a specific program-level weekly note format (RAG, top decisions, top risks, dependency hotspots, asks) tuned for execs who skim. `program-weekly-note-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Multi-team programmes need a fixed-shape weekly note that turns status from folklore into a reviewable artefact. The template fixes a one-sentence headline, per-workstream progress with evidence links, the top-3 risks that moved, the decisions taken, and a numbered list of sponsor asks. Each weekly note links forward to last-week outcomes (status of prior asks + decisions). Output: a versioned note committed to programme knowledge space, reviewed for outcome closure at the next iteration.
+
+**Ефективно для:**
+
+- Multi-workstream programmes with sponsor + steering audience.
+- Distributed programmes where async sponsor reading replaces synchronous status.
+- Regulated programmes requiring weekly artefact evidence.
+- Distressed projects where surface-area communication is the recovery lever.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Programme spans ≥2 workstreams + has a sponsor audience.
+- Notes are stored in a version-controlled or wiki space.
+- Programme runs ≥6 weeks (review cadence pays off).
+- Trigger event (weekly cadence) is scheduled.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Single-workstream delivery — daily standup covers it.
+- Programme < 6 weeks total — note cost exceeds value.
+- Sponsor consumes status synchronously only — no async medium needed.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workstream pulse template | MD | PMO |
+| Risk register | table | risk-management |
+| Decision log | MD | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `risk-register` | Top-3 risks-moved section reads from the register. |
+| `stakeholder-engagement` | Sponsor asks routed via engagement plan. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules — fixed sections, evidence per progress line, top-3 risks-moved, numbered sponsor asks, last-week outcomes | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the note artefact | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: gather → draft → review → publish → close-loop | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping note state to a rule | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `gather-workstream-pulse` | haiku | Template fill from workstream inputs. |
+| `synthesise-headline` | sonnet | One-sentence judgment requires cross-stream synthesis. |
+| `outcome-review` | opus | Multi-week outcome pattern + closure synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/weekly-note.md` | Weekly note skeleton with fixed sections. |
+| `templates/outcomes.md` | Last-week outcomes table. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-program-weekly-note-template.py` | Schema-validate the note JSON. | Pre-publish. |
 
 ## Related
 
-- parent skill: `pro/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[risk-register]]
+- [[stakeholder-engagement]]
+- [[project-closure-with-lessons-extraction]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals from the program-weekly-note-template input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.

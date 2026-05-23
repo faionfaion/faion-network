@@ -1,45 +1,202 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Program Weekly Note Template — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A filled `program-weekly-note-template.md` (or equivalent artefact) committed to the repository / knowledge space, following the fixed section list and carrying header metadata (version, owner, last_reviewed).</summary>
+<text id="02-output-contract" title="Program Weekly Note Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the weekly-note artefact.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>header.version (semver)</item>
-      <item>header.owner (named role + person)</item>
-      <item>header.last_reviewed (ISO date, ≤ 6 months stale)</item>
-      <item>section list matches the Program Weekly Note Template canonical schema</item>
-      <item>each section either filled or explicitly marked `not_applicable: &lt;reason&gt;`</item>
-      <item>evidence links populated for any claim or recommendation</item>
-      <item>decisions / actions block at the end (≥ 1 next-action)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/program-weekly-note.json",
+  "type": "object",
+  "required": [
+    "program",
+    "week",
+    "date",
+    "headline",
+    "progress",
+    "risks_moved",
+    "decisions",
+    "sponsor_asks",
+    "last_week_outcomes"
+  ],
+  "properties": {
+    "program": {
+      "type": "string"
+    },
+    "week": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "headline": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 280
+    },
+    "progress": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "workstream",
+          "summary",
+          "evidence"
+        ],
+        "properties": {
+          "workstream": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 4
+          }
+        }
+      }
+    },
+    "risks_moved": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "delta_reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "delta_reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "decisions": {
+      "type": "array"
+    },
+    "sponsor_asks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "n",
+          "ask"
+        ],
+        "properties": {
+          "n": {
+            "type": "integer"
+          },
+          "ask": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "last_week_outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "status"
+        ],
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "closed",
+              "in-flight",
+              "blocked"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "program": "checkout-redesign",
+  "week": 5,
+  "date": "2026-05-22",
+  "headline": "On track; canary p95 holds under 500ms; vendor SOW signed.",
+  "progress": [
+    {
+      "workstream": "Payments",
+      "summary": "Stripe v2 client deployed",
+      "evidence": "PR-412"
+    }
+  ],
+  "risks_moved": [
+    {
+      "id": "R-001",
+      "delta_reason": "vendor SOW signed \u2192 mitigated"
+    },
+    {
+      "id": "R-002",
+      "delta_reason": "key dev on PTO \u2192 escalated"
+    },
+    {
+      "id": "R-003",
+      "delta_reason": "p95 canary holds \u2192 closed_passed"
+    }
+  ],
+  "decisions": [
+    {
+      "statement": "Apple Pay rollout starts UA+PT",
+      "owner": "Iryna"
+    }
+  ],
+  "sponsor_asks": [
+    {
+      "n": 1,
+      "ask": "Approve UA+PT canary geography for Apple Pay rollout"
+    }
+  ],
+  "last_week_outcomes": [
+    {
+      "item": "Ask 1: extend vendor SOW",
+      "status": "closed",
+      "evidence": "signed-sow-v2.pdf"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "program": "x",
+  "week": 1,
+  "headline": ""
+}
+]]></code>
+    <note>Headline too short; risks_moved missing or wrong length; sponsor_asks missing; last_week_outcomes missing.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>free-form sections invented at fill-time</description>
-      <reason>Breaks comparability and audit.</reason>
-    </antipattern>
-    <antipattern>
-      <description>claims without evidence links</description>
-      <reason>Templates without anchors decay into opinion.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing owner or expired last_reviewed</description>
-      <reason>Anonymous / stale templates lose authority.</reason>
-    </antipattern>
-    <antipattern>
-      <description>sections silently skipped without `not_applicable`</description>
-      <reason>Reviewers cannot tell skipped from forgotten.</reason>
-    </antipattern>
+    <forbidden-pattern id="long-headline"><description>headline &gt; 280 chars</description><reason>Sponsors won't read.</reason></forbidden-pattern>
+    <forbidden-pattern id="evidence-less-progress"><description>progress entry missing evidence link</description><reason>Optimism drift.</reason></forbidden-pattern>
+    <forbidden-pattern id="full-risk-list"><description>risks_moved with more than 3 entries</description><reason>Loses prioritisation signal.</reason></forbidden-pattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Header carries version, owner, last_reviewed.</item>
-      <item>All canonical sections present (filled or marked not_applicable).</item>
-      <item>Each claim has an evidence link.</item>
-      <item>Final block lists explicit next-actions with owners.</item>
-      <item>Artefact is committed to the agreed path.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-program-weekly-note-template.py">Validator script</reference>
 </text>

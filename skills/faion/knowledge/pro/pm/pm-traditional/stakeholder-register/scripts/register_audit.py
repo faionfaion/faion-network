@@ -1,56 +1,96 @@
 #!/usr/bin/env python3
-"""register_audit.py — audit register completeness and evidence coverage.
+"""register_audit.py
 
-Usage: python register_audit.py [stakeholders/register.yaml]
+Audit a stakeholder register: flag rows missing evidence, attitude outside the
+enum, or last_reviewed older than 30 days.
 
-Checks:
-- Required fields present (name, role, category, power, interest, owner)
-- attitude +/- without evidence
-- High-power stakeholder without cadence
-- last_engaged older than 90 days
+Inputs:
+    --file PATH       register JSON (list of entries)
+    --self-test       run built-in fixture
+    --help            this message
 
-Exits 1 if any issues found; 0 if clean.
+Exit codes:
+    0 = clean
+    1 = audit findings present
+    2 = usage / unreadable
 """
+from __future__ import annotations
+
+import argparse
 import json
 import sys
-import yaml
-import pathlib
 from datetime import date, datetime
+from pathlib import Path
 
-REQUIRED = ["name", "role", "category", "power", "interest", "owner"]
-STALE_DAYS = 90
+ATTITUDE = {"champion", "supporter", "neutral", "critic", "blocker"}
+STALE_DAYS = 30
+
+FIXTURE_OK = {"as_of": "2026-05-22", "stakeholders": [
+    {"id": "S-001", "name": "x", "role": "y", "power": "low", "interest": "high",
+     "attitude": "supporter", "strategy": "regular brief", "evidence": "minutes.md",
+     "last_reviewed": "2026-05-10"},
+]}
+FIXTURE_BAD = {"as_of": "2026-05-22", "stakeholders": [
+    {"id": "S-001", "name": "x", "role": "y", "power": "low", "interest": "high",
+     "attitude": "unknown", "strategy": "x", "evidence": "",
+     "last_reviewed": "2026-01-01"},
+]}
 
 
-def main(path: str = "stakeholders/register.yaml") -> int:
-    data = yaml.safe_load(pathlib.Path(path).read_text())
-    stakeholders = data.get("stakeholders", [])
-    issues = []
-
-    today = date.today()
-    for s in stakeholders:
+def audit(reg: dict) -> list[str]:
+    as_of = datetime.strptime(reg["as_of"], "%Y-%m-%d").date()
+    findings: list[str] = []
+    for s in reg.get("stakeholders", []):
         sid = s.get("id", "?")
-        for f in REQUIRED:
-            if not s.get(f):
-                issues.append(f"{sid}: missing required field '{f}'")
+        if s.get("attitude") not in ATTITUDE:
+            findings.append(f"{sid}: attitude not in enum")
+        if not s.get("evidence"):
+            findings.append(f"{sid}: evidence empty")
+        try:
+            last = datetime.strptime(s["last_reviewed"], "%Y-%m-%d").date()
+            if (as_of - last).days > STALE_DAYS:
+                findings.append(f"{sid}: stale ({(as_of - last).days}d > {STALE_DAYS}d)")
+        except (KeyError, ValueError):
+            findings.append(f"{sid}: last_reviewed missing or malformed")
+    return findings
 
-        att = s.get("attitude", "unknown")
-        if att in {"+", "-"} and not s.get("evidence"):
-            issues.append(f"{sid}: attitude='{att}' without evidence")
 
-        if s.get("power") == "H" and not s.get("cadence"):
-            issues.append(f"{sid}: high-power stakeholder without cadence")
+def self_test() -> int:
+    if audit(FIXTURE_OK):
+        sys.stderr.write("self-test FAIL: OK fixture flagged\n")
+        return 1
+    if not audit(FIXTURE_BAD):
+        sys.stderr.write("self-test FAIL: BAD fixture clean\n")
+        return 1
+    sys.stdout.write("self-test OK\n")
+    return 0
 
-        last = s.get("last_engaged")
-        if last:
-            last_date = datetime.strptime(str(last), "%Y-%m-%d").date()
-            delta = (today - last_date).days
-            if delta > STALE_DAYS:
-                issues.append(f"{sid}: last_engaged {delta} days ago (threshold {STALE_DAYS})")
 
-    result = {"issues": issues, "count": len(issues)}
-    print(json.dumps(result, indent=2))
-    return 1 if issues else 0
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--file", type=str)
+    ap.add_argument("--self-test", action="store_true")
+    args = ap.parse_args()
+    if args.self_test:
+        return self_test()
+    if not args.file:
+        ap.print_help()
+        return 2
+    p = Path(args.file)
+    if not p.is_file():
+        sys.stderr.write(f"not a file: {p}\n")
+        return 2
+    reg = json.loads(p.read_text())
+    findings = audit(reg)
+    if findings:
+        for f in findings:
+            sys.stdout.write(f"FINDING: {f}\n")
+        return 1
+    sys.stdout.write("OK\n")
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(*sys.argv[1:]))
+    sys.exit(main())
