@@ -1,14 +1,14 @@
 ---
 slug: decision-tree-process
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
+version: 1.1.0
 status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Six-phase architecture decision process (problem, options, trade-off, validation, ADR, implementation) that emits a complete decision report with weighted matrix + ADR + rollback plan.
-content_id: "6733eaa84b9a7baa"
+content_id: "e66bd8420793bb11"
 complexity: medium
 produces: report
 est_tokens: 5000

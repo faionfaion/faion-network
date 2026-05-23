@@ -1,3 +1,8 @@
+// purpose: Reusable SEO head component with JSON-LD + canonical + OG tags.
+// consumes: see content/02-output-contract.xml inputs for seo-for-spas
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 // seo-component.tsx — Universal SEO component
 // Supports Next.js (pages router via next/head) and non-Next React (react-helmet-async).
 // All fields are required. og:image must be absolute URL 1200x630.

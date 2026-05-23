@@ -94,7 +94,10 @@ tags: [api, contract-first, openapi, codegen, ci]
 
 ## Related
 
-
+- [[api-openapi-spec]]
+- [[api-rest-design]]
+- [[api-documentation]]
+- [[contract-first-development]]
 
 ## Decision tree
 

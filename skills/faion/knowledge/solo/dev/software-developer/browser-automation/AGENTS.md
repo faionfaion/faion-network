@@ -94,7 +94,10 @@ tags: [browser, automation, playwright, puppeteer, e2e, page-object]
 
 ## Related
 
-
+- [[performance-testing]]
+- [[security-testing]]
+- [[ai-pair-coding-prompt-patterns]]
+- [[ai-generated-test-validation]]
 
 ## Decision tree
 

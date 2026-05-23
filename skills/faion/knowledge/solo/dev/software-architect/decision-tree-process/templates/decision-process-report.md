@@ -1,7 +1,9 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: End-to-end report skeleton covering all six phases. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: report; depends-on: content/01-core-rules.xml#r1-state-as-single-question -->
+<!-- produces: report -->
+<!-- depends-on: content/01-core-rules.xml#r1-state-as-single-question -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
 <!-- faion_header_json: {"__faion_header__":{"purpose":"End-to-end report skeleton covering all six phases.","consumes":"see content/02-output-contract.xml","produces":"report","depends_on":"content/01-core-rules.xml#r1-state-as-single-question","token_budget_impact":"~150 tokens when loaded"}} -->
 # Architecture Decision Report
 

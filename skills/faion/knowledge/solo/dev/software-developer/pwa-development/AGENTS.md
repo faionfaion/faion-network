@@ -84,7 +84,9 @@ tags: [pwa, service-worker, manifest, offline, install]
 | File | Purpose |
 |------|---------|
 | `templates/manifest.webmanifest` | manifest.webmanifest skeleton with required fields and maskable icon. |
+| `templates/manifest.json` | manifest.json variant with shortcuts, categories, and prefer_related_applications. |
 | `templates/sw.js` | Service worker skeleton: precache + navigation fallback + skipWaiting + clients.claim. |
+| `templates/vite-pwa-config.ts` | Minimal Vite PWA plugin config with prompt registerType. |
 | `templates/_smoke-test.json` | Minimum viable PWA spec artefact for validator smoke-test. |
 
 ## Scripts

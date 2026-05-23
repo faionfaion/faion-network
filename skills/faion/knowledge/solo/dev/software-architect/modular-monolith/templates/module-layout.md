@@ -1,7 +1,9 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Reference module layout (Python / Go / Java agnostic). -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-one-context-per-module -->
+<!-- produces: spec -->
+<!-- depends-on: content/01-core-rules.xml#r1-one-context-per-module -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
 <!-- faion_header_json: {"__faion_header__":{"purpose":"Reference module layout (Python / Go / Java agnostic).","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-one-context-per-module","token_budget_impact":"~150 tokens when loaded"}} -->
 # Modular Monolith Layout
 

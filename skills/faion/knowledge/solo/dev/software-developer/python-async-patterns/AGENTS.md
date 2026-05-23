@@ -84,6 +84,7 @@ tags: [python, asyncio, concurrency, asgi]
 |------|---------|
 | `templates/async_handler.py` | Async handler skeleton with TaskGroup, timeout, Semaphore, sync-offload pattern. |
 | `templates/ruff_async.toml` | Ruff config snippet enabling the ASYNC rule group. |
+| `templates/detect_sync_leaks.py` | AST scan for blocking-call leaks inside async def functions (pre-commit hook). |
 | `templates/_smoke-test.json` | Minimum viable async-patterns artefact for validator smoke-test. |
 
 ## Scripts

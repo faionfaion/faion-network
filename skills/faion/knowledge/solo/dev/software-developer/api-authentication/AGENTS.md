@@ -95,7 +95,10 @@ tags: [api, authentication, jwt, oauth2, api-key, mtls, security]
 
 ## Related
 
-
+- [[api-rate-limiting]]
+- [[api-error-handling]]
+- [[api-rest-design]]
+- [[api-versioning]]
 
 ## Decision tree
 

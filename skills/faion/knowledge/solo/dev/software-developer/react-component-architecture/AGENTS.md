@@ -85,6 +85,8 @@ tags: [react, components, architecture, hooks, state]
 |------|---------|
 | `templates/feature-skeleton.tsx` | Feature folder skeleton: components/, hooks/, lib/, index.ts barrel. |
 | `templates/store.ts` | Feature-scoped Zustand store skeleton. |
+| `templates/button.tsx` | Button UI primitive with cva variants and forwardRef. |
+| `templates/plopfile.cjs` | Plop generator config: scaffold a feature folder from CLI. |
 | `templates/_smoke-test.json` | Minimum viable architecture artefact for validator smoke-test. |
 
 ## Scripts

@@ -1,3 +1,8 @@
+// purpose: Tokio service example: async fn handlers + tracing + tower middleware.
+// consumes: see content/02-output-contract.xml inputs for rust-tokio-async
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 // Reference async service: try_join! for parallel queries, spawn_blocking for CPU work.
 // Input: &Database reference
 // Output: Result<T, AppError> on all methods

@@ -85,6 +85,8 @@ tags: [security, sast, dast, dependency-audit, owasp]
 |------|---------|
 | `templates/ci-security.yml` | GitHub Actions snippet wiring SAST + dep audit + secrets scan. |
 | `templates/asvs-matrix.csv` | ASVS L1 coverage matrix template (markdown table). |
+| `templates/bandit-config.yaml` | Bandit config: skip rules with project rationale + severity gate. |
+| `templates/security-ci.yml` | Variant CI security workflow snippet (semgrep + bandit + gitleaks). |
 | `templates/_smoke-test.json` | Minimum viable security report for validator smoke-test. |
 
 ## Scripts

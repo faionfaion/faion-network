@@ -1,6 +1,8 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Minimum viable filled-in artefact for sanity-checking the schema. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-monolith-first -->
+<!-- produces: spec -->
+<!-- depends-on: content/01-core-rules.xml#r1-monolith-first -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
 <!-- faion_header_json: {"__faion_header__":{"purpose":"Minimum viable filled-in artefact for sanity-checking the schema.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-monolith-first","token_budget_impact":"~150 tokens when loaded"}} -->
 # Monolith Architecture — smoke test (minimum viable filled-in artefact, see templates/ for production-grade skeletons).

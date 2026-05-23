@@ -1,14 +1,14 @@
 ---
 slug: decision-tree-tech-stack
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
+version: 1.1.0
 status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Picks a backend language + framework + datastore by walking team-expertise, performance-need, ecosystem-fit, and hiring-supply branches; emits a stack ADR with rejected alternatives.
-content_id: "780a229e1ebd3036"
+content_id: "205153a00846dc12"
 complexity: medium
 produces: decision-record
 est_tokens: 4300

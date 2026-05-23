@@ -87,6 +87,7 @@ tags: [nosql, mongodb, redis, cassandra, neo4j]
 |------|---------|
 | `templates/nosql-data-model.json` | JSON skeleton for the data-model spec artefact. |
 | `templates/redis-ttl-policy.yaml` | Prefix → TTL policy template. |
+| `templates/nosql_picker.py` | Heuristic access-pattern → store class picker (CLI helper for the spec author). |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact. |
 
 ## Scripts

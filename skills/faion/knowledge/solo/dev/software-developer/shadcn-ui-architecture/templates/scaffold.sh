@@ -1,3 +1,8 @@
+# purpose: Bash scaffold: bootstrap shadcn primitive directory + cn util.
+# consumes: see content/02-output-contract.xml inputs for shadcn-ui-architecture
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml + content/04-procedure.xml
+# token-budget-impact: ~200-700 tokens when loaded as context
 #!/usr/bin/env bash
 # Usage: ./scaffold.sh button card dialog form input label
 # Adds shadcn primitives from the registry, then generates a barrel export.

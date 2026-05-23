@@ -84,6 +84,8 @@ tags: [rust, tokio, async, concurrency]
 |------|---------|
 | `templates/main.rs` | Tokio service skeleton: multi_thread runtime, JoinSet, timeout, CancellationToken shutdown. |
 | `templates/Cargo.toml` | Cargo manifest snippet declaring Tokio features. |
+| `templates/batch-processor.rs` | Tokio batch-processor: bounded channel + join_set + cancellation. |
+| `templates/user-service.rs` | Tokio service example: async handlers + tracing + tower middleware. |
 | `templates/_smoke-test.json` | Minimum viable tokio-async artefact for validator smoke-test. |
 
 ## Scripts

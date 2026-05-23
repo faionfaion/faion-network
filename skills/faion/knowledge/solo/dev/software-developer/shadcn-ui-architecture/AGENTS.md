@@ -85,6 +85,7 @@ tags: [shadcn, react, ui, design-system, tailwind]
 |------|---------|
 | `templates/button.tsx` | shadcn-style Button primitive with cva + compoundVariants + forwardRef + asChild. |
 | `templates/globals.css` | Semantic token sheet for shadcn primitives. |
+| `templates/scaffold.sh` | Bash scaffold: bootstrap shadcn primitive directory + cn util. |
 | `templates/_smoke-test.json` | Minimum viable shadcn architecture artefact for validator smoke-test. |
 
 ## Scripts

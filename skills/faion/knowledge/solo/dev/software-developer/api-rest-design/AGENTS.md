@@ -90,7 +90,10 @@ tags: [api, rest, rfc-9110, idempotency, hateoas]
 
 ## Related
 
-
+- [[api-versioning]]
+- [[api-error-handling]]
+- [[api-documentation]]
+- [[api-openapi-spec]]
 
 ## Decision tree
 

@@ -82,6 +82,7 @@ tags: [caching, redis, cache-aside, ttl, invalidation, singleflight]
 | File | Purpose |
 |------|---------|
 | `templates/cache-aside.py` | Stdlib cache-aside helper with jittered TTL + single-flight |
+| `templates/cache-singleflight.py` | Async single-flight skeleton with Redis NX-SET mutex against thundering herd |
 | `templates/output-schema.json` | JSON Schema (draft-07) for the caching-strategy artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in caching-strategy artefact for validator round-trip |
 
@@ -93,7 +94,10 @@ tags: [caching, redis, cache-aside, ttl, invalidation, singleflight]
 
 ## Related
 
-
+- [[api-rate-limiting]]
+- [[observability-architecture]]
+- [[database-design]]
+- [[api-rest-design]]
 
 ## Decision tree
 

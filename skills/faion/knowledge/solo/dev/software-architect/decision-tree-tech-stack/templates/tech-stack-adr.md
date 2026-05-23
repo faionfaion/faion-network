@@ -1,7 +1,9 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: ADR skeleton for the chosen language + framework + datastore. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: decision-record; depends-on: content/01-core-rules.xml#r1-team-expertise-dominates -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/01-core-rules.xml#r1-team-expertise-dominates -->
+<!-- token-budget-impact: ~150 tokens when loaded -->
 <!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton for the chosen language + framework + datastore.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#r1-team-expertise-dominates","token_budget_impact":"~150 tokens when loaded"}} -->
 # ADR: Technology Stack Selection
 

@@ -1,6 +1,8 @@
-// vite.config.ts — minimal Vite PWA plugin config
-// Requires: vite-plugin-pwa
-// Install: npm i -D vite-plugin-pwa
+// purpose: vite.config.ts minimal Vite PWA plugin config with prompt registerType.
+// consumes: see content/02-output-contract.xml inputs for pwa-development
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 
 import { VitePWA } from 'vite-plugin-pwa';
 

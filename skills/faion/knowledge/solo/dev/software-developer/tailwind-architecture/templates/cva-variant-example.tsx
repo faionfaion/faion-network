@@ -1,3 +1,8 @@
+// purpose: cva variant authoring example: typed Variants + slot composition.
+// consumes: see content/02-output-contract.xml inputs for tailwind-architecture
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 // cva-variant-example.tsx — Button with cva variants + cn() passthrough
 // Pattern: define base + variants in cva, accept className prop for overrides.
 

@@ -93,7 +93,10 @@ tags: [api, graphql, dataloader, persisted-queries, complexity]
 
 ## Related
 
-
+- [[graphql-api-design]]
+- [[api-rest-design]]
+- [[api-documentation]]
+- [[api-versioning]]
 
 ## Decision tree
 

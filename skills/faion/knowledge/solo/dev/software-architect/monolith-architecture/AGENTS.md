@@ -1,14 +1,14 @@
 ---
 slug: monolith-architecture
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
+version: 1.1.0
 status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Single-deployable architecture (Monolith First): vertical-slice or layered internal layout, ACID transactions, single deploy pipeline; ships when team ≤10 and boundaries unclear.
-content_id: "3d4134050d8db3c8"
+content_id: "bc786d5805bae2a4"
 complexity: medium
 produces: spec
 est_tokens: 5000

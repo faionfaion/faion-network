@@ -85,6 +85,7 @@ tags: [rest, api-design, resources, http-status, versioning]
 |------|---------|
 | `templates/resource-skeleton.yaml` | REST resource skeleton with cursor pagination + problem+json errors. |
 | `templates/problem.json` | Problem+JSON example error body. |
+| `templates/spectral-ruleset.yaml` | Spectral lint ruleset enforcing REST design rules on OpenAPI. |
 | `templates/_smoke-test.json` | Minimum viable rest-design artefact for validator smoke-test. |
 
 ## Scripts

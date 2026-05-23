@@ -92,7 +92,10 @@ tags: [api, error-handling, rfc-7807, problem-details, tracing]
 
 ## Related
 
-
+- [[api-rest-design]]
+- [[api-rate-limiting]]
+- [[logging-patterns]]
+- [[api-authentication]]
 
 ## Decision tree
 

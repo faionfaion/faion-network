@@ -1,14 +1,14 @@
 ---
 slug: modular-monolith
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
+version: 1.1.0
 status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Single-deployable architecture with strict module boundaries: one bounded context per module, schema-per-module, public-API-only calls, import-linter enforced in CI.
-content_id: "e42590d3f75c8831"
+content_id: "39d1f8ba6b084cd8"
 complexity: medium
 produces: spec
 est_tokens: 5000

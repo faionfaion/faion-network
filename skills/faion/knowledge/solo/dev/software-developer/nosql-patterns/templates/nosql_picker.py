@@ -1,6 +1,8 @@
-"""
-nosql_picker.py — heuristic access-pattern to store recommendation.
-Not a substitute for full access-pattern review; use as a starting prompt.
+"""purpose: Heuristic access-pattern -> store class picker (CLI helper for the spec author).
+consumes: see content/02-output-contract.xml inputs for nosql-patterns
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml + content/04-procedure.xml
+token-budget-impact: ~200-700 tokens when loaded as context
 
 Usage: python nosql_picker.py "user sessions with TTL"
        python nosql_picker.py "time series sensor data 1B rows"

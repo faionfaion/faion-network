@@ -85,6 +85,8 @@ tags: [seo, spa, ssr, ssg, metadata, sitemap]
 |------|---------|
 | `templates/metadata.ts` | Next.js app-router metadata + structured data per route. |
 | `templates/sitemap.ts` | Sitemap generator stub for Next.js app router. |
+| `templates/seo-component.tsx` | Reusable SEO head component with JSON-LD + canonical + OG tags. |
+| `templates/verify-seo.sh` | Bash smoke-check: fetch route, assert title/og:image/canonical present. |
 | `templates/_smoke-test.json` | Minimum viable SEO spec for validator smoke-test. |
 
 ## Scripts

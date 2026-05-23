@@ -1,4 +1,8 @@
-// k6-rl-probe.js — verify rate limit headers and 429 response
+// purpose: k6 load-test probe verifying RateLimit-* headers and 429 + Retry-After behaviour.
+// consumes: see content/02-output-contract.xml inputs for rate-limiting
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml + content/04-procedure.xml
+// token-budget-impact: ~200-700 tokens when loaded as context
 // Usage: BASE=https://api.example.com TOKEN=xxx k6 run --vus 50 --duration 30s k6-rl-probe.js
 import http from 'k6/http';
 import { check, sleep } from 'k6';

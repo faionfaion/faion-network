@@ -85,6 +85,8 @@ tags: [tailwind, design-tokens, cva, cn]
 |------|---------|
 | `templates/tailwind.config.ts` | Tailwind v3 config skeleton with design tokens + dark mode + safelist. |
 | `templates/utils.ts` | Project cn() wrapping clsx + tailwind-merge with extendTailwindMerge. |
+| `templates/cn.ts` | cn() helper: clsx + tailwind-merge composition for variants. |
+| `templates/cva-variant-example.tsx` | cva variant authoring example: typed Variants + slot composition. |
 | `templates/_smoke-test.json` | Minimum viable tailwind architecture artefact for validator smoke-test. |
 
 ## Scripts

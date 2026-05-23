@@ -85,6 +85,8 @@ tags: [rate-limiting, throttle, redis, token-bucket, leaky-bucket]
 |------|---------|
 | `templates/rate-limits.yaml` | Rate-limit policy YAML with per-class limits and bypass. |
 | `templates/middleware.py` | Reference middleware sketch: token-bucket via Redis INCR + TTL. |
+| `templates/sliding-window.py` | Redis ZSET-backed sliding window rate limiter with atomic Lua check-and-add. |
+| `templates/k6-rl-probe.js` | k6 load-test probe verifying RateLimit-* headers and 429 + Retry-After. |
 | `templates/_smoke-test.json` | Minimum viable rate-limit artefact for validator smoke-test. |
 
 ## Scripts

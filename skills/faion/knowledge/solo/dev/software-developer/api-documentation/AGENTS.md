@@ -94,7 +94,10 @@ tags: [api, documentation, openapi, docs, developer-experience]
 
 ## Related
 
-
+- [[api-openapi-spec]]
+- [[api-rest-design]]
+- [[api-contract-first]]
+- [[api-versioning]]
 
 ## Decision tree
 

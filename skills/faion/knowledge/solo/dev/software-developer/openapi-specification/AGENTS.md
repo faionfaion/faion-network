@@ -84,6 +84,8 @@ tags: [openapi, api-spec, contract-first, spectral, redocly]
 | File | Purpose |
 |------|---------|
 | `templates/openapi-skeleton.yaml` | OpenAPI 3.1 skeleton with components reuse + security + named examples. |
+| `templates/openapi-base.yaml` | Minimal OpenAPI 3.1 base for a brand-new service (info + servers + components shell). |
+| `templates/openapi-ci.yml` | GitHub Actions workflow wiring Spectral + oasdiff gates on every PR. |
 | `templates/spectral.yaml` | Spectral ruleset enforcing required arrays, named examples, security on operations. |
 | `templates/_smoke-test.json` | Minimum viable artefact for validator smoke-test. |
 

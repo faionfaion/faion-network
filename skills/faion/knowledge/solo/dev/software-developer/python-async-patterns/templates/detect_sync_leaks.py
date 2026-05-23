@@ -1,5 +1,8 @@
-"""
-detect_sync_leaks.py — find blocking calls inside async def functions.
+"""purpose: AST scan for blocking-call leaks inside async def functions.
+consumes: see content/02-output-contract.xml inputs for python-async-patterns
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml + content/04-procedure.xml
+token-budget-impact: ~200-700 tokens when loaded as context
 
 Usage: python detect_sync_leaks.py [path]
 Exit 1 if blocking calls found; suitable as pre-commit hook.

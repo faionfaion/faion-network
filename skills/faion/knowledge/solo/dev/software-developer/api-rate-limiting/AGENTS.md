@@ -92,7 +92,10 @@ tags: [api, rate-limiting, throttle, 429, sliding-window]
 
 ## Related
 
-
+- [[caching-strategy]]
+- [[api-authentication]]
+- [[api-error-handling]]
+- [[api-rest-design]]
 
 ## Decision tree
 

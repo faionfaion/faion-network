@@ -1,14 +1,14 @@
 ---
 slug: decision-tree-cloud-provider
 tier: solo
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
+version: 1.1.0
 status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Routes a workload to AWS, Azure, GCP, or none-of-the-above by walking existing-investment, workload-type, and budget-sensitivity branches; emits a provider+runner-up ADR.
-content_id: "8b6fdcc870da7a70"
+content_id: "c86b560a134b5f1a"
 complexity: medium
 produces: decision-record
 est_tokens: 4300

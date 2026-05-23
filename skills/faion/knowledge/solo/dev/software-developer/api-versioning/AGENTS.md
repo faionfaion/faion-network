@@ -92,7 +92,10 @@ tags: [api, versioning, semver, deprecation, sunset]
 
 ## Related
 
-
+- [[api-rest-design]]
+- [[api-contract-first]]
+- [[api-documentation]]
+- [[api-openapi-spec]]
 
 ## Decision tree
 
