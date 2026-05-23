@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="A/B Testing Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes by power + SRM + significance to a rule in 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-power">sample_size_achieved &gt;= planned_sample_size?</root-question>
+
+    <branch when="sample_size_achieved &lt; planned_sample_size">
+      <conclusion ref="wilson-ci-not-percent" verdict="decision=invalid-underpowered; extend or kill (no ship)"/>
+    </branch>
+
+    <branch when="sample_size_achieved &gt;= planned_sample_size">
+      <question id="q-srm">srm_chi_square_p &gt;= 0.001?</question>
+      <branch when="srm_chi_square_p &lt; 0.001">
+        <conclusion ref="srm-gate" verdict="decision=invalid-srm; investigate bucket leak; do not ship regardless of p-value"/>
+      </branch>
+      <branch when="srm_chi_square_p &gt;= 0.001">
+        <question id="q-ci">wilson_ci_low &gt; 0?</question>
+        <branch when="wilson_ci_low &lt;= 0">
+          <conclusion ref="wilson-ci-not-percent" verdict="decision=kill or extend; CI spans zero"/>
+        </branch>
+        <branch when="wilson_ci_low &gt; 0">
+          <conclusion ref="deterministic-hash" verdict="decision=ship; close flag + record artefact"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="exp-0142">
+    sample_size=24940 &gt;= 24000 → srm_chi_square_p=0.78 &gt;= 0.001 → wilson_ci_low=0.041 &gt; 0 → conclusion deterministic-hash → ship.
+  </example>
+</text>

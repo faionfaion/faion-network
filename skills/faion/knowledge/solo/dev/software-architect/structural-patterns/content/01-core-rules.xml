@@ -1,35 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="structural-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for structural-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Structural Design Patterns Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the structural-patterns methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use the Adapter pattern to make an incompatible existing interface work with a new interface, without modifying the existing code. Adapter is a retrofit pattern — it is applied after the incompatibility is discovered, not during initial design.</statement>
-      <rationale source="v1-source">Third-party libraries and legacy systems have fixed interfaces. Modifying them is impossible or risky. The Adapter wraps them and translates the interface, preserving the existing code's behavior while enabling it to participate in new code contracts.</rationale>
+    <rule id="r1-signal-to-pattern" testable="true" depth="essential">
+      <statement>Pattern selection MUST start from a concrete signal: incompatible interfaces → Adapter; class explosion across orthogonal axes → Bridge; tree-of-uniform-leaves → Composite; behaviour stacking on one type → Decorator; broad subsystem entry-point → Facade; access control / lazy load → Proxy; many identical immutable instances → Flyweight.</statement>
+      <rationale source="Gang of Four; Refactoring to Patterns (Kerievsky).">Pattern-without-signal produces speculative indirection; signal-first selection matches problem to mechanism.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use Bridge when two independent dimensions of variation exist and both must be extensible independently. Bridge is a design-time pattern — define it before building the class hierarchy, not as a retrofit to an existing hierarchy.</statement>
-      <rationale source="v1-source">Without Bridge, adding a new dimension multiplies the class count: N notification types × M urgency levels = N×M classes. Bridge splits the abstraction (notification type) from the implementation (urgency rendering) into independent hierarchies that can grow independently.</rationale>
+    <rule id="r2-cost-bounded" testable="true" depth="essential">
+      <statement>Each candidate pattern MUST carry an indirection cost (extra classes / files / runtime hops) and the cost MUST be weighed against documented symptom severity.</statement>
+      <rationale source="Internal pattern-spam audits.">Structural patterns add abstraction; uncosted picks produce towers of indirection that obscure intent.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use Composite when clients must treat individual objects (leaves) and compositions (branches) uniformly. The key constraint: both leaf and branch must implement the same interface so client code needs no type-checking.</statement>
-      <rationale source="v1-source">Without Composite, client code must distinguish leaves from branches via isinstance checks, violating OCP. The Composite interface lets clients call the same method on a single file or an entire directory tree — the traversal logic is encapsulated in the composite node.</rationale>
+    <rule id="r3-decorator-cap" testable="true" depth="essential">
+      <statement>Decorator stack depth MUST NOT exceed 2 per call site. Cross-cutting stacks (logging + auth + retry + cache + tracing) MUST be composed via middleware pipelines, NOT nested decorators.</statement>
+      <rationale source="Internal decorator-tower refactor audits.">Deep decorator stacks make stack traces unreadable and resolution of cross-cutting policy impossible; middleware composition is the documented alternative.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use Decorator to add cross-cutting behavior (logging, caching, auth, retry) without subclassing. Decorators can be stacked: each wraps the previous and adds one responsibility. All decorators must implement the same interface as the wrapped object.</statement>
-      <rationale source="v1-source">Subclassing to add behavior produces a class explosion: LoggedService, CachedService, AuthedService, LoggedCachedService, etc. Decorators compose at runtime: stack LoggingDecorator(CachingDecorator(RealService())) and any combination is possible without additional classes.</rationale>
+    <rule id="r4-facade-not-godclass" testable="true" depth="essential">
+      <statement>Facade pattern MUST be applied to a coherent subsystem with a small, stable public surface. A 'Facade' aggregating unrelated domains is a god-class antipattern and MUST be rejected.</statement>
+      <rationale source="Refactoring (Fowler).">Facades that grow without scope become god-classes — the very smell they were meant to dissolve.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use Facade to provide a single, simplified entry point to a complex subsystem. The Facade does not prevent direct access to subsystem classes — it provides a convenience layer for the common use cases. Never let a Facade become a God Object.</statement>
-      <rationale source="v1-source">Subsystems with many interacting classes create high coupling in client code: clients must know the correct order of operations, error states, and side effects. A Facade encapsulates the most common workflows, reducing client coupling without hiding the subsystem from clients who need more control.</rationale>
+    <rule id="r5-flyweight-needs-measurement" testable="true" depth="essential">
+      <statement>Flyweight MUST be applied only when memory profiling shows the duplicated objects dominate the heap (≥10% of resident set or &gt; 100MB). Speculative Flyweight produces complexity for no gain.</statement>
+      <rationale source="Memory profiling case studies.">Flyweight is the most invasive structural pattern; without measured pressure it pays no dividend.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Select the proxy type by the problem: Virtual (lazy initialization), Protection (access control), Cache (memoization), Remote (transparent local interface to a remote object), Logging (audit trail). All types implement the same interface as the real object.</statement>
-      <rationale source="v1-source">All proxy types share the same structural pattern but solve different problems. Choosing the wrong proxy type results in unnecessary complexity: a Logging Proxy should not make access control decisions.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (signal, catalog, test coverage, impact estimate), apply r1 → r5 and emit the ADR.</statement>
+      <rationale source="Methodology design — gate rule.">Order encodes risk: signal first, cost second, decorator cap third, facade-scope fourth, flyweight evidence fifth.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use Flyweight only when the application creates thousands (or millions) of similar objects and memory profiling shows that object count is a measurable bottleneck. Flyweight adds extrinsic state management complexity — only justified by demonstrated memory savings.</statement>
-      <rationale source="v1-source">Flyweight trades memory for complexity: the caller must now provide extrinsic state on every operation instead of storing it on the object. Without measured memory pressure, this complexity has no benefit.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) no concrete signal, (b) trivial CRUD, (c) symptom belongs to behavioural / creational family. Exit with note.</statement>
+      <rationale source="Preconditions — skip gate.">Wrong-family or signal-less application yields negative-value indirection.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

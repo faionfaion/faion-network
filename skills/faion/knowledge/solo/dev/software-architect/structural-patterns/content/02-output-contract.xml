@@ -1,22 +1,168 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="structural-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Structural Design Patterns Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator in scripts/validate-structural-patterns.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/structural-patterns.json",
+  "type": "object",
+  "title": "Structural pattern ADR",
+  "required": [
+    "adr_id",
+    "status",
+    "signal",
+    "chosen_pattern",
+    "rejected",
+    "fit_score",
+    "cost_score",
+    "guard_checks",
+    "review_trigger",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "adr_id": {
+      "type": "string",
+      "pattern": "^adr-struct-[a-z0-9-]+$"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded",
+        "deprecated"
+      ]
+    },
+    "signal": {
+      "type": "string",
+      "minLength": 20
+    },
+    "chosen_pattern": {
+      "enum": [
+        "adapter",
+        "bridge",
+        "composite",
+        "decorator",
+        "facade",
+        "proxy",
+        "flyweight",
+        "middleware_pipeline"
+      ]
+    },
+    "rejected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "reason"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fit_score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "cost_score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "guard_checks": {
+      "type": "object",
+      "required": [
+        "decorator_depth_le_2",
+        "facade_scope_bounded",
+        "flyweight_memory_evidenced"
+      ],
+      "properties": {
+        "decorator_depth_le_2": {
+          "type": "boolean"
+        },
+        "facade_scope_bounded": {
+          "type": "boolean"
+        },
+        "flyweight_memory_evidenced": {
+          "type": "boolean"
+        }
+      }
+    },
+    "review_trigger": {
+      "type": "string",
+      "minLength": 10
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "adr-struct-http-stack-2026-05",
+  "status": "accepted",
+  "signal": "HTTP client wrapped with 4 stacked decorators (logging, retry, cache, auth); stack traces unreadable.",
+  "chosen_pattern": "middleware_pipeline",
+  "rejected": [
+    {
+      "pattern": "decorator",
+      "reason": "Depth > 2 violates r3."
+    },
+    {
+      "pattern": "facade",
+      "reason": "No coherent subsystem to encapsulate."
+    }
+  ],
+  "fit_score": 5,
+  "cost_score": 2,
+  "guard_checks": {
+    "decorator_depth_le_2": true,
+    "facade_scope_bounded": true,
+    "flyweight_memory_evidenced": true
+  },
+  "review_trigger": "CI detects any function with > 2 decorator markers OR middleware pipeline length > 7.",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "struct 1",
+  "status": "ok",
+  "signal": "feels off",
+  "chosen_pattern": "blob",
+  "rejected": [],
+  "fit_score": 0,
+  "cost_score": 9,
+  "guard_checks": {},
+  "review_trigger": "",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: adr_id pattern violation; signal too short; chosen_pattern enum violation; empty rejected; fit_score / cost_score out of [1,5]; missing guard_checks fields; review_trigger empty; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-structural-patterns.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

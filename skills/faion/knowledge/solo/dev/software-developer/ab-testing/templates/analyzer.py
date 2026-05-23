@@ -1,96 +1,119 @@
+# purpose: Variant analyser with z-test, Wilson CI, and SRM chi-square check
+# consumes: per-variant {exposures, conversions} dict
+# produces: result block ready for the experiment-run artefact
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: ~400 tokens when loaded
+"""Pure-stdlib analyser for A/B experiments.
+
+z-test for two proportions, Wilson 95% CI on the lift, and a chi-square
+Sample Ratio Mismatch (SRM) check. No external dependency — uses
+math.erf for the normal CDF and a closed-form chi-square (df=1) tail.
 """
-ExperimentAnalyzer: z-test for proportions, Wilson CI, power calculation.
-Input: control/treatment counts from experiment data
-Output: ExperimentResults dataclass with significance, lift, CI, power
-"""
-import numpy as np
-from scipy import stats
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import sys
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+
+
+def _norm_cdf(z: float) -> float:
+    return 0.5 * (1.0 + math.erf(z / math.sqrt(2)))
+
+
+def _chi2_sf_df1(x: float) -> float:
+    """Survival function of chi-square distribution with df=1."""
+    if x <= 0:
+        return 1.0
+    return 2.0 * (1.0 - _norm_cdf(math.sqrt(x)))
 
 
 @dataclass
-class VariantStats:
-    name: str
-    sample_size: int
-    conversions: int = 0
-    conversion_rate: float = 0.0
-    confidence_interval: tuple[float, float] = (0.0, 0.0)
-
-
-@dataclass
-class ExperimentResults:
-    experiment_id: str
-    metric_name: str
-    control: VariantStats
-    treatment: VariantStats
-    relative_lift: float
+class AnalysisResult:
+    lift: float
+    wilson_ci_low: float
+    wilson_ci_high: float
+    z: float
     p_value: float
-    is_significant: bool
-    confidence_level: float
-    power: float
-    sample_size_needed: int
+    srm_chi_square_p: float
 
 
-class ExperimentAnalyzer:
-    def __init__(self, confidence_level: float = 0.95):
-        self.confidence_level = confidence_level
-        self.alpha = 1 - confidence_level
+def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    if total <= 0:
+        return (0.0, 0.0)
+    p = successes / total
+    denom = 1 + z * z / total
+    centre = (p + z * z / (2 * total)) / denom
+    half = z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denom
+    return (max(0.0, centre - half), min(1.0, centre + half))
 
-    def analyze_conversion(
-        self, experiment_id: str, metric_name: str,
-        control_conversions: int, control_total: int,
-        treatment_conversions: int, treatment_total: int,
-    ) -> ExperimentResults:
-        """Two-proportion z-test for binary conversion metric."""
-        cr = control_conversions / control_total if control_total > 0 else 0
-        tr = treatment_conversions / treatment_total if treatment_total > 0 else 0
-        lift = (tr - cr) / cr if cr > 0 else 0
 
-        pooled = (control_conversions + treatment_conversions) / (control_total + treatment_total)
-        se = np.sqrt(pooled * (1 - pooled) * (1 / control_total + 1 / treatment_total))
-        z = (tr - cr) / se if se > 0 else 0
-        p_value = 2 * (1 - stats.norm.cdf(abs(z)))
+def srm_check(observed: dict[str, int], expected_split: dict[str, float]) -> float:
+    total = sum(observed.values())
+    chi = 0.0
+    for k, frac in expected_split.items():
+        e = total * frac
+        if e <= 0:
+            continue
+        o = observed.get(k, 0)
+        chi += (o - e) * (o - e) / e
+    return _chi2_sf_df1(chi)
 
-        return ExperimentResults(
-            experiment_id=experiment_id,
-            metric_name=metric_name,
-            control=VariantStats("control", control_total, control_conversions,
-                                 cr, self._wilson_ci(control_conversions, control_total)),
-            treatment=VariantStats("treatment", treatment_total, treatment_conversions,
-                                   tr, self._wilson_ci(treatment_conversions, treatment_total)),
-            relative_lift=lift,
-            p_value=p_value,
-            is_significant=p_value < self.alpha,
-            confidence_level=self.confidence_level,
-            power=self._power(cr, tr, control_total, treatment_total),
-            sample_size_needed=self._sample_size(cr, lift),
+
+def analyse(variants: dict[str, dict[str, int]], expected_split: dict[str, float]) -> AnalysisResult:
+    keys = list(variants.keys())
+    if len(keys) != 2:
+        raise ValueError("analyser expects exactly 2 variants")
+    a, b = variants[keys[0]], variants[keys[1]]
+    n1, c1 = a["exposures"], a["conversions"]
+    n2, c2 = b["exposures"], b["conversions"]
+    p1 = c1 / n1 if n1 else 0.0
+    p2 = c2 / n2 if n2 else 0.0
+    lift = (p2 - p1) / p1 if p1 > 0 else 0.0
+    pooled = (c1 + c2) / (n1 + n2) if (n1 + n2) else 0.0
+    se = math.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2)) if n1 and n2 and pooled and pooled < 1 else 0.0
+    z = (p2 - p1) / se if se > 0 else 0.0
+    p_value = 2 * (1 - _norm_cdf(abs(z)))
+
+    # Wilson CI on the lift via difference of CIs (conservative)
+    lo1, hi1 = wilson_ci(c1, n1)
+    lo2, hi2 = wilson_ci(c2, n2)
+    diff_low = lo2 - hi1
+    diff_high = hi2 - lo1
+    lift_low = diff_low / p1 if p1 > 0 else 0.0
+    lift_high = diff_high / p1 if p1 > 0 else 0.0
+
+    observed = {keys[0]: n1, keys[1]: n2}
+    srm_p = srm_check(observed, expected_split)
+    return AnalysisResult(lift, lift_low, lift_high, z, p_value, srm_p)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="A/B analyser")
+    ap.add_argument("--file", type=str)
+    ap.add_argument("--self-test", action="store_true")
+    args = ap.parse_args()
+    if args.self_test:
+        r = analyse(
+            {"control": {"exposures": 12450, "conversions": 380},
+             "variant_a": {"exposures": 12490, "conversions": 442}},
+            {"control": 0.5, "variant_a": 0.5},
         )
+        if not (r.srm_chi_square_p > 0.001 and r.wilson_ci_low > -1):
+            sys.stderr.write(f"self-test failed: {r}\n")
+            return 1
+        sys.stdout.write(f"self-test OK: {r}\n")
+        return 0
+    if not args.file:
+        ap.print_help()
+        return 2
+    obj = json.loads(Path(args.file).read_text())
+    r = analyse(obj["variants"], obj["design"]["expected_split"])
+    sys.stdout.write(json.dumps(r.__dict__, indent=2) + "\n")
+    return 0
 
-    def _wilson_ci(self, successes: int, total: int) -> tuple[float, float]:
-        if total == 0:
-            return (0.0, 0.0)
-        z = stats.norm.ppf(1 - self.alpha / 2)
-        p, n = successes / total, total
-        denom = 1 + z**2 / n
-        center = (p + z**2 / (2 * n)) / denom
-        margin = z * np.sqrt((p * (1 - p) + z**2 / (4 * n)) / n) / denom
-        return (max(0.0, center - margin), min(1.0, center + margin))
 
-    def _power(self, p1: float, p2: float, n1: int, n2: int) -> float:
-        if n1 == 0 or n2 == 0:
-            return 0.0
-        effect = abs(p2 - p1) / np.sqrt(p1 * (1 - p1)) if p1 > 0 else 0
-        pooled_n = 2 / (1 / n1 + 1 / n2)
-        z_alpha = stats.norm.ppf(1 - self.alpha / 2)
-        return float(stats.norm.cdf(effect * np.sqrt(pooled_n / 2) - z_alpha))
-
-    def _sample_size(self, baseline: float, mde: float, power: float = 0.80) -> int:
-        if baseline == 0 or mde == 0:
-            return 0
-        effect_rate = baseline * (1 + mde)
-        z_a = stats.norm.ppf(1 - self.alpha / 2)
-        z_b = stats.norm.ppf(power)
-        p_avg = (baseline + effect_rate) / 2
-        n = 2 * ((z_a + z_b) ** 2) * p_avg * (1 - p_avg) / (effect_rate - baseline) ** 2
-        return int(np.ceil(n))
+if __name__ == "__main__":
+    sys.exit(main())

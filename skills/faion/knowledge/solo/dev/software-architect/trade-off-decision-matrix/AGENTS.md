@@ -4,70 +4,97 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Build a weighted decision matrix to compare 3-5 architecture options across scored criteria.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Builds a stakeholder-weighted decision matrix: criteria + weights (sum = 100%), evidence-backed scores per option, conflict identification, and computed weighted totals.
 content_id: "53ab2d8e7637cb61"
-tags: [decision-matrix, trade-off, architecture, scoring, criteria]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [decision-matrix, trade-off, weighted-scoring, atam, architecture-decisions]
 ---
-# Trade-off Decision Matrix
+# Weighted Decision Matrix
 
 ## Summary
 
-**One-sentence:** Build a weighted decision matrix to compare 3-5 architecture options across scored criteria.
+**One-sentence:** Builds a stakeholder-weighted decision matrix: criteria + weights (sum = 100%), evidence-backed scores per option, conflict identification, and computed weighted totals.
 
-**One-paragraph:** Build a weighted decision matrix to compare 3-5 architecture options across scored criteria. Run sensitivity analysis to verify the winner is stable. The standard 2-4h checklist covers context, option discovery, criteria definition, option evaluation, trade-off identification, risk analysis, and documentation.
+**One-paragraph:** Builds a stakeholder-weighted decision matrix: criteria + weights (sum = 100%), evidence-backed scores per option, conflict identification, and computed weighted totals. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Multi-option architecture decision needing quantified, defensible scoring.
+- Cross-stakeholder decision where weighting must be explicit (PM + SRE + sec).
+- Audit / compliance context demanding a documented scoring trail.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Technology selection or vendor comparison with 3-5 viable options.
-- Any decision where criteria weights are contested among stakeholders.
-- Standard 2-4h trade-off analysis for significant technical decisions with moderate impact.
-- When you need to document the objective basis for a recommendation to stakeholders.
+- Multi-option architecture decision needing quantified, defensible scoring.
+- Cross-stakeholder decision where weighting must be explicit (PM + SRE + sec).
+- Audit / compliance context demanding a documented scoring trail.
 
 ## Skip If (ANY kills it)
 
-- Type-1 irreversible decisions with major business impact — use ATAM for deeper analysis instead of just a matrix.
-- Type-2 reversible decisions where the wrong choice costs less than the analysis — decide fast and iterate.
-- When criteria cannot be agreed on first — resolve stakeholder alignment before scoring.
+- Single-option decision — there is nothing to weigh.
+- Decision dominated by a hard constraint (compliance, contract) — matrix theatre wastes time.
+- Trivial reversible choice — a one-line PR comment suffices.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Option shortlist (2-5) | list | team |
+| Stakeholder roster with roles | table | PM |
+| Evidence base (benchmarks, case studies, POC data) | links | team |
+| Decision question | single sentence | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/decision-tree-process]] | Matrix is the Phase-3 instrument. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `set-weights` | sonnet | Facilitate stakeholder weighting; ensure sum = 100%. |
+| `score-options` | sonnet | Bounded scoring with cited evidence. |
+| `compute-totals` | haiku | Mechanical weighted sum + conflict detection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-matrix.md` | Matrix skeleton with criteria × options + weighted totals. |
+| `templates/matrix.json` | Matrix data payload for scripted computation. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trade-off-decision-matrix.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/decision-tree-process]]
+- [[solo/dev/software-architect/trade-off-decision-methods]]
+- [[solo/dev/software-architect/trade-off-quality-attributes]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (shortlist, stakeholders, evidence, question)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

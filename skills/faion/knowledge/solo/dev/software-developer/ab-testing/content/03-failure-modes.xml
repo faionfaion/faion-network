@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ab-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ab-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="A/B Testing Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns commonly observed in shipped A/B runtimes. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using `random.choice(["control", "treatment"])` for variant assignment.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Produces a different variant on every page load, request, or process restart. The same user alternates between variants, cross-contaminating both groups and making results meaningless.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running successive experiments on the same population without changing the hash salt (experiment ID).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Correlated assignment: users in control for experiment 1 are always in control for experiment 2. This produces correlated bias that looks like real effects.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Stopping the experiment the moment the p-value crosses 0.05 (peeking).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Multiple comparisons over time inflate the false-positive rate. Stopping on first significance yields a 20–30% false-positive rate instead of the intended 5%.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using `scipy.stats.ttest_ind` on a binary (0/1) conversion metric.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The t-test assumes approximately normal data. Binary metrics violate this for small or imbalanced samples, producing incorrect p-values. Use chi-square or two-proportion z-test.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Logging conversions without logging exposures, then computing conversion rate as conversions / total_users.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Users not exposed to the experiment are included in the denominator, diluting the conversion rate and obscuring real effects. Denominator must be unique exposed users per variant.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="random-choice-bucket" severity="high">
+      <symptom>Same user sees variant A on web and variant B on mobile in the same session; conversion attribution scrambled.</symptom>
+      <root-cause source="Microsoft ExP guidance + Internal — A/B audits 2024">Bucket function used random.choice / Math.random instead of a hash of user_id + experiment_id.</root-cause>
+      <fix>Replace assignment with 64-bit hash of (user_id || experiment_id || salt) mod 100. Pin salt per experiment. See rule deterministic-hash.</fix>
+    </antipattern>
+
+    <antipattern id="no-srm-check" severity="high">
+      <symptom>Experiment "wins" with p=0.02; observed split was 47/53 instead of 50/50; ship causes a regression.</symptom>
+      <root-cause source="Kohavi et al. — Trustworthy Online Controlled Experiments">SRM not checked; bucket leak or filter on one arm silently biases the result.</root-cause>
+      <fix>Compute chi-square p-value of observed split vs expected; if p &lt; 0.001 mark decision=invalid-srm and refuse to ship. See rule srm-gate.</fix>
+    </antipattern>
+
+    <antipattern id="peeking" severity="high">
+      <symptom>Team kills an experiment at 30% of sample size after a "significant" result; the lift was noise.</symptom>
+      <root-cause source="Optional stopping bias literature">No sequential-test correction; team treats fixed-horizon p-value as live-monitor.</root-cause>
+      <fix>Lock decision until planned sample size reached, or use sequential-test (mSPRT) with adjusted alpha. See rule wilson-ci-not-percent.</fix>
+    </antipattern>
+
+    <antipattern id="post-assignment-changes" severity="medium">
+      <symptom>Mid-experiment, targeting rule changes; old buckets now exposed to a different variant; data invalid.</symptom>
+      <root-cause source="Internal — flag-change audit">Targeting changes during the experiment without re-assignment isolation.</root-cause>
+      <fix>Freeze the assignment salt + targeting rule at experiment start; any change ends the experiment and starts a new one. See rule sticky-across-surfaces.</fix>
+    </antipattern>
+
   </section>
 </text>

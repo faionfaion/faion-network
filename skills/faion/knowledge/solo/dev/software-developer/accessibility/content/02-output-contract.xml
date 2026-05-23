@@ -1,22 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="accessibility Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Accessibility Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the a11y-report artefact. Validator enforces WCAG floors + critical=0.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/accessibility.json",
+  "type": "object",
+  "required": ["screen_id", "url", "wcag_level", "checks", "axe", "verdict"],
+  "properties": {
+    "screen_id": {"type": "string", "pattern": "^A11Y-[A-Z0-9-]{2,40}$"},
+    "url": {"type": "string", "format": "uri"},
+    "wcag_level": {"type": "string", "enum": ["A", "AA", "AAA"]},
+    "checks": {
+      "type": "object",
+      "required": ["semantic", "aria", "keyboard", "contrast"],
+      "properties": {
+        "semantic": {"type": "object", "required": ["pass", "landmarks", "div_buttons"]},
+        "aria": {"type": "object", "required": ["pass", "redundant_count"]},
+        "keyboard": {"type": "object", "required": ["pass", "reachable", "focus_visible", "traps"]},
+        "contrast": {"type": "object", "required": ["pass", "violations"]}
+      }
+    },
+    "axe": {
+      "type": "object",
+      "required": ["critical", "serious", "moderate", "minor"],
+      "properties": {
+        "critical": {"type": "integer", "minimum": 0},
+        "serious": {"type": "integer", "minimum": 0},
+        "moderate": {"type": "integer", "minimum": 0},
+        "minor": {"type": "integer", "minimum": 0}
+      }
+    },
+    "verdict": {"type": "string", "enum": ["pass", "fail"]},
+    "must_fix": {"type": "array", "items": {"type": "string"}}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "screen_id": "A11Y-PRICING",
+  "url": "https://example.com/pricing",
+  "wcag_level": "AA",
+  "checks": {
+    "semantic": {"pass": true, "landmarks": ["header", "main", "footer"], "div_buttons": 0},
+    "aria": {"pass": true, "redundant_count": 0},
+    "keyboard": {"pass": true, "reachable": 14, "focus_visible": true, "traps": 0},
+    "contrast": {"pass": true, "violations": []}
+  },
+  "axe": {"critical": 0, "serious": 1, "moderate": 3, "minor": 2},
+  "verdict": "pass",
+  "must_fix": ["Resolve serious axe rule color-contrast-enhanced (tracked, non-blocking for AA)"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "screen_id": "x",
+  "url": "not-a-url",
+  "wcag_level": "AA",
+  "checks": {
+    "semantic": {"pass": false, "landmarks": [], "div_buttons": 4},
+    "aria": {"pass": false, "redundant_count": 6},
+    "keyboard": {"pass": false, "reachable": 10, "focus_visible": false, "traps": 1},
+    "contrast": {"pass": false, "violations": [{"fg": "#888", "bg": "#fff", "ratio": 3.2}]}
+  },
+  "axe": {"critical": 2, "serious": 8, "moderate": 0, "minor": 0},
+  "verdict": "pass"
+}
+]]></code>
+    <note>screen_id pattern fails; url not a URI; verdict=pass with axe.critical=2 violates axe-zero-critical; div_buttons &gt; 0; keyboard traps present.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>verdict=pass with axe.critical &gt; 0.</item>
+      <item>verdict=pass while any check.pass=false.</item>
+      <item>checks.semantic.div_buttons &gt; 0.</item>
+      <item>checks.keyboard.traps &gt; 0.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-accessibility.py">Validator script</reference>
 </text>

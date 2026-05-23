@@ -1,22 +1,233 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trade-off-decision-matrix Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Weighted Decision Matrix Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-trade-off-decision-matrix.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trade-off-decision-matrix.json",
+  "type": "object",
+  "title": "Weighted decision matrix",
+  "required": [
+    "matrix_id",
+    "question",
+    "criteria",
+    "options",
+    "weighted_totals",
+    "conflicts",
+    "tie_break_rule",
+    "recommendation",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "matrix_id": {
+      "type": "string",
+      "pattern": "^mat-[a-z0-9-]+$"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 10
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "weight",
+          "owner"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 2
+          }
+        }
+      }
+    },
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "scores",
+          "evidence"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scores": {
+            "type": "object"
+          },
+          "evidence": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "weighted_totals": {
+      "type": "object"
+    },
+    "conflicts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "pair",
+          "resolution"
+        ],
+        "properties": {
+          "pair": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tie_break_rule": {
+      "type": "string",
+      "minLength": 5
+    },
+    "recommendation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "matrix_id": "mat-tenant-store-2026-05",
+  "question": "Which datastore for tenant data?",
+  "criteria": [
+    {
+      "name": "fit_to_data_shape",
+      "weight": 0.3,
+      "owner": "tech_lead"
+    },
+    {
+      "name": "operational_maturity",
+      "weight": 0.2,
+      "owner": "sre"
+    },
+    {
+      "name": "team_familiarity",
+      "weight": 0.2,
+      "owner": "tech_lead"
+    },
+    {
+      "name": "tco_12mo",
+      "weight": 0.15,
+      "owner": "finance"
+    },
+    {
+      "name": "ecosystem",
+      "weight": 0.15,
+      "owner": "tech_lead"
+    }
+  ],
+  "options": [
+    {
+      "name": "postgres",
+      "scores": {
+        "fit_to_data_shape": 4,
+        "operational_maturity": 5,
+        "team_familiarity": 5,
+        "tco_12mo": 4,
+        "ecosystem": 5
+      },
+      "evidence": {
+        "fit_to_data_shape": "POC-2026-04",
+        "operational_maturity": "internal SRE record",
+        "team_familiarity": "team survey",
+        "tco_12mo": "AWS pricing model",
+        "ecosystem": "stack-overflow trends"
+      }
+    },
+    {
+      "name": "mongo",
+      "scores": {
+        "fit_to_data_shape": 3,
+        "operational_maturity": 4,
+        "team_familiarity": 3,
+        "tco_12mo": 4,
+        "ecosystem": 4
+      },
+      "evidence": {
+        "fit_to_data_shape": "schema-mismatch in POC",
+        "operational_maturity": "vendor docs",
+        "team_familiarity": "team survey",
+        "tco_12mo": "Atlas pricing",
+        "ecosystem": "stack-overflow trends"
+      }
+    }
+  ],
+  "weighted_totals": {
+    "postgres": 4.55,
+    "mongo": 3.5
+  },
+  "conflicts": [
+    {
+      "pair": "tco_vs_operational_maturity",
+      "resolution": "Prefer operational maturity on production data; accept up to 15% TCO premium."
+    }
+  ],
+  "tie_break_rule": "If totals within 5%, prefer the option with higher team_familiarity.",
+  "recommendation": "postgres",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "matrix_id": "mat 1",
+  "question": "x",
+  "criteria": [
+    {
+      "name": "thing",
+      "weight": 0.2,
+      "owner": ""
+    }
+  ],
+  "options": [],
+  "weighted_totals": {},
+  "conflicts": [],
+  "recommendation": "",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: matrix_id pattern violation; question too short; &lt;3 criteria; empty options; empty conflicts; tie_break_rule / recommendation empty; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-trade-off-decision-matrix.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

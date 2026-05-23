@@ -4,72 +4,98 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured evaluation methods for architecture trade-offs, from the full ATAM workshop (3-4 days, Type 1 irreversible decisions) to lightweight alternatives (Mini-ATAM, TARA, LAAAM) for sprint-level choices.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Routes the decision to the right method (Weighted Matrix, ATAM, Cost of Delay, Wardley, Real Options) based on number of options, stakeholder breadth, reversibility, and uncertainty.
 content_id: "a7d04a84c65565df"
-tags: [atam, architecture, trade-off, quality-attributes, decision-making]
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [trade-off, atam, cost-of-delay, wardley, real-options]
 ---
-# Architecture Trade-off Decision Methods
+# Trade-off Decision Methods
 
 ## Summary
 
-**One-sentence:** Structured evaluation methods for architecture trade-offs, from the full ATAM workshop (3-4 days, Type 1 irreversible decisions) to lightweight alternatives (Mini-ATAM, TARA, LAAAM) for sprint-level choices.
+**One-sentence:** Routes the decision to the right method (Weighted Matrix, ATAM, Cost of Delay, Wardley, Real Options) based on number of options, stakeholder breadth, reversibility, and uncertainty.
 
-**One-paragraph:** Structured evaluation methods for architecture trade-offs, from the full ATAM workshop (3-4 days, Type 1 irreversible decisions) to lightweight alternatives (Mini-ATAM, TARA, LAAAM) for sprint-level choices. Select method depth based on decision reversibility.
+**One-paragraph:** Routes the decision to the right method (Weighted Matrix, ATAM, Cost of Delay, Wardley, Real Options) based on number of options, stakeholder breadth, reversibility, and uncertainty. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Architecture decision whose default method (weighted matrix) is suspect (cross-attribute conflicts, deep uncertainty, high reversibility cost).
+- Multi-quality-attribute trade-off (perf vs cost vs security) needing ATAM-style analysis.
+- Strategic decision needing Wardley map or Real Options framing.
+- Output produces `decision-record` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Major architecture decisions, system redesigns, technology migrations — use full ATAM.
-- Sprint-level decisions with moderate quality attribute impact — use Mini-ATAM (half day).
-- Focused quality attribute analysis within a bounded scope — use TARA (2-4 hours).
-- Iterative architecture evaluation across incremental design sessions — use LAAAM (1 day).
-- Evaluating reference architectures or architectural frameworks — use ATRAF.
+- Architecture decision whose default method (weighted matrix) is suspect (cross-attribute conflicts, deep uncertainty, high reversibility cost).
+- Multi-quality-attribute trade-off (perf vs cost vs security) needing ATAM-style analysis.
+- Strategic decision needing Wardley map or Real Options framing.
 
 ## Skip If (ANY kills it)
 
-- Type-2 reversible decisions (library choice, CSS framework) — analysis paralysis costs more than the wrong choice.
-- When there is no real choice — only one option meets a hard constraint. Skip the method; document the constraint.
-- When stakeholders have not been identified yet — agents will invent generic personas and the output looks plausible but binds nobody.
-- Pure cost questions answered by a spreadsheet (TCO over 3 years with known unit prices).
+- Single-option / hard-constraint decision — no method needed.
+- Routine reversible choice — weighted matrix is enough; no method routing required.
+- Decision dominated by a mandate that overrides any method outcome.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Decision question + context | doc | team |
+| Option shortlist (2-5) | list | team |
+| Uncertainty level (low / med / high) + reversibility | field | architect |
+| Stakeholder breadth (single team / cross-team / cross-org) | field | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/trade-off-decision-matrix]] | Weighted matrix is the default method. |
+| [[solo/dev/software-architect/quality-attributes]] | ATAM consumes the QA scenario set. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-context` | haiku | Lookup uncertainty + reversibility + stakeholder breadth → method bucket. |
+| `pick-method` | sonnet | Bounded judgement: matrix vs ATAM vs CoD vs Wardley vs Real Options. |
+| `draft-adr` | sonnet | Compose ADR with chosen method + rationale + review trigger. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/method-selection-adr.md` | ADR skeleton for trade-off method selection. |
+| `templates/method-fit-matrix.md` | Lookup: context → method. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trade-off-decision-methods.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/trade-off-decision-matrix]]
+- [[solo/dev/software-architect/trade-off-quality-attributes]]
+- [[solo/dev/software-architect/quality-attributes]]
+- [[solo/dev/software-architect/decision-tree-process]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (question, shortlist, uncertainty, breadth)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

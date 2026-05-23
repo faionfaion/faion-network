@@ -1,22 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="serverless-cost-optimization Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Serverless Cost Optimization Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator in scripts/validate-serverless-cost-optimization.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/serverless-cost-optimization.json",
+  "type": "object",
+  "title": "Cost optimisation report",
+  "required": [
+    "report_id",
+    "functions",
+    "before_monthly_usd",
+    "after_monthly_usd",
+    "saving_pct",
+    "actions",
+    "break_even_rps",
+    "review_trigger",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "pattern": "^cost-[a-z0-9-]+$"
+    },
+    "functions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "configured_memory_mb",
+          "p95_memory_mb",
+          "p95_duration_ms",
+          "rps"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "configured_memory_mb": {
+            "type": "integer",
+            "minimum": 128
+          },
+          "p95_memory_mb": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "p95_duration_ms": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rps": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "before_monthly_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "after_monthly_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "saving_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "change",
+          "expected_saving_usd"
+        ],
+        "properties": {
+          "change": {
+            "type": "string"
+          },
+          "expected_saving_usd": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "break_even_rps": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "review_trigger": {
+      "type": "string",
+      "minLength": 10
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "cost-checkout-2026-05",
+  "functions": [
+    {
+      "name": "checkout-fn",
+      "configured_memory_mb": 1024,
+      "p95_memory_mb": 380,
+      "p95_duration_ms": 120,
+      "rps": 80
+    }
+  ],
+  "before_monthly_usd": 2000,
+  "after_monthly_usd": 850,
+  "saving_pct": 57.5,
+  "actions": [
+    {
+      "change": "Tune memory 1024 \u2192 512MB",
+      "expected_saving_usd": 720
+    },
+    {
+      "change": "Replace static PC=10 with auto-scaling PC min=2",
+      "expected_saving_usd": 400
+    },
+    {
+      "change": "BatchGetItem 25 entries per call",
+      "expected_saving_usd": 250
+    }
+  ],
+  "break_even_rps": 350,
+  "review_trigger": "checkout-fn RPS > 350 sustained for 14 days OR Lambda cost > $1500/mo again.",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "cost 1",
+  "functions": [],
+  "before_monthly_usd": -100,
+  "after_monthly_usd": 0,
+  "saving_pct": 150,
+  "actions": [],
+  "review_trigger": "",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: report_id pattern violation; empty functions / actions; negative cost; saving_pct out of [0,100]; break_even_rps &lt; 1; review_trigger empty; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-serverless-cost-optimization.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

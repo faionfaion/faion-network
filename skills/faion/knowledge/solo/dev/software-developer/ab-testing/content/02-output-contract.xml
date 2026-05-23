@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ab-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="A/B Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the experiment-run artefact emitted at experiment close. Validator enforces SRM + Wilson CI + power.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ab-testing.json",
+  "type": "object",
+  "required": ["experiment_id", "hypothesis", "primary_metric", "design", "variants", "result", "decision"],
+  "properties": {
+    "experiment_id": {"type": "string", "pattern": "^EXP-[0-9]{3,6}$"},
+    "hypothesis": {"type": "string", "minLength": 16},
+    "primary_metric": {"type": "string", "minLength": 3},
+    "design": {
+      "type": "object",
+      "required": ["mde", "alpha", "power", "expected_split"],
+      "properties": {
+        "mde": {"type": "number", "exclusiveMinimum": 0},
+        "alpha": {"type": "number", "minimum": 0.001, "maximum": 0.1},
+        "power": {"type": "number", "minimum": 0.7, "maximum": 0.99},
+        "expected_split": {"type": "object", "additionalProperties": {"type": "number"}}
+      }
+    },
+    "variants": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["exposures", "conversions"],
+        "properties": {
+          "exposures": {"type": "integer", "minimum": 0},
+          "conversions": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": ["lift", "wilson_ci_low", "wilson_ci_high", "z", "p_value", "srm_chi_square_p"],
+      "properties": {
+        "lift": {"type": "number"},
+        "wilson_ci_low": {"type": "number"},
+        "wilson_ci_high": {"type": "number"},
+        "z": {"type": "number"},
+        "p_value": {"type": "number", "minimum": 0, "maximum": 1},
+        "srm_chi_square_p": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "decision": {"type": "string", "enum": ["ship", "kill", "extend", "invalid-srm", "invalid-underpowered"]}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "EXP-0142",
+  "hypothesis": "Replacing pricing-page hero copy lifts trial-start CR by >= 5% relative",
+  "primary_metric": "trial_started",
+  "design": {"mde": 0.05, "alpha": 0.05, "power": 0.8, "expected_split": {"control": 0.5, "variant_a": 0.5}},
+  "variants": {
+    "control": {"exposures": 12450, "conversions": 380},
+    "variant_a": {"exposures": 12490, "conversions": 442}
+  },
+  "result": {"lift": 0.165, "wilson_ci_low": 0.041, "wilson_ci_high": 0.292, "z": 2.61, "p_value": 0.009, "srm_chi_square_p": 0.78},
+  "decision": "ship"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "experiment_id": "x",
+  "hypothesis": "ship it",
+  "primary_metric": "ok",
+  "design": {"mde": 0, "alpha": 0.5, "power": 0.5, "expected_split": {}},
+  "variants": {"control": {"exposures": 50, "conversions": 4}},
+  "result": {"lift": 0.5, "wilson_ci_low": -0.3, "wilson_ci_high": 0.9, "z": 1.0, "p_value": 0.3, "srm_chi_square_p": 0.0001},
+  "decision": "ship"
+}
+]]></code>
+    <note>experiment_id pattern fails; minProperties&lt;2 on variants; SRM p&lt;0.001 must mark decision=invalid-srm; CI spans zero so significance not met; underpowered.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>variants object with &lt;2 entries.</item>
+      <item>decision=ship while wilson_ci spans zero.</item>
+      <item>decision=ship while srm_chi_square_p &lt; 0.001 (must be invalid-srm instead).</item>
+      <item>exposures &lt; conversions for any variant.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-ab-testing.py">Validator script</reference>
 </text>

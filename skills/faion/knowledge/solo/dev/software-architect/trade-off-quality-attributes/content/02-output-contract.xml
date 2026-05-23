@@ -1,22 +1,239 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trade-off-quality-attributes Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Quality-Attribute Trade-off Analysis Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator in scripts/validate-trade-off-quality-attributes.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trade-off-quality-attributes.json",
+  "type": "object",
+  "title": "QA trade-off report",
+  "required": [
+    "report_id",
+    "attributes_in_scope",
+    "conflicts",
+    "sensitivity_points",
+    "risks",
+    "non_risks",
+    "review_trigger",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "pattern": "^qa-trade-[a-z0-9-]+$"
+    },
+    "attributes_in_scope": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "enum": [
+          "performance",
+          "reliability",
+          "security",
+          "maintainability",
+          "scalability",
+          "usability",
+          "availability",
+          "cost",
+          "compliance"
+        ]
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "scenario_a_id",
+          "scenario_b_id",
+          "description",
+          "resolution_rule"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^tp-[a-z0-9-]+$"
+          },
+          "scenario_a_id": {
+            "type": "string"
+          },
+          "scenario_b_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          },
+          "resolution_rule": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    },
+    "sensitivity_points": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "element",
+          "affected_attributes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "element": {
+            "type": "string"
+          },
+          "affected_attributes": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "risk",
+          "mitigation"
+        ],
+        "properties": {
+          "risk": {
+            "type": "string"
+          },
+          "mitigation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "non_risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "pair",
+          "reason"
+        ],
+        "properties": {
+          "pair": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "review_trigger": {
+      "type": "string",
+      "minLength": 10
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "qa-trade-storefront-2026-05",
+  "attributes_in_scope": [
+    "performance",
+    "security",
+    "availability",
+    "cost"
+  ],
+  "conflicts": [
+    {
+      "id": "tp-perf-vs-cost",
+      "scenario_a_id": "qa-perf-001",
+      "scenario_b_id": "qa-cost-002",
+      "description": "Lower p95 requires larger cache; cost cap limits cache footprint.",
+      "resolution_rule": "Accept p95 increase up to 220ms when monthly cost rises > 15%."
+    },
+    {
+      "id": "tp-sec-vs-ux",
+      "scenario_a_id": "qa-sec-001",
+      "scenario_b_id": "qa-usab-001",
+      "description": "MFA-everywhere increases shopper friction; security needs strong auth on admin.",
+      "resolution_rule": "MFA required only for admin; shoppers use passwordless + device-pinning."
+    }
+  ],
+  "sensitivity_points": [
+    {
+      "id": "sp-cache",
+      "element": "redis-cache-config",
+      "affected_attributes": [
+        "performance",
+        "cost"
+      ]
+    },
+    {
+      "id": "sp-auth",
+      "element": "auth-mfa-policy",
+      "affected_attributes": [
+        "security",
+        "usability"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "risk": "MFA fatigue on shoppers if scope creeps",
+      "mitigation": "Scope locked to admin only; quarterly review."
+    }
+  ],
+  "non_risks": [
+    {
+      "pair": "maintainability_vs_performance",
+      "reason": "Modular monolith keeps both aligned."
+    }
+  ],
+  "review_trigger": "Cache RPS doubles OR security incident rate > 0.1% per month.",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_id": "qa 1",
+  "attributes_in_scope": [
+    "performance"
+  ],
+  "conflicts": [],
+  "sensitivity_points": [],
+  "risks": [],
+  "review_trigger": "",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: report_id pattern violation; &lt;2 attributes; &lt;2 conflicts; empty sensitivity_points; review_trigger empty; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-trade-off-quality-attributes.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

@@ -1,19 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="serverless-cost-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for serverless-cost-optimization. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Serverless Cost Optimization Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the serverless-cost-optimization methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>All Lambda functions MUST use ARM/Graviton (Architectures: [arm64]) by default. Functions using x86 MUST document the specific reason (e.g., x86-only native extension) in a code comment.</statement>
-      <rationale source="v1-source">ARM is 20% cheaper per GB-second than x86 with no behavioral difference for Python, Node.js, Go, and Rust. The savings compound at scale — at 10M invocations/month at 200ms/512MB, the difference is ~$6/month per function.</rationale>
+    <rule id="r1-right-size-memory-first" testable="true" depth="essential">
+      <statement>Memory MUST be tuned to the smallest setting that meets duration + cold-start SLO. Lambda pricing is per-GB-second; over-provisioned memory is the single biggest waste source.</statement>
+      <rationale source="AWS Lambda Power Tuning; Faion FinOps audits.">Lambda memory also scales CPU; over-sizing pays for unused CPU. Power Tuning often finds 30-60% saving with no latency change.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Lambda functions processing multiple items (from SQS, Kinesis, DynamoDB Streams) MUST use batching: set BatchSize to the maximum safe value for the workload and MaximumBatchingWindowInSeconds to 5 or higher unless real-time latency is required.</statement>
-      <rationale source="v1-source">Batching reduces invocation count proportionally. At BatchSize=10, invocation cost drops 10x. The $0.20/million invocation charge becomes the dominant cost factor at high throughput; batching eliminates it.</rationale>
+    <rule id="r2-remove-idle-pc" testable="true" depth="essential">
+      <statement>Provisioned concurrency MUST be removed for functions with &gt; 50% idle PC over 14 days. Auto-scaling PC MUST replace static PC where traffic is predictable but variable.</statement>
+      <rationale source="AWS Application Auto Scaling docs; PC cost postmortems.">Idle PC pays for capacity that does not absorb cold starts; auto-scaling matches PC to actual demand.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Production Lambda functions MUST have per-function cost tracking enabled via tagging (Service, Environment, Function name tags on the Lambda resource) and Cost Explorer tag filters. A monthly cost anomaly alert MUST be configured for each function exceeding $50/month.</statement>
-      <rationale source="v1-source">Without per-function cost visibility, runaway functions (stuck retry loops, fan-out storms, incorrect memory allocation) go undetected until the monthly bill. Tag-based cost attribution enables per-function chargebacks and anomaly detection.</rationale>
+    <rule id="r3-batch-downstream-calls" testable="true" depth="essential">
+      <statement>Per-invocation downstream calls (DynamoDB GetItem, S3 PUT, SQS SendMessage) MUST be batched (BatchGetItem, S3 Multipart, SendMessageBatch) when batches &gt; 1 are achievable.</statement>
+      <rationale source="DynamoDB / S3 / SQS pricing pages.">Per-request pricing on downstream services often dominates Lambda compute cost; batching can cut downstream cost 50-80%.</rationale>
+    </rule>
+    <rule id="r4-event-source-config" testable="true" depth="essential">
+      <statement>Event source mappings (SQS, Kinesis) MUST be configured with the largest practical batch size and reasonable batch window. Default batch-size=1 multiplies cost.</statement>
+      <rationale source="AWS event source mapping configuration.">Event source defaults rarely match production needs; tuning batch settings is a 10× cost lever.</rationale>
+    </rule>
+    <rule id="r5-break-even-vs-containers" testable="true" depth="essential">
+      <statement>Cost report MUST compute break-even RPS vs containers (Fargate / Cloud Run). Above this RPS, container migration MUST be evaluated.</statement>
+      <rationale source="Serverless vs containers cost case studies.">Pay-per-invocation has a crossover RPS where reserved compute wins; failing to recompute as RPS grows leaves money on the table.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (billing, metrics, downstream cost, PC data), apply r1 → r5 and publish the report.</statement>
+      <rationale source="Methodology design — gate rule.">Order encodes ROI: memory first, PC idle second, batching third, event source fourth, break-even last.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) spend &lt; $100/mo, (b) container migration already planned, (c) SLO at risk. Exit with note.</statement>
+      <rationale source="Preconditions — skip gate.">Cost ceremony in these contexts wastes engineering capacity.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -4,69 +4,97 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Framework selection guide (SAM for AWS-native simplicity, Serverless Framework for multi-cloud plugins, SST for TypeScript full-stack DX, CDK for complex type-safe infra) plus production-ready templates for REST APIs, SQS event processing, Step Functions workflows, scheduled jobs, and Lambda handlers (Python Powertools and TypeScript).
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: IaC blueprint for a serverless stack: SAM / CDK / Serverless Framework / Pulumi / Terraform choice, parameterised template with env-aware stages, deployment pipeline, drift detection.
 content_id: "78c0522112227665"
-tags: [serverless, iac, sam, cdk, lambda]
+complexity: medium
+produces: config
+est_tokens: 4300
+tags: [serverless, iac, sam, cdk, terraform]
 ---
-# Serverless IaC Frameworks and Templates
+# Serverless IaC and Templates
 
 ## Summary
 
-**One-sentence:** Framework selection guide (SAM for AWS-native simplicity, Serverless Framework for multi-cloud plugins, SST for TypeScript full-stack DX, CDK for complex type-safe infra) plus production-ready templates for REST APIs, SQS event processing, Step Functions workflows, scheduled jobs, and Lambda handlers (Python Powertools and TypeScript).
+**One-sentence:** IaC blueprint for a serverless stack: SAM / CDK / Serverless Framework / Pulumi / Terraform choice, parameterised template with env-aware stages, deployment pipeline, drift detection.
 
-**One-paragraph:** Framework selection guide (SAM for AWS-native simplicity, Serverless Framework for multi-cloud plugins, SST for TypeScript full-stack DX, CDK for complex type-safe infra) plus production-ready templates for REST APIs, SQS event processing, Step Functions workflows, scheduled jobs, and Lambda handlers (Python Powertools and TypeScript).
+**One-paragraph:** IaC blueprint for a serverless stack: SAM / CDK / Serverless Framework / Pulumi / Terraform choice, parameterised template with env-aware stages, deployment pipeline, drift detection. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- New serverless project moving from prototype to production-ready IaC.
+- Existing serverless stack with console drift or missing parameterisation.
+- Multi-environment (dev / staging / prod) deployment about to be set up.
+- Output produces `config` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Starting a new serverless project and selecting an IaC framework.
-- Scaffolding a Lambda REST API, SQS processor, Step Functions workflow, or scheduled job.
-- Generating production-ready Lambda handler code with structured logging, tracing, and idempotency.
-- Setting up IAM least-privilege policies for DynamoDB, S3, EventBridge, or Secrets Manager access.
+- New serverless project moving from prototype to production-ready IaC.
+- Existing serverless stack with console drift or missing parameterisation.
+- Multi-environment (dev / staging / prod) deployment about to be set up.
 
 ## Skip If (ANY kills it)
 
-- Existing projects with established IaC — switching frameworks mid-project requires full resource migration.
-- Non-AWS serverless targets (Cloudflare Workers, Vercel) — use Wrangler or Vercel CLI instead of SAM/CDK.
+- Throwaway experiment with no operational expectations.
+- Single-function service already managed by an existing IaC pattern; no change in scope.
+- Migration to containers / VMs already approved; IaC effort would be wasted.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Resource inventory (functions, queues, tables, IAM) | list | team |
+| Cloud provider account + region(s) | field | ops |
+| Environment list (dev / staging / prod) + stage naming | doc | ops |
+| Existing IaC tool standard (if any) | doc | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/serverless-foundations]] | Foundations checklist precedes IaC investment. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-tool` | sonnet | Bounded choice: SAM / CDK / Serverless Framework / Pulumi / Terraform. |
+| `scaffold-template` | sonnet | Generate parameterised template with stage / env support. |
+| `wire-pipeline` | sonnet | Author CI deployment pipeline + drift detection job. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/samconfig.toml` | SAM CLI configuration with multi-stage parameter overrides. |
+| `templates/template.yaml` | SAM template skeleton parameterised by Environment. |
+| `templates/deploy.yaml` | GitHub Actions deploy pipeline with drift detection. |
+| `templates/_smoke-test.toml` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-serverless-iac-and-templates.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/serverless-foundations]]
+- [[solo/dev/software-architect/serverless-architecture-patterns]]
+- [[solo/dev/software-architect/serverless-cost-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (inventory, account, environments, tool standard)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

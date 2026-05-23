@@ -1,22 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trade-off-stakeholder-communication Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trade-off Stakeholder Communication Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the 4-artefact stakeholder briefing bundle. Validator enforces shared risk paragraph + per-role required fields.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trade-off-stakeholder-communication.json",
+  "type": "object",
+  "required": ["decision_id", "decision_title", "reversibility", "key_risk", "artefacts"],
+  "properties": {
+    "decision_id": {"type": "string", "pattern": "^ADR-[0-9]{3,5}$"},
+    "decision_title": {"type": "string", "minLength": 8, "maxLength": 120},
+    "reversibility": {"type": "string", "enum": ["type-1", "type-2"]},
+    "key_risk": {"type": "string", "minLength": 24, "maxLength": 320},
+    "artefacts": {
+      "type": "object",
+      "required": ["exec_summary", "pm_brief", "engineer_note", "ops_delta"],
+      "properties": {
+        "exec_summary": {
+          "type": "object",
+          "required": ["body", "word_count", "embeds_key_risk"],
+          "properties": {
+            "body": {"type": "string"},
+            "word_count": {"type": "integer", "maximum": 120},
+            "embeds_key_risk": {"type": "boolean", "const": true}
+          }
+        },
+        "pm_brief": {
+          "type": "object",
+          "required": ["body", "roadmap_impact", "dependency_changes", "embeds_key_risk"],
+          "properties": {
+            "body": {"type": "string"},
+            "roadmap_impact": {"type": "string"},
+            "dependency_changes": {"type": "array", "items": {"type": "string"}},
+            "embeds_key_risk": {"type": "boolean", "const": true}
+          }
+        },
+        "engineer_note": {
+          "type": "object",
+          "required": ["body", "sacrificed", "embeds_key_risk"],
+          "properties": {
+            "body": {"type": "string"},
+            "sacrificed": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "embeds_key_risk": {"type": "boolean", "const": true}
+          }
+        },
+        "ops_delta": {
+          "type": "object",
+          "required": ["body", "runbook_changes", "alert_changes", "embeds_key_risk"],
+          "properties": {
+            "body": {"type": "string"},
+            "runbook_changes": {"type": "array", "items": {"type": "string"}},
+            "alert_changes": {"type": "array", "items": {"type": "string"}},
+            "embeds_key_risk": {"type": "boolean", "const": true}
+          }
+        }
+      }
+    },
+    "convergence_check_passed": {"type": "boolean"}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "ADR-0023",
+  "decision_title": "Adopt Postgres-only persistence; defer Redis cache to Phase 2",
+  "reversibility": "type-1",
+  "key_risk": "Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+  "artefacts": {
+    "exec_summary": {
+      "body": "We are standardising on Postgres for the next 18 months and deferring the Redis cache. Trade: smaller ops surface and faster delivery now; key risk: read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth. Re-evaluate Q3.",
+      "word_count": 56,
+      "embeds_key_risk": true
+    },
+    "pm_brief": {
+      "body": "Phase 2 cache rollout becomes a P0 dependency for the 10x scaling milestone. Key risk: read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+      "roadmap_impact": "Phase 2 (Q3) adds a 4-week cache rollout task; downstream growth milestone shifts unless cache work is parallelised.",
+      "dependency_changes": ["Phase 2 milestone requires cache layer", "Search team unblocks Postgres FTS"],
+      "embeds_key_risk": true
+    },
+    "engineer_note": {
+      "body": "Chose Postgres-only for Phase 1; rejected Redis-now option. Key risk: read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+      "sacrificed": ["Sub-millisecond read latency at p99", "Independent cache scaling", "Cache invalidation muscle memory the team would build now"],
+      "embeds_key_risk": true
+    },
+    "ops_delta": {
+      "body": "Oncall surface stays single (Postgres). Key risk: read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+      "runbook_changes": ["Add Postgres connection-pool saturation runbook entry"],
+      "alert_changes": ["Add p95 latency alert at 250ms on read endpoints"],
+      "embeds_key_risk": true
+    }
+  },
+  "convergence_check_passed": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "ADR-99",
+  "decision_title": "Cache",
+  "reversibility": "type-1",
+  "key_risk": "There may be some risk.",
+  "artefacts": {
+    "exec_summary": {"body": "We are doing Postgres.", "word_count": 5, "embeds_key_risk": false},
+    "pm_brief": {"body": "n/a", "roadmap_impact": "", "dependency_changes": [], "embeds_key_risk": false},
+    "engineer_note": {"body": "Postgres only.", "sacrificed": [], "embeds_key_risk": false},
+    "ops_delta": {"body": "no change", "runbook_changes": [], "alert_changes": [], "embeds_key_risk": false}
+  }
+}
+]]></code>
+    <note>decision_id pattern fails; key_risk too vague; exec_summary omits the trade; engineer_note.sacrificed empty (violates no-hidden-sacrifice); no embeds_key_risk true anywhere.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>key_risk paragraph missing from any of the four artefacts.</item>
+      <item>exec_summary.word_count &gt; 120.</item>
+      <item>engineer_note.sacrificed is empty.</item>
+      <item>Identical body text across two or more artefacts (role-fit violation).</item>
+      <item>convergence_check_passed false for a type-1 decision.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-trade-off-stakeholder-communication.py">Validator script</reference>
 </text>

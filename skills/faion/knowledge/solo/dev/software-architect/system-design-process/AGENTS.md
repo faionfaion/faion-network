@@ -4,71 +4,100 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A five-phase process (Understand → Scope → Design → Validate → Document) for turning a product brief into a buildable architecture package: requirements list, NFR targets with numeric back-of-envelope estimates, C4 diagrams (L1+L2 minimum), and ADRs per non-obvious decision.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Five-phase process (Understand → Scope → Design → Validate → Document) turning a product brief into a buildable architecture package: requirements, NFR back-of-envelope, C4 L1+L2, and ADRs.
 content_id: "3fb0adefc38b829a"
+complexity: medium
+produces: spec
+est_tokens: 5000
 tags: [system-design, architecture-process, nfr, c4-model, adr]
 ---
 # System Design Process
 
 ## Summary
 
-**One-sentence:** A five-phase process (Understand → Scope → Design → Validate → Document) for turning a product brief into a buildable architecture package: requirements list, NFR targets with numeric back-of-envelope estimates, C4 diagrams (L1+L2 minimum), and ADRs per non-obvious decision.
+**One-sentence:** Five-phase process (Understand → Scope → Design → Validate → Document) turning a product brief into a buildable architecture package: requirements, NFR back-of-envelope, C4 L1+L2, and ADRs.
 
-**One-paragraph:** A five-phase process (Understand → Scope → Design → Validate → Document) for turning a product brief into a buildable architecture package: requirements list, NFR targets with numeric back-of-envelope estimates, C4 diagrams (L1+L2 minimum), and ADRs per non-obvious decision. LLMs accelerate each phase but require human sign-off at NFR finalization and ADR acceptance.
+**One-paragraph:** Five-phase process (Understand → Scope → Design → Validate → Document) turning a product brief into a buildable architecture package: requirements, NFR back-of-envelope, C4 L1+L2, and ADRs. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Greenfield service or major rewrite where the architecture is not yet committed.
+- Pre-implementation phase where requirements + NFRs need numeric translation.
+- Architecture-review preparation for an external stakeholder or buyer.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Greenfield system design where requirements, NFRs, and scale assumptions are still being captured.
-- Replacement/replatform decisions that need a spec, ADRs, and C4 diagrams before code.
-- Pre-implementation handoff: turning a product brief into a package the dev agent can execute.
-- Internal design exercises where a reviewable artifact (not a whiteboard sketch) is the deliverable.
+- Greenfield service or major rewrite where the architecture is not yet committed.
+- Pre-implementation phase where requirements + NFRs need numeric translation.
+- Architecture-review preparation for an external stakeholder or buyer.
 
 ## Skip If (ANY kills it)
 
-- Small bug fixes or localized refactors — overkill; use the relevant pattern methodology directly.
-- Prototype/spike code where the goal is to learn, not commit to an architecture.
-- Domains the team operates daily (CRUD admin tools) — skip to templates.
-- Operational incidents — use reliability-architecture and observability instead.
+- Trivial CRUD module fitting in an existing service.
+- Throwaway prototype or spike — design ceremony unjustified.
+- Existing architecture package is current and matches the brief.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product brief / one-pager | doc | PM |
+| Stakeholder list | table | PM |
+| Constraints (timeline, budget, team) | table | team |
+| Existing architecture diagrams (if any) | diagram | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/quality-attributes]] | Phase 2 NFRs land here as scenarios. |
+| [[solo/dev/software-architect/decision-tree-process]] | Each ADR follows the decision-tree-process methodology. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `phase1-understand` | sonnet | Question elicitation: scope, stakeholders, success criteria. |
+| `phase2-scope-nfrs` | opus | Numeric back-of-envelope; NFR translation. |
+| `phase3-design` | opus | C4 L1+L2 + key ADRs. |
+| `phase4-validate` | sonnet | Capacity check, anti-pattern scan, peer review. |
+| `phase5-document` | haiku | Compose the architecture package. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/architecture-package.md` | Package skeleton aggregating phases 1-5. |
+| `templates/c4-context.mmd` | C4 L1 (system context) Mermaid skeleton. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-system-design-process.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/quality-attributes]]
+- [[solo/dev/software-architect/decision-tree-process]]
+- [[solo/dev/software-architect/patterns-overview]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (brief, stakeholders, constraints, current diagrams)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

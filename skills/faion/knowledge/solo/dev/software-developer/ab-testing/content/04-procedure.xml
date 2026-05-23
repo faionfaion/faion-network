@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="A/B Testing Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure from experiment design to ship/kill decision.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="wire-deterministic-bucket">
+      <input>experiment_id + salt + user_id stream</input>
+      <action>Implement bucket(user_id) = (int.from_bytes(blake2b((user_id+experiment_id+salt).encode(), digest_size=8).digest(), "big") % 100) &lt; threshold. Verify in unit tests that the same user always lands in the same arm.</action>
+      <output>bucket function deployed to web + mobile + server</output>
+      <decision-gate>If two surfaces use different hash inputs, fail sticky-across-surfaces and rework.</decision-gate>
+    </step>
+
+    <step n="2" name="emit-exposure">
+      <input>Per-request user_id + variant assignment</input>
+      <action>Fire exposure event the first time a user hits the gate. Use idempotent event keys.</action>
+      <output>exposure events flowing to stats engine</output>
+    </step>
+
+    <step n="3" name="emit-conversion">
+      <input>Conversion signal in business logic</input>
+      <action>Fire conversion event ONLY for users with a prior exposure within the experiment window. Conversions without prior exposure are dropped.</action>
+      <output>conversion events flowing to stats engine</output>
+    </step>
+
+    <step n="4" name="analyse">
+      <input>Variant exposure + conversion counts</input>
+      <action>Compute z-test for proportions; build Wilson 95% CI on lift; compute SRM chi-square p-value against expected_split. Run `templates/analyzer.py`.</action>
+      <output>{lift, wilson_ci_low, wilson_ci_high, z, p_value, srm_chi_square_p}</output>
+      <decision-gate>srm_chi_square_p &lt; 0.001 → decision=invalid-srm; investigate bucket leak before any other interpretation.</decision-gate>
+    </step>
+
+    <step n="5" name="decide">
+      <input>Result block + sample size achieved</input>
+      <action>Sample size &lt; planned → decision=invalid-underpowered. CI spans zero → decision=kill or extend. CI strictly &gt; 0 and SRM clean → decision=ship. Record artefact + close flag.</action>
+      <output>experiment-run JSON + ship/kill action</output>
+    </step>
+
+  </section>
+</text>

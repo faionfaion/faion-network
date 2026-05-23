@@ -1,0 +1,32 @@
+# __faion_header_v1__
+# purpose: GitHub Actions deploy pipeline with drift detection.
+# consumes: see content/02-output-contract.xml
+# produces: config; depends-on: content/01-core-rules.xml#r1-pick-tool-with-care
+# faion_header_json: {"__faion_header__":{"purpose":"GitHub Actions deploy pipeline with drift detection.","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#r1-pick-tool-with-care","token_budget_impact":"~150 tokens when loaded"}}
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/setup-sam@v2
+      - run: sam validate
+      - run: sam build
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/deploy
+          aws-region: eu-west-1
+      - uses: aws-actions/setup-sam@v2
+      - run: sam deploy --no-confirm-changeset --config-env prod
+  drift-detect:
+    runs-on: ubuntu-latest
+    steps:
+      - run: aws cloudformation detect-stack-drift --stack-name my-service-prod

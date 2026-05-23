@@ -4,72 +4,100 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Quality attributes often conflict: improving one typically degrades another.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: ATAM-style trade-off analysis between competing quality attributes (perf, security, cost, maintainability, availability): scenario-pair conflicts, sensitivity points, and resolution rules.
 content_id: "89a0d4e28402a57d"
-tags: [quality-attributes, iso-25010, cap-theorem, architecture-styles, trade-off]
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [trade-off, quality-attributes, atam, sensitivity-points, architecture-review]
 ---
-# Quality Attribute Trade-offs in Architecture
+# Quality-Attribute Trade-off Analysis
 
 ## Summary
 
-**One-sentence:** Quality attributes often conflict: improving one typically degrades another.
+**One-sentence:** ATAM-style trade-off analysis between competing quality attributes (perf, security, cost, maintainability, availability): scenario-pair conflicts, sensitivity points, and resolution rules.
 
-**One-paragraph:** Quality attributes often conflict: improving one typically degrades another. This methodology covers the ISO 25010 model, common attribute conflict pairs, architecture style trade-offs (monolith vs microservices), CAP theorem data trade-offs, and communication pattern trade-offs as the factual basis for any trade-off decision. Includes a strict trigger list, a step-by-step how-to, a copy-paste ADR template, lift-and-paste prompts and a verify checklist.
+**One-paragraph:** ATAM-style trade-off analysis between competing quality attributes (perf, security, cost, maintainability, availability): scenario-pair conflicts, sensitivity points, and resolution rules. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Architecture decision affecting > 2 quality attributes with documented conflict.
+- Post-incident analysis where SLO miss is rooted in an unstated QA trade-off.
+- ATAM-style review prepared for an external audit or buyer.
+- Output produces `report` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Building quality attribute scenarios for ATAM or filling a decision matrix — to identify which pairs are in tension.
-- Evaluating architecture style options (monolith, modular monolith, microservices, serverless, event-driven).
-- Selecting a data storage strategy where consistency must be weighed against availability or partition tolerance.
-- Designing service-to-service communication (sync REST/gRPC vs async queues vs event-driven brokers).
-- Writing the "Consequences" section of an ADR — to enumerate explicit gain/loss pairs.
-- Reviewing a proposed change whose description contains any of: "scale", "low latency", "always available", "encrypt", "decouple", "extract service", "introduce queue", "switch DB", "rewrite", "cold start".
+- Architecture decision affecting > 2 quality attributes with documented conflict.
+- Post-incident analysis where SLO miss is rooted in an unstated QA trade-off.
+- ATAM-style review prepared for an external audit or buyer.
 
 ## Skip If (ANY kills it)
 
-- As a substitute for context-specific analysis — these tables are starting points, not verdicts. Your system's actual trade-offs may differ.
-- When a single quality attribute clearly dominates all others for your use case — simplify instead of balancing a full ISO 25010 analysis.
-- For pure code-style or formatting decisions with no runtime quality impact.
+- Single-attribute decision (e.g. perf only) — use that attribute's spec instead.
+- Pre-revenue prototype where QA constraints are not yet contractual.
+- Tradeoff already documented in a current report — review on cadence only.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| QA scenarios per attribute | table | team / SRE / sec |
+| SLO numbers per attribute | table | SRE |
+| Architecture diagram | C4 L2 minimum | architect |
+| Stakeholder list with attribute ownership | table | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/quality-attributes]] | QA scenarios are the input to this analysis. |
+| [[solo/dev/software-architect/trade-off-decision-methods]] | ATAM may be the chosen method here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `identify-scenario-pairs` | sonnet | Pair conflicting scenarios across attributes. |
+| `locate-sensitivity-points` | opus | Detect architectural elements where small change moves multiple attributes. |
+| `define-resolution-rules` | sonnet | Author quantified resolution rules per conflict. |
+| `publish-report` | haiku | Compose ATAM-style report. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tradeoff-report.md` | ATAM-style report skeleton. |
+| `templates/scenario-pairs.json` | Scenario-pair payload. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trade-off-quality-attributes.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/quality-attributes]]
+- [[solo/dev/software-architect/trade-off-decision-methods]]
+- [[solo/dev/software-architect/performance-architecture]]
+- [[solo/dev/software-architect/security-architecture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (scenarios, SLOs, diagram, stakeholders)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

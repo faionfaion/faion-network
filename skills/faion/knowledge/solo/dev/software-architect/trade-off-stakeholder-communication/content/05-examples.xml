@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Trade-off Stakeholder Communication Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Worked example: ADR-0023 deferring Redis cache to Phase 2 — produces a 4-artefact briefing that converges on the same read-latency risk.</summary>
+
+  <section title="Scenario">
+    <p>Solo architect is committing the team to Postgres-only persistence for Phase 1 and deferring the Redis cache to Phase 2. Decision is Type-1 (touches every service). Stakeholders: CEO (exec), PM (roadmap), 3 backend engineers, oncall lead (ops).</p>
+  </section>
+
+  <section title="Input — decision record">
+    <code lang="markdown"><![CDATA[
+ADR-0023 — Persistence layer for Phase 1
+Options evaluated:
+  A. Postgres-only                — ops surface small, p95 ceiling ~5x load
+  B. Postgres + Redis day-one     — ops surface large, p95 headroom ~30x load
+  C. SQLite + Postgres later      — ops nil, blocks multi-region
+Chosen: A
+Reversibility: type-1 (cache rollout = 4 weeks)
+Key downside: read-latency ceiling around 5x current load
+]]></code>
+  </section>
+
+  <section title="Output — bundle (abbreviated)">
+    <code lang="json"><![CDATA[
+{
+  "decision_id": "ADR-0023",
+  "decision_title": "Adopt Postgres-only persistence; defer Redis cache to Phase 2",
+  "reversibility": "type-1",
+  "key_risk": "Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+  "artefacts": {
+    "exec_summary": {"body": "We are standardising on Postgres for the next 18 months and deferring the Redis cache... key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.", "word_count": 56, "embeds_key_risk": true},
+    "pm_brief": {"body": "Phase 2 cache rollout becomes a P0 dependency... key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.", "roadmap_impact": "Phase 2 (Q3) adds a 4-week cache rollout task.", "dependency_changes": ["Phase 2 milestone requires cache layer"], "embeds_key_risk": true},
+    "engineer_note": {"body": "Chose Postgres-only; rejected Redis-now. key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.", "sacrificed": ["Sub-millisecond read latency at p99", "Independent cache scaling"], "embeds_key_risk": true},
+    "ops_delta": {"body": "Single oncall surface. key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.", "runbook_changes": ["Postgres connection-pool saturation"], "alert_changes": ["p95 latency 250ms read endpoints"], "embeds_key_risk": true}
+  },
+  "convergence_check_passed": true
+}
+]]></code>
+  </section>
+
+  <section title="Validator run">
+    <code lang="text"><![CDATA[
+$ python scripts/validate-trade-off-stakeholder-communication.py --file bundle.json
+OK
+]]></code>
+  </section>
+</text>

@@ -1,22 +1,171 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trade-off-build-vs-buy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+<text id="02-output-contract" title="Build vs Buy Decision Framework Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator in scripts/validate-trade-off-build-vs-buy.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trade-off-build-vs-buy.json",
+  "type": "object",
+  "title": "Build vs Buy ADR",
+  "required": [
+    "adr_id",
+    "status",
+    "decision",
+    "differentiation_score",
+    "tco_3y",
+    "exit_plan",
+    "pilot_pass",
+    "rejected",
+    "review_trigger",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "adr_id": {
+      "type": "string",
+      "pattern": "^adr-bb-[a-z0-9-]+$"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded",
+        "deprecated"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "build",
+        "buy",
+        "hybrid",
+        "adopt_oss"
+      ]
+    },
+    "differentiation_score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "tco_3y": {
+      "type": "object",
+      "required": [
+        "build_usd",
+        "buy_usd",
+        "hybrid_usd"
+      ],
+      "properties": {
+        "build_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "buy_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hybrid_usd": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "exit_plan": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pilot_pass": {
+      "type": "boolean"
+    },
+    "rejected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "reason"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "review_trigger": {
+      "type": "string",
+      "minLength": 10
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "adr-bb-helpdesk-2026-05",
+  "status": "accepted",
+  "decision": "buy",
+  "differentiation_score": 2,
+  "tco_3y": {
+    "build_usd": 420000,
+    "buy_usd": 180000,
+    "hybrid_usd": 240000
+  },
+  "exit_plan": "Weekly CSV export + 90-day termination clause + Freshdesk as alternative provider.",
+  "pilot_pass": true,
+  "rejected": [
+    {
+      "option": "build",
+      "reason": "Differentiation score 2; 3-year TCO 2.3x Buy."
+    },
+    {
+      "option": "adopt_oss",
+      "reason": "OSS osTicket maintenance burden > Buy cost saving."
+    }
+  ],
+  "review_trigger": "Zendesk price increase > 30% YoY OR support volume > 5x current OR feature gap blocks growth.",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "adr_id": "bb 1",
+  "status": "ok",
+  "decision": "maybe",
+  "differentiation_score": 9,
+  "tco_3y": {
+    "build_usd": -1,
+    "buy_usd": 0,
+    "hybrid_usd": 0
+  },
+  "exit_plan": "",
+  "pilot_pass": false,
+  "rejected": [],
+  "review_trigger": "",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>Forbidden traits: adr_id pattern violation; decision enum violation; differentiation_score out of [1,5]; negative TCO; empty rejected; review_trigger empty; version + date malformed.</note>
+  </example>
+  <reference path="scripts/validate-trade-off-build-vs-buy.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

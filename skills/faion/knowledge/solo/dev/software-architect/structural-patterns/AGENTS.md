@@ -4,77 +4,96 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structural patterns define how classes and objects are composed into larger structures using inheritance and object composition.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Selects a GoF structural pattern (Adapter, Bridge, Composite, Decorator, Facade, Proxy, Flyweight) from concrete symptom signals; emits ADR with cost + alternative + ban on stacking >2 decorators.
 content_id: "b80b33513b53382e"
-tags: [design-patterns, structural-patterns, adapter, decorator, facade, proxy]
+complexity: medium
+produces: decision-record
+est_tokens: 4300
+tags: [design-patterns, structural-patterns, adapter, decorator, facade]
 ---
 # Structural Design Patterns
 
 ## Summary
 
-**One-sentence:** Structural patterns define how classes and objects are composed into larger structures using inheritance and object composition.
+**One-sentence:** Selects a GoF structural pattern (Adapter, Bridge, Composite, Decorator, Facade, Proxy, Flyweight) from concrete symptom signals; emits ADR with cost + alternative + ban on stacking >2 decorators.
 
-**One-paragraph:** Structural patterns define how classes and objects are composed into larger structures using inheritance and object composition. The seven GoF structural patterns are Adapter, Bridge, Composite, Decorator, Facade, Proxy, and Flyweight. All four "wrapping" patterns (Adapter, Proxy, Decorator, Bridge) involve surrounding an object but serve distinct purposes: Adapter converts an interface, Proxy controls access, Decorator adds behavior, Bridge separates abstraction from implementation. Select by problem, not by name recognition.
+**One-paragraph:** Selects a GoF structural pattern (Adapter, Bridge, Composite, Decorator, Facade, Proxy, Flyweight) from concrete symptom signals; emits ADR with cost + alternative + ban on stacking >2 decorators. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Concrete symptom matches one of: incompatible interfaces, growing class hierarchy, tree-of-tree behaviour, behaviour stacking, broad subsystem entry-point, access control on object, memory pressure from many similar instances.
+- Code review identifies a coupling smell a structural pattern would dissolve.
+- ADR proposes a structural pattern and needs catalog-grounded justification.
+- Output produces `decision-record` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Adapter: integrating third-party library, legacy API, or protocol with an incompatible interface
-- Bridge: needing independent variation in both abstraction and implementation dimensions (designed up-front)
-- Composite: representing hierarchical/tree structures (file systems, UI component trees, org charts)
-- Decorator: adding cross-cutting behavior (logging, caching, auth) without subclassing; building middleware chains
-- Facade: simplifying a complex subsystem for callers; library entry points; API gateway behavior in-process
-- Proxy: lazy loading expensive objects; access control; caching; remote object representation; audit logging
-- Flyweight: very large numbers of similar objects where most state is shared (text rendering, game particles)
+- Concrete symptom matches one of: incompatible interfaces, growing class hierarchy, tree-of-tree behaviour, behaviour stacking, broad subsystem entry-point, access control on object, memory pressure from many similar instances.
+- Code review identifies a coupling smell a structural pattern would dissolve.
+- ADR proposes a structural pattern and needs catalog-grounded justification.
 
 ## Skip If (ANY kills it)
 
-- Adapter: when the interface mismatch is small enough to handle with a single conversion function
-- Bridge: when there is only one implementation dimension — adds unnecessary indirection
-- Composite: when the tree structure is trivial (depth 1) or never traversed uniformly
-- Decorator: when the number of combinations is small and fixed — direct subclassing is clearer
-- Facade: when the subsystem is already simple or when the facade would hide information callers need
-- Proxy: when simple delegation or a plain function call suffices — proxy adds a maintenance surface
-- Flyweight: when object count is small or when extrinsic state computation offsets the memory savings
+- Speculative application — no symptom yet, just 'we might need it'.
+- Trivial CRUD layer where the pattern would be the only complexity.
+- Behavioural / creational concern in disguise — wrong pattern family.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Code or design exhibiting the symptom | code / diagram | team |
+| Catalog reference (GoF + cloud-native) | doc / link | architect |
+| Test coverage of affected area | data | QA |
+| Change-impact estimate (files touched) | data | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/patterns-overview]] | Selection between pattern families starts here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `match-symptom-to-pattern` | haiku | Lookup signal → candidate structural patterns. |
+| `score-cost-and-fit` | sonnet | Bounded scoring (indirection cost vs symptom severity). |
+| `draft-adr` | sonnet | Compose ADR with rejected alternatives + cost + review trigger. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/structural-pattern-adr.md` | ADR skeleton for structural pattern selection. |
+| `templates/decorator-cap-rule.md` | Lint / convention enforcing decorator stack depth ≤ 2. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-structural-patterns.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/patterns-overview]]
+- [[solo/dev/software-architect/system-design-process]]
+- [[solo/dev/software-architect/quality-attributes]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is there a concrete structural symptom (interface mismatch, class explosion, behaviour stacking, broad entry point, access control, memory pressure)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

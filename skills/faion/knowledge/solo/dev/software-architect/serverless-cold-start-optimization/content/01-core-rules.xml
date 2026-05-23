@@ -1,23 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="serverless-cold-start-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for serverless-cold-start-optimization. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Serverless Cold Start Optimization Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules grounding the serverless-cold-start-optimization methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>AWS SDK clients, database connections, HTTP clients, and model files MUST be initialized at module scope (outside the handler function). Imports that take &gt;10ms MUST also be at module scope.</statement>
-      <rationale source="v1-source">Module scope runs once per container. Handler scope runs on every invocation, adding initialization latency to every request instead of only the first cold start.</rationale>
+    <rule id="r1-measure-before-mitigating" testable="true" depth="essential">
+      <statement>Mitigation work MUST start from a measured baseline (cold + warm p50 / p95 / p99 at expected RPS). Cold-start fixes without baseline are speculative and often regress warm latency or cost.</statement>
+      <rationale source="AWS Lambda performance whitepapers; cold-start postmortems.">Cold-start optimisation has knobs that hurt cost (PC) or warm latency (memory bloat); evidence-based picks avoid regressions.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Lambda deployment packages MUST exclude test dependencies, documentation, and unused code. Python packages MUST use --no-deps for transitive imports that are already in the runtime. Node packages MUST use tree-shaking (esbuild or webpack) with target=esm.</statement>
-      <rationale source="v1-source">Package size directly correlates with cold start time. The Lambda loader must unzip and initialize the deployment package on cold start. Every MB saved reduces cold start proportionally.</rationale>
+    <rule id="r2-pick-cheapest-mitigation-first" testable="true" depth="essential">
+      <statement>Mitigation MUST be tried cheapest first: bundle trim + import lazy-loading → memory bump → runtime swap (Node/Python &gt; Java) → SnapStart → provisioned concurrency → container migration. Skipping cheap options to apply PC by default wastes budget.</statement>
+      <rationale source="AWS pricing + Lambda perf studies.">Cheaper mitigations frequently close the gap; PC costs $0.0000041/GB-s × seconds; defaulting to PC mints unnecessary cost.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Java and .NET Lambda functions serving synchronous user-facing requests MUST enable SnapStart (Java 11+ or .NET 8+ with Native AOT). SnapStart MUST be combined with a post-deploy warm-up invocation to pre-populate the snapshot cache.</statement>
-      <rationale source="v1-source">JVM and CLR startup dominates Java and .NET cold starts (1-5s). SnapStart restores from a pre-initialized snapshot in &lt;200ms without provisioned concurrency cost.</rationale>
+    <rule id="r3-runtime-cold-start-ranking" testable="true" depth="essential">
+      <statement>When runtime is replaceable, prefer runtimes with shorter cold starts: Node.js / Python / Go &lt; Rust &lt; .NET &lt; Java (without SnapStart). Java + SnapStart approaches Node/Python class.</statement>
+      <rationale source="AWS Lambda benchmark studies 2023-2025.">Runtime is the single biggest determinant of cold-start latency; switching can shave seconds.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>All new Lambda functions MUST default to ARM/Graviton (Architectures: [arm64]) unless the runtime or dependency explicitly requires x86. Existing functions MUST be migrated to ARM on the next deployment that changes the function code.</statement>
-      <rationale source="v1-source">ARM/Graviton delivers 10-20% faster cold starts and 20% lower GB-second cost with no code changes for Python, Node.js, and Go. The only exception is native extensions compiled for x86.</rationale>
+    <rule id="r4-provisioned-concurrency-is-a-trade" testable="true" depth="essential">
+      <statement>Provisioned concurrency MUST be sized to expected RPS / concurrency, not as a 'set it and forget it' constant. Auto-scaling on PC MUST be configured to avoid cold spikes during traffic ramps.</statement>
+      <rationale source="AWS Application Auto Scaling for Lambda PC.">Under-provisioned PC still cold-starts during spikes; over-provisioned PC pays for idle capacity.</rationale>
+    </rule>
+    <rule id="r5-measure-after-fix" testable="true" depth="essential">
+      <statement>Post-fix numbers MUST be measured at the same RPS as the baseline; the spec MUST document the % cold-start reduction AND any warm-latency / cost change.</statement>
+      <rationale source="Internal cold-start fix audits.">Without post-measurement, the mitigation cannot be defended or rolled back; regressions are common (warm latency up after memory bump).</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (latency budget, baseline, runtime config, bundle data), apply r1 → r5 and emit the spec.</statement>
+      <rationale source="Methodology design — gate rule.">Order encodes risk: measure first, cheap fix second, runtime third, PC sizing fourth, validate last.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) async non-user-facing function, (b) steady high-RPS, (c) SLO already met. Exit with note.</statement>
+      <rationale source="Preconditions — skip gate.">Cold-start ceremony in these contexts wastes engineering capacity.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

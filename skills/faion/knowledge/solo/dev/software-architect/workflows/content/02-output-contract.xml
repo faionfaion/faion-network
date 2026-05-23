@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="workflows Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Architecture Workflows Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the workflow-instance artefact. Validator enforces named workflow + role per step + review gates.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/architecture-workflows.json",
+  "type": "object",
+  "required": ["instance_id", "workflow_type", "trigger", "abort_condition", "steps"],
+  "properties": {
+    "instance_id": {"type": "string", "pattern": "^WF-[0-9]{3,5}$"},
+    "workflow_type": {
+      "type": "string",
+      "enum": ["system-design", "architecture-review", "adr", "tech-eval", "atam-cbam", "strangler-migration", "design-doc-review"]
+    },
+    "trigger": {"type": "string", "minLength": 8},
+    "abort_condition": {"type": "string", "minLength": 8},
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["n", "name", "role", "artefact_path", "artefact_format", "review_gate"],
+        "properties": {
+          "n": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 3},
+          "role": {
+            "type": "string",
+            "enum": ["clarifier", "designer", "critic", "documenter", "stakeholder"]
+          },
+          "artefact_path": {"type": "string", "minLength": 4},
+          "artefact_format": {"type": "string", "enum": ["md", "xml", "json", "yaml", "drawio", "pdf"]},
+          "review_gate": {"type": "boolean"},
+          "reviewer": {"type": "string"},
+          "decision_type": {"type": "string", "enum": ["type-1", "type-2", "none"]}
+        }
+      }
+    },
+    "closed_at": {"type": ["string", "null"]}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "instance_id": "WF-0042",
+  "workflow_type": "atam-cbam",
+  "trigger": "Monolith vs microservices for Phase 3 scale-up",
+  "abort_condition": "Stakeholder map cannot be assembled within 2 working days",
+  "steps": [
+    {"n": 1, "name": "scope-utility-tree", "role": "clarifier", "artefact_path": "atam/utility-tree.md", "artefact_format": "md", "review_gate": false, "decision_type": "none"},
+    {"n": 2, "name": "elicit-scenarios", "role": "stakeholder", "artefact_path": "atam/scenarios.md", "artefact_format": "md", "review_gate": false, "decision_type": "none"},
+    {"n": 3, "name": "score-options", "role": "designer", "artefact_path": "atam/scorecard.json", "artefact_format": "json", "review_gate": true, "reviewer": "lead-architect", "decision_type": "type-1"},
+    {"n": 4, "name": "write-adr", "role": "documenter", "artefact_path": "adr/ADR-0031-monolith-vs-microservices.md", "artefact_format": "md", "review_gate": true, "reviewer": "ceo", "decision_type": "type-1"}
+  ],
+  "closed_at": null
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "instance_id": "WF-1",
+  "workflow_type": "freestyle",
+  "trigger": "x",
+  "abort_condition": "x",
+  "steps": [{"n": 1, "name": "think", "role": "team", "artefact_path": "", "artefact_format": "md", "review_gate": false, "decision_type": "type-1"}]
+}
+]]></code>
+    <note>instance_id pattern fails; workflow_type not in enum; role "team" invalid; artefact_path empty; type-1 decision without review_gate violates review-gate-on-decision rule.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>workflow_type outside the 7-enum.</item>
+      <item>any step.role outside {clarifier, designer, critic, documenter, stakeholder}.</item>
+      <item>step.artefact_path empty.</item>
+      <item>decision_type=type-1 without review_gate=true + named reviewer.</item>
+      <item>abort_condition missing or shorter than 8 chars.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-workflows.py">Validator script</reference>
 </text>

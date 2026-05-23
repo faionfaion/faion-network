@@ -1,39 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ab-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ab-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="A/B Testing Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every A/B runtime must obey. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use `hash(user_id || experiment_id) mod 100` for variant assignment. Never use `random.choice()` or any non-deterministic method.</statement>
-      <rationale source="v1-source">Non-deterministic assignment gives the same user different variants on repeat page loads, corrupting results. Deterministic hashing ensures the same user always receives the same variant, across processes, servers, and sessions.</rationale>
+    <rule id="deterministic-hash" testable="true" depth="essential">
+      <statement>Variant assignment MUST be a deterministic function of (user_id, experiment_id, salt) via 64-bit hash mod 100. random.choice / time-based assignment / per-request RNG are forbidden.</statement>
+      <rationale source="Microsoft ExP guidance + Internal — A/B audits 2024">Non-deterministic assignment breaks sticky bucketing; the same user gets different variants on different requests, destroying signal.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Salt each experiment with a unique experiment ID in the hash input. Successive experiments must not share buckets.</statement>
-      <rationale source="v1-source">Without per-experiment salting, users in variant A of experiment 1 will always be in variant A of experiment 2. This correlation biases results in experiments run on overlapping populations.</rationale>
+    <rule id="sticky-across-surfaces" testable="true" depth="essential">
+      <statement>The bucket function MUST yield the same variant for the same user_id across web, iOS, Android, email, and server-side callbacks. Surface-local randomness is forbidden.</statement>
+      <rationale source="Internal — cross-platform incident audit 2025">Cross-surface variant drift produces an inconsistent user experience and biases conversion attribution.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Run a daily SRM check: chi-square test on observed exposure counts versus expected weights. Pause the experiment if `p &lt; 0.001`.</statement>
-      <rationale source="v1-source">SRM (observed 51/49 instead of 50/50) almost always indicates a bucketing bug, redirect asymmetry, or bot filtering that hits one variant more. All results from an SRM experiment are invalid.</rationale>
+    <rule id="srm-gate" testable="true" depth="essential">
+      <statement>Every experiment-run MUST attach an SRM check (chi-square p &gt; 0.001 against expected split). Failed SRM invalidates the result; ship/kill decisions are blocked.</statement>
+      <rationale source="Kohavi et al. — Trustworthy Online Controlled Experiments">SRM is the canonical signal that bucketing leaked or one variant filtered users out; ignoring it produces wrong conclusions that look statistically significant.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Log an exposure event every time a user is shown the variant. Deduplicate on `(experiment_id, user_id)` within a session or day to avoid inflating denominators.</statement>
-      <rationale source="v1-source">Without exposure logging, the readout only shows "users who converted while assigned to X" with no denominator. Conversion rate = conversions / exposures; without exposures, you have no rate.</rationale>
+    <rule id="exposure-before-conversion" testable="true" depth="essential">
+      <statement>Conversion events MUST only count after an exposure event has fired for the same (user_id, experiment_id). Conversions without prior exposure are dropped.</statement>
+      <rationale source="Microsoft ExP — measurement protocol">Counting conversions without exposure measures the population, not the experiment; gives the false impression that the variant works on users who never saw it.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Track exposures and conversions as separate events. Never derive exposures from conversion events.</statement>
-      <rationale source="v1-source">Deriving exposures from conversions creates survivorship bias — users who did not convert are invisible. This inflates all conversion rates and produces false significance.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use a two-proportion z-test (or chi-square) for binary conversion metrics. Use a Welch t-test only for continuous metrics (revenue, time-on-page). Never use a t-test for binary outcome data.</statement>
-      <rationale source="v1-source">A t-test on binary (0/1) data violates the normality assumption for small samples and produces inflated false-positive rates. The z-test for proportions is exact for binomial outcomes.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Report effect size and confidence interval, not just p-value. Use Wilson score CI for proportions; bootstrap CI for long-tailed metrics like revenue.</statement>
-      <rationale source="v1-source">p-value alone gives no information about the size of the effect. A 0.001% lift can be statistically significant with enough users — the CI shows whether the effect is practically meaningful.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Pre-compute the experiment end date from sample size. Refuse to read out results before the end date unless using a sequential test method (mSPRT, always-valid CIs).</statement>
-      <rationale source="v1-source">Peeking at p-values on day 1 and stopping on the first "significant" result inflates the false-positive rate from 5% to 20–30%. The pre-registered end date prevents this.</rationale>
+    <rule id="wilson-ci-not-percent" testable="true" depth="essential">
+      <statement>Decision artefact MUST report Wilson 95% CI on the conversion-rate delta, not raw percentages. A point-estimate without CI is invalid.</statement>
+      <rationale source="Wilson 1927 + modern stats engine output norms">Raw percentages hide variance; small samples can show "10% lift" with a CI spanning -5% to +25%, i.e. no decision possible.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

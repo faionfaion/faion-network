@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Architecture Workflows Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes by trigger category and review depth to a rule in 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-trigger-class">trigger maps to one of the 7 canonical workflows?</root-question>
+
+    <branch when="trigger_matches == false">
+      <conclusion ref="named-workflow" verdict="abort; use SDD instead of inventing a custom workflow"/>
+    </branch>
+
+    <branch when="trigger_matches == true">
+      <question id="q-decision-type">workflow produces a type-1 decision?</question>
+      <branch when="decision_type == 'type-1'">
+        <question id="q-review-gate">every type-1 step has review_gate=true + named reviewer?</question>
+        <branch when="review_gate_present == false">
+          <conclusion ref="review-gate-on-decision" verdict="add review_gate + reviewer; block transition until set"/>
+        </branch>
+        <branch when="review_gate_present == true">
+          <question id="q-abort">abort_condition declared?</question>
+          <branch when="abort_declared == false">
+            <conclusion ref="abort-condition" verdict="block instantiation until abort_condition string present"/>
+          </branch>
+          <branch when="abort_declared == true">
+            <conclusion ref="materialised-artefact" verdict="run workflow; enforce artefact-on-disk gate per step"/>
+          </branch>
+        </branch>
+      </branch>
+      <branch when="decision_type == 'type-2' or 'none'">
+        <conclusion ref="role-per-step" verdict="run workflow with role-per-step check; review gates optional"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="wf-0042-atam">
+    trigger_matches=true (atam-cbam) → decision_type=type-1 → review_gate_present=true → abort_declared=true → conclusion materialised-artefact → run workflow with disk gate.
+  </example>
+</text>

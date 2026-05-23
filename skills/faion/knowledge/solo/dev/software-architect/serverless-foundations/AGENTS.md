@@ -4,80 +4,92 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Serverless computing abstracts infrastructure management, allowing developers to focus on code.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Foundational checklist for adopting serverless: execution model, statelessness, event sources, observability, vendor lock-in awareness, and IaC discipline. Output: yes/no checklist with rationale.
 content_id: "781d4ef155972ec9"
+complexity: light
+produces: checklist
+est_tokens: 3400
 tags: [serverless, faas, cloud, aws-lambda, architecture]
 ---
-# Serverless Architecture — Foundations
+# Serverless Architecture Foundations
 
 ## Summary
 
-**One-sentence:** Serverless computing abstracts infrastructure management, allowing developers to focus on code.
+**One-sentence:** Foundational checklist for adopting serverless: execution model, statelessness, event sources, observability, vendor lock-in awareness, and IaC discipline. Output: yes/no checklist with rationale.
 
-**One-paragraph:** Serverless computing abstracts infrastructure management, allowing developers to focus on code. Functions scale from zero to thousands of instances automatically, are billed per execution (millisecond granularity), and are stateless by design — all state lives in external storage.
+**One-paragraph:** Foundational checklist for adopting serverless: execution model, statelessness, event sources, observability, vendor lock-in awareness, and IaC discipline. Output: yes/no checklist with rationale. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Team is evaluating serverless for the first time on a real workload.
+- Reviewing an existing serverless service for hygiene.
+- Setting org-wide serverless guardrails before a new platform.
+- Output produces `checklist` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- REST/GraphQL APIs with auto-scaling, pay-per-request, and easy deployment needs.
-- Event processing with native integration with queues, streams, and storage.
-- Webhooks handling spiky, unpredictable traffic.
-- Scheduled jobs (cron) with no idle costs between executions.
-- Image/video processing requiring horizontal scale for parallel processing.
-- Data transformations: ETL pipelines, real-time processing.
-- MVPs and prototypes needing fast iteration with minimal ops overhead.
-- Chatbots and AI workloads with burst traffic patterns and API integrations.
-- IoT backends handling millions of device events.
+- Team is evaluating serverless for the first time on a real workload.
+- Reviewing an existing serverless service for hygiene.
+- Setting org-wide serverless guardrails before a new platform.
 
 ## Skip If (ANY kills it)
 
-- Long-running tasks (>15 min) — Lambda timeout limit; use ECS/Fargate or Step Functions instead.
-- Consistent high load — cost-inefficient at scale; containers or EC2 are cheaper.
-- Low latency requirements (<50ms) — cold starts add latency; use containers or keep-warm strategies.
-- Complex stateful applications — requires external state management; consider Kubernetes or traditional servers.
-- GPU/specialized hardware — limited instance types; use EC2 with GPU or SageMaker.
-- WebSockets (persistent connections) — use API Gateway WebSocket or AppSync instead.
-- Heavy compute (video encoding) — memory/CPU limits and cost; use EC2 Spot or dedicated instances.
-- Compliance requiring physical isolation — multi-tenancy concerns; use dedicated infrastructure.
+- Workload already mapped to a non-serverless runtime and not under reconsideration.
+- Team has shipped 10+ serverless services already; this checklist is below their bar.
+- One-off throwaway script with no operational expectations.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload description (purpose, RPS, latency) | doc | team |
+| Cloud provider + region | field | ops |
+| Identity provider | field | ops |
+| Observability stack | field | SRE |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+none
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `run-checklist` | haiku | Walk the items and mark yes/no/na with rationale. |
+| `summarise` | sonnet | Produce summary + recommended next step (pattern selection, opt-out). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/serverless-foundations-checklist.md` | Markdown checklist mirroring the rule set. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-serverless-foundations.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/serverless-architecture-patterns]]
+- [[solo/dev/software-architect/serverless-cold-start-optimization]]
+- [[solo/dev/software-architect/serverless-cost-optimization]]
+- [[solo/dev/software-architect/serverless-iac-and-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (workload, provider, IAM, observability)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

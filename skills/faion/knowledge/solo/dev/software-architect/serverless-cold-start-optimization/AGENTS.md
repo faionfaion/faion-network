@@ -4,70 +4,98 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cold starts occur when a new Lambda function instance is created (no warm container exists).
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cold-start mitigation spec for FaaS: runtime + memory + bundle-size + provisioned concurrency / SnapStart choice, with measured before/after p99 numbers.
 content_id: "2c70ffda1c3e52f3"
-tags: [serverless, cold-start, performance, lambda, optimization]
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [serverless, cold-start, lambda, provisioned-concurrency, snapstart]
 ---
 # Serverless Cold Start Optimization
 
 ## Summary
 
-**One-sentence:** Cold starts occur when a new Lambda function instance is created (no warm container exists).
+**One-sentence:** Cold-start mitigation spec for FaaS: runtime + memory + bundle-size + provisioned concurrency / SnapStart choice, with measured before/after p99 numbers.
 
-**One-paragraph:** Cold starts occur when a new Lambda function instance is created (no warm container exists). Mitigation ranges from code-level patterns (init outside handler, smaller packages) to infrastructure choices (provisioned concurrency, SnapStart, ARM/Graviton). The correct fix depends on the runtime, traffic pattern, and latency SLO.
+**One-paragraph:** Cold-start mitigation spec for FaaS: runtime + memory + bundle-size + provisioned concurrency / SnapStart choice, with measured before/after p99 numbers. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Function on a sync request path with p99 latency budget < 1s.
+- Cold-start frequency observable in production (idle > N minutes).
+- Latency SLO miss attributed to cold starts in incident analysis.
+- Output produces `spec` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Cold start rate exceeds 10% for user-facing Lambda functions.
-- p95 latency spikes are traced to cold start events in X-Ray or Lumigo.
-- Adopting Java, .NET, or large Python/Node packages in a Lambda that must respond in <2s.
-- Evaluating whether provisioned concurrency ROI justifies the cost for a given function.
+- Function on a sync request path with p99 latency budget < 1s.
+- Cold-start frequency observable in production (idle > N minutes).
+- Latency SLO miss attributed to cold starts in incident analysis.
 
 ## Skip If (ANY kills it)
 
-- Background processing functions (Kinesis consumers, SQS workers) where latency variance is irrelevant — cold starts do not affect user experience.
-- Batch or scheduled jobs — cold start is a one-time cost amortized over the batch duration.
-- Functions already using provisioned concurrency that are meeting their SLOs — further optimization has diminishing returns.
+- Async event consumer with no user-facing latency budget.
+- Workload is steady high-RPS where cold starts are negligible.
+- Function already meets SLO with healthy headroom.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Latency budget (p50/p95/p99) | table | SRE |
+| Baseline cold/warm latency measurement | data | QA / SRE |
+| Runtime + memory config | deployment yaml | ops |
+| Bundle size + import graph | data | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/serverless-foundations]] | Foundational FaaS understanding. |
+| [[solo/dev/software-architect/serverless-architecture-patterns]] | Cold-start may flip the pattern choice. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `measure-baseline` | haiku | Aggregate CloudWatch / Stackdriver cold vs warm latency. |
+| `pick-mitigation` | sonnet | Bounded judgement: runtime swap vs PC vs SnapStart vs container. |
+| `update-deployment` | haiku | Mechanical: edit IaC config + redeploy. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/cold-start-spec.md` | Spec capturing baseline + chosen mitigation + post-fix numbers. |
+| `templates/lambda-config.yaml` | Sample Lambda config with provisioned concurrency + SnapStart settings. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-serverless-cold-start-optimization.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/serverless-foundations]]
+- [[solo/dev/software-architect/serverless-architecture-patterns]]
+- [[solo/dev/software-architect/serverless-cost-optimization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (budget, baseline, runtime, bundle)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

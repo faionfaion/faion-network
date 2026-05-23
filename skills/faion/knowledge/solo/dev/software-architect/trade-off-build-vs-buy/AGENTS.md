@@ -4,70 +4,96 @@ tier: solo
 group: dev
 domain: architecture
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Evaluate whether to build a capability in-house, buy a vendor solution, or adopt a hybrid approach.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decides Build / Buy / Hybrid by scoring strategic differentiation, 3-year TCO, time-to-value, vendor lock-in, and integration cost. Emits ADR with quantified rationale.
 content_id: "fb1ee2a5f186523e"
+complexity: medium
+produces: decision-record
+est_tokens: 4300
 tags: [build-vs-buy, trade-off, vendor-evaluation, tco, architecture]
 ---
 # Build vs Buy Decision Framework
 
 ## Summary
 
-**One-sentence:** Evaluate whether to build a capability in-house, buy a vendor solution, or adopt a hybrid approach.
+**One-sentence:** Decides Build / Buy / Hybrid by scoring strategic differentiation, 3-year TCO, time-to-value, vendor lock-in, and integration cost. Emits ADR with quantified rationale.
 
-**One-paragraph:** Evaluate whether to build a capability in-house, buy a vendor solution, or adopt a hybrid approach. The framework covers strategic fit (core vs context), 3-year TCO comparison, vendor evaluation, risk assessment, and exit strategy documentation. Organizations with proprietary core technology see ~2x stronger revenue growth (Deloitte 2025).
+**One-paragraph:** Decides Build / Buy / Hybrid by scoring strategic differentiation, 3-year TCO, time-to-value, vendor lock-in, and integration cost. Emits ADR with quantified rationale. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium) live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Capability that could be built in-house OR purchased / open-sourced.
+- Budget owner needs a defensible recommendation with quantified rationale.
+- Vendor evaluation: pilot completed and decision must be made.
+- Output produces `decision-record` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- Evaluating any capability that requires significant investment: authentication, billing, search, notifications, analytics, storage.
-- When the team is considering a SaaS solution with multi-year subscription costs.
-- When open-source alternatives exist alongside commercial options.
-- Before starting a major new subsystem build — always evaluate buy first.
+- Capability that could be built in-house OR purchased / open-sourced.
+- Budget owner needs a defensible recommendation with quantified rationale.
+- Vendor evaluation: pilot completed and decision must be made.
 
 ## Skip If (ANY kills it)
 
-- Core competitive differentiators — the capability that makes your product unique should almost always be built, not bought.
-- When the buy option has no viable exit path — vendor lock-in without a documented exit strategy is a separate risk requiring explicit acceptance.
-- Commodity infrastructure already standardized in your stack (e.g., "should we use Redis or build a cache?") — existing standards override the analysis.
+- Capability is core IP that competitors cannot replicate → Build is non-negotiable.
+- Commodity capability with no strategic edge → Buy is non-negotiable.
+- Pre-revenue exploration where neither build nor buy is on the timeline.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Capability description + scope | doc | PM |
+| 3-year volume / usage forecast | data | PM / finance |
+| Vendor shortlist with pricing | table | procurement |
+| Internal build estimate (engineering-weeks) | data | tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[solo/dev/software-architect/trade-off-decision-matrix]] | Scoring uses the weighted matrix shape. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-strategic-fit` | sonnet | Bounded judgement: differentiation × competitive-moat. |
+| `compute-3y-tco` | sonnet | Bounded calc: build TCO vs buy TCO + integration. |
+| `draft-adr` | sonnet | Compose ADR with chosen + rejected + exit plan. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/build-vs-buy-adr.md` | ADR skeleton scoring build / buy / hybrid. |
+| `templates/tco-model.json` | TCO model inputs and computation shape. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trade-off-build-vs-buy.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/software-architect/`
+- [[solo/dev/software-architect/trade-off-decision-matrix]]
+- [[solo/dev/software-architect/decision-tree-process]]
+- [[solo/dev/software-architect/decision-tree-tech-stack]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (capability, forecast, vendor shortlist, build estimate)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
