@@ -3,74 +3,93 @@ slug: ops-pricing-strategy
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A value-based framework for setting prices: calculate cost floor, estimate customer value ceiling, research willingness to pay, choose a pricing model, and test.
-content_id: "44adcaea3dfce921"
-tags: [pricing, pricing-strategy, value-based-pricing, monetization, saas]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a value-based pricing spec: cost floor, customer-value ceiling, willingness-to-pay research, pricing model (subscription / usage / hybrid), and 60-day test plan — replaces gut-feel pricing.
+content_id: "2e5ce948ea43dbb7"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["pricing", "value-based-pricing", "monetization", "saas", "solo"]
 ---
 # Pricing Strategy
 
 ## Summary
 
-**One-sentence:** A value-based framework for setting prices: calculate cost floor, estimate customer value ceiling, research willingness to pay, choose a pricing model, and test.
+**One-sentence:** Generates a value-based pricing spec: cost floor, customer-value ceiling, willingness-to-pay research, pricing model (subscription / usage / hybrid), and 60-day test plan — replaces gut-feel pricing.
 
-**One-paragraph:** A value-based framework for setting prices: calculate cost floor, estimate customer value ceiling, research willingness to pay, choose a pricing model, and test. Price should be 10–20% of the measurable value delivered — not cost-plus or competitor-copy. Pricing determines business model, customer expectations, and growth trajectory. Cost-plus pricing systematically underprices; competitor-copying ignores value differentiation. Value-based pricing with Van Westendorp research finds the acceptable range empirically, then psychological anchoring maximizes revenue within it.
+**One-paragraph:** Pricing Strategy produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder pricing v1 or repricing existing tiers who needs a value-based spec with cost floor, value ceiling, WTP research, model choice, and 60-day test plan — before underpricing the offer for 12 months.
 
 ## Applies If (ALL must hold)
 
-- New product needs initial pricing before launch; no data exists yet
-- Existing pricing is below market and owner suspects leaving revenue on the table
-- Adding a new tier (freemium, enterprise) and need to define feature gating
-- Conversion rate is less than 1% and pricing objections are common — need diagnostic
-- Quarterly pricing review cycle; need to compare conversion and churn data against benchmarks
+- Cost-of-delivery quantified (cost floor known)
+- ≥10 customer or prospect interviews available for WTP signal
+- Founder authority to change pricing within 60 days
 
 ## Skip If (ANY kills it)
 
-- Pricing change affects existing paying customers — requires careful communication strategy beyond agent output; risk of churn spike
-- Enterprise pricing involving custom contracts and negotiation — agents can set anchor points but cannot negotiate
-- Regulated industries (healthcare, finance, gov) where pricing is constrained by compliance rules
-- The product has less than 10 paying customers; there is not enough data for quantitative analysis — do customer interviews first
-- Pre-product-market-fit stage — pricing experiments are meaningless without retention signal
+- Commodity product with reference price already set by market
+- Pre-product (no value evidence yet) — defer until WTP signal exists
+- Marketplace-set pricing (Steam, App Store) — model is fixed
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Cost-of-delivery per customer / month | USD | billing + infra |
+| Customer + prospect interview transcripts / notes | doc | research log |
+| Competitor pricing snapshot (≥3) | table | manual scrape |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `ops-financial-planning` | Pricing drives top-line projection. |
+| `ops-subscription-models` | Pricing model interacts with subscription tier design. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-cost-floor-known, r2-value-ceiling-from-research, r3-explicit-model, r4-60-day-test-plan, r5-grandfather-existing-customers, r6-named-owner | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-ops-pricing-strategy` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-ops-pricing-strategy` | haiku | Schema check + threshold checks; deterministic. |
+| `review-ops-pricing-strategy` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-pricing-strategy.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ops-pricing-strategy.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-pricing-strategy.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/`
+- [[ops-financial-planning]]
+- [[ops-subscription-models]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

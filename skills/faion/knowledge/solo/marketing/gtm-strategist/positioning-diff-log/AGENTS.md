@@ -3,83 +3,93 @@ slug: positioning-diff-log
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "84d2e0b54e18f65f"
-summary: An ADR-style positioning diff log that captures every change to a product's positioning statement with the trigger, the old wording, the new wording, the expected effect, and the metric to check 30 / 90 days later — so positioning iterations stop disappearing into git history without rationale.
-tags: [positioning, marketing, adr-style, log, indie-hacker, decisions]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates an ADR-style positioning diff log entry: trigger, old wording, new wording, expected effect, 30/90-day check metrics — every change to the positioning statement gets captured so iterations stop disappearing into git.
+content_id: "631823a7c80706dc"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["positioning", "adr", "log", "decisions", "marketing", "solo"]
 ---
-
 # Positioning Diff Log
 
 ## Summary
 
-**One-sentence:** Treat every positioning-statement change like an ADR: record the trigger, the old wording, the new wording, the expected effect, and the metric to check at 30/90 days, in a single `positioning.diff.md` file that lives in the marketing repo.
+**One-sentence:** Generates an ADR-style positioning diff log entry: trigger, old wording, new wording, expected effect, 30/90-day check metrics — every change to the positioning statement gets captured so iterations stop disappearing into git.
 
-**One-paragraph:** Solo SaaS builders iterate positioning constantly — competitor scans, persona recalibrations, accidental insights from a customer call. The iterations vanish into git history (or worse, into landing-page-only edits) without rationale, so 6 months later nobody remembers why the current positioning is the one in production or whether the prior one performed better. The positioning-diff-log applies ADR discipline to positioning: each change is an entry with header (date, trigger, expected effect, success metric), an old/new diff with at least one verbatim source quote, and a 30/90-day check section that gets populated after the data is in. Primary output: `positioning.diff.md` with append-only entries, plus a monthly review that surfaces entries whose expected effect was not observed.
+**One-paragraph:** Positioning Diff Log produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder iterating on positioning who needs an ADR-style log capturing every wording change with trigger, expected effect, and 30/90-day check metric — before positioning evolves without rationale.
 
 ## Applies If (ALL must hold)
 
-- product is past MVP launch (positioning statement actually exists on a live landing page)
-- founder iterates positioning at least once per quarter (changes hero, value prop, audience description)
-- founder has at least one quantitative signal that responds to positioning: visit-to-trial, trial-to-paid, demo-conversion, headline-click-through
-- positioning lives in a versioned location (landing repo, MDX file, CMS export) not a hand-edited live page
+- There IS a current positioning statement (even draft)
+- Founder iterates positioning ≥1x per quarter
+- Has access to a metric surface (signups, demos, replies) to measure effect
 
 ## Skip If (ANY kills it)
 
-- pre-MVP — positioning is still in discovery, write hypotheses not a diff log
-- founder changes positioning impulsively and is not ready for the ADR discipline — start with a 1-sentence "trigger + change" log before adopting the full template
-- positioning is contractually locked (brand-licensed product) — diff log adds friction without flexibility benefit
-- single landing page with no analytics — no metric to validate the diff against
+- No positioning statement exists yet — write one before logging diffs
+- Brand-only positioning with no measurable metric — different governance
+- Static brand 5+ years stable — over-engineered for no change
 
 ## Prerequisites
 
-- a single canonical location for the current positioning (`POSITIONING.md` or equivalent) referenced by the landing page
-- analytics + funnel metrics available at 30-day granularity
-- a calendar habit: positioning review on the first Monday of each month
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current positioning statement | doc | marketing brief / landing page |
+| Metric surface (analytics + ESP + CRM) | stack | ops dashboard |
+| Trigger event for the change (sales call, churn, repositioning campaign) | doc | founder log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/gtm-strategist/growth-brand-positioning` | The positioning framework itself (segment, alternatives, differentiation) |
-| `solo/marketing/seo-manager/zero-click-search-adaptation` | Landing-section structure where positioning surfaces |
-| `solo/marketing/gtm-strategist/objection-bank` | Objection-bank entries are a common trigger for positioning iteration |
+| `freelancer-positioning-content-calendar` | Calendar pillars depend on positioning. |
+| `objection-bank` | Top objections often trigger positioning diffs. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: ADR header, trigger required, 30/90-day check, verbatim source quote, monthly review | ~800 |
-| `content/02-output-contract.xml` | essential | positioning.diff.md entry schema, monthly review schema | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: no trigger, missing 30/90 check, edit-without-entry, etc. | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-one-entry-per-change, r2-trigger-named, r3-old-and-new-wording-verbatim, r4-expected-effect-falsifiable, r5-30-90-day-check, r6-named-owner | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract_trigger_from_recent_signals` | sonnet | Cross-source synthesis: customer calls, support tickets, competitor scans |
-| `draft_positioning_change_proposal` | opus | Cross-input creative work on positioning copy |
-| `populate_30_90_day_check_results` | sonnet | Read analytics, compare to predicted effect |
+| `draft-positioning-diff-log` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-positioning-diff-log` | haiku | Schema check + threshold checks; deterministic. |
+| `review-positioning-diff-log` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/positioning-entry.md` | Single-entry skeleton with header, old/new, expected effect, success metric, check sections |
-| `templates/monthly-review.md` | Monthly review post: entries due for check, entries whose effect was not observed |
+| `templates/positioning-diff-log.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/positioning-diff-log.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/due-checks.py` | Walks positioning.diff.md, surfaces entries past their 30-day or 90-day check date and not yet checked | Monthly |
-| `scripts/positioning-vs-landing-diff.py` | Diffs canonical POSITIONING.md against the live landing page; flags drift | Weekly |
+| `scripts/validate-positioning-diff-log.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/SKILL.md`
-- peer methodologies: `pro/marketing/gtm-strategist/growth-brand-positioning`, `solo/marketing/gtm-strategist/objection-bank`
-- external: [April Dunford, Obviously Awesome (Ambient Press, 2019)] · [Michael Nygard, Documenting Architecture Decisions (2011) — the ADR pattern this borrows from] · [Patrick Campbell, ProfitWell positioning research notes]
+- [[freelancer-positioning-content-calendar]]
+- [[objection-bank]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

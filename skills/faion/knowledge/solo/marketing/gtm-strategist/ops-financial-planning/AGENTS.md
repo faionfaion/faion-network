@@ -3,74 +3,93 @@ slug: ops-financial-planning
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Forward-looking financial methodology for solopreneurs: project cash flow (3-month and 12-month), calculate runway (cash / monthly burn), allocate profits using the reinvestment framework (reserve 20% first, then split reinvestment vs.
-content_id: "bf47f5ebf94bba7d"
-tags: [financial-planning, cash-flow, runway, reinvestment, solopreneur]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a solopreneur financial plan: 3-month + 12-month cash-flow projection, runway months = cash / burn, reinvestment allocation (reserve 20% + split reinvestment vs founder pay), and monthly reconciliation cadence.
+content_id: "e964212fe21f407e"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["financial-planning", "cash-flow", "runway", "profit-first", "solo"]
 ---
 # Financial Planning
 
 ## Summary
 
-**One-sentence:** Forward-looking financial methodology for solopreneurs: project cash flow (3-month and 12-month), calculate runway (cash / monthly burn), allocate profits using the reinvestment framework (reserve 20% first, then split reinvestment vs.
+**One-sentence:** Generates a solopreneur financial plan: 3-month + 12-month cash-flow projection, runway months = cash / burn, reinvestment allocation (reserve 20% + split reinvestment vs founder pay), and monthly reconciliation cadence.
 
-**One-paragraph:** Forward-looking financial methodology for solopreneurs: project cash flow (3-month and 12-month), calculate runway (cash / monthly burn), allocate profits using the reinvestment framework (reserve 20% first, then split reinvestment vs. owner pay by profit tier), and run quarterly scenario reviews with a base case and 20%-revenue-drop stress case.
+**One-paragraph:** Financial Planning produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder with ≥1 month of revenue history who needs a 12-month forward financial plan with runway, reserve, reinvestment split, and monthly reconciliation — before runway surprise kills the business.
 
 ## Applies If (ALL must hold)
 
-- Solopreneur has initial revenue and needs sustainable growth planning
-- Product reaches breakeven; deciding how to allocate the first profits
-- Runway drops below 6 months; need scenario modeling to prioritize cuts
-- Quarterly review is due and projections need updating from real data
-- Planning a pricing change or major spend decision (ads, contractor)
+- ≥1 month of revenue history (even $0)
+- Burn rate computable (tools + contractors + tax estimate)
+- Founder commits to monthly reconciliation
 
 ## Skip If (ANY kills it)
 
-- Pre-revenue stage with no real data — use financial-basics methodology instead
-- GAAP accounting or investor-grade reporting — requires a CPA, not an agent
-- Complex equity or cap-table planning — use Carta or legal counsel
-- Multi-entity corporate structures — agent assumptions do not hold
-- Any automated payment or transfer decision — human approval required before execution
+- Pre-revenue with zero validated MRR signal — different methodology (validation first)
+- Already on professional CFO retainer — they do this
+- Enterprise multi-entity finance — out of scope
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Last 3 months of revenue + expenses | CSV | billing + bank exports |
+| Current cash balance | USD | bank |
+| Tax estimate (% of revenue) per jurisdiction | % | accountant or local rate |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `ops-pricing-strategy` | Pricing changes drive top-line projection. |
+| `ops-subscription-models` | Sub model drives churn + LTV in projection. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-3m-and-12m-projection, r2-runway-months-tracked, r3-reserve-20-pct-of-revenue, r4-reinvestment-vs-pay-split, r5-monthly-reconciliation, r6-tax-estimate-included | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-ops-financial-planning` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-ops-financial-planning` | haiku | Schema check + threshold checks; deterministic. |
+| `review-ops-financial-planning` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-financial-planning.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ops-financial-planning.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-financial-planning.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/`
+- [[ops-pricing-strategy]]
+- [[ops-subscription-models]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -1,58 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Positioning Diff Log Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of a positioning.diff.md entry and the monthly review post.</summary>
+<text id="02-output-contract" title="Positioning Diff Log Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="entry.id" type="integer_sequential"/>
-      <field name="entry.date" format="YYYY-MM-DD"/>
-      <field name="entry.trigger" type="enum" values="competitor-move|customer-call|persona-recalibration|support-pattern|metric-degradation|founder-insight"/>
-      <field name="entry.expected_effect" type="paragraph" min_words="10" max_words="40"/>
-      <field name="entry.success_metric.name" type="string"/>
-      <field name="entry.success_metric.baseline_value" type="number"/>
-      <field name="entry.success_metric.target_value" type="number"/>
-      <field name="entry.success_metric.check_date_30d" format="YYYY-MM-DD"/>
-      <field name="entry.success_metric.check_date_90d" format="YYYY-MM-DD"/>
-      <field name="entry.status" type="enum" values="draft|live|rolled-back"/>
-      <field name="entry.old_text" type="paragraph"/>
-      <field name="entry.new_text" type="paragraph"/>
-      <field name="entry.source_quotes" type="list_of_object" min="1" notes="verbatim quote + source type + source URL or ID"/>
-      <field name="entry.check_30d.actual_value" type="number" notes="populated by 30d check date"/>
-      <field name="entry.check_30d.verdict" type="enum" values="confirmed|not-observed|inconclusive|pending"/>
-      <field name="entry.check_90d.actual_value" type="number"/>
-      <field name="entry.check_90d.verdict" type="enum" values="confirmed|not-observed|inconclusive|pending"/>
-      <field name="monthly_review.month" format="YYYY-MM"/>
-      <field name="monthly_review.entries_checked" type="list_of_entry_id"/>
-      <field name="monthly_review.rollbacks_recommended" type="list_of_entry_id"/>
-      <field name="monthly_review.summary" type="paragraph"/>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/positioning-diff-log.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "trigger",
+    "old_wording",
+    "new_wording",
+    "expected_effect",
+    "check_30d",
+    "check_90d",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "trigger": {
+      "type": "string"
+    },
+    "old_wording": {
+      "type": "string"
+    },
+    "new_wording": {
+      "type": "string"
+    },
+    "expected_effect": {
+      "type": "object"
+    },
+    "check_30d": {
+      "type": "object"
+    },
+    "check_90d": {
+      "type": "object"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">entry.trigger outside the closed list</pattern>
-      <pattern id="f2">entry.source_quotes empty (no observable signal driving the change)</pattern>
-      <pattern id="f3">entry.success_metric.check_date past due AND check section still pending</pattern>
-      <pattern id="f4">live positioning on the landing page differs from positioning.diff.md head entry (drift)</pattern>
-      <pattern id="f5">new entry created while &gt; 2 previous entries are past-due on their 30-day check</pattern>
-      <pattern id="f6">monthly_review post missing for any month with at least one live entry</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Mark an entry rolled-back without deleting it; rollback is a status change with its own dated note explaining why.</transformation>
-      <transformation>Combine two entries into one when they arrived in the same week and share a trigger; preserve both source-quote sets.</transformation>
-      <transformation>Anonymise customer names in source_quotes when the source is a private demo or contract; never anonymise the substance.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/positioning-entry.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every entry has a closed-list trigger</item>
-      <item>Every entry has at least one verbatim source quote</item>
-      <item>Every entry has a numeric success metric with baseline and target</item>
-      <item>30-day and 90-day check sections present and dated</item>
-      <item>positioning.diff.md head entry matches live landing page</item>
-      <item>Monthly review post published on the first Monday of each month</item>
+      <pattern id="f1">trigger empty OR == &apos;iteration&apos; — violates r2</pattern>
+      <pattern id="f2">old_wording == new_wording — violates r3</pattern>
+      <pattern id="f3">expected_effect missing metric|direction|magnitude — violates r4</pattern>
+      <pattern id="f4">check_30d.scheduled_date missing — violates r5</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "positioning-diff-log-2026-q2",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "trigger": "<trigger>",
+  "old_wording": "<old_wording>",
+  "new_wording": "<new_wording>",
+  "expected_effect": {},
+  "check_30d": {},
+  "check_90d": {},
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "trigger": "<trigger>",
+  "old_wording": "<old_wording>",
+  "new_wording": "<new_wording>",
+  "expected_effect": {},
+  "check_30d": {},
+  "check_90d": {},
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — owner is plural role and required fields stripped, demonstrating the forbidden patterns.</note>
+  </example>
+
+  <reference path="scripts/validate-positioning-diff-log.py">Schema validator (stdlib only).</reference>
 </text>

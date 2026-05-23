@@ -3,74 +3,93 @@ slug: ops-customer-support
 tier: solo
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A self-serve-first support hierarchy for solopreneurs: build FAQ and knowledge base before adding any async channel, define SLA tiers by plan (Free = 24-48h, Paid = 4-24h, Enterprise = 1-4h), and use weekly ticket pattern reviews to feed product improvements.
-content_id: "6c4982bf16209a87"
-tags: [customer-support, support-ops, sla, product-feedback, customer-success]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a self-serve-first support spec: FAQ + knowledge base before async channel, SLA tiered by plan (Free 24-48h, Paid 4-24h, Enterprise 1-4h), and weekly ticket-pattern review feeding product roadmap.
+content_id: "e150066ff41b1b30"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["customer-support", "support-ops", "sla", "solo", "ops"]
 ---
-# Customer Support
+# Customer Support Ops
 
 ## Summary
 
-**One-sentence:** A self-serve-first support hierarchy for solopreneurs: build FAQ and knowledge base before adding any async channel, define SLA tiers by plan (Free = 24-48h, Paid = 4-24h, Enterprise = 1-4h), and use weekly ticket pattern reviews to feed product improvements.
+**One-sentence:** Generates a self-serve-first support spec: FAQ + knowledge base before async channel, SLA tiered by plan (Free 24-48h, Paid 4-24h, Enterprise 1-4h), and weekly ticket-pattern review feeding product roadmap.
 
-**One-paragraph:** A self-serve-first support hierarchy for solopreneurs: build FAQ and knowledge base before adding any async channel, define SLA tiers by plan (Free = 24-48h, Paid = 4-24h, Enterprise = 1-4h), and use weekly ticket pattern reviews to feed product improvements. The rule: if the same question is asked 5+ times, add it to the FAQ; if the same bug is reported repeatedly, prioritize the fix.
+**One-paragraph:** Customer Support Ops produces a spec artefact with named owner, evidence anchors, and explicit gates so the practice survives review. The artefact is the contract — the methodology exists to keep that contract honest. Output: a validated spec ready for downstream automation or human sign-off.
+
+**Ефективно для:**
+
+- Solo founder with ≥20 monthly tickets across mixed-plan customers who needs a self-serve-first support spec with tiered SLAs and weekly pattern review — before async channels eat all founder hours.
 
 ## Applies If (ALL must hold)
 
-- Setting up the first support system (self-serve docs, email SLAs, templates)
-- Drafting or updating a support policy document
-- Conducting a weekly support review: pattern extraction, FAQ gap identification
-- Mining ticket export for product insight (recurring pain points → roadmap)
-- Drafting template responses for the top recurring question types
+- ≥20 support tickets / month across all channels
+- Pricing has ≥2 tiers (free + paid, or trial + paid)
+- Founder commits to weekly ticket-pattern review
 
 ## Skip If (ANY kills it)
 
-- Real-time live chat or voice support — requires a human in the loop, not an agent
-- Legal or financial issues raised via support — escalate immediately
-- Incidents affecting all users (outages, data loss) — use incident response process
-- Sensitive topics (account termination, fraud) — human judgment required
-- Sending any response that includes a refund, credit, or plan change without human approval
+- <20 tickets / month — ad-hoc inbox is enough
+- Single-tier free product — different shape
+- Enterprise-only with named CSM per account — different methodology
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Ticket history (last 90 days) with plan + topic + time-to-close | CSV | support tool |
+| Pricing tiers + entitlements | doc | billing |
+| Existing FAQ / KB inventory | URLs | docs site |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `ops-automation-workflow` | Ticket patterns become automation candidates. |
+| `objection-bank` | Top objection patterns surface as support tickets. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-self-serve-first, r2-sla-tiered-by-plan, r3-canned-reply-coverage-60-pct, r4-weekly-pattern-review, r5-named-owner, r6-no-pii-in-canned-replies | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-ops-customer-support` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-ops-customer-support` | haiku | Schema check + threshold checks; deterministic. |
+| `review-ops-customer-support` | opus | Cross-cycle synthesis; high-stakes change to copy / pricing / lifecycle. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-customer-support.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ops-customer-support.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ops-customer-support.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
 
-- parent skill: `solo/marketing/gtm-strategist/`
+- [[ops-automation-workflow]]
+- [[objection-bank]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
