@@ -1,3 +1,9 @@
+<!-- purpose: per-tool decision-table reference of fix vs flag outcomes by rule class. -->
+<!-- consumes: tool name + finding kind + autofix capability flag. -->
+<!-- produces: decision-record (per-row decision routing). -->
+<!-- depends-on: content/01-core-rules.xml; templates/agent-policy.txt. -->
+<!-- token-budget-impact: low — ~250 tokens. -->
+
 # Autofix vs Flag — Decision Table
 
 | Tool | Finding kind | Has `fix:` block? | Action |

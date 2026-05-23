@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: When a prod exception crosses event-count + fixability thresholds in the error tracker (Sentry/Bugsink/Rollbar/Starsling), an agent ingests the structured signal, proposes a patch + regression test, and opens a draft PR bidirectionally linked to the alert.
 content_id: "65d8f37cbff1f148"

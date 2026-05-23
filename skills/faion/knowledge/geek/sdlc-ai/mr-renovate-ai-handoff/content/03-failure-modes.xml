@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mr-renovate-ai-handoff Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mr-renovate-ai-handoff as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Renovate Auto-Merge + AI Handoff Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns observed in real Renovate + agent-handoff deployments. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Routing every bump (patch, minor, major) through the AI agent "for safety".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Burns agent tokens on the deterministic 90%, slows the pipeline, and increases the surface for prompt-injection attacks via release notes.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="major-auto-merge" severity="high">
+      <symptom>Renovate auto-merged a major bump; call-sites broke; downstream deploy failed.</symptom>
+      <root-cause source="Renovate config audits">packageRule allowed automerge=true on matchUpdateTypes=[major].</root-cause>
+      <fix>Set major automerge=false + label `agent-fixable` so the coding agent rewrites call-sites first.</fix>
+    </antipattern>
+
+    <antipattern id="agent-burn-on-every-bump" severity="medium">
+      <symptom>Coding agent token spend tripled; agent assigned to every Renovate PR including patch bumps.</symptom>
+      <root-cause source="Internal cost audits">Handoff workflow triggered on all labels instead of `agent-fixable` only.</root-cause>
+      <fix>Gate the workflow on `contains(github.event.pull_request.labels.*.name, 'agent-fixable')`.</fix>
+    </antipattern>
+
+    <antipattern id="zero-prefix-treated-as-stable" severity="medium">
+      <symptom>0.x package minor bump auto-merged; semver-breaking change broke prod.</symptom>
+      <root-cause source="semver spec section 4">No packageRule treated `matchCurrentVersion: /^0/` as breaking.</root-cause>
+      <fix>Add packageRule {matchUpdateTypes: [minor], matchCurrentVersion: /^0/, labels: [agent-fixable], automerge: false}.</fix>
+    </antipattern>
+
   </section>
 </text>

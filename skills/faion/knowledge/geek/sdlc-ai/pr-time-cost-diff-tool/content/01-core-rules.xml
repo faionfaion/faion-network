@@ -1,36 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="PR Time Cost Diff Tool — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules every application of `pr-time-cost-diff-tool` must enforce. The rules pin the discipline that turns a tool from folklore into a reviewable, owned, version-controlled operating tool.</summary>
+<text id="01-core-rules" title="PR Time + Cost Diff Tool Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Six testable rules pinning when the checker fires, what it reports, and the skip path.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers (&apos;when needed&apos;) are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable.</rationale>
+  <section title="Rule set">
+
+    <rule id="surface-trigger" testable="true" depth="essential">
+      <statement>Checker MUST trigger only on PRs that touch at least one of: prompts dir, model id config, context-assembly module, token-budget config. PRs that touch only docs / tests are skipped.</statement>
+      <rationale source="CI economics">Replaying eval on every PR is too expensive; surface-trigger keeps CI minutes within budget.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed (template, schema, or artefact path). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="eval-replay-deterministic" testable="true" depth="essential">
+      <statement>Eval replay MUST use a fixed seed (temperature 0 OR fixed sampler seed) AND a frozen eval set hash. Replay variance is forbidden as a source of "diff" signal.</statement>
+      <rationale source="Replay determinism research">Non-deterministic replay produces noise reviewers ignore; determinism is what makes the diff trustworthy.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data, ticket, transcript). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">CI checker that estimates the $/req delta of a PR that touches prompts, models, or context assembly. Closes the loop between code review and cost.</rationale>
+    <rule id="report-three-deltas" testable="true" depth="essential">
+      <statement>Report MUST include three deltas vs main: median latency Δms, p95 latency Δms, $/req Δcents (or Δusd if rate &gt; 1¢). Aggregate-only reports are forbidden.</statement>
+      <rationale source="LLM cost-review studies">Median hides p95 spikes; cost-only hides latency regressions. Three deltas are the minimum.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every instance has a named owner accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour.</rationale>
+    <rule id="eval-pass-rate-side-channel" testable="true" depth="essential">
+      <statement>Report MUST also include eval pass-rate delta (Δaccuracy / ΔBLEU / Δtask-specific metric). A PR that "saves cost" but tanks accuracy MUST surface that loss.</statement>
+      <rationale source="Accuracy-cost trade-off audits">Cost cuts without accuracy tracking ship silent regressions.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest.</rationale>
+    <rule id="cost-table-versioned" testable="true" depth="essential">
+      <statement>Cost table MUST be versioned in repo (e.g., `cost-table.yaml`) and pinned per PR run. Vendor price drift between runs is recorded as a separate "table updated" PR, not blended into cost diffs.</statement>
+      <rationale source="Cost-attribution discipline">Without versioning, every vendor price tweak shows as a code-change cost delta.</rationale>
     </rule>
+
+    <rule id="block-on-budget-breach" testable="true" depth="essential">
+      <statement>If $/req delta &gt; published per-PR budget (default +20%) OR p95 latency delta &gt; +30%, checker MUST fail the required check; merge is blocked until override or change.</statement>
+      <rationale source="Production cost audits">Without a blocking budget, "cost-positive" PRs accumulate.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo has no LLM pipeline OR no eval set OR pipeline is non-deterministic without a seed, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies when replay produces noise, not signal.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

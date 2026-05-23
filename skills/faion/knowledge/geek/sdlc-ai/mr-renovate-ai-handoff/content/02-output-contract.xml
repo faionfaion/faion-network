@@ -1,22 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mr-renovate-ai-handoff Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Renovate Auto-Merge + AI Handoff Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the Renovate config artefact this methodology produces, with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/mr-renovate-ai-handoff.json",
+  "type": "object",
+  "required": ["extends", "packageRules", "vulnerabilityAlerts", "agent_handoff_workflow"],
+  "properties": {
+    "extends": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "packageRules": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["matchUpdateTypes"],
+        "properties": {
+          "matchUpdateTypes": {"type": "array", "items": {"enum": ["patch", "minor", "major", "pin", "digest"]}},
+          "automerge": {"type": "boolean"},
+          "labels": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "vulnerabilityAlerts": {
+      "type": "object",
+      "required": ["labels", "automerge"],
+      "properties": {
+        "labels": {"type": "array", "contains": {"const": "agent-fixable"}},
+        "automerge": {"const": false}
+      }
+    },
+    "agent_handoff_workflow": {"type": "string"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "extends": ["config:recommended", "schedule:weekly"],
+  "packageRules": [
+    {"matchUpdateTypes": ["patch", "minor"], "automerge": true, "labels": []},
+    {"matchUpdateTypes": ["major"], "automerge": false, "labels": ["agent-fixable"]}
+  ],
+  "vulnerabilityAlerts": {"labels": ["agent-fixable", "security"], "automerge": false},
+  "agent_handoff_workflow": ".github/workflows/dependabot-agent-handoff.yml"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "extends": [],
+  "packageRules": [
+    {"matchUpdateTypes": ["major"], "automerge": true}
+  ],
+  "vulnerabilityAlerts": {"labels": [], "automerge": true}
+}
+]]></code>
+    <note>extends empty; only one packageRule; major auto-merge forbidden; vulnerability alerts auto-merge forbidden; missing agent_handoff_workflow.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">packageRules containing {matchUpdateTypes: [major], automerge: true}</pattern>
+    <pattern id="f2">vulnerabilityAlerts.automerge == true</pattern>
+    <pattern id="f3">vulnerabilityAlerts.labels missing &apos;agent-fixable&apos;</pattern>
+  </section>
+
+  <reference path="scripts/validate-renovate-ai-handoff.py">Validator script</reference>
 </text>

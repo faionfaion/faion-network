@@ -1,5 +1,5 @@
 ---
-slug: ai-assisted-lessons-learned-synthesis
+slug: kb-ai-assisted-lessons-learned-synthesis
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: AI-assisted synthesis of multi-project retro corpora into a 2-3 page lessons-learned report with verbatim citations, themed clusters, and named-owner action items.
-content_id: "6a2db68111f779c4"
+content_id: "b8eeb768f542ab26"
 complexity: deep
 produces: report
 est_tokens: 4800

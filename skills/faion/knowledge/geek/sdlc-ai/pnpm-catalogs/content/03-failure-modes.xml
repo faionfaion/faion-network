@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="pnpm-catalogs Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for pnpm-catalogs as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="pnpm Workspaces with Dependency Catalogs Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns observed in real pnpm catalog adoptions. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Adding a new shared dep via `pnpm add react -F web@^19.1.2` without updating the catalog.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bypasses the catalog and reintroduces drift. Add deps via `pnpm add react -F web` (it picks up the catalog default) or update the catalog first if a new version is needed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running `pnpm -r test` on every CI run when only one package changed.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wastes CI minutes and floods the agent's feedback loop with unrelated output. Use `--filter '...[origin/main]'` so the slice is automatic and minimal.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="add-bypasses-catalog" severity="medium">
+      <symptom>New shared dep added with `pnpm add react -F web@^19.1.2`; hard-coded version drifts from catalog.</symptom>
+      <root-cause source="pnpm add semantics">`pnpm add &lt;pkg&gt;@&lt;version&gt;` writes a concrete range, bypassing the catalog.</root-cause>
+      <fix>Add catalog entry first; then run `pnpm add react -F web` (no version) — catalog default is picked up.</fix>
+    </antipattern>
+
+    <antipattern id="ci-runs-whole-repo" severity="medium">
+      <symptom>CI takes 30 min on every commit; only one package changed.</symptom>
+      <root-cause source="Internal CI audits">CI runs `pnpm -r test` on every push.</root-cause>
+      <fix>Switch CI to `pnpm --filter '...[origin/main]' test`; cuts time 5–20x.</fix>
+    </antipattern>
+
+    <antipattern id="publish-fails-on-catalog" severity="high">
+      <symptom>npm publish rejects `catalog:` / `workspace:*` protocols; release pipeline broken.</symptom>
+      <root-cause source="npm registry — no catalog protocol">Catalog and workspace protocols are pnpm-only.</root-cause>
+      <fix>Add a publish step (e.g., `pnpm publish --no-git-checks` with `--report-summary` flag or a `pnpm-publish-prepublish` script) that replaces catalog/workspace protocols with concrete versions.</fix>
+    </antipattern>
+
   </section>
 </text>

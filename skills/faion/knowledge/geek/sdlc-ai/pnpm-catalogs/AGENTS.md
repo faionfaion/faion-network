@@ -3,72 +3,98 @@ slug: pnpm-catalogs
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: In a TypeScript / JavaScript monorepo, use pnpm 9+ with `workspaces` and the `catalog:` protocol to share external dependency versions across packages.
-content_id: "6c28a72561ac01e3"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Use pnpm 9+ workspaces with the `catalog:` protocol to share external dependency versions across packages; internal packages link via `workspace:*`; CI runs filtered tests with `--filter ...[origin/main]`.
+content_id: "87dd50f05595a3c3"
+complexity: medium
+produces: config
+est_tokens: 3400
 tags: [pnpm, monorepo, workspaces, dependency-catalog, typescript]
 ---
 # pnpm Workspaces with Dependency Catalogs
 
 ## Summary
 
-**One-sentence:** In a TypeScript / JavaScript monorepo, use pnpm 9+ with `workspaces` and the `catalog:` protocol to share external dependency versions across packages.
+**One-sentence:** Use pnpm 9+ workspaces with the `catalog:` protocol to share external dependency versions across packages; internal packages link via `workspace:*`; CI runs filtered tests with `--filter ...[origin/main]`.
 
-**One-paragraph:** In a TypeScript / JavaScript monorepo, use pnpm 9+ with `workspaces` and the `catalog:` protocol to share external dependency versions across packages. One catalog entry in `pnpm-workspace.yaml` controls the version of `react`, `typescript`, `vitest`, etc., for every workspace package; every `package.json` references those entries with `"react": "catalog:"`. Internal packages link via `"workspace:*"`. The result: zero version drift, one bump updates the world, AI agents cannot accidentally introduce a `react@19.0` / `react@19.1` split by adding a dep to one package.
+**One-paragraph:** TypeScript / JavaScript monorepos fight "package X wants react@19.0, package Y wants react@19.1" drift indefinitely without a shared-version mechanism. pnpm 9+ catalogs solve this by construction: one entry in `pnpm-workspace.yaml` controls the version of `react`, `typescript`, `vitest`, etc., for every workspace package; every `package.json` references those entries with `"react": "catalog:"`. Internal packages link via `"workspace:*"`. This methodology produces a `pnpm-workspace.yaml` artefact (catalog + workspaces) plus the per-package.json fragment that consumes it.
+
+**Ефективно для:**
+
+- Monorepo з двома+ packages, де React/TS/Vitest версії розповзаються.
+- Microfrontend / shared-library workspace, де consistency — audit concern.
+- Repo з паралельними AI агентами в worktrees — кожен додає dep незалежно.
+- CI що хоче запускати тільки affected packages (`--filter ...[origin/main]`).
 
 ## Applies If (ALL must hold)
 
-- Any monorepo with two or more packages.
-- Any team that has fought "package X wants react@19.0, package Y wants react@19.1" merge conflicts.
-- Microfrontend / shared-library workspaces where consistency is an audit concern.
-- Repos with parallel AI agents in worktrees that may add deps independently.
+- Repo has &gt;=2 workspace packages.
+- Repo uses (or can switch to) pnpm 9 or newer.
+- Two or more packages share at least one external dep (React, TypeScript, Vitest, etc.).
+- Team is willing to enforce the catalog rule via lint or pre-commit.
 
 ## Skip If (ANY kills it)
 
-- Single-package apps where npm or Bun is enough — catalogs add ceremony without payoff.
-- Bun-native runtime projects that need `bun.lockb` parity with the runtime — use `bun install`.
-- Yarn 4 PnP shops with working constraints — the migration cost rarely beats the status quo.
-- Hybrid setups that must publish to npm with classic `dependencies` (publish step must replace `catalog:` and `workspace:*` with concrete versions; add a release script before adopting).
+- Single-package app — npm or Bun is enough; catalogs add ceremony.
+- Bun-native runtime project that needs `bun.lockb` parity with the runtime.
+- Yarn 4 PnP shop with working constraints — migration cost rarely wins.
+- Hybrid setup that must publish to npm with classic `dependencies` (publish step must replace `catalog:` and `workspace:*` first).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| pnpm-workspace.yaml | YAML | lead |
+| Per-package package.json | JSON | per-package owner |
+| pnpm 9+ installed | binary | platform |
+| CI runner | GitHub Actions / GitLab CI | ci-eng |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-precommit-floor]] | Pre-commit hook can lint hard-coded shared deps. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `catalog_design` | sonnet | Which deps are shared, which package-local — needs judgement. |
+| `package_json_rewrite` | haiku | Mechanical replacement of versions with `catalog:`. |
+| `ci_filter_setup` | haiku | Boilerplate `--filter ...[origin/main]` wiring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pnpm-workspace.yaml` | Sample pnpm-workspace.yaml with catalog + named catalogs. |
+| `templates/package-json-fragment.json` | Per-package package.json fragment referencing `catalog:` and `workspace:*`. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pnpm-catalogs.py` | Validate produced pnpm-workspace.yaml + package.json catalog refs. | pre-merge of workspace config |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[pyproject-single-source]]
+- [[lint-precommit-floor]]
+- [[lint-staged-only-not-whole-tree]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (workspace package count, pnpm version, shared dep count) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to introduce catalogs — the tree terminates either on the active rule or on `skip-this-methodology`.

@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Cross-cutting refactors (Angular X→Y, SDK X→Y, rename User.id → User.uid) MUST go through a codemod (jscodeshift / ast-grep / comby / Roslyn refactor) the agent authors first; hand-edit is reserved for the residue.
 content_id: "fb6ef0bde15b5f55"

@@ -1,3 +1,8 @@
+# purpose: reference tree-sitter symbol-boundary chunker for codebase RAG.
+# consumes: repo file tree + tree-sitter grammars per language.
+# produces: code (chunk-emitting Python module).
+# depends-on: content/02-output-contract.xml (chunker-config schema), chunk_schema.json
+# token-budget-impact: medium — ~900 tokens if loaded as reference.
 """Reference symbol-boundary chunker.
 
 One chunk per top-level function / class / method. Padded with file path,

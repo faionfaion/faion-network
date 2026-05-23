@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Every repo with code MUST install a pre-commit framework (pre-commit, lefthook, husky) running format + lint + secret-scan + type-check on staged files BEFORE the commit is created.
 content_id: "15b348a0deaf62da"

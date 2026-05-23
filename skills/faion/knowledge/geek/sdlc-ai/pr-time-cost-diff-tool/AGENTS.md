@@ -3,82 +3,99 @@ slug: pr-time-cost-diff-tool
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "7a3a46147e79753d"
-summary: PR Time Cost Diff Tool — pinned tool for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so production inference cost optimization sweep stops being folklore and starts being a reviewable operating tool.
-tags: [sdlc-ai, geek, tool, time, cost, diff]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: CI checker that estimates the latency-delta and $/req-delta a PR introduces when it touches prompts, models, context assembly, or token-budget surfaces — posted as a PR comment before review.
+content_id: "47da93b03cfde164"
+complexity: medium
+produces: report
+est_tokens: 3500
+tags: [pr-checks, cost, latency, prompts, llm-pipeline]
 ---
-# PR Time Cost Diff Tool
+# PR Time + Cost Diff Tool
 
 ## Summary
 
-**One-sentence:** PR Time Cost Diff Tool — pinned tool for the ML engineer: fixed shape + named owner + evidence anchors + outcome review, so production inference cost optimization sweep stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** CI checker that estimates the latency-delta and $/req-delta a PR introduces when it touches prompts, models, context assembly, or token-budget surfaces — posted as a PR comment before review.
 
-**One-paragraph:** In SDLC + AI tooling, the ML engineer runs production inference cost optimization sweep on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. CI checker that estimates the $/req delta of a PR that touches prompts, models, or context assembly. Closes the loop between code review and cost. `pr-time-cost-diff-tool` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the ML engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored tool committed to the team's knowledge space.
+**One-paragraph:** AI-pipeline PRs change cost and latency invisibly: a "tiny prompt tweak" doubles tokens, a context-assembly refactor adds a 200ms RAG call, a model swap halves cost but spikes p99 latency. This methodology produces a CI checker that diff-replays the pipeline on a fixed eval set, estimates the median + p95 latency delta and the $/req delta vs main, and posts a structured report comment on the PR. Reviewers see the cost impact before they approve, not at the next monthly bill.
+
+**Ефективно для:**
+
+- Repo з LLM pipeline (prompts / agents / RAG) де PR можуть тихо подвоїти вартість.
+- Команда з production inference cost sweep що хоче shift-left.
+- Repo де PR описи не згадують cost impact — checker змушує factual diff.
+- Eval-set + cost-table maintainers, які хочуть автоматизувати regression-watch.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ml-engineer/Production inference cost optimization sweep`
-- the ML engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Repo runs an LLM pipeline (prompts, agents, RAG, or batch inference) in production.
+- Eval set exists (≥20 representative requests) and can be replayed in CI.
+- Cost table (per-model + per-token rates) is maintained and accessible to CI.
+- PRs change at least one of: prompts, model id, context-assembly, token budget.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- No LLM pipeline — methodology has no surface.
+- No eval set; rebuilding one is its own project.
+- Eval-set replay cost &gt; the saving the checker enables — skip until eval cheapens.
+- Pipeline is non-deterministic without a seed — replay produces noise, not signal.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the ML engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Eval set | jsonl with `input` + `expected` | ml-engineer |
+| Cost table | yaml (model → $/1k in + $/1k out + p50 latency) | platform |
+| Pipeline replay script | python / shell entrypoint | ml-engineer |
+| CI integration | GitHub Actions workflow | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[regression-eval-before-fix-rule]] | Eval discipline this checker reuses. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 600 |
+| `content/05-examples.xml` | essential | Worked report example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `pr_surface_detect` | haiku | Grep PR diff for prompt/model/context files. |
+| `eval_replay_summarise` | sonnet | Summarise eval replay deltas with judgement. |
+| `report_render` | haiku | Mechanical markdown render of structured report. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/cost-report.md` | PR-comment report skeleton (latency delta, $/req delta, eval pass-rate delta). |
+| `templates/cost-table.yaml` | Per-model cost table format with input/output rates. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-pr-time-cost-diff-tool.py` | Validate produced cost-report artefact against schema. | Pre-PR-comment posting |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[regression-eval-before-fix-rule]]
+- [[postmortem-action-item-slo-tracking]]
+- [[mr-error-tracker-draft-pr]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (PR touches LLM surface? eval set exists? cost table present?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether the checker should fire on a given PR — the tree terminates either on the active rule or on `skip-this-methodology`.

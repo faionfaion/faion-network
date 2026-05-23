@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Two AI reviewer architectures (graph-indexed vs diff-only) co-exist. Pick by PR size, repo complexity, and impact-analysis need — record the decision and revisit per repo.
 content_id: "1d8997d27ae80f73"

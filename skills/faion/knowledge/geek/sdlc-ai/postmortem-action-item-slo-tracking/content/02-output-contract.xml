@@ -1,45 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Postmortem Action Item SLO Tracking — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>An append-only ledger with a fixed column schema, named cadence review, and explicit retention policy.</summary>
+<text id="02-output-contract" title="Postmortem Action Item SLO Tracking Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the ledger artefact (rendered as JSON for validator), with valid + invalid examples and forbidden patterns.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>entry.id (monotonic)</item>
-      <item>entry.ts (ISO)</item>
-      <item>entry.owner</item>
-      <item>entry.hypothesis_or_event</item>
-      <item>entry.evidence_link</item>
-      <item>entry.outcome (or `pending`)</item>
-      <item>entry.next (next action or `none`)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/postmortem-action-item-slo-tracking.json",
+  "type": "object",
+  "required": ["owner", "review_cadence", "retention_months", "entries"],
+  "properties": {
+    "owner": {"type": "object", "required": ["person", "role"], "properties": {"person": {"type": "string"}, "role": {"type": "string"}}},
+    "review_cadence": {"enum": ["weekly", "biweekly", "monthly"]},
+    "retention_months": {"type": "integer", "minimum": 12},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "ts", "owner", "hypothesis_or_event", "evidence_link", "outcome", "next", "slo_class", "slo_due"],
+        "properties": {
+          "id": {"type": "integer"},
+          "ts": {"type": "string", "format": "date-time"},
+          "owner": {"type": "string"},
+          "hypothesis_or_event": {"type": "string"},
+          "evidence_link": {"type": "string", "minLength": 1},
+          "outcome": {"type": "string"},
+          "next": {"type": "string"},
+          "slo_class": {"enum": ["P1", "P2", "P3"]},
+          "slo_due": {"type": "string", "format": "date"}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "owner": {"person": "ruslan", "role": "SRE lead"},
+  "review_cadence": "weekly",
+  "retention_months": 24,
+  "entries": [
+    {
+      "id": 1,
+      "ts": "2026-05-12T09:30:00Z",
+      "owner": "ruslan",
+      "hypothesis_or_event": "INC-441 prod 500s after Redis upgrade",
+      "evidence_link": "https://github.com/org/repo/issues/441",
+      "outcome": "pending",
+      "next": "Add connection pool size alert",
+      "slo_class": "P1",
+      "slo_due": "2026-05-26"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "owner": {"person": "team-sre", "role": "team alias"},
+  "review_cadence": "ad-hoc",
+  "retention_months": 6,
+  "entries": [
+    {"id": 1, "ts": "2026-05-12T09:30:00Z", "hypothesis_or_event": "TBD"}
+  ]
+}
+]]></code>
+    <note>owner is a team alias; review_cadence not in enum; retention &lt; 12; entry missing evidence_link, outcome, next, slo_class, slo_due.</note>
+  </example>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>edits in place</description>
-      <reason>Loses decision trail.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rows without evidence_link</description>
-      <reason>Opinion-capture; not learning.</reason>
-    </antipattern>
-    <antipattern>
-      <description>ledger without scheduled review</description>
-      <reason>Write-only logs decay.</reason>
-    </antipattern>
-    <antipattern>
-      <description>deletion before retention horizon</description>
-      <reason>Destroys institutional memory.</reason>
-    </antipattern>
+    <pattern id="f1">owner.person is a team alias or channel</pattern>
+    <pattern id="f2">entry.evidence_link missing or empty</pattern>
+    <pattern id="f3">retention_months &lt; 12</pattern>
+    <pattern id="f4">entries edited in place (validator checks git history)</pattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Schema fixed; all entries match.</item>
-      <item>Append-only enforced (corrections add rows).</item>
-      <item>Each entry has an evidence link.</item>
-      <item>Review cadence published and run.</item>
-      <item>Retention policy + archival path documented.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-postmortem-action-item-slo-tracking.py">Validator script</reference>
 </text>

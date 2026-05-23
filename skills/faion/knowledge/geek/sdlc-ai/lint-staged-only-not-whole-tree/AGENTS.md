@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Every linter / formatter wired into a pre-commit hook MUST receive ONLY the staged file set, not the whole repo tree — use lint-staged, lefthook glob filter, or pre-commit's built-in staged filter.
 content_id: "2ee0fd98fd721db8"

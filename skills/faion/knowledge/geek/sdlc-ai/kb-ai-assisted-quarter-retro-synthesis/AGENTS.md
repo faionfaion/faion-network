@@ -1,5 +1,5 @@
 ---
-slug: ai-assisted-quarter-retro-synthesis
+slug: kb-ai-assisted-quarter-retro-synthesis
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: AI-assisted quarterly retro synthesis ingesting chat, tickets, DORA metrics, and incidents into a themed cross-squad report with DORA deltas and prioritized action items.
-content_id: "831fc5d356ec47f6"
+content_id: "0645e74235654f38"
 complexity: deep
 produces: report
 est_tokens: 4700

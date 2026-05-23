@@ -21,7 +21,7 @@
 ## Action items (PLACEHOLDERS — assign owner + deadline before publish)
 | Title | Owner | Deadline | Verifier |
 |-------|-------|----------|----------|
-| <item> | TBD | TBD | TBD |
+| <item> | <unassigned> | <unassigned> | <unassigned> |
 
 ## Language flags
 > Agent flagged the following; humans decide.

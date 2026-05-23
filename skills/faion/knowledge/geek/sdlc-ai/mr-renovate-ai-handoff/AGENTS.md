@@ -3,72 +3,98 @@ slug: mr-renovate-ai-handoff
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Run Renovate (or Dependabot) for the deterministic 90% of dependency bumps — semver-safe patch and minor versions auto-merge once CI is green and Mend's Merge-Confidence score crosses the threshold.
-content_id: "86217d03418851e8"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Renovate auto-merges semver-safe patch/minor bumps once CI is green and Merge-Confidence is high; major bumps and security alerts are labelled `agent-fixable` and handed to an LLM coding agent.
+content_id: "a3ee03cff5b8af8d"
+complexity: medium
+produces: config
+est_tokens: 3800
 tags: [renovate, dependabot, auto-merge, dependency-management, ai-agent]
 ---
 # Renovate Auto-Merge + AI Handoff for Breaking Updates
 
 ## Summary
 
-**One-sentence:** Run Renovate (or Dependabot) for the deterministic 90% of dependency bumps — semver-safe patch and minor versions auto-merge once CI is green and Mend's Merge-Confidence score crosses the threshold.
+**One-sentence:** Renovate auto-merges semver-safe patch/minor bumps once CI is green and Merge-Confidence is high; major bumps and security alerts are labelled `agent-fixable` and handed to an LLM coding agent.
 
-**One-paragraph:** Run Renovate (or Dependabot) for the deterministic 90% of dependency bumps — semver-safe patch and minor versions auto-merge once CI is green and Mend's Merge-Confidence score crosses the threshold. Reserve LLM coding agents for the 10% where the bump introduces breaking API changes or vulnerability fixes that need code edits. GitHub shipped this exact split in April 2026: Dependabot detects the alert, you "Assign to Agent" (Copilot Coding Agent, Claude, Codex, Devin), and the agent opens a DRAFT PR with the version bump plus call-site edits plus test fixes. Multiple agents may be assigned in parallel; pick the strongest PR.
+**One-paragraph:** LLM agents are wasted on patch-version bumps that Renovate already merges deterministically; conversely, Renovate alone cannot handle major-version bumps that require call-site rewrites and test updates. Splitting the work along the semver boundary (and Merge-Confidence threshold) keeps cost, latency, and risk all within budget. This methodology produces a Renovate config artefact that pins two `packageRules` (patch/minor auto-merge + major→agent-fixable) plus a GitHub Actions workflow that picks up the label and assigns the PR to Copilot Coding Agent, Claude, Codex, or Devin.
+
+**Ефективно для:**
+
+- Repos з `package.json`, `requirements.txt`, `go.mod`, `Cargo.toml`, `composer.json` — Renovate покриває все.
+- Security-alert remediation де патч торкає call-sites.
+- Multi-language monorepo з єдиним Renovate config.
+- Repos, де бюджет агентських токенів обмежений — patch-bumps мають коштувати нуль.
 
 ## Applies If (ALL must hold)
 
-- Any repo with `package.json`, `requirements.txt`, `go.mod`, `Cargo.toml`, `composer.json` (Renovate covers all).
-- Security-alert remediation where the patch is non-trivial — call-sites moved, API renamed, deprecated calls removed.
-- Multi-language monorepos where a single Renovate config governs every ecosystem.
-- Repos where you can budget for AI agent tokens on major-version PRs but want patch bumps to cost zero.
+- Repo uses a package manager Renovate supports.
+- Team accepts auto-merge for patch + minor on stable (>=1.0.0) packages.
+- CI is green and reliable enough that auto-merge on green is safe.
+- An LLM coding agent (Copilot, Claude, Codex, Devin) is wired to the GitHub `agent-fixable` label.
 
 ## Skip If (ANY kills it)
 
-- Projects with manual release-train governance where every dependency bump is reviewed in a release meeting.
-- Repos that pin all versions exactly and never auto-update — Renovate has no role.
-- Patch bumps with all-green CI and high Merge-Confidence — let Renovate auto-merge; do not burn agent tokens.
-- MAJOR-version bumps without explicit agent supervision — never auto-merge even with high Merge-Confidence.
+- Manual release-train governance reviews every dep bump in a meeting.
+- Repo pins all versions exactly and never auto-updates.
+- No CI or CI is so flaky that "green" means nothing.
+- Repo is a vendored mirror — upstream owns dependency policy.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Renovate config | renovate.json | lead |
+| Agent handoff workflow | .github/workflows/dependabot-agent-handoff.yml | platform |
+| Branch protection | required checks include Renovate's CI | security |
+| Coding-agent install | Copilot Coding Agent / Claude / Codex / Devin | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-precommit-floor]] | Local hooks complement remote merge gating. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `config_draft` | sonnet | Renovate packageRules need light judgement on which rangeStrategy. |
+| `handoff_workflow` | haiku | Boilerplate GitHub Actions YAML. |
+| `agent_pick` | sonnet | Pick Copilot vs Claude vs Codex vs Devin for the org. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/renovate.json` | Renovate config: semver split + agent label + vulnerability route. |
+| `templates/dependabot-handoff.yml` | GitHub Actions workflow assigning labelled PRs to the agent. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-renovate-ai-handoff.py` | Validate the produced config artefact against the JSON Schema. | pre-merge of renovate.json |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[mr-codemod-refactor-agent]]
+- [[mr-error-tracker-draft-pr]]
+- [[lint-precommit-floor]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (repo has package manager? CI green on patch? bump is major or security alert?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to auto-merge or hand off to the agent — the tree terminates either on the active rule or on `skip-this-methodology`.

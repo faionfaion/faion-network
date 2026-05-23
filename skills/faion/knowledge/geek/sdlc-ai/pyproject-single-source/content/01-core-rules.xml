@@ -1,15 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="pyproject-single-source Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for pyproject-single-source. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="pyproject.toml as the Single Source of Configuration Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules pinning the pyproject discipline and skip path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The repo contains zero of: `setup.py` (unless required for native build steps), `setup.cfg`, `.flake8`, `pytest.ini`, `tox.ini`, `mypy.ini`, `requirements.txt` (for first-party deps). All replaced by sections inside `pyproject.toml`.</statement>
-      <rationale source="v1-source">PEP 621 provides the standard metadata table; PEP 518 provides the build-system table. Every modern Python tool reads `pyproject.toml`. Multiple config files create silent conflicts an agent will miss when editing one and forgetting another.</rationale>
+
+    <rule id="pep621-project-table" testable="true" depth="essential">
+      <statement>pyproject.toml MUST contain a `[project]` table with PEP 621 keys (name, version, requires-python, dependencies).</statement>
+      <rationale source="PEP 621">PEP 621 is the standard metadata location; modern tools read from here.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>When a repo uses pytest + ruff + coverage + a type checker, `pyproject.toml` MUST contain `[tool.pytest.ini_options]`, `[tool.ruff]`, `[tool.coverage.run]`, and exactly one of `[tool.ty]` / `[tool.mypy]` / `[tool.pyright]`. Missing sections mean the tool is reading either defaults or a legacy file.</statement>
-      <rationale source="v1-source">If a tool runs without its TOML section present, it is either using global defaults (silent risk) or an undeclared config file (drift). Both are caught by checking the table is present.</rationale>
+
+    <rule id="all-tools-in-pyproject" testable="true" depth="essential">
+      <statement>Every tool the project uses (ruff, pytest, coverage, ty/mypy, bandit, mutmut, uv) MUST be configured under its `[tool.&lt;name&gt;]` table in pyproject.toml.</statement>
+      <rationale source="Modern Python tooling docs">All listed tools support `[tool.*]` — splitting config across files is now legacy.</rationale>
     </rule>
+
+    <rule id="no-legacy-companions" testable="true" depth="essential">
+      <statement>The following files are forbidden in any directory containing a pyproject.toml: setup.cfg, .flake8, pytest.ini, tox.ini, mypy.ini, .coveragerc, requirements.txt, requirements-dev.txt.</statement>
+      <rationale source="Internal — config-drift audits">Each legacy file is a separate parser the agent must read; redundancy creates drift.</rationale>
+    </rule>
+
+    <rule id="dependencies-in-project-table" testable="true" depth="essential">
+      <statement>Runtime deps MUST live in `[project].dependencies`; dev deps in `[project.optional-dependencies].dev`; ad-hoc `pip install` lists in `requirements*.txt` are forbidden on new code.</statement>
+      <rationale source="PEP 621 + uv docs">A single source of truth for dependencies prevents the "which file is current" question.</rationale>
+    </rule>
+
+    <rule id="ci-check-no-legacy" testable="true" depth="essential">
+      <statement>CI MUST run `check-no-legacy.sh` (or equivalent) that fails the build if any forbidden legacy file exists.</statement>
+      <rationale source="Drift-prevention CI patterns">Without the check, legacy files re-appear during merges.</rationale>
+    </rule>
+
+    <rule id="build-backend-pep517" testable="true" depth="essential">
+      <statement>`[build-system]` MUST declare a PEP 517 backend (hatchling, setuptools&gt;=64, poetry-core, pdm-backend). `setup.py` MUST NOT carry imperative build logic on new projects.</statement>
+      <rationale source="PEP 517">PEP 517 backends are the standard; imperative setup.py is legacy and not parseable.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If project requires imperative `setup.py` for native extensions that TOML cannot express OR is a vendored mirror, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies when TOML cannot express the build.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

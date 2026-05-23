@@ -1,22 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mr-slash-command-surface Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Slash-Command Surface for PR Review Bots Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the bot-config artefact (workflow file parsed to JSON), with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/mr-slash-command-surface.json",
+  "type": "object",
+  "required": ["bot", "events", "auto_describe", "auto_review", "auto_improve", "sender_filter"],
+  "properties": {
+    "bot": {"enum": ["qodo-merge", "coderabbit", "sourcery", "pr-agent-selfhosted"]},
+    "events": {"type": "array", "items": {"enum": ["pull_request", "issue_comment"]}, "minItems": 2, "uniqueItems": true},
+    "auto_describe": {"const": true},
+    "auto_review": {"const": true},
+    "auto_improve": {"const": false},
+    "sender_filter": {"const": "sender.type != 'Bot'"},
+    "describe_block_markers": {"type": "object"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "bot": "qodo-merge",
+  "events": ["pull_request", "issue_comment"],
+  "auto_describe": true,
+  "auto_review": true,
+  "auto_improve": false,
+  "sender_filter": "sender.type != 'Bot'",
+  "describe_block_markers": {"start": "AUTO-DESCRIBE-START", "end": "AUTO-DESCRIBE-END"}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "bot": "qodo-merge",
+  "events": ["pull_request"],
+  "auto_describe": true,
+  "auto_review": false,
+  "auto_improve": true
+}
+]]></code>
+    <note>events missing issue_comment (slash commands cannot dispatch); auto_review must be true; auto_improve must be false; missing sender_filter.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">auto_improve == true</pattern>
+    <pattern id="f2">events missing &apos;issue_comment&apos;</pattern>
+    <pattern id="f3">sender_filter absent — bot-on-bot cascades possible</pattern>
+  </section>
+
+  <reference path="scripts/validate-slash-command-surface.py">Validator script</reference>
 </text>

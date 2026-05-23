@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mr-slash-command-surface Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mr-slash-command-surface. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Slash-Command Surface for PR Review Bots Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules pinning the auto-trigger policy, slash-command surface, and skip path for review bots.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The bot configuration MUST set `auto_describe = true` and `auto_review = true` on PR open and on push events. `auto_improve` MUST be `false` — `/improve` MUST be opt-in by explicit comment. The `issue_comment` event MUST be wired so `/commands` posted as PR comments dispatch the matching bot action.</statement>
-      <rationale source="v1-source">Auto-running describe and review covers the always-useful 80%; auto-running improve produces 5-15 suggestion patches per PR and trains reviewers to ignore the bot. Qodo Merge's own usage guide and CodeRabbit production studies converged on this default.</rationale>
+
+    <rule id="auto-describe-on" testable="true" depth="essential">
+      <statement>Bot config MUST set `auto_describe = true` on pull_request `opened`, `reopened`, `ready_for_review`, `synchronize` events.</statement>
+      <rationale source="Qodo Merge usage guide + CodeRabbit production studies">Auto-describe covers the always-useful 80% — title and walkthrough are stale-free.</rationale>
     </rule>
+
+    <rule id="auto-review-on" testable="true" depth="essential">
+      <statement>Bot config MUST set `auto_review = true` on the same events as auto_describe.</statement>
+      <rationale source="Qodo Merge defaults">Inline issues posted as the human review starts saves the human's first pass.</rationale>
+    </rule>
+
+    <rule id="auto-improve-off" testable="true" depth="essential">
+      <statement>Bot config MUST set `auto_improve = false`; `/improve` MUST be opt-in via explicit PR comment.</statement>
+      <rationale source="CodeRabbit production studies">Auto-running improve emits 5–15 suggestion patches per PR and trains reviewers to ignore the bot.</rationale>
+    </rule>
+
+    <rule id="slash-dispatcher-wired" testable="true" depth="essential">
+      <statement>Workflow MUST listen for the `issue_comment.created` event so `/describe`, `/review`, `/improve`, `/ask` posted as PR comments dispatch the matching bot action.</statement>
+      <rationale source="GitHub Actions docs">Without `issue_comment` events the slash commands are decoration; the bot cannot react to PR-comment requests.</rationale>
+    </rule>
+
+    <rule id="describe-block-idempotent" testable="true" depth="essential">
+      <statement>Auto-describe MUST update only the marker-delimited block (`AUTO-DESCRIBE-START`/`END`); human-authored content outside the block MUST survive re-runs.</statement>
+      <rationale source="Qodo Merge KEEP_ORIGINAL_USER_TITLE option">Without idempotent blocks, every re-run overwrites human notes and trust collapses.</rationale>
+    </rule>
+
+    <rule id="bot-not-author" testable="true" depth="essential">
+      <statement>Workflow MUST gate on `github.event.sender.type != 'Bot'` so bot-on-bot comment cascades cannot trigger another bot run.</statement>
+      <rationale source="GitHub Actions docs — bot cascades">Otherwise the bot loops on its own comments and burns API quota.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo is single-author, tiny-PR-only, or has a "no third-party app + no self-host" policy, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies to repos where the bot's overhead exceeds its value.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: For new Python projects, ruff is the SOLE linter + formatter (replaces black/flake8/isort/pyupgrade/autoflake/pydocstyle). For JS/TS, biome is the SOLE formatter + linter where prettier+eslint is over-engineered.
 content_id: "37188d9687132c77"

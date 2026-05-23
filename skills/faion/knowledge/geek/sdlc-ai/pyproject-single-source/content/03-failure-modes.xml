@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="pyproject-single-source Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for pyproject-single-source as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="pyproject.toml as the Single Source of Configuration Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns observed when consolidating Python config. Each pairs symptom + root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Adding a new tool's config to a fresh `.toolnamerc` file because "the README said to".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If the tool reads `pyproject.toml` (it almost certainly does in 2026), use `[tool.&lt;name&gt;]`. The dotfile reintroduces the same drift problem the rule is preventing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Configuring `ruff` in pyproject.toml AND keeping `.flake8` for "the parts ruff doesn't cover yet".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Ruff covers all flake8 plugins as `--select` codes; if a rule is missing, request it upstream or use a single dedicated tool. Two parallel lint configs guarantee the agent edits one and breaks the other.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="dotfile-re-emerges" severity="medium">
+      <symptom>New tool added; its config lands in a fresh `.toolnamerc` file beside pyproject.toml.</symptom>
+      <root-cause source="Tool docs README copy">README example uses `.toolnamerc`; author missed that the tool also reads `[tool.&lt;name&gt;]`.</root-cause>
+      <fix>If the tool reads pyproject in 2026 (almost all do), use `[tool.&lt;name&gt;]`. Add to `check-no-legacy.sh` if needed.</fix>
+    </antipattern>
+
+    <antipattern id="ruff-and-flake8-coexist" severity="medium">
+      <symptom>Repo configures ruff in pyproject AND keeps `.flake8` "for plugins ruff doesn't cover".</symptom>
+      <root-cause source="Migration laziness">Author migrated 90% of config; left 10% in legacy file "just in case".</root-cause>
+      <fix>Ruff covers all flake8 plugins via `--select` codes; if a rule is missing, drop the flake8 dep entirely. Two parallel lint configs guarantee drift.</fix>
+    </antipattern>
+
+    <antipattern id="requirements-txt-survives" severity="high">
+      <symptom>`requirements.txt` and `requirements-dev.txt` survive migration; CI pins from txt, IDE pins from pyproject; versions drift.</symptom>
+      <root-cause source="Internal — dependency drift audits">Author treated requirements files as "the lockfile" and pyproject as documentation.</root-cause>
+      <fix>Delete requirements*.txt; let uv/pip-tools produce a single lockfile from pyproject's `[project].dependencies`.</fix>
+    </antipattern>
+
   </section>
 </text>

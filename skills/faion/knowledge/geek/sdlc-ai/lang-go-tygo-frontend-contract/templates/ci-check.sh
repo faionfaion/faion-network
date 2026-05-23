@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI gate that regenerates TS DTOs from Go and fails the build on uncommitted drift.
+# consumes: tygo.yaml + Go source packages listed in it.
+# produces: config (regenerated web/src/types/api.ts diff check).
+# depends-on: content/02-output-contract.xml; templates/tygo.yaml.
+# token-budget-impact: low — ~120 tokens.
 # CI gate: regenerate TS DTOs from Go and assert no drift.
 # Run via:  bash templates/ci-check.sh
 set -euo pipefail

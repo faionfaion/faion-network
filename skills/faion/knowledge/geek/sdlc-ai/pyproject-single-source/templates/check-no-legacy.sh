@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Fail the build if any legacy Python config file exists alongside pyproject.toml.
+# purpose: CI script that fails the build when legacy Python config files exist beside pyproject.toml
+# consumes: repo file listing
+# produces: config (exit code 1 if legacy companions found)
+# depends-on: content/01-core-rules.xml (no-legacy-companions, ci-check-no-legacy)
+# token-budget-impact: low — ~100 tokens when loaded as context
 # Drop into CI as: `bash check-no-legacy.sh`.
 set -euo pipefail
 

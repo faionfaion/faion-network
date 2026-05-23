@@ -3,71 +3,99 @@ slug: pyproject-single-source
 tier: geek
 group: sdlc-ai
 domain: sdlc-ai
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Concentrate every Python tool's configuration in `pyproject.
-content_id: "f3c79893b83d9f32"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Concentrate every Python tool's configuration in `pyproject.toml` ([project], [tool.uv], [tool.ruff], [tool.pytest.ini_options], [tool.coverage.*], [tool.ty]/[tool.mypy], [tool.bandit], [tool.mutmut]); forbid setup.cfg / tox.ini / .flake8 / requirements*.txt on new code.
+content_id: "0c495fdcc9f36d63"
+complexity: medium
+produces: config
+est_tokens: 3300
 tags: [pyproject, python, configuration, tooling, ruff]
 ---
 # `pyproject.toml` as the Single Source of Configuration
 
 ## Summary
 
-**One-sentence:** Concentrate every Python tool's configuration in `pyproject.
+**One-sentence:** Concentrate every Python tool's configuration in `pyproject.toml` ([project], [tool.uv], [tool.ruff], [tool.pytest.ini_options], [tool.coverage.*], [tool.ty]/[tool.mypy], [tool.bandit], [tool.mutmut]); forbid setup.cfg / tox.ini / .flake8 / requirements*.txt on new code.
 
-**One-paragraph:** Concentrate every Python tool's configuration in `pyproject.toml` — `[build-system]`, `[project]` (PEP 621), `[tool.uv]`, `[tool.ruff]`, type-checker (`[tool.ty]` or `[tool.mypy]`), `[tool.pytest.ini_options]`, `[tool.coverage.run]`, `[tool.bandit]`, `[tool.mutmut]`. Forbid `setup.py`, `setup.cfg`, `tox.ini`, `.flake8`, `requirements*.txt` for Python tooling on new code. One file = one place AI agents have to read, parse, and mutate.
+**One-paragraph:** Python projects historically scatter config across `setup.py`, `setup.cfg`, `tox.ini`, `.flake8`, `pytest.ini`, `requirements*.txt`. Each file is a separate parser, a separate format, and a separate place an AI agent must read, parse, and mutate. PEP 621 plus `[tool.*]` tables let every modern tool read from a single TOML file. This methodology produces a `pyproject.toml` artefact carrying everything plus a CI check that fails the build when legacy config files reappear.
+
+**Ефективно для:**
+
+- Новий Python проект, library, service, або CLI.
+- Migration repo, де `setup.cfg` / `tox.ini` / `.flake8` живуть поруч з pyproject.
+- Tooling-heavy repo з ruff + pytest + coverage + bandit + mutmut.
+- Repo з coding agent — менше файлів = менше drift.
 
 ## Applies If (ALL must hold)
 
-- Every new Python project, library, service, or CLI.
-- Migrating any project where `setup.cfg`, `tox.ini`, or `.flake8` still exists alongside `pyproject.toml`.
-- Tooling-heavy repos with ruff + pytest + coverage + bandit + mutmut all configured.
-- Any repo touched by a coding agent — fewer files to discover means less drift.
+- Python project (library, service, CLI, app).
+- Tools used (ruff, pytest, coverage, ty/mypy, bandit, mutmut) all support `[tool.*]` in pyproject.
+- Build backend supports PEP 621 (hatchling, setuptools&gt;=64, poetry-core, pdm-backend).
+- Team agrees to add a CI check that fails on legacy files.
 
 ## Skip If (ANY kills it)
 
-- Build systems with truly exotic native-extension logic where `setup.py` carries imperative build steps that TOML cannot express — keep `setup.py` minimal and put metadata in `[project]`.
-- Vendored read-only mirrors of upstream projects whose layout you cannot change.
-- `tox` users who deliberately keep `tox.ini` for parallelism config that pyproject's `[tool.tox]` does not yet support — the trade-off is local; document it.
+- Project uses an exotic build system with imperative `setup.py` steps TOML cannot express.
+- Vendored read-only mirror of upstream — you cannot change the layout.
+- `tox` user who deliberately keeps `tox.ini` for parallelism config the `[tool.tox]` table does not yet support.
+- Repo pins on Python &lt; 3.10 with tools that haven't migrated to `[tool.*]` tables.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| pyproject.toml | TOML | lead |
+| Build backend choice | hatchling / setuptools / poetry-core / pdm-backend | lead |
+| CI workflow | GitHub Actions / GitLab CI | platform |
+| Legacy config inventory | list of files to remove | maintainer |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lint-ruff-and-biome-as-default]] | Ruff config blocks live in this same pyproject.toml. |
+| [[lint-precommit-floor]] | Pre-commit hook can run check-no-legacy.sh. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | 600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pyproject_draft` | sonnet | Tool-config layout needs judgement (ruff selects, pytest addopts). |
+| `legacy_migrate` | haiku | Mechanical move from setup.cfg → pyproject. |
+| `ci_check` | haiku | Boilerplate bash check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pyproject.toml` | Full pyproject skeleton with [project] + [tool.*] tables. |
+| `templates/check-no-legacy.sh` | CI script that fails on legacy Python config files. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pyproject-single-source.py` | Validate pyproject artefact has required tables + no legacy file companions. | Pre-merge of pyproject.toml |
 
 ## Related
 
-- parent skill: `geek/sdlc-ai/sdlc-ai/`
+- [[lint-ruff-and-biome-as-default]]
+- [[lint-precommit-floor]]
+- [[pnpm-catalogs]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable signals (Python project? tool support? exotic build?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to consolidate config — the tree terminates either on the active rule or on `skip-this-methodology`.

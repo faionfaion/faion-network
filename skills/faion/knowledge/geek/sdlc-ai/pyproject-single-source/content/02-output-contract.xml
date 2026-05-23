@@ -1,22 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="pyproject-single-source Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="pyproject.toml as the Single Source of Configuration Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the pyproject artefact (parsed to JSON via `tomllib`), with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pyproject-single-source.json",
+  "type": "object",
+  "required": ["build-system", "project", "tool", "no_legacy_companions"],
+  "properties": {
+    "build-system": {
+      "type": "object",
+      "required": ["requires", "build-backend"],
+      "properties": {
+        "requires": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "build-backend": {"type": "string"}
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "version", "requires-python", "dependencies"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "requires-python": {"type": "string"},
+        "dependencies": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "tool": {
+      "type": "object",
+      "minProperties": 2
+    },
+    "no_legacy_companions": {"const": true}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "build-system": {"requires": ["hatchling"], "build-backend": "hatchling.build"},
+  "project": {"name": "my-pkg", "version": "0.1.0", "requires-python": ">=3.12", "dependencies": ["fastapi>=0.115"]},
+  "tool": {"ruff": {"line-length": 100}, "pytest": {"ini_options": {"minversion": "9.0"}}},
+  "no_legacy_companions": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "build-system": {"requires": []},
+  "project": {"name": "my-pkg"},
+  "tool": {"ruff": {}},
+  "no_legacy_companions": false
+}
+]]></code>
+    <note>build-system.requires empty, build-backend missing; project missing version + requires-python + dependencies; only one tool table; legacy companions still present.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">no_legacy_companions == false — legacy file still on disk</pattern>
+    <pattern id="f2">tool has &lt; 2 tables — config under-consolidated</pattern>
+    <pattern id="f3">project missing dependencies array — runtime deps live elsewhere</pattern>
+  </section>
+
+  <reference path="scripts/validate-pyproject-single-source.py">Validator script</reference>
 </text>

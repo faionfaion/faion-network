@@ -1,22 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="pnpm-catalogs Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="pnpm Workspaces with Dependency Catalogs Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for the workspace-config artefact (pnpm-workspace.yaml parsed to JSON), with valid + invalid examples and forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pnpm-catalogs.json",
+  "type": "object",
+  "required": ["packages", "catalog", "ci_filter"],
+  "properties": {
+    "packages": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+    "catalog": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string"}},
+    "catalogs": {"type": "object", "additionalProperties": {"type": "object"}},
+    "ci_filter": {"type": "string", "pattern": "origin/main"},
+    "publish_step_replaces_protocol": {"type": "boolean"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "packages": ["packages/*", "apps/*"],
+  "catalog": {"react": "^19.0.0", "typescript": "^5.7.0", "vitest": "^3.0.0"},
+  "catalogs": {"next": {"react": "19.1.0-canary"}},
+  "ci_filter": "pnpm --filter '...[origin/main]' test",
+  "publish_step_replaces_protocol": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "packages": [],
+  "catalog": {},
+  "ci_filter": "pnpm test"
+}
+]]></code>
+    <note>packages empty; catalog empty; ci_filter does not include 'origin/main'; missing publish_step_replaces_protocol.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f1">catalog entries duplicating hard-coded versions in package.json</pattern>
+    <pattern id="f2">ci_filter not referencing &apos;origin/main&apos; (whole-repo test)</pattern>
+    <pattern id="f3">prerelease versions in default catalog (must move to named catalog)</pattern>
+  </section>
+
+  <reference path="scripts/validate-pnpm-catalogs.py">Validator script</reference>
 </text>

@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mr-renovate-ai-handoff Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mr-renovate-ai-handoff. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Renovate Auto-Merge + AI Handoff Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Six testable rules pinning when Renovate auto-merges, when bumps escalate to a coding agent, and when the methodology does not apply.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Renovate config MUST include two `packageRules`: (a) `matchUpdateTypes: [patch, minor]` with `automerge: true`, `automergeType: branch`, `platformAutomerge: true` (Mend Merge-Confidence "high"); (b) `matchUpdateTypes: [major]` with `labels: [agent-fixable]` and `automerge: false`. A coding-agent workflow MUST listen for the `agent-fixable` label and hand the PR to a designated agent (Copilot Coding Agent, Claude, Codex, Devin).</statement>
-      <rationale source="v1-source">Renovate's deterministic merge succeeds on &gt;90% of patch-bumps when CI is green; the Merge-Confidence layer eliminates the silent-regression class. Agents are far cheaper to invoke once on the breaking 10% than to reason about every dep bump. GitHub's April 2026 Dependabot→Agent handoff formalises this exact pattern.</rationale>
+
+    <rule id="semver-split-package-rules" testable="true" depth="essential">
+      <statement>Renovate config MUST include `packageRules` that auto-merge patch + minor (on packages with currentVersion not starting with 0) AND label major bumps with `agent-fixable` (automerge=false).</statement>
+      <rationale source="Mend Renovate docs + GitHub April 2026 changelog">Renovate's deterministic merge succeeds on &gt;90% of patch bumps; agents are reserved for breaking 10%.</rationale>
     </rule>
+
+    <rule id="merge-confidence-gate" testable="true" depth="essential">
+      <statement>Auto-merge MUST be gated on Mend Merge-Confidence == "high" AND platformAutomerge=true so GitHub waits for required checks before merging.</statement>
+      <rationale source="Mend Merge-Confidence docs">Merge-Confidence eliminates the silent-regression class on patch bumps.</rationale>
+    </rule>
+
+    <rule id="zero-prefix-treated-as-major" testable="true" depth="essential">
+      <statement>Packages with currentVersion matching `/^0/` MUST treat minor bumps as breaking — label `agent-fixable`, do not auto-merge.</statement>
+      <rationale source="semver spec section 4">0.x semver allows breaking changes on minor; Renovate honours this only with an explicit rule.</rationale>
+    </rule>
+
+    <rule id="vulnerability-alerts-to-agent" testable="true" depth="essential">
+      <statement>`vulnerabilityAlerts` block MUST set labels=[agent-fixable, security] and automerge=false so a coding agent rewrites call-sites before merge.</statement>
+      <rationale source="GitHub April 2026 Dependabot-to-Agent handoff">Security patches often introduce breaking API changes; agent rewrite is required, not optional.</rationale>
+    </rule>
+
+    <rule id="agent-handoff-workflow-required" testable="true" depth="essential">
+      <statement>Repo MUST ship `.github/workflows/dependabot-agent-handoff.yml` that listens for `pull_request.labeled` events and assigns the PR to a coding agent (`copilot-swe-agent` / Claude / Codex / Devin).</statement>
+      <rationale source="GitHub Actions docs">Without the handoff workflow the `agent-fixable` label is decoration; the agent only picks up assigned PRs.</rationale>
+    </rule>
+
+    <rule id="never-auto-merge-major" testable="true" depth="essential">
+      <statement>Major bumps MUST NEVER auto-merge — even with Merge-Confidence == "high" — because call-site rewrites are out of Renovate's scope.</statement>
+      <rationale source="Renovate config audits">Major auto-merge regularly breaks call-sites that no human or agent reviewed.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If repo pins all versions exactly (no auto-update policy) OR has no CI OR is a vendored mirror, STOP.</statement>
+      <rationale source="Methodology hygiene">Skip applies only to repos where Renovate has no role.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

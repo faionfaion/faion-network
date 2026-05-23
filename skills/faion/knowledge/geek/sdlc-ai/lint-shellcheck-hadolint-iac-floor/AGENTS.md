@@ -5,7 +5,7 @@ group: sdlc-ai
 domain: sdlc-ai
 version: 1.1.0
 status: active
-last_reviewed: 2026-05-22
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Every repo with shell / Dockerfile / Compose / GH Actions / Kubernetes / Terraform / YAML MUST run a per-format IaC linter at the same hook tier as code linters — shellcheck, hadolint, yamllint, actionlint, tflint.
 content_id: "ae357ecc943a92a0"
