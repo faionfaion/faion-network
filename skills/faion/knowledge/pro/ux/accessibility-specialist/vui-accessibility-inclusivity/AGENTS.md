@@ -3,73 +3,96 @@ slug: vui-accessibility-inclusivity
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for designing voice user interfaces that work equitably across accents, dialects, speech impediments, age groups, and languages.
-content_id: "146aee4a9bbbf639"
-tags: [voice-ui, accessibility, inclusivity, wcag, asr]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Accessibility + inclusivity spec for voice user interfaces: accent + dialect coverage, text alternates, confirmation cues, command discoverability.
+content_id: "df3d1ef31322c3f7"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [vui, voice, a11y, accessibility, inclusion]
 ---
 # VUI Accessibility and Inclusivity
 
 ## Summary
 
-**One-sentence:** Methodology for designing voice user interfaces that work equitably across accents, dialects, speech impediments, age groups, and languages.
+**One-sentence:** Accessibility + inclusivity spec for voice user interfaces: accent + dialect coverage, text alternates, confirmation cues, command discoverability.
 
-**One-paragraph:** Methodology for designing voice user interfaces that work equitably across accents, dialects, speech impediments, age groups, and languages. The core rule: never build a voice-only path — always pair every voice interaction with a visual or touch alternative.
+**One-paragraph:** VUIs without accessibility produce exclusion at scale: under-trained accents, no text alternates, ambiguous confirmations, undiscoverable commands. This methodology pins five operational rules — accent + dialect training coverage, text-mode alternate for every voice flow, audible + visible confirmation cues, command discoverability via 'what can I say' help, and explicit consent + opt-out — and emits a VUI accessibility record validated against the schema.
+
+**Ефективно для:**
+
+- Accent coverage list pins fairness metric and recall floor.
+- Text alternate keeps the flow accessible for deaf / non-speaking users.
+- Audible + visible confirmation closes the trust loop.
+- 'What can I say' help removes command-discoverability gap.
 
 ## Applies If (ALL must hold)
 
-- Designing or auditing a VUI or voice assistant feature
-- Evaluating speech recognition training data for diversity gaps
-- Adding multimodal feedback (visual, haptic) to a voice interface
-- Writing error-recovery dialogue scripts for voice flows
-- Specifying accent calibration or pronunciation correction features
-- Conducting inclusive usability testing with diverse voice participants
+- Voice-only or voice-primary interface in production.
+- User base spans multiple accents / dialects.
+- Critical actions are voice-initiated.
 
 ## Skip If (ANY kills it)
 
-- Pure GUI components with no voice interaction — use standard accessibility checklist instead
-- Backend ASR model training (this methodology covers UX design, not ML training pipelines)
-- Text-based chatbots with no speech I/O — different interaction model
+- Optional voice supplement to a flat UI — primary remains the flat path.
+- Single-language single-accent rig with no production users.
+- Pure text dictation with no command grammar.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| VUI inventory | list of voice flows | product |
+| Speech-recog provider | Azure / Google / OpenAI / on-device | platform |
+| Accent coverage list | language + dialect set | research |
+| Confirmation policy | audible + visible spec | design |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vui-record.json` | JSON skeleton for VUI accessibility record. |
+| `templates/vui-grammar-help.md` | 'What can I say' help-text template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vui-accessibility-inclusivity.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[cognitive-inclusion-design]]
+- [[a11y-basics]]
+- [[screen-reader-test-script-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

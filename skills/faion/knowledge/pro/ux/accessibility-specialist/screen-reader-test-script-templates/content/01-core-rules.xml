@@ -1,74 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Screen-Reader Scripts — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules every screen-reader test script must satisfy. Skipping any one produces audits that miss real-world failures or generate false negatives.</summary>
+<text id="01-core-rules" title="Screen Reader Test Script Templates Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Screen Reader Test Script Templates methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
-    <rule id="r1-per-platform-parity" testable="true" depth="essential">
-      <statement>Each script provides steps for VoiceOver (macOS + iOS), NVDA (Windows), and TalkBack (Android). Platform-specific differences (gestures, modifier keys, navigation modes) are explicit; "test with a screen reader" without platform specifics is forbidden.</statement>
-      <rationale source="WebAIM Screen-Reader Survey; per-platform behaviour studies">VoiceOver, NVDA, JAWS, and TalkBack interpret ARIA differently. A modal that passes VoiceOver may fail NVDA's focus trap; an autocomplete may announce correctly on desktop but not on mobile. Platform parity in the script catches the divergence.</rationale>
+    <rule id="device-sr-version-pinned" testable="true" depth="essential">
+      <statement>Every script pins device + OS + SR + SR version (e.g. &apos;iPhone 15, iOS 17.4, VoiceOver default&apos;).</statement>
+      <rationale source="WebAIM SR survey + Microsoft NVDA notes">SR behaviour changes across versions; unpinned versions produce false drift.</rationale>
     </rule>
 
-    <rule id="r2-expected-utterance-pattern" testable="true" depth="essential">
-      <statement>Each step lists the EXPECTED utterance as a PATTERN, not an exact string. The pattern names required elements (role, accessible name, state) in order; surface phrasing differences are acceptable.</statement>
-      <rationale source="screen-reader localisation practice; cross-version utterance differences">Exact-string matching fails across screen-reader versions, language packs, and verbosity settings. A pattern like `&lt;name&gt; , button , expanded` accommodates VoiceOver's "expanded" and NVDA's "expanded" and TalkBack's "expanded" without falsely failing on phrasing.</rationale>
+    <rule id="gestures-explicit" testable="true" depth="essential">
+      <statement>Every step pins the exact gesture or keystroke (e.g. &apos;right-flick&apos; / &apos;VO+→&apos; / &apos;Ctrl+Alt+→&apos;). Vague &apos;navigate to&apos; steps are forbidden.</statement>
+      <rationale source="Apple VoiceOver gestures + NVDA user guide">Different gestures land in different elements; explicit gesture is the only reproducible step.</rationale>
     </rule>
 
-    <rule id="r3-wcag-mapping-per-step" testable="true" depth="essential">
-      <statement>Each step in a script is mapped to one or more WCAG 2.2 success criteria (e.g. 1.3.1 Info and Relationships, 4.1.2 Name Role Value). Steps without WCAG mapping are not allowed.</statement>
-      <rationale source="WCAG conformance documentation; legal-audit traceability">An audit finding without an SC traceback is unactionable for engineering and unconvincing in a conformance report. The mapping converts the failure into a fix request with legal weight.</rationale>
+    <rule id="expected-announcement-string" testable="true" depth="essential">
+      <statement>Every step pins the expected announcement string. Wildcards allowed only for dynamic content (e.g. timestamps).</statement>
+      <rationale source="Internal — SR test reproducibility convention">Without expected string, pass/fail is opinion.</rationale>
     </rule>
 
-    <rule id="r4-fail-stop-on-showstoppers" testable="true" depth="essential">
-      <statement>Scripts have explicit fail-stop steps — focus trap broken, keyboard unreachable, no accessible name — that halt the script and mark the component non-compliant. Skipping over the failure to "test the rest" is forbidden.</statement>
-      <rationale source="audit methodology; user-impact severity hierarchy">Continuing past a showstopper inflates the perceived complexity of fixes and hides the actual blocker. Fail-stop turns the audit output into a prioritised fix list: top showstoppers first.</rationale>
+    <rule id="pass-fail-criteria" testable="true" depth="essential">
+      <statement>Every step pins pass/fail criteria (exact match / contains / regex). Steps with no criterion are forbidden.</statement>
+      <rationale source="Internal — SR test reproducibility convention">Criteria turn announcements into checkable assertions.</rationale>
     </rule>
 
-    <rule id="r5-build-version-pinning" testable="true" depth="essential">
-      <statement>Audit results MUST record the exact screen-reader versions, OS versions, browser versions, and target build version used. Drift between audits is forbidden without a re-test.</statement>
-      <rationale source="reproducibility in QA; SR-version-related regression literature">A pass on VoiceOver 17.4 may be a fail on 17.5. Without pinning, audits cannot be compared across releases. Pinning makes regression tracking possible and protects the auditor from "we fixed that already, why are you finding it again?".</rationale>
+    <rule id="wcag-sc-mapped" testable="true" depth="essential">
+      <statement>Each script maps to at least one WCAG SC (typical: 1.3.1, 4.1.2, 4.1.3).</statement>
+      <rationale source="WCAG 2.2">SR findings without SC mapping cannot be aggregated into audit reports.</rationale>
     </rule>
 
-  </section>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md "Applies If" do not all hold, OR any "Skip If" disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent's context budget.</rationale>
+    </rule>
 
-  <section title="Component archetype catalogue">
-    <list>
-      <item><b>form</b>: label binding, required, error association, group fieldset, submission feedback (SCs 1.3.1, 3.3.1, 3.3.2, 3.3.3, 4.1.2)</item>
-      <item><b>modal</b>: focus trap, ESC close, return focus, aria-modal, accessible name (SCs 2.1.2, 2.4.3, 4.1.2)</item>
-      <item><b>table</b>: header association, sort state, scope, caption (SCs 1.3.1, 1.3.2, 4.1.2)</item>
-      <item><b>navigation</b>: landmark, current page, expanded state, menu pattern (SCs 1.3.1, 2.4.1, 4.1.2)</item>
-      <item><b>autocomplete (combobox)</b>: APG 1.2 pattern, listbox role, value-changed announce (SCs 1.3.1, 4.1.2, 4.1.3)</item>
-      <item><b>video player</b>: caption toggle, control labels, transcript link, autoplay (SCs 1.2.2, 1.2.3, 2.2.2, 4.1.2)</item>
-      <item><b>toast / live region</b>: aria-live polite vs assertive, role status / alert, dismiss (SCs 4.1.3)</item>
-    </list>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Modal script excerpt (VoiceOver step)">
-      <code lang="text"><![CDATA[
-Step 4 (VoiceOver / macOS / Safari):
-  Pre: focus on the trigger button.
-  Action: VO + space.
-  Expected utterance pattern: "&lt;modal accessible name&gt; , dialog"
-  Then VO will move focus to first focusable element inside.
-  WCAG: 4.1.2 Name Role Value; 2.4.3 Focus Order.
-  Fail-stop: if VO does not announce dialog role OR if focus stays outside.
-      ]]></code>
-      <note>Illustrates r1 (platform-specific), r2 (pattern), r3 (WCAG mapping), r4 (fail-stop named).</note>
-    </example>
-
-    <example type="bad" title="Abstract instruction without script">
-      <code lang="text"><![CDATA[
-"Verify modal is accessible with screen readers."
-      ]]></code>
-      <note>r1, r2, r3, r4 all violated. The auditor will invent their own steps; results will not be comparable across audits.</note>
-    </example>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-screen-reader-test-script-templates.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

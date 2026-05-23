@@ -1,44 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Screen-Reader Scripts — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Schema for sr-audit-results.yaml. The engineering hand-off, WCAG rollup, and regression-tracking dashboards all consume this file.</summary>
+<text id="02-output-contract" title="Screen Reader Test Script Templates Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the report artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="audit_metadata" required_keys="audit_id,target_build_sha,target_url,auditor,started_at,ended_at,versions"/>
-      <field name="versions" required_keys="voiceover_macos,voiceover_ios,nvda,talkback,browser_versions,os_versions"/>
-      <field name="components" type="list"
-             item_required_keys="component_id,archetype,location,script_version,results_per_platform"/>
-      <field name="results_per_platform" type="map"
-             entry_required_keys="platform,steps,overall_status,blockers,wcag_failures"/>
-      <field name="steps" type="list"
-             item_required_keys="step_id,action,expected_utterance_pattern,actual_observed,status,wcag_sc"/>
-      <field name="wcag_rollup" required_keys="failures_by_sc,coverage_by_sc"/>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/screen-reader-test-script-templates.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "owner",
+    "scope",
+    "findings"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "object"
+    },
+    "findings": {
+      "type": "array"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "partial",
+        "fail",
+        "not-applicable"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">step status == "pass" without `actual_observed` field — no evidence</pattern>
-      <pattern id="f2">component tested on only one platform when ≥2 platforms apply</pattern>
-      <pattern id="f3">versions block missing any tested screen-reader version</pattern>
-      <pattern id="f4">wcag_sc field empty for any step</pattern>
-      <pattern id="f5">overall_status == "pass" while blockers list is non-empty</pattern>
-      <pattern id="f6">audit_id reused across builds — every build gets a new audit_id</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Skip a script step explicitly with `status: "skipped", reason: "not applicable to this build"` — never silently omit.</transformation>
-      <transformation>Add platform variants (e.g. JAWS) by extending versions and results_per_platform with the new platform key.</transformation>
-      <transformation>Aggregate "warning" status for verbose-but-passing utterances; this is informational, not a fail.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every component has results on all applicable platforms</item>
-      <item>Every step has an actual_observed value (recording, screenshot, or transcribed utterance)</item>
-      <item>Every step has wcag_sc populated</item>
-      <item>Versions block captures the exact stack tested</item>
-      <item>Blockers list correctly populated; no "pass with blockers" inconsistencies</item>
-      <item>WCAG rollup matches the per-step failures</item>
+      <pattern id="f1">Step without gesture (vague &apos;navigate to&apos;).</pattern>
+      <pattern id="f2">Step without expected string.</pattern>
+      <pattern id="f3">Step without pass/fail criterion.</pattern>
+      <pattern id="f4">Script without SR version pin.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "sr-script-2026-0001",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "owner": "@qa-a",
+  "scope": {
+    "flow": "/signup",
+    "device": "iPhone 15",
+    "os": "iOS 17.4",
+    "sr": "VoiceOver",
+    "sr_version": "iOS 17.4"
+  },
+  "findings": [
+    {
+      "step": 1,
+      "gesture": "right-flick",
+      "expected": "Email, edit text",
+      "criterion": "contains",
+      "sc": "1.3.1",
+      "verdict": "pass"
+    }
+  ],
+  "verdict": "pass"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "findings": [
+    {
+      "step": 1,
+      "gesture": "swipe",
+      "expected": "Email"
+    }
+  ]
+}
+]]></code>
+    <note>criterion missing; sc mapping missing; verdict missing; gesture &apos;swipe&apos; too vague; missing artefact_id, version, last_reviewed, owner, scope.</note>
+  </example>
+
+  <reference path="scripts/validate-screen-reader-test-script-templates.py">Schema validator (stdlib only).</reference>
 </text>

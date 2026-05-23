@@ -3,77 +3,102 @@ slug: breaking-change-deprecation-policy
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Breaking Change Deprecation Policy: codified design / UX practice that turns the recurring 'role-ux-ui-designer/Design-system component update (single component)' decision into a repeatable, auditable artefact.
-content_id: "c49cb5381b3230bb"
-tags: [breaking-change-deprecation-policy, ux, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Codified deprecation policy for design-system breaking changes: pins timeline (deprecation window, removal date), opt-in flags, and migration guidance per component so consumer teams never improvise.
+content_id: "e0b60bb0a3ffa53a"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [ux, pro, design-system, deprecation, breaking-change, governance]
 ---
 # Breaking Change Deprecation Policy
 
 ## Summary
 
-**One-sentence:** Breaking Change Deprecation Policy: codified design / UX practice that turns the recurring 'role-ux-ui-designer/Design-system component update (single component)' decision into a repeatable, auditable artefact.
+**One-sentence:** Codified deprecation policy for design-system breaking changes: pins timeline (deprecation window, removal date), opt-in flags, and migration guidance per component so consumer teams never improvise.
 
-**One-paragraph:** Breaking Change Deprecation Policy addresses the gap identified by the role-ux-ui-designer/Design-system component update (single component) playbook: Designers improvise deprecation timelines per component; a single rule (e.g. 2-sprint deprecation, breaking-change opt-in) eliminates negotiation overhead. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Codified deprecation policy for design-system breaking changes: pins timeline (deprecation window, removal date), opt-in flags, and migration guidance per component so consumer teams never improvise. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Versioning a design-system component that already ships in production.
+- Negotiating a removal date with multiple consumer teams without ad-hoc emails.
+- Generating downstream migration tickets from one policy artefact.
+- Auditing whether a 'v1 still used after v2 GA' situation has a documented exit.
+- Closing the gap when design-tokens diverge after a contract change.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ux-ui-designer/Design-system component update (single component) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The triggering activity for breaking-change-deprecation-policy appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- recent context for the role-ux-ui-designer/Design-system component update (single component) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/ux-designer` | parent role skill — provides the operating context for this methodology |
+| `pro/ux/` parent skill context | vocabulary, neighbouring methodologies |
+| [[design-system-changelog-template]] | upstream context this methodology builds on |
+| [[design-system-governance]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-breaking-change-deprecation-policy-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/breaking-change-deprecation-policy.json` | JSON schema for the Breaking Change Deprecation Policy output contract |
-| `templates/breaking-change-deprecation-policy.md` | Markdown skeleton with the required fields |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-breaking-change-deprecation-policy.py` | Enforce Breaking Change Deprecation Policy output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-breaking-change-deprecation-policy.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/ux/`
-- upstream playbook: `role-ux-ui-designer/Design-system component update (single component)`
+- [[design-system-changelog-template]]
+- [[design-system-governance]]
+- [[design-system-impact-queue]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

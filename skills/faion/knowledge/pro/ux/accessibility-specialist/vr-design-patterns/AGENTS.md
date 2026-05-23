@@ -3,72 +3,97 @@ slug: vr-design-patterns
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design patterns for fully-immersive 6DoF VR covering environment anchoring (ground plane, horizon, stable reference objects), locomotion menu (teleport default + smooth opt-in), UI placement (world-locked or body-locked, 1.
-content_id: "6543f00fc9abea0c"
-tags: [vr, immersive-design, accessibility, design-patterns, comfort]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Five canonical VR design patterns (snap-turn default, vignette, locomotion choice, hand-presence options, retreat affordance) emitted as a record.
+content_id: "54e6a4b8131f4a69"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [vr, xr, comfort, a11y, design]
 ---
 # VR Design Patterns for Accessibility and Comfort
 
 ## Summary
 
-**One-sentence:** Design patterns for fully-immersive 6DoF VR covering environment anchoring (ground plane, horizon, stable reference objects), locomotion menu (teleport default + smooth opt-in), UI placement (world-locked or body-locked, 1.
+**One-sentence:** Five canonical VR design patterns (snap-turn default, vignette, locomotion choice, hand-presence options, retreat affordance) emitted as a record.
 
-**One-paragraph:** Design patterns for fully-immersive 6DoF VR covering environment anchoring (ground plane, horizon, stable reference objects), locomotion menu (teleport default + smooth opt-in), UI placement (world-locked or body-locked, 1.5-3 m, eye-level, no head-lock), comfort settings (vignette, snap turn, FOV cap, seated mode), and accessibility parity across disability categories. Minimum 14-16 pt text, 90 FPS / 20 ms motion-to-photon, teleport-as-default.
+**One-paragraph:** VR design without comfort + accessibility patterns reproduces the same nausea + exclusion every release. This methodology pins five canonical patterns and produces a VR-pattern record per experience validated against the schema.
+
+**Ефективно для:**
+
+- Snap-turn default eliminates the leading nausea cause.
+- Vignette cuts simulator-sickness reports.
+- Locomotion choice respects user preference.
+- Hand-presence options accommodate motor differences.
+- Retreat affordance treats exit as a right.
 
 ## Applies If (ALL must hold)
 
-- Designing fully-immersive VR experiences (Quest 2/3/Pro, PSVR2, Valve Index, PICO 4, Vision Pro full-immersion mode).
-- Choosing locomotion and UI placement strategy.
-- Implementing comfort settings: vignette, snap turn, FOV cap, seated mode, height calibration.
-- Auditing an existing VR title for accessibility and motion-sickness risk.
+- Production VR experience under design.
+- Sessions may exceed 5 minutes.
+- Multiple interaction modalities present.
 
 ## Skip If (ANY kills it)
 
-- AR/passthrough/MR — use `ar-design-patterns` and `immersive-design-principles` instead.
-- 360-degree video in Cardboard-style viewers — constrained interaction, not 6DoF.
-- Mixed-reality productivity with passthrough — use `immersive-design-principles` blended-mode territory.
-- WebXR mobile sessions where 90 FPS is unreachable.
+- Pure AR / MR — use `ar-design-patterns`.
+- Single-scene tech demo with no production users.
+- Comfort already specced via `immersive-design-principles` for the same experience.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Experience brief | Markdown | product |
+| Platform | Quest / Vision / PSVR2 | platform |
+| Locomotion plan | modes list | design |
+| Interaction model | hand-tracking / controller / both | design |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vr-pattern-record.json` | JSON skeleton for VR pattern record. |
+| `templates/comfort-defaults.json` | Default comfort settings template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vr-design-patterns.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[immersive-design-principles]]
+- [[spatial-accessibility]]
+- [[ar-design-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

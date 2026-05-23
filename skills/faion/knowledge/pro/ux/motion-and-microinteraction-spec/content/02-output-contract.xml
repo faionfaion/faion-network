@@ -1,39 +1,148 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Motion And Microinteraction Spec Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Motion And Microinteraction Spec output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Motion and Microinteraction Spec Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid Motion and Microinteraction Spec artefact. The validator script enforces required keys, types, and the forbidden-pattern list before the orchestrator accepts the output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/motion-and-microinteraction-spec.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/motion-and-microinteraction-spec.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/motion-and-microinteraction-spec.json",
+  "title": "Motion and Microinteraction Spec",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "component_id",
+    "duration_ms",
+    "easing",
+    "trigger",
+    "choreography_ref",
+    "reduced_motion_fallback",
+    "perceived_perf_budget_ms",
+    "platform_targets",
+    "evidence",
+    "status",
+    "owner",
+    "last_touched",
+    "template_version"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "slug + ISO date or UUID",
+      "minLength": 1
+    },
+    "component_id": {
+      "type": "string",
+      "description": "component_id",
+      "minLength": 1
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "duration_ms (numeric)"
+    },
+    "easing": {
+      "type": "string",
+      "description": "easing",
+      "minLength": 1
+    },
+    "trigger": {
+      "type": "string",
+      "description": "trigger",
+      "minLength": 1
+    },
+    "choreography_ref": {
+      "type": "string",
+      "description": "choreography_ref",
+      "minLength": 1
+    },
+    "reduced_motion_fallback": {
+      "type": "string",
+      "description": "reduced_motion_fallback",
+      "minLength": 1
+    },
+    "perceived_perf_budget_ms": {
+      "type": "number",
+      "description": "perceived_perf_budget_ms (numeric)"
+    },
+    "platform_targets": {
+      "type": "array",
+      "description": "platform_targets (array)",
+      "minItems": 1
+    },
+    "evidence": {
+      "type": "array",
+      "description": "{source, citation} pairs anchoring non-trivial fields",
+      "minItems": 1
+    },
+    "status": {
+      "type": "string",
+      "description": "draft|ready_for_review|approved|archived",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named owner; generic group terms forbidden",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "description": "ISO-8601 timestamp",
+      "format": "date-time"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "semver matching methodology frontmatter at write time"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "artefact_id": "motion-and-microinteraction-spec-2026-05-23",
+  "component_id": "draft",
+  "duration_ms": 1,
+  "easing": "draft",
+  "trigger": "draft",
+  "choreography_ref": "draft",
+  "reduced_motion_fallback": "draft",
+  "perceived_perf_budget_ms": 1,
+  "platform_targets": [
+    "draft-item"
+  ],
+  "evidence": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "status": "ready_for_review"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "foo": "bar"
+}
+]]></code>
+    <note>Missing every required field; no owner, no template_version, no evidence array — rejected by `validate-motion-and-microinteraction-spec.py` with exit 1.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Field declared as list/object in the schema is emitted as prose paragraph.</pattern>
+    <pattern id="f2">`owner` set to generic group ("team", "us", "tbd", "n/a", "design", "engineering", "everyone").</pattern>
+    <pattern id="f3">`template_version` empty or set to a string that does not match the methodology frontmatter.</pattern>
+    <pattern id="f4">`evidence` array empty for any non-trivial field declared in the schema.</pattern>
+    <pattern id="f5">Agent self-approves the artefact (`status=approved`) without a reviewer field naming a human distinct from the producing agent.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-motion-and-microinteraction-spec.py">Validator script — exit 0 on pass, 1 on fail with violation list.</reference>
 </text>

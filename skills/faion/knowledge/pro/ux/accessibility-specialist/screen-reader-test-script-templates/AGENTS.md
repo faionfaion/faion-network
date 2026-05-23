@@ -1,92 +1,97 @@
 ---
 slug: screen-reader-test-script-templates
 tier: pro
-group: accessibility-specialist
+group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "78eddb28c83f9c21"
-summary: Reusable VoiceOver / NVDA / TalkBack test scripts per UI component archetype — form, modal, table, navigation, autocomplete, video player, toast — that turn the abstract testing-with-assistive-technology methodology into copy-pasteable steps for every audit.
-tags: [accessibility, screen-reader, voiceover, nvda, talkback, a11y-audit, testing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-flow screen-reader test script (NVDA / VoiceOver / TalkBack) with expected announcements, gestures, and pass/fail criteria.
+content_id: "d9610ac5824eb17a"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [screen-reader, nvda, voiceover, talkback, testing, a11y]
 ---
-
-# Screen-Reader Test Script Templates
+# Screen Reader Test Script Templates
 
 ## Summary
 
-**One-sentence:** Library of reusable screen-reader test scripts (VoiceOver macOS, VoiceOver iOS, NVDA Windows, TalkBack Android) per UI component archetype — form, modal, table, navigation, autocomplete, video player, toast — so every audit reuses tested steps instead of inventing them.
+**One-sentence:** Per-flow screen-reader test script (NVDA / VoiceOver / TalkBack) with expected announcements, gestures, and pass/fail criteria.
 
-**One-paragraph:** Generic accessibility methodologies tell auditors what to test (focus order, labels, live regions) but not how — leaving each auditor to invent the keystrokes, gestures, and expected utterances per component every time. This methodology pins component-archetype scripts that have been validated against WCAG 2.2 AA and against actual screen-reader behaviour on the latest stable releases. Each script lists: pre-conditions, the exact keystroke/gesture sequence per screen reader, the expected utterance pattern, the failure-mode catalogue, and the WCAG SC mapped. Scripts cover the seven highest-traffic component archetypes. Mechanism: pick the archetype that matches the component under audit, run the script verbatim per screen reader, log pass/fail per step. Primary output: a `sr-audit-results.yaml` per audit + per-component findings with WCAG SC traceback.
+**One-paragraph:** AT testing without scripted steps produces unreproducible results. This methodology pins per-flow test scripts: device + SR + version, gesture or shortcut sequence, expected announcement strings, and pass/fail criteria. Output is a versioned SR test script that any tester (human or agent) can replay deterministically.
+
+**Ефективно для:**
+
+- Reproducible AT tests across testers, releases, devices.
+- Pass/fail criteria removes 'I thought I heard X' ambiguity.
+- Expected announcements pinned to actual SR strings.
+- Per-SR script captures platform-specific behaviour (e.g. VO rotor vs NVDA browse-mode).
 
 ## Applies If (ALL must hold)
 
-- audit target uses standard HTML semantics or ARIA pattern set
-- screen readers available: VoiceOver (macOS + iOS), NVDA (Windows), TalkBack (Android) — at least 2 of the 4
-- WCAG 2.2 AA or 2.1 AA is the target conformance level
-- auditor has basic screen-reader proficiency (can navigate by headings + landmarks)
+- Repeatable AT testing required across releases or environments.
+- Multiple testers (or agents) will run the same script.
+- Audit baseline references screen-reader findings.
 
 ## Skip If (ANY kills it)
 
-- target is a non-standard or game-style UI (custom canvas, WebGL, immersive VR) — needs bespoke script
-- only one screen reader available — audit is single-platform; document the gap
-- WCAG 2.0 AA only — some scripts (e.g. autocomplete) reference 2.1+ criteria; remove those
+- One-off exploratory SR pass — capture as notes, not as a script.
+- Flows with no SR-relevant interaction (pure video player) — defer to media-player a11y.
+- Pre-AT phase — run `a11y-basics` first.
 
 ## Prerequisites
 
-- machines with the four screen readers installed (or a sub-set)
-- target build available on real OS (not just browser tools)
-- known accounts / data for forms (the script needs real input)
-- WCAG SC reference for traceback
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Flow under test | URL or app screen sequence | product |
+| Target SR + version | NVDA 2024.x / VoiceOver iOS 17.x / TalkBack 14.x | device fleet |
+| WCAG SC mapping | SC list expected to be exercised | audit baseline |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/accessibility-specialist/a11y-testing` | Provides the broader audit workflow this slots into |
-| `pro/ux/accessibility-specialist/accessibility-first-design` | Component-archetype taxonomy shared |
-| `pro/ux/accessibility-specialist/aria-patterns-cheatsheet` | ARIA expectations referenced inside scripts |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: per-platform parity, expected utterance not exact, WCAG mapping per step, fail-stop on showstoppers, build-version pinning | ~1000 |
-| `content/02-output-contract.xml` | essential | sr-audit-results.yaml schema, per-script result shape, component archetype list | ~800 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes: false-pass on silent failures, version drift, gesture variants, language differences, etc. | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `script_selection_for_component` | haiku | Match component to archetype |
-| `audit_results_summarisation` | sonnet | Compact per-script results into findings |
-| `wcag_traceback_drafting` | sonnet | Map findings to specific success criteria |
-| `developer_friendly_finding_draft` | sonnet | Translate audit output for engineering team |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/script-form.md` | Form archetype: label, required, error, submission |
-| `templates/script-modal.md` | Modal: focus trap, escape, return-focus |
-| `templates/script-table.md` | Data table: header association, sortable |
-| `templates/script-navigation.md` | Primary nav: landmarks, current, expanded state |
-| `templates/script-autocomplete.md` | Combobox per ARIA Authoring Practices |
-| `templates/script-video-player.md` | Player: captions, controls, transcript |
-| `templates/script-toast.md` | Live region announcement |
-| `templates/sr-audit-results.schema.yaml` | Result schema |
+| `templates/sr-test-script.md` | Markdown skeleton for SR test script. |
+| `templates/sr-test-script.json` | JSON schema-conformant script. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/audit-runner.py` | Walks the component list, opens the matching script in the auditor's terminal, captures pass/fail | During audit session |
-| `scripts/wcag-rollup.py` | Aggregates per-script results into a per-SC compliance summary | After audit complete |
+| `scripts/validate-screen-reader-test-script-templates.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
-- peer methodologies: `a11y-testing`, `aria-patterns-cheatsheet`, `accessibility-first-design`, `ada-title-ii-compliance-2026`
-- external: [WAI-ARIA Authoring Practices 1.2](https://www.w3.org/WAI/ARIA/apg/) · [WebAIM screen-reader survey](https://webaim.org/projects/screenreadersurvey/) · [Deque axe DevTools](https://www.deque.com/axe/) · [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+- [[testing-with-assistive-technology]]
+- [[a11y-testing]]
+- [[wcag-22-compliance]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

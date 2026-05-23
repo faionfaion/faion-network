@@ -3,73 +3,96 @@ slug: spatial-accessibility
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Accessibility methodology for spatial/XR interfaces (Apple Vision Pro, Meta Quest, HoloLens, WebXR) addressing motor limitations, visual and hearing impairment, cognitive load, and motion sensitivity.
-content_id: "cce0eeb046ffb47f"
-tags: [xr, accessibility, spatial, wcag, inclusive-design]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Accessibility rules for XR (VR/AR/MR) spatial UI: reach zones, height variability, occlusion, spatial audio, seated alternates.
+content_id: "8d374cd2f443bf36"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [spatial, xr, vr, ar, a11y]
 ---
 # Spatial Accessibility in XR Interfaces
 
 ## Summary
 
-**One-sentence:** Accessibility methodology for spatial/XR interfaces (Apple Vision Pro, Meta Quest, HoloLens, WebXR) addressing motor limitations, visual and hearing impairment, cognitive load, and motion sensitivity.
+**One-sentence:** Accessibility rules for XR (VR/AR/MR) spatial UI: reach zones, height variability, occlusion, spatial audio, seated alternates.
 
-**One-paragraph:** Accessibility methodology for spatial/XR interfaces (Apple Vision Pro, Meta Quest, HoloLens, WebXR) addressing motor limitations, visual and hearing impairment, cognitive load, and motion sensitivity. Core requirements: multiple simultaneous input modalities (gaze + voice + controller + hand), seated mode as the default, 3D captions that face the user, spatial audio navigation for blind users, and alignment with W3C XR Accessibility User Requirements (XAUR).
+**One-paragraph:** Spatial UI introduces new exclusion vectors: out-of-reach controls, height assumptions, occluding panels, missing spatial-audio cues, standing-only flows. This methodology pins five spatial-accessibility rules and emits a per-experience spatial-a11y record.
+
+**Ефективно для:**
+
+- Reach zones documented so panels work for short / tall / seated users.
+- Occlusion budget keeps critical info visible.
+- Spatial audio doubles as a directional cue for blind users.
+- Seated alternates remove standing-only exclusion.
 
 ## Applies If (ALL must hold)
 
-- Designing or shipping for Apple Vision Pro, Meta Quest, HoloLens, Android XR, or WebXR.
-- Adding accessibility features to an existing XR application pre-release.
-- Auditing an immersive product against W3C XAUR.
-- Enterprise XR (training, digital twins, remote assist) where ADA Title II or EAA may apply.
-- Adding alternative input modalities to a single-modality XR experience.
+- XR experience with persistent spatial UI panels.
+- Seated + standing users in scope.
+- Multiple user heights expected.
 
 ## Skip If (ANY kills it)
 
-- 2D web/mobile a11y — use `a11y-testing` and WCAG 2.2 AA.
-- Game-only experiences where motion is core gameplay — apply selectively to menus and settings only.
-- Internal R&D prototypes never seen by real users.
-- Where the platform's built-in a11y settings fully address user needs without custom work.
+- Pure flat-screen — use `accessibility-first-design`.
+- Single-pose tech demo with no production users.
+- AR-only with no persistent panels — use `ar-design-patterns`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Experience brief | Markdown | product |
+| Reach zone matrix | near/mid/far layout | design |
+| Locomotion + seating model | string | design |
+| Audio plan | channel + spatial schema | audio |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spatial-accessibility-record.json` | JSON skeleton matching the schema. |
+| `templates/xr-scene-audit.py` | Stdlib helper to scan a scene JSON for reach-zone + occlusion violations. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-accessibility.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[vr-design-patterns]]
+- [[ar-design-patterns]]
+- [[immersive-design-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

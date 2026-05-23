@@ -3,73 +3,96 @@ slug: regulatory-compliance-2026
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Regional accessibility law matrix for 2026: ADA Title II (US government, April 2026 deadline), European Accessibility Act (EU e-commerce + banking, June 2025/2030), Section 508, AODA (Canada), and equivalent frameworks in the UK, Australia, and Asia-Pacific.
-content_id: "becb9815e2337741"
-tags: [regulatory, compliance, legal, accessibility, wcag]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Cross-regime accessibility compliance map (ADA Title II, EU EAA, EN 301 549, Section 508, AODA) producing a per-region conformance plan + VPAT-ACR.
+content_id: "1e7aa7f567d067f4"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [regulatory, compliance, ada, eaa, section-508, aoda, vpat]
 ---
 # Regulatory Compliance 2026
 
 ## Summary
 
-**One-sentence:** Regional accessibility law matrix for 2026: ADA Title II (US government, April 2026 deadline), European Accessibility Act (EU e-commerce + banking, June 2025/2030), Section 508, AODA (Canada), and equivalent frameworks in the UK, Australia, and Asia-Pacific.
+**One-sentence:** Cross-regime accessibility compliance map (ADA Title II, EU EAA, EN 301 549, Section 508, AODA) producing a per-region conformance plan + VPAT-ACR.
 
-**One-paragraph:** Regional accessibility law matrix for 2026: ADA Title II (US government, April 2026 deadline), European Accessibility Act (EU e-commerce + banking, June 2025/2030), Section 508, AODA (Canada), and equivalent frameworks in the UK, Australia, and Asia-Pacific. Covers deadlines, WCAG standard mappings, documentation requirements (VPAT/ACR, accessibility statements), enforcement penalties, and exemptions.
+**One-paragraph:** 2026 brings overlapping accessibility regimes: ADA Title II (April 2026), EU EAA (June 2025 already-in-force), updated EN 301 549, Section 508 refresh signals, AODA enforcement uplifts. This methodology pins a per-region conformance plan + VPAT-ACR mapping, the documentation deliverables expected per regime, and the per-region exception clauses. Output is a regulatory compliance plan record validated against the schema.
+
+**Ефективно для:**
+
+- Avoids parallel-audit cost across overlapping regimes.
+- Produces VPAT-ACR + EAA accessibility statement + AODA filing in one pass.
+- Pins per-region exception clauses with rationale.
+- Tracks per-region deadlines in one dashboard.
 
 ## Applies If (ALL must hold)
 
-- Determining which accessibility standard (WCAG 2.0/2.1/2.2, EN 301 549) applies to a given product and jurisdiction.
-- Writing or auditing accessibility statements, VPATs, and ACRs.
-- Setting up ongoing monitoring, training, and procurement standards for ADA/EAA compliance.
-- Assessing risk before a product launch in a new region.
-- Responding to a DOJ complaint or EU enforcement action.
+- Product ships to ≥1 region with active 2026 a11y rule.
+- Procurement requires a VPAT-ACR or equivalent.
+- Counsel has confirmed which regimes apply.
 
 ## Skip If (ANY kills it)
 
-- Technical WCAG implementation — use `wcag-22-compliance` or `a11y-testing`.
-- AT runtime testing — use `testing-with-assistive-technology`.
-- XR/spatial products — apply WCAG + W3C XAUR; no dedicated regulation yet.
-- Internal-only tooling with no public-facing interface — most regulations apply to public-facing services only.
+- Internal-only tool with no external users.
+- Pre-product phase — return when audit baseline exists.
+- Single-region narrow scope — use `ada-title-ii-compliance-2026` directly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Market regions in scope | list | legal |
+| Product type | web / mobile / kiosk / hardware | product |
+| Existing audit baselines | report list | audit |
+| Procurement / contracting status | string | sales |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vpat-acr-skeleton.md` | VPAT-ACR template (WCAG 2.2 AA). |
+| `templates/accessibility-statement.txt` | EU EAA accessibility statement skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-regulatory-compliance-2026.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[ada-title-ii-compliance-2026]]
+- [[wcag-22-compliance]]
+- [[a11y-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

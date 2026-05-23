@@ -3,78 +3,102 @@ slug: design-qa-during-build
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "834f890616b72d9c"
-summary: Design Qa During Build delivers a concrete, testable methodology that turns the recurring task of 'Zero-to-one product design: brief to dev handoff (8 weeks)' into an auditable artefact, addressing the gap: After handoff, design drift creeps in during sprint. No methodology cover
-tags: [ux, pro, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Sprint-cadence design-QA checklist that catches design drift between handoff and ship: token usage audit, spec-deviation log, fix-tickets ledger, sign-off gates.
+content_id: "9937879943de1221"
+complexity: medium
+produces: checklist
+est_tokens: 4900
+tags: [ux, pro, design-qa, design-drift, sprint-review, handoff]
 ---
-# Design Qa During Build
+# Design QA During Build
 
 ## Summary
 
-**One-sentence:** Design Qa During Build delivers a concrete, testable methodology that turns the recurring task of 'Zero-to-one product design: brief to dev handoff (8 weeks)' into an auditable artefact, addressing the gap: After handoff, design drift creeps in during sprint. No methodology covers how a designer should QA the build, log drift, and pair with engineering.
+**One-sentence:** Sprint-cadence design-QA checklist that catches design drift between handoff and ship: token usage audit, spec-deviation log, fix-tickets ledger, sign-off gates.
 
-**One-paragraph:** After handoff, design drift creeps in during sprint. No methodology covers how a designer should QA the build, log drift, and pair with engineering. Design Qa During Build closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Zero-to-one product design: brief to dev handoff (8 weeks)' (role-ux-ui-designer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Sprint-cadence design-QA checklist that catches design drift between handoff and ship: token usage audit, spec-deviation log, fix-tickets ledger, sign-off gates. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Catching colour/spacing/typography drift before a release branch is cut.
+- Tying screenshot diffs to a named designer and a sign-off cycle.
+- Logging deviation tickets the dev team can close in the same sprint.
+- Defending a token investment by quantifying drift incidents avoided.
+- Surfacing recurring drift root causes for the design-system roadmap.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Zero-to-one product design: brief to dev handoff (8 weeks)' (role: role-ux-ui-designer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- The triggering activity for design-qa-during-build appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
 - One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/ux/` parent skill context | vocabulary, neighbouring methodologies |
+| [[design-system-changelog-template]] | upstream context this methodology builds on |
+| [[multi-platform-design-parity]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `design_qa_during_build_template_fill` | haiku | Template fill, no judgment |
-| `design_qa_during_build_evidence_check` | sonnet | Bounded comparison + judgment |
-| `design_qa_during_build_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-design-qa-during-build-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-design-qa-during-build.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/ux/` (see neighbouring methodologies)
-- triggering activity: `role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[design-system-changelog-template]]
+- [[multi-platform-design-parity]]
+- [[design-system-impact-queue]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

@@ -3,72 +3,98 @@ slug: wcag-22-compliance
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Delta methodology for upgrading from WCAG 2.
-content_id: "fcb092b185dfceb7"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Delta methodology covering the 9 new WCAG 2.2 success criteria (focus not obscured, dragging movements, target size 24×24, redundant entry, accessible authentication, etc.).
+content_id: "3b20b15b7e6886e7"
+complexity: medium
+produces: report
+est_tokens: 4100
 tags: [wcag, wcag-2-2, accessibility, compliance, a11y]
 ---
 # WCAG 2.2 Compliance
 
 ## Summary
 
-**One-sentence:** Delta methodology for upgrading from WCAG 2.
+**One-sentence:** Delta methodology covering the 9 new WCAG 2.2 success criteria (focus not obscured, dragging movements, target size 24×24, redundant entry, accessible authentication, etc.).
 
-**One-paragraph:** Delta methodology for upgrading from WCAG 2.0/2.1 to 2.2 (published October 2023). Covers all 9 new success criteria, the removal of 4.1.1 Parsing, and the 5 new AA-level criteria most teams miss: 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, 2.5.8 Target Size (24x24 CSS px minimum), 3.3.7 Redundant Entry, and 3.3.8 Accessible Authentication.
+**One-paragraph:** WCAG 2.2 (October 2023) adds 9 new success criteria and removes 4.1.1 Parsing. Most teams miss the 5 new AA criteria: 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, 2.5.8 Target Size (24×24 CSS px minimum), 3.3.7 Redundant Entry, and 3.3.8 Accessible Authentication. This methodology audits a product against the 2.2 delta and emits a 2.2-delta conformance record validated against the schema.
+
+**Ефективно для:**
+
+- Delta-only audit avoids re-running full 2.1 sweep.
+- Per-SC tracking for the 9 new criteria.
+- Target-size rule catches mobile-only regressions before launch.
+- Accessible-authentication rule replaces cognitive function tests with alternatives.
 
 ## Applies If (ALL must hold)
 
-- Auditing or upgrading a product from WCAG 2.0/2.1 to 2.2.
-- Implementing WCAG 2.2 AA criteria in new components (drag, auth, multi-step forms).
-- Writing acceptance criteria that reference 2.2 SC numbers.
-- Future-proofing for ADA Title II extensions and EU EAA (EN 301 549 will incorporate 2.2).
+- Existing WCAG 2.1 AA baseline; upgrading to 2.2.
+- New components (drag, auth, multi-step forms) being designed or shipped.
+- Acceptance criteria reference 2.2 SC numbers.
+- Compliance preparation for ADA Title II / EAA / EN 301 549 update cycle.
 
 ## Skip If (ANY kills it)
 
-- General a11y triage on a new codebase — start with `a11y-testing` or `a11y-basics`.
+- Greenfield project with no 2.1 baseline — start with `a11y-testing`.
 - AT runtime testing — use `testing-with-assistive-technology`.
-- Compliance paperwork / VPAT — use `regulatory-compliance-2026`.
-- XR/spatial products — use `spatial-accessibility`; WCAG 2.2 does not fully cover them.
+- VPAT-only paperwork — use `regulatory-compliance-2026`.
+- XR / spatial — use `spatial-accessibility`, `vr-design-patterns`, `ar-design-patterns`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product / flows | URL list | product |
+| WCAG 2.1 baseline | existing audit report | audit |
+| Target conformance level | default AA | team policy |
+| Component inventory | design system list | design |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `triage-inputs` | haiku | Mechanical scrape from inputs. |
+| `apply-rules` | sonnet | Per-rule judgement on inputs. |
+| `synthesise-artefact` | sonnet | Aggregates rule outcomes into the final artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wcag-22-delta-record.json` | JSON delta record skeleton. |
+| `templates/target-size-playwright.js` | Playwright snippet measuring target sizes. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-wcag-22-compliance.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `pro/ux/accessibility-specialist/`
+- [[a11y-testing]]
+- [[regulatory-compliance-2026]]
+- [[ada-title-ii-compliance-2026]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.

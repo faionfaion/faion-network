@@ -3,77 +3,102 @@ slug: motion-and-microinteraction-spec
 tier: pro
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Motion And Microinteraction Spec: codified ux practice that turns the recurring 'role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks)' decision into a repeatable, auditable artefact.
-content_id: "b568cb0e1e9ac463"
-tags: [motion-and-microinteraction-spec, ux, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-component motion spec (duration, easing, choreography, prefers-reduced-motion fallback, perceived-perf impact) emitted alongside the visual spec so dev cannot improvise timing.
+content_id: "d5214635f5f037b1"
+complexity: medium
+produces: spec
+est_tokens: 4900
+tags: [ux, pro, motion-design, microinteractions, accessibility, spec]
 ---
-# Motion And Microinteraction Spec
+# Motion and Microinteraction Spec
 
 ## Summary
 
-**One-sentence:** Motion And Microinteraction Spec: codified ux practice that turns the recurring 'role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-component motion spec (duration, easing, choreography, prefers-reduced-motion fallback, perceived-perf impact) emitted alongside the visual spec so dev cannot improvise timing.
 
-**One-paragraph:** Motion And Microinteraction Spec addresses the gap identified by the role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks) playbook: Hi-fi handoff is incomplete without motion. AI-generated layouts almost never include timing curves or microinteractions. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Per-component motion spec (duration, easing, choreography, prefers-reduced-motion fallback, perceived-perf impact) emitted alongside the visual spec so dev cannot improvise timing. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Specifying transitions for a single component in a zero-to-one handoff.
+- Pinning prefers-reduced-motion fallbacks before the a11y audit fails.
+- Quantifying the perceived-perf cost of a long-running animation.
+- Coordinating choreography between two components that animate in concert.
+- Re-platforming a flow to native where Lottie is not on the roadmap.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The triggering activity for motion-and-microinteraction-spec appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- recent context for the role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/ux-ui-designer` | parent role skill — provides the operating context for this methodology |
+| `pro/ux/` parent skill context | vocabulary, neighbouring methodologies |
+| [[motion-and-micro-interaction-system]] | upstream context this methodology builds on |
+| [[design-system-changelog-template]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-motion-and-microinteraction-spec-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/motion-and-microinteraction-spec.json` | JSON schema for the Motion And Microinteraction Spec output contract |
-| `templates/motion-and-microinteraction-spec.md` | Markdown skeleton with the required fields |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-motion-and-microinteraction-spec.py` | Enforce Motion And Microinteraction Spec output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-motion-and-microinteraction-spec.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/ux/ux-ui-designer/`
-- upstream playbook: `role-ux-ui-designer/Zero-to-one product design: brief to dev handoff (8 weeks)`
+- [[motion-and-micro-interaction-system]]
+- [[design-system-changelog-template]]
+- [[design-qa-during-build]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
