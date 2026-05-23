@@ -1,66 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Code Compliance Validation Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the validation-report shape, the finding severity scheme, and the recommendation rule.</summary>
+<text id="02-output-contract" title="AI-Generated Code Compliance Validation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <section title="Required validation-report fields">
-    <list>
-      <item><code>pr_branch</code> (string)</item>
-      <item><code>charter_version</code> (string; must match the checked-in charter version)</item>
-      <item><code>scope_files</code> (array of repo-relative paths, AI-touched only)</item>
-      <item><code>posture</code> (array; subset of {SOC2, HIPAA, PCI, GDPR, internal-only})</item>
-      <item><code>findings</code> (array of objects; see structure below)</item>
-      <item><code>license_diff</code> (object: new_deps, removed_deps, license_changes)</item>
-      <item><code>recommendation</code> (enum: ship, revise, escalate)</item>
-      <item><code>senior_dev_signoff</code> (object: name, signed_at_utc) — required before PR open</item>
-    </list>
-    <reference path="templates/validation-report.json">Authoritative JSON Schema for the validation report.</reference>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-generated-code-compliance-validation.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "findings",
+    "recommendations"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
 
-  <section title="Finding structure">
-    <list>
-      <item><code>findings[].id</code>: stable id within the report</item>
-      <item><code>findings[].file</code> + <code>findings[].line_range</code></item>
-      <item><code>findings[].kind</code>: one of {lint, license, forbidden-api, secret, pii, naming, log-shape, retry-policy}</item>
-      <item><code>findings[].rule_ref</code>: charter section ID or forbidden-apis.yaml rule ID</item>
-      <item><code>findings[].severity</code>: enum {block, advise}</item>
-      <item><code>findings[].recommendation</code>: concrete fix; not vague advice</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "ai-generated-code-compliance-validation",
+  "title": "AI-Generated Code Compliance Validation",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "escape-rate trending up"
+    }
+  ],
+  "recommendations": [
+    "add mutation-score gate to CI"
+  ]
+}
+]]></code>
+  </example>
 
-  <section title="Recommendation rule">
-    <list>
-      <item><code>ship</code>: zero `block` findings, zero new dependencies with non-allowed licenses.</item>
-      <item><code>revise</code>: any `block` finding present; AI must fix and the senior dev re-runs the pass.</item>
-      <item><code>escalate</code>: novel forbidden-API hit not in `forbidden-apis.yaml`, OR new dependency under a non-allowed license, OR charter ambiguity discovered.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
-      <description>Lint run with the senior dev's personal config.</description>
-      <reason>r3 violation. Client config is the authoritative profile.</reason>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
     </antipattern>
     <antipattern>
-      <description>scope_files contains files not touched by the diff.</description>
-      <reason>r2 violation. Whole-tree scope drowns findings.</reason>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
     </antipattern>
     <antipattern>
-      <description>Posture array empty when the client declares SOC 2 or HIPAA in the charter.</description>
-      <reason>r4 evasion. Posture-bound rules are skipped.</reason>
-    </antipattern>
-    <antipattern>
-      <description>senior_dev_signoff missing while recommendation is `ship`.</description>
-      <reason>r5 violation. Signoff is the human gate.</reason>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>charter_version matches the file on disk.</item>
-      <item>scope_files contains only diff-touched files.</item>
-      <item>Every finding has rule_ref and recommendation populated.</item>
-      <item>license_diff is non-empty if `package.json` / `pyproject.toml` / `Cargo.toml` was touched.</item>
-      <item>Senior dev signoff timestamp matches the report's `recommendation` line.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-ai-generated-code-compliance-validation.py">Validator script</reference>
 </text>

@@ -1,68 +1,97 @@
 ---
 slug: security-by-design-feature-checklist
 tier: pro
-group: dev
-domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+group: architecture
+domain: architecture
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: "STRIDE-lite per-feature threat-model checklist that runs before a feature design is merged, producing a small artefact the architecture review consumes."
-content_id: "922bfbf1a3421b99"
-tags: [security-by-design-feature-checklist, dev, pro]
+summary: "STRIDE-lite per-feature threat-model checklist that runs during a normal design review and produces a 1-page feature-stm.md attached to the design doc."
+content_id: "f17e948d77f7945a"
+complexity: light
+produces: checklist
+est_tokens: 3400
+tags: [architecture, pro, security, stride, checklist, feature, threat-model]
 ---
 # Security by Design Feature Checklist
 
 ## Summary
 
-**One-sentence:** A STRIDE-lite per-feature checklist that runs before a feature design merges and emits a small artefact the architecture review consumes.
+**One-sentence:** STRIDE-lite per-feature threat-model checklist that runs during a normal design review and produces a 1-page feature-stm.md attached to the design doc.
 
-**One-paragraph:** `security-architecture` covers the system-level view; `stride-threat-model-template` covers the heavyweight workshop. Missing is the lightweight per-feature pass that fits a normal design-review meeting: 6 STRIDE categories, 2-3 prompts each, decision per prompt (mitigated / accepted / deferred). The output is a `feature-stm.md` (max ~1 page) attached to the feature's design doc. Reviewers refuse to approve a design without one. This is the architect deliverable that nobody covered cleanly before.
+**One-paragraph:** STRIDE-lite per-feature threat-model checklist that runs during a normal design review and produces a 1-page feature-stm.md attached to the design doc. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- a feature design is going into architecture review
-- the feature touches identity, data flow, persistence, external integration, or trust boundary
-- output (feature STM doc) will be attached to the design doc
-- tier == pro or higher
+- A team is producing checklist for the topic 'Security by Design Feature Checklist'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- feature is a pure UI tweak with no data-flow change
-- a parent system STRIDE already covers this feature unchanged (cite, don't re-do)
-- regulatory regime mandates a different per-feature template
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Per-feature design reviews where a full STRIDE workshop is overkill.
+- Features touching identity, data flow, persistence, external integration, or trust boundary.
+- Architecture-review meetings that want a security artefact attached to every feature.
+- Teams that already adopted STRIDE template and need a per-feature lite variant.
 
 ## Prerequisites
 
-- the feature has a written design doc (even draft)
-- a STRIDE-aware reviewer is on the architecture review
-- the team has read `stride-threat-model-template` once
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/stride-threat-model-template` | parent / heavyweight version |
-| `pro/dev/stride-lite-checklist-for-architects` | sibling — broader-edge variant |
-| `pro/dev/architecture-review-meeting-facilitation` | downstream consumer of this artefact |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules (one per STRIDE letter) + 1 worked example | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `prompt_per_stride_letter` | sonnet | bounded per-category prompts |
-| `summarise_decisions` | sonnet | merge decisions into 1-page artefact |
-| `flag_unmitigated_high` | opus | escalation judgement when High-risk items remain |
+| `apply-checklist` | haiku | Per-item binary check against artefact. |
+| `classify-decision` | sonnet | Mitigated / accepted / deferred / N-A judgment. |
+| `escalate-stride-conflict` | opus | Cross-category interaction analysis. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | Checklist with category headings + decision-per-prompt rows. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-security-by-design-feature-checklist.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- `pro/dev/stride-threat-model-template`
-- `pro/dev/stride-lite-checklist-for-architects`
-- upstream playbook: `role-software-architect/Architecture review meeting facilitation`
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -1,45 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="QA Security Triage Runbook — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A runbook artefact comprising: a step list (preconditions, action, actor, artefact, rollback), a wall-clock budget per phase, and a post-run record committed to the agreed evidence folder.</summary>
+<text id="02-output-contract" title="QA Security Triage Runbook Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>step.precondition (state, alert, ticket, signal)</item>
-      <item>step.actor (role + system)</item>
-      <item>step.action (verb + object + parameters)</item>
-      <item>step.artefact (link / id of produced artefact)</item>
-      <item>step.rollback OR step.stop_branch</item>
-      <item>phase.budget (wall-clock minutes)</item>
-      <item>run-record (start_ts, end_ts, branches, exceptions, links)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-security-triage-runbook.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "findings",
+    "recommendations"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "qa-security-triage-runbook",
+  "title": "QA Security Triage Runbook",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "escape-rate trending up"
+    }
+  ],
+  "recommendations": [
+    "add mutation-score gate to CI"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
-      <description>vague actors (&quot;someone notifies&quot;)</description>
-      <reason>Vague actors fail under stress.</reason>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
     </antipattern>
     <antipattern>
-      <description>side-effect steps without rollback or STOP branch</description>
-      <reason>Operator gets stuck mid-procedure.</reason>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
     </antipattern>
     <antipattern>
-      <description>no phase budgets</description>
-      <reason>Window-blowing runs go undetected until the second alarm.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing run-record after execution</description>
-      <reason>Without records the runbook cannot improve.</reason>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Every step has precondition + actor + artefact + rollback.</item>
-      <item>Each phase carries a wall-clock budget.</item>
-      <item>Run record committed after execution.</item>
-      <item>Escalation criteria explicit.</item>
-      <item>Runbook owner named in header.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-qa-security-triage-runbook.py">Validator script</reference>
 </text>

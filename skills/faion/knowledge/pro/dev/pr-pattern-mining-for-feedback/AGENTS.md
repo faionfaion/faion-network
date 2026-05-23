@@ -3,82 +3,97 @@ slug: pr-pattern-mining-for-feedback
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "ad125e11df7fad4e"
-summary: PR Pattern Mining For Feedback — pinned method for the software architect: fixed shape + named owner + evidence anchors + outcome review, so junior / mid dev architecture mentoring (weekly 1:1) stops being folklore and starts being a reviewable operating tool.
-tags: [dev, pro, method, pattern, mining, for, feedback]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Mines repeated PR-review comments into a feedback report: top antipatterns + suggested rule additions.
+content_id: "4920832f3d6f5672"
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [pr, pattern-mining, feedback, review, metrics]
 ---
-# PR Pattern Mining For Feedback
+
+# Pr Pattern Mining For Feedback
 
 ## Summary
 
-**One-sentence:** PR Pattern Mining For Feedback — pinned method for the software architect: fixed shape + named owner + evidence anchors + outcome review, so junior / mid dev architecture mentoring (weekly 1:1) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Mines repeated PR-review comments into a feedback report: top antipatterns + suggested rule additions.
 
-**One-paragraph:** In software development, the software architect runs junior / mid dev architecture mentoring (weekly 1:1) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Architect needs a quick method to extract recurring teachable patterns from a mentee's PR history. Pattern-memory methodology is too generic. `pr-pattern-mining-for-feedback` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the software architect starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Mines repeated PR-review comments into a feedback report: top antipatterns + suggested rule additions. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Pro-tier dev workflow, де потрібен auditable artefact замість ad-hoc decision.
+- Команди, де ≥2 stakeholders читають один артефакт і повинні дійти однакового висновку.
+- Cases where input must be cited (no fabrication) і decision-trail зберігається для review.
+- Recurring trigger, що з'являється ≥1 раз на cycle і виправдовує methodology overhead.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-software-architect/Junior / mid dev architecture mentoring (weekly 1:1)`
-- the software architect owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- The triggering case shows up in the user's workload at least once per cycle.
+- A named consumer (human reviewer or downstream agent) exists for the output.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator has authority to act on the artefact (write access, sign-off rights).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer — the artefact will be orphaned regardless of quality.
+- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the software architect.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger event / brief | markdown / ticket | team owner |
+| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
+| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/output.md` | Report skeleton matching the schema in 02-output-contract.xml |
+| `templates/_smoke-test.md` | Filled-in canonical example for calibration |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-pr-pattern-mining-for-feedback.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[junior-next-pr-checklist-template]]
+- [[code-review-slo-and-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

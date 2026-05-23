@@ -1,58 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ADR Staleness Audit Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the audit report and per-ADR transition schemas.</summary>
+<text id="02-output-contract" title="ADR Staleness Audit Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="audit_metadata">
-        <subfield name="quarter_label" type="string"/>
-        <subfield name="audit_lead" type="string"/>
-        <subfield name="audited_at" type="iso_date"/>
-        <subfield name="adr_count_audited" type="integer"/>
-      </field>
-      <field name="audit_entries" format="list">
-        <subfield name="adr_id" type="string"/>
-        <subfield name="signal_1_code_reality" enum="0,0.5,1"/>
-        <subfield name="signal_2_stakeholder" enum="0,0.5,1"/>
-        <subfield name="signal_3_triggers" enum="0,0.5,1,N/A"/>
-        <subfield name="signal_4_external" enum="0,0.5,1"/>
-        <subfield name="aggregate_score" type="number" min="0" max="1"/>
-        <subfield name="decision" enum="accepted,re_open,superseded,deprecated"/>
-        <subfield name="evidence_links[]" type="string" min_items="1"/>
-        <subfield name="follow_up_action" type="string" required_if="decision IN [re_open, superseded, deprecated]"/>
-        <subfield name="follow_up_deadline" type="iso_date" required_if="follow_up_action present"/>
-      </field>
-      <field name="superseding_adrs_drafted" format="list" required_if="any decision == superseded"/>
-      <field name="audit_summary" required_keys="accepted_count,re_open_count,superseded_count,deprecated_count"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">ADR with decision != "accepted" but no evidence_links</pattern>
-      <pattern id="f2">ADR text edited or deleted during audit (only status / metadata may change)</pattern>
-      <pattern id="f3">"deprecated" decision without a follow_up_action explaining why no successor</pattern>
-      <pattern id="f4">"superseded" decision without a linked superseding_adr id (even if draft)</pattern>
-      <pattern id="f5">aggregate_score outside [0,1] OR not matching the signal mapping</pattern>
-      <pattern id="f6">audit run more than 14 days outside the quarterly window (signals stale)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Signal 3 may be marked "N/A" when reversibility tagging is not in use; aggregate_score then divides by 3 instead of 4.</transformation>
-      <transformation>"re_open" status may temporarily hold an ADR for 30 days max; if no decision after 30 days, force to deprecated or write a superseder.</transformation>
-      <transformation>For ADRs flagged by the decay-detector-agent with high confidence, the manual code-reality signal may inherit the agent's score with a citation.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/staleness-audit-report.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>audit_metadata complete (quarter, lead, date)</item>
-      <item>every audited ADR has all 4 signals scored (with 0.5 / N/A where appropriate)</item>
-      <item>aggregate_score matches the decision mapping</item>
-      <item>evidence_links present for any decision != accepted</item>
-      <item>follow_up_action + deadline for re_open / superseded / deprecated</item>
-      <item>superseding_adrs_drafted (at least skeletons) for every "superseded" decision</item>
-      <item>audit_summary counts match audit_entries totals</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/adr-staleness-audit.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "findings",
+    "recommendations"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "adr-staleness-audit",
+  "title": "ADR Staleness Audit",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "escape-rate trending up"
+    }
+  ],
+  "recommendations": [
+    "add mutation-score gate to CI"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-adr-staleness-audit.py">Validator script</reference>
 </text>

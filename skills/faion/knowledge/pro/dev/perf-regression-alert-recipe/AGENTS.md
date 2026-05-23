@@ -3,77 +3,96 @@ slug: perf-regression-alert-recipe
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Perf Regression Alert Recipe: codified dev practice that turns the recurring 'role-software-developer/Performance profiling pass on one hot path' decision into a repeatable, auditable artefact.
-content_id: "63a584c147e6a7cf"
-tags: [perf-regression-alert-recipe, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Recipe for a perf-regression alert: baseline diff, % delta thresholds, paging policy, owner rotation.
+content_id: "2000a17f1b785c8d"
+complexity: medium
+produces: config
+est_tokens: 4100
+tags: [perf, regression, alert, recipe, ci]
 ---
+
 # Perf Regression Alert Recipe
 
 ## Summary
 
-**One-sentence:** Perf Regression Alert Recipe: codified dev practice that turns the recurring 'role-software-developer/Performance profiling pass on one hot path' decision into a repeatable, auditable artefact.
+**One-sentence:** Recipe for a perf-regression alert: baseline diff, % delta thresholds, paging policy, owner rotation.
 
-**One-paragraph:** Perf Regression Alert Recipe addresses the gap identified by the role-software-developer/Performance profiling pass on one hot path playbook: After a perf win, you want it to stick. Concrete recipe for adding a metric + alert is missing from current monitoring methodologies. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Recipe for a perf-regression alert: baseline diff, % delta thresholds, paging policy, owner rotation. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Pro-tier dev workflow, де потрібен auditable artefact замість ad-hoc decision.
+- Команди, де ≥2 stakeholders читають один артефакт і повинні дійти однакового висновку.
+- Cases where input must be cited (no fabrication) і decision-trail зберігається для review.
+- Recurring trigger, що з'являється ≥1 раз на cycle і виправдовує methodology overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-developer/Performance profiling pass on one hot path OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The triggering case shows up in the user's workload at least once per cycle.
+- A named consumer (human reviewer or downstream agent) exists for the output.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator has authority to act on the artefact (write access, sign-off rights).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer — the artefact will be orphaned regardless of quality.
+- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
 
 ## Prerequisites
 
-- recent context for the role-software-developer/Performance profiling pass on one hot path task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger event / brief | markdown / ticket | team owner |
+| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
+| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/perf-regression-alert-recipe.json` | JSON schema for the Perf Regression Alert Recipe output contract |
-| `templates/perf-regression-alert-recipe.md` | Markdown skeleton with the required fields |
+| `templates/output.json` | Config template (JSON) matching the schema in 02-output-contract.xml |
+| `templates/_smoke-test.md` | Filled-in canonical example for calibration |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-perf-regression-alert-recipe.py` | Enforce Perf Regression Alert Recipe output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-perf-regression-alert-recipe.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- upstream playbook: `role-software-developer/Performance profiling pass on one hot path`
+- [[perf-budget-as-code]]
+- [[observability-in-code]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

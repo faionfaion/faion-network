@@ -1,31 +1,199 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ADR For Client Arb Review Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a ADR For Client Arb Review Template deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
-    </list>
+<text id="02-output-contract" title="ADR for Client ARB Review Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the decision-record artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/adr-for-client-arb-review-template.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "decision_class",
+    "alternatives_rejected"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_class": {
+      "enum": [
+        "one-way-door",
+        "two-way-door"
+      ]
+    },
+    "alternatives_rejected": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "why_rejected"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "why_rejected": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "adr-for-client-arb-review-template",
+  "title": "ADR for Client ARB Review",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "decision_class": "two-way-door",
+  "alternatives_rejected": [
+    {
+      "option": "do-nothing",
+      "why_rejected": "misses compliance window"
+    },
+    {
+      "option": "alternative-vendor",
+      "why_rejected": "contract terms incompatible"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-adr-for-client-arb-review-template.py">Validator script</reference>
 </text>

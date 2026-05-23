@@ -1,43 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="QA Metrics Slos — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="QA Metrics &amp; SLOs Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the report artefact this methodology produces. Validator enforces required keys plus per-field constraints.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-metrics-slos.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "owner",
+    "trigger",
+    "review_cadence",
+    "evidence",
+    "produced_at",
+    "findings",
+    "recommendations"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "threshold",
+            "schedule"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "review_cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "link"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "slug": "qa-metrics-slos",
+  "title": "QA Metrics & SLOs",
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "lead engineer"
+  },
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly:tuesday-14:00-utc"
+  },
+  "review_cadence": "quarterly",
+  "last_reviewed": "2026-05-22",
+  "evidence": [
+    {
+      "claim": "baseline metric captured",
+      "link": "https://wiki.example.com/runs/2026-05-22"
+    }
+  ],
+  "produced_at": "2026-05-22T10:00:00Z",
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "escape-rate trending up"
+    }
+  ],
+  "recommendations": [
+    "add mutation-score gate to CI"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "slug": "BAD_SLUG",
+  "owner": "someone"
+}
+]]></code>
+    <note>Required fields missing (title, trigger, review_cadence, evidence, produced_at). Slug not kebab-case. Owner not an object.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
+      <description>Trigger value &apos;when needed&apos; or &apos;ad-hoc&apos;.</description>
+      <reason>Fires constantly or never; cadence becomes unenforceable.</reason>
     </antipattern>
     <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
+      <description>Owner = team or channel handle (e.g. &apos;@qa-team&apos;, &apos;#oncall&apos;).</description>
+      <reason>Channel ownership rots; named human required.</reason>
     </antipattern>
     <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
+      <description>Empty evidence array with conclusions filled.</description>
+      <reason>Unevidenced conclusions are demoted to hypotheses.</reason>
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
-  </section>
+  <reference path="scripts/validate-qa-metrics-slos.py">Validator script</reference>
 </text>

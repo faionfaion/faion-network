@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="container-orchestration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for container-orchestration. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Container Orchestration Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules every application of `Container Orchestration` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="requests-and-limits" testable="true" depth="essential">
+      <statement>Every container MUST set resource.requests AND resource.limits for cpu + memory. Missing either → reject manifest.</statement>
+      <rationale source="Kubernetes scheduling docs">Missing requests = pod gets BestEffort QoS = first to be evicted; missing limits = noisy-neighbor.</rationale>
     </rule>
+
+    <rule id="liveness-and-readiness" testable="true" depth="essential">
+      <statement>Every workload-bearing pod MUST have BOTH liveness + readiness probes wired to a real endpoint (not /). Missing probe → traffic to broken pod.</statement>
+      <rationale source="K8s probe semantics">Readiness without liveness → permanent unready; liveness without readiness → traffic to startup.</rationale>
+    </rule>
+
+    <rule id="non-root-user" testable="true" depth="essential">
+      <statement>Containers run as a non-root user (`runAsNonRoot: true`, fsGroup set). Root containers rejected at PSS-restricted baseline.</statement>
+      <rationale source="Pod Security Standards (PSS)">Root pods amplify compromise blast radius.</rationale>
+    </rule>
+
+    <rule id="network-policy-default-deny" testable="true" depth="essential">
+      <statement>Namespace MUST have a default-deny NetworkPolicy with explicit allow rules per service-to-service flow.</statement>
+      <rationale source="Cilium / Calico best practice">Default-allow networking = uncontrolled lateral movement.</rationale>
+    </rule>
+
+    <rule id="hpa-bound-by-pdb" testable="true" depth="essential">
+      <statement>Every HPA MUST be paired with a PodDisruptionBudget so scale-down + cluster-upgrade do not violate availability targets.</statement>
+      <rationale source="Kubernetes availability practice">Scale events without PDB cause user-visible outages.</rationale>
+    </rule>
+
+    <rule id="image-pinned-by-digest" testable="true" depth="essential">
+      <statement>Production images MUST be pinned by digest (sha256) — `:latest` and floating tags are forbidden.</statement>
+      <rationale source="Supply-chain integrity">Floating tags break reproducibility and enable supply-chain swaps.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

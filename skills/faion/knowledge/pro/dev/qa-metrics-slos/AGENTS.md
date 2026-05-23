@@ -3,82 +3,97 @@ slug: qa-metrics-slos
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "80a017ee6ad02b39"
-summary: QA Metrics Slos — pinned method for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so modernize a 2018-era qa suite into ai-augmented test ops stops being folklore and starts being a reviewable operating tool.
-tags: [dev, pro, method, metrics, slos]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Versioned, owned, evidence-anchored QA metrics methodology \u2014 escape rate, MTTD/MTTR, flake rate, mutation score, eval-coverage SLO, CI lead time \u2014 published on a cadence with named owner and outcome review."
+content_id: "d060b5f158b1cf3e"
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [dev, pro, qa, metrics, slos, escape-rate, mttr, flake, mutation, eval-coverage]
 ---
-# QA Metrics Slos
+# QA Metrics & SLOs
 
 ## Summary
 
-**One-sentence:** QA Metrics Slos — pinned method for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so modernize a 2018-era qa suite into ai-augmented test ops stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Versioned, owned, evidence-anchored QA metrics methodology — escape rate, MTTD/MTTR, flake rate, mutation score, eval-coverage SLO, CI lead time — published on a cadence with named owner and outcome review.
 
-**One-paragraph:** In software development, the QA engineer runs modernize a 2018-era qa suite into ai-augmented test ops on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Faion has zero coverage of QA-as-a-product metrics: escape rate, MTTD/MTTR for bugs, flake rate, mutation score, eval-coverage SLO for AI features, CI lead time. Without these, modernization regresses. Belongs alongside DevOps DORA but framed for QA. `qa-metrics-slos` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the QA engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Versioned, owned, evidence-anchored QA metrics methodology — escape rate, MTTD/MTTR, flake rate, mutation score, eval-coverage SLO, CI lead time — published on a cadence with named owner and outcome review. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops`
-- the QA engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- A team is producing report for the topic 'QA Metrics & SLOs'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- QA-as-a-product programs that publish escape rate, MTTD/MTTR, flake rate, mutation score, CI lead time.
+- Teams introducing eval-coverage SLOs for AI-generated features.
+- Modernising a 2018-era QA suite into AI-augmented test ops with a reviewable artefact.
+- Quarterly QA outcome review against SLO burn-down and escape-rate trend.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the QA engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `scaffold-report` | haiku | Template fill from header + section list. |
+| `populate-evidence` | sonnet | Per-row evidence link + summary judgment. |
+| `outcome-synthesis` | opus | Cross-cycle synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/skeleton.md` | Report skeleton with frontmatter + sections + evidence anchors per row. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-qa-metrics-slos.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

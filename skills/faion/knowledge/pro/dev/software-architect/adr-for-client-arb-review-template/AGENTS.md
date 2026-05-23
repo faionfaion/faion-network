@@ -1,79 +1,97 @@
 ---
 slug: adr-for-client-arb-review-template
 tier: pro
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for adr for client arb review template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "796d523f33cc7ceb"
-tags: [adr, dev, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "ADR template variant designed for client architecture-review-board (ARB) approval \u2014 names the approver up-front, captures regime constraints, redaction policy, and review-date binding."
+content_id: "63a460e95cd5701f"
+complexity: light
+produces: decision-record
+est_tokens: 3400
+tags: [architecture, pro, adr, outsource, client, arb, approval, template]
 ---
-# ADR For Client Arb Review Template
+# ADR for Client ARB Review
 
 ## Summary
 
-**One-sentence:** Reusable template for adr for client arb review template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** ADR template variant designed for client architecture-review-board (ARB) approval — names the approver up-front, captures regime constraints, redaction policy, and review-date binding.
 
-**One-paragraph:** Reusable template for adr for client arb review template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. ADR templates (MADR, Nygard) exist. Outsource specialist needs a variant designed for client architecture-review-board approval — explicit named approver, regime constraints up front.
+**One-paragraph:** ADR template variant designed for client architecture-review-board (ARB) approval — names the approver up-front, captures regime constraints, redaction policy, and review-date binding. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by adr for client arb review template (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- A team is producing decision-record for the topic 'ADR for Client ARB Review'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Outsource specialists submitting ADRs to a client ARB for approval.
+- ADRs where named approver + regime constraints must be visible at the top.
+- Bespoke client engagements where MADR / Nygard generic templates miss client-specific approval workflow.
+- Producing redactable variants of the ADR for broad distribution after approval.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `scaffold-adr` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-class-and-tradeoff` | opus | Cross-decision synthesis + reversibility judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/adr-skeleton.md` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. |
+| `templates/_smoke-test.md` | Minimum viable filled-in ADR. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-adr-for-client-arb-review-template.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodologies: see siblings under `pro/dev/software-architect/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

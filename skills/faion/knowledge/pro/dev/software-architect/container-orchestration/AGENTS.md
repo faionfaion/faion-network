@@ -1,77 +1,99 @@
 ---
 slug: container-orchestration
 tier: pro
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius.
-content_id: "17e82a4e721cefe2"
-tags: [kubernetes, container, orchestration, pod, deployment, autoscaling, security, storage]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Kubernetes pod / Deployment / autoscaling / security manifest patterns \u2014 declarative model, probes, resource requests, PSS, network policies \u2014 emitted as a pre-merge manifest checklist that catches OOM, CrashLoopBackOff, ImagePullBackOff, and unready-pod traffic before production."
+content_id: "5a7d1108f7dfee75"
+complexity: deep
+produces: config
+est_tokens: 4200
+tags: [architecture, pro, kubernetes, container, orchestration, autoscaling, security, storage]
 ---
 # Container Orchestration
 
 ## Summary
 
-**One-sentence:** Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius.
+**One-sentence:** Kubernetes pod / Deployment / autoscaling / security manifest patterns — declarative model, probes, resource requests, PSS, network policies — emitted as a pre-merge manifest checklist that catches OOM, CrashLoopBackOff, ImagePullBackOff, and unready-pod traffic before production.
 
-**One-paragraph:** Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius. Each pattern addresses a specific operational failure mode.
+**One-paragraph:** Kubernetes pod / Deployment / autoscaling / security manifest patterns — declarative model, probes, resource requests, PSS, network policies — emitted as a pre-merge manifest checklist that catches OOM, CrashLoopBackOff, ImagePullBackOff, and unready-pod traffic before production. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Authoring or reviewing a Deployment / StatefulSet / DaemonSet manifest before merge — apply the pre-merge checklist below.
-- Deploying a new service to a Kubernetes cluster (select pod pattern, set probes, set resource limits).
-- Choosing a deployment strategy for a high-risk release (canary vs blue-green) — use the decision tree in the deployment-strategies section.
-- Configuring autoscaling for queue-backed or event-driven workloads — use KEDA flowchart.
-- Hardening a Kubernetes workload: RBAC, network policies, pod security standards (PSS).
-- Migrating Docker Compose to Kubernetes manifests — run `kompose convert` then apply this methodology over the output.
-- Investigating an incident: OOMKilled pod, CrashLoopBackOff, ImagePullBackOff, traffic hitting unready pod — use the verify section as a triage runbook.
+- A team is producing config for the topic 'Container Orchestration'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- Single-VM or bare-metal deployment without container runtime — use systemd/supervisor instead.
-- Serverless function with sub-second invocation pattern — K8s cold-start overhead is not justified.
-- Development environment where Docker Compose is sufficient — K8s adds operational overhead with no benefit.
-- Stateful workloads requiring POSIX file locking across nodes — ReadWriteMany volumes add complexity.
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Pre-merge review of Deployment / StatefulSet / DaemonSet manifests.
+- Choosing deployment strategy for a high-risk release (canary vs blue-green vs rolling).
+- Queue-backed / event-driven autoscaling with KEDA.
+- Hardening pods: RBAC, network policies, pod security standards (PSS).
+- Triage runbook: OOMKilled, CrashLoopBackOff, ImagePullBackOff, traffic-to-unready.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Template fill of allow-lists + env-var blocks. |
+| `populate-policy` | sonnet | Per-clause translation into config fields. |
+| `breach-protocol-review` | opus | Cross-engagement risk + breach-response synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/policy.yaml` | YAML config skeleton with allow-list / deny-list / telemetry-overrides / audit-cadence. |
+| `templates/_smoke-test.yaml` | Minimum viable filled policy. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-container-orchestration.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

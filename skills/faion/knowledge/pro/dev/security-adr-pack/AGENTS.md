@@ -1,68 +1,98 @@
 ---
 slug: security-adr-pack
 tier: pro
-group: dev
-domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+group: architecture
+domain: architecture
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: "Pre-authored bundle of canonical security ADR stubs (auth, encryption, secrets, isolation, residency) that accelerates security-by-design audits."
-content_id: "22a2ede7000f4f48"
-tags: [security-adr-pack, dev, pro]
+summary: "Pre-authored bundle of five canonical security ADR stubs (auth, encryption, secrets, isolation, residency) that turns a security-by-design audit from blank-page work into a fill-in-choices exercise."
+content_id: "f47227614f791702"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
+tags: [architecture, pro, security, adr, auth, encryption, secrets, isolation, residency]
 ---
 # Security ADR Pack
 
 ## Summary
 
-**One-sentence:** A canonical bundle of five pre-authored Architecture Decision Record stubs covering the questions every security audit must answer.
+**One-sentence:** Pre-authored bundle of five canonical security ADR stubs (auth, encryption, secrets, isolation, residency) that turns a security-by-design audit from blank-page work into a fill-in-choices exercise.
 
-**One-paragraph:** The standalone ADR methodology covers the format ("how to write an ADR"), but security-by-design audits demand answers to the same five questions every time: auth model, encryption-at-rest/in-transit, secrets management, isolation tier, data residency. Architects rediscover this set each audit, often missing one. This methodology ships the canonical pack — five ADR stubs with required prompts, decision-options matrix, and a sign-off block — so the audit reduces to filling in choices, not writing from scratch.
+**One-paragraph:** Pre-authored bundle of five canonical security ADR stubs (auth, encryption, secrets, isolation, residency) that turns a security-by-design audit from blank-page work into a fill-in-choices exercise. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- a new service / product is entering security-by-design review
-- the org maintains ADRs (or is willing to start) as a decision log
-- output (filled ADRs) will be reviewed by a security lead or auditor
-- tier == pro or higher
+- A team is producing decision-record for the topic 'Security ADR Pack'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- the system is a prototype with no production users and no PII (defer)
-- a parent system already owns these decisions and the new service inherits (link, do not duplicate)
-- regulatory regime mandates a different ADR template (defer to that regime)
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
+
+**Ефективно для:**
+
+- Security-by-design audit kickoff when no security ADRs exist yet.
+- New service / product entering production with a 5-ADR floor.
+- Auditor-facing artefact bundle for SOC 2 / ISO 27001 / GDPR review.
+- Architect-led audit of an existing service to surface missing security ADRs.
 
 ## Prerequisites
 
-- the ADR methodology (format / sequencing) is already adopted by the team
-- a security lead or threat-modelling owner exists
-- the service scope is well-defined enough to answer the five questions
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/architecture-proposal-document-template` | parent ADR format |
-| `pro/dev/software-architect` | role/operating context |
-| `pro/dev/stride-threat-model-template` | sibling — threat-model inputs feed the auth/isolation ADRs |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — one per canonical ADR — plus a worked auth-ADR example | ~950 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `fill_adr_prompts` | sonnet | per-ADR free-form answers from architect input |
-| `validate_pack_completeness` | haiku | structural check |
-| `synthesize_audit_brief` | opus | cross-ADR synthesis when stakes are high |
+| `scaffold-adr` | haiku | Template fill from header + section list. |
+| `draft-rationale` | sonnet | Per-decision rationale + rejected alternatives. |
+| `review-class-and-tradeoff` | opus | Cross-decision synthesis + reversibility judgment. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/adr-skeleton.md` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. |
+| `templates/_smoke-test.md` | Minimum viable filled-in ADR. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-security-adr-pack.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- `pro/dev/stride-threat-model-template`
-- `pro/dev/architecture-proposal-document-template`
-- upstream playbook: `role-software-architect/Security-by-design audit + threat-modelling cycle`
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

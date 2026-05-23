@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="distributed-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for distributed-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Distributed Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules every application of `Distributed Patterns` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="saga-over-2pc" testable="true" depth="essential">
+      <statement>For cross-service transactions, Saga (with compensating actions) MUST be the default over 2PC. 2PC requires explicit justification (single-shard DB, coordinator availability).</statement>
+      <rationale source="Microservices consistency literature">2PC blocks; Saga is async-friendly + cloud-friendly.</rationale>
     </rule>
+
+    <rule id="compensation-written-first" testable="true" depth="essential">
+      <statement>Every Saga step MUST ship its compensating action in the same PR as the happy path. Compensation-later = REJECT.</statement>
+      <rationale source="Saga discipline">Untested compensations fail at incident time.</rationale>
+    </rule>
+
+    <rule id="outbox-for-publish" testable="true" depth="essential">
+      <statement>Event publish from a transactional DB MUST go through an Outbox table; direct broker calls inside transactions are forbidden.</statement>
+      <rationale source="Outbox pattern">Direct broker calls inside transactions create dual-write inconsistency.</rationale>
+    </rule>
+
+    <rule id="retry-with-jitter" testable="true" depth="essential">
+      <statement>Retries MUST use exponential backoff + jitter; flat retries amplify cascading outages.</statement>
+      <rationale source="AWS Architecture Blog: jitter analysis">Synchronised retries are a DDOS-self pattern.</rationale>
+    </rule>
+
+    <rule id="circuit-breaker-bound" testable="true" depth="essential">
+      <statement>External calls MUST be wrapped in a circuit breaker with declared half-open probe + thresholds.</statement>
+      <rationale source="Hystrix / Resilience4j practice">Unbounded retries on dead dependencies cause thread-pool exhaustion.</rationale>
+    </rule>
+
+    <rule id="idempotency-key" testable="true" depth="essential">
+      <statement>Mutating HTTP endpoints MUST accept an Idempotency-Key header; duplicate-key requests return prior result.</statement>
+      <rationale source="Stripe / payment-API practice">Without idempotency, network-retry produces double charges / writes.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

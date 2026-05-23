@@ -1,88 +1,99 @@
 ---
 slug: adr-staleness-audit
 tier: pro
-group: dev
+group: architecture
 domain: architecture
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "e4b2c01d81f4fff9"
-summary: Quarterly audit cadence and rubric for marking ADRs accepted / superseded / deprecated / re-open based on staleness signals.
-tags: [adr, architecture, audit, staleness, governance, quarterly]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Quarterly audit pass that walks every accepted/proposed ADR through a 4-signal rubric (code reality match, stakeholder presence, reversal triggers fired, external context change) and moves each to accepted/superseded/deprecated/re-open."
+content_id: "9be54b96254b2749"
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [architecture, pro, adr, audit, staleness, governance, quarterly]
 ---
 # ADR Staleness Audit
 
 ## Summary
 
-**One-sentence:** Quarterly audit cadence and rubric for marking ADRs accepted / superseded / deprecated / re-open based on staleness signals.
+**One-sentence:** Quarterly audit pass that walks every accepted/proposed ADR through a 4-signal rubric (code reality match, stakeholder presence, reversal triggers fired, external context change) and moves each to accepted/superseded/deprecated/re-open.
 
-**One-paragraph:** ADRs decay silently — an "accepted" status from 2 years ago may describe something the team stopped doing 14 months ago. Mechanism: a quarterly audit walks every ADR with status="accepted" or "proposed" and applies a 4-signal rubric — (1) code reality match (does the codebase still implement the decision?), (2) stakeholder still present (did the original signer still own this?), (3) reversal triggers fired (any pre-mortem trigger hit?), (4) external context changed (new constraints, regulations, vendor changes). ADR moves to: accepted (no change), superseded (linked to new ADR), deprecated (decision abandoned, no successor), or re-open (active reconsideration). Output: an audit doc + a roadmap of which ADRs need superseding work.
+**One-paragraph:** Quarterly audit pass that walks every accepted/proposed ADR through a 4-signal rubric (code reality match, stakeholder presence, reversal triggers fired, external context change) and moves each to accepted/superseded/deprecated/re-open. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- repo has ≥ 10 accepted ADRs older than 6 months
-- there is a named architecture owner (architect, tech lead, founder) who runs the audit
-- ADRs are in a versioned location (git, wiki with history) so changes are auditable
-- the team accepts that ADRs need re-review (not "set and forget")
+- A team is producing report for the topic 'ADR Staleness Audit'.
+- Output is reviewed by a named human on a published cadence.
+- Inputs and constraints fit the rules in `content/01-core-rules.xml`.
 
 ## Skip If (ANY kills it)
 
-- &lt; 10 ADRs — manual ad-hoc review is sufficient
-- ADRs in narrative form without testable decision sections — can't audit reality match
-- decision velocity &gt; quarterly cadence (very fast-moving team) — use a monthly audit instead
-- using `adr-decay-detector-agent` already — agent handles the code-reality-match signal continuously; staleness audit becomes lighter
+- One-shot work with no recurrence — write a single doc, not a versioned artefact.
+- Regulated context that mandates a different template — use the regulator's.
+- No named owner is available — defer until ownership is resolved.
 
-## Prerequisites (must be true before starting)
+**Ефективно для:**
 
-- list of accepted ADRs with their decision date + signers
-- current org chart (who's still here)
-- ADR-decay-detector output if running, OR manual code-reality check capacity
-- pre-mortem reversal-triggers per one-way-door ADR (if `adr-reversibility-tagging` is in use)
-- a quarterly review window scheduled (1-2 days for ~30 ADRs)
+- Quarterly architecture-decision hygiene for repos with > 10 accepted ADRs.
+- Linking ADR-decay-detector signals to a manual cadence-bound audit.
+- Surfacing superseded-but-unmarked decisions before they bite at incident time.
+- Producing an audit doc + supersession roadmap for the architecture lead.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the audit reads |
-| `solo/dev/software-architect/adr-reversibility-tagging` | Reversibility tier drives audit priority |
-| `geek/sdlc-ai/kb-adr-decay-detector-agent` | Continuous decay signal feeds the audit |
+| `solo/dev/software-architect/architecture-decision-records` | Base ADR format the output extends. |
+| `pro/dev/software-architect` | Role/operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 4-signal rubric, immutable supersession, prioritize by reversibility, audit cadence quarterly, evidence-backed | ~900 |
-| `content/02-output-contract.xml` | essential | Audit-report schema, ADR-state-transition schema, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (delete-not-supersede, audit drift, ghost-signer ignored, weak evidence, bulk-status-flip, no follow-up) | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `signal_score_per_adr` | sonnet | 4-signal scoring with deterministic mapping |
-| `code_reality_match_check` | sonnet | Per-ADR evidence pull from code |
-| `audit_rollup_synthesis` | opus | Cross-ADR pattern detection (e.g., all 2023 ADRs from departed lead are stale) |
-| `supersession_action_draft` | sonnet | Draft a new ADR that supersedes a stale one |
+| `scaffold-report` | haiku | Template fill from header + section list. |
+| `populate-evidence` | sonnet | Per-row evidence link + summary judgment. |
+| `outcome-synthesis` | opus | Cross-cycle synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/staleness-audit-report.md` | Audit roll-up doc structure |
-| `templates/adr-state-transition.md` | Per-ADR decision record (accepted/superseded/deprecated/re-open) |
-| `templates/supersession-adr.md` | Skeleton for the new ADR that supersedes a stale one |
+| `templates/skeleton.md` | Report skeleton with frontmatter + sections + evidence anchors per row. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/score-staleness.py` | Score every ADR on the 4 signals | Quarterly audit kickoff |
-| `scripts/generate-supersession-skeleton.py` | Bootstrap a new ADR from a stale one's text | After audit decides supersede |
+| `scripts/validate-adr-staleness-audit.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodologies: `architecture-decision-records`, `adr-reversibility-tagging`, `adr-decay-detector-agent`
-- external: [Nygard - ADR follow-up](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions) · [MADR superseded status](https://adr.github.io/madr/) · [ThoughtWorks - living-architecture](https://www.thoughtworks.com/radar)
+- [[architecture-decision-records]]
+- [[stride-threat-model-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

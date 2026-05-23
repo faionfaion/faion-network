@@ -1,97 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ADR Staleness Audit Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Five hard rules for quarterly ADR staleness auditing.</summary>
+<text id="01-core-rules" title="ADR Staleness Audit Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `ADR Staleness Audit` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
-  <section title="The four signals">
-    <code lang="text"><![CDATA[
-Signal 1: Code reality match
-  - manual or detector-agent check: does the codebase still implement the decision?
-  - match: 1, partial: 0.5, drift: 0
+  <section title="Rule set">
 
-Signal 2: Original stakeholder still present
-  - did the original signer (architect, tech lead, founder) still own this area at audit time?
-  - present: 1, transitioned: 0.5, gone: 0
-
-Signal 3: Reversal triggers fired (if reversibility tagging in use)
-  - any pre-mortem trigger condition met?
-  - none fired: 1, ≥ 1 fired: 0
-
-Signal 4: External context changed
-  - new regulation, deprecated vendor, end-of-life dependency, ecosystem shift?
-  - same: 1, partial: 0.5, changed: 0
-
-Aggregate score = sum / 4
-  ≥ 0.75 → accepted (no change)
-  0.50-0.74 → re-open (active reconsideration)
-  0.25-0.49 → superseded by new ADR
-  &lt; 0.25 → deprecated (no successor)
-    ]]></code>
-  </section>
-
-  <section title="The five rules">
-
-    <rule id="r1-four-signal-rubric" testable="true" depth="essential">
-      <statement>Every audited ADR gets all four signals scored. Missing a signal is not "default to 1"; missing means "investigate before scoring". Partial information is captured as 0.5 not invented as 1 or 0.</statement>
-      <rationale source="rubric reliability practice; software architecture as code">Single-signal audits (code-only) miss the soft-state changes (people gone, vendor changed). Multi-signal forces the architect to consider non-code dimensions where ADR drift originates. The 0.5 partial score is necessary — forcing binary creates false certainty.</rationale>
+    <rule id="four-signal-rubric" testable="true" depth="essential">
+      <statement>Every audited ADR is scored on 4 signals: (1) code-reality match, (2) stakeholder still present, (3) reversal triggers fired, (4) external context change. Scoring &lt; 3/4 → status change.</statement>
+      <rationale source="ADR governance literature">Multi-signal rubrics catch drift one-signal heuristics miss.</rationale>
     </rule>
 
-    <rule id="r2-immutable-supersession" testable="true" depth="essential">
-      <statement>Stale ADRs are NEVER edited or deleted. Their status changes to "superseded" or "deprecated" (or "re-open" during reconsideration) and the original text remains intact. Supersession links forward to the new ADR; deprecation explains why no successor exists.</statement>
-      <rationale source="Nygard 2011 ADR practice; immutability principle">The historical archaeology of decisions is the value of ADRs. Editing or deleting destroys the "why did past us think this was a good idea" context that future re-evaluation needs. Supersession is the canonical pattern.</rationale>
+    <rule id="status-transitions-explicit" testable="true" depth="essential">
+      <statement>Status transitions MUST use the closed set: accepted | superseded(→link) | deprecated | re-open. Custom statuses forbidden.</statement>
+      <rationale source="MADR convention">Custom statuses fragment tooling and tribal knowledge.</rationale>
     </rule>
 
-    <rule id="r3-prioritize-by-reversibility" testable="true" depth="essential">
-      <statement>One-way-door ADRs are audited first; two-way-door ADRs last. Stale one-way-doors cost more to discover late. If running short on audit time, complete one_way_door_* first, defer two_way_door to next quarter.</statement>
-      <rationale source="risk-based audit prioritization; cost-of-late-discovery curves">A stale one_way_door_irrevocable that has been quietly contradicted by code is a real risk — the team may have built around an "accepted" position that's no longer true. Two-way-door stale ADRs are cheap to fix; one-way-door stale ADRs are expensive.</rationale>
+    <rule id="superseded-requires-link" testable="true" depth="essential">
+      <statement>&apos;superseded&apos; transitions MUST link the new ADR. No-link superseded = INCOMPLETE.</statement>
+      <rationale source="Decision-graph hygiene">Unlinked supersession breaks the decision graph.</rationale>
     </rule>
 
-    <rule id="r4-quarterly-cadence-not-ad-hoc" testable="true" depth="essential">
-      <statement>The audit runs on a fixed quarterly cadence (e.g., last week of every quarter). Ad-hoc "we should audit ADRs" never happens. The cadence is scheduled in the architect's calendar and surfaces in the team's quarterly architecture review.</statement>
-      <rationale source="recurring-meeting research; calendar-driven discipline">Without a fixed cadence, ADR audit slips indefinitely. Quarterly is the right frequency: catches drift before it compounds, not so frequent it becomes noise. The audit is part of the quarterly architecture review the team already does.</rationale>
+    <rule id="audit-window" testable="true" depth="essential">
+      <statement>Audit runs quarterly; teams with &gt; 50 ADRs may run monthly. Yearly is too slow.</statement>
+      <rationale source="Empirical decay rate">ADRs decay measurably across 90-180 day windows in active codebases.</rationale>
     </rule>
 
-    <rule id="r5-evidence-backed-transitions" testable="true" depth="essential">
-      <statement>Every status transition (accepted→superseded, accepted→deprecated, accepted→re-open) has at least one evidence link: a code snippet, a commit SHA, a stakeholder change record, a vendor deprecation notice, a regulatory citation. "Feels stale" is not evidence.</statement>
-      <rationale source="audit-trail requirements; SOC2 / ISO27001 evidence standards">Unsupported status flips erode confidence in the audit itself. Evidence makes the transition defensible to the original signer (or their successor) who may dispute the call. Evidence also feeds the next quarterly retro: was the call correct?</rationale>
+    <rule id="audit-report-committed" testable="true" depth="essential">
+      <statement>Audit output is committed as `adr-audit-YYYY-Q&lt;N&gt;.md` in the repo with the named auditor.</statement>
+      <rationale source="Decision-log discipline">Uncommitted audits evaporate.</rationale>
     </rule>
 
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Audit entry with full signal scoring + evidence">
-      <code lang="text"><![CDATA[
-ADR-019: Use ElasticSearch as primary log store
-Audited: 2026-05-19
-Signal 1 (code reality): 0
-  Evidence: services/log-store has used OpenSearch since commit a3f2c41 (8mo ago)
-Signal 2 (stakeholder present): 0
-  Evidence: Original signer J. Park left company 2025-11
-Signal 3 (reversal triggers): N/A (reversibility tag missing)
-Signal 4 (external context): 0.5
-  Evidence: Elastic SSPL license change 2024 impacted re-distribution rights
-Score: 0.125
-Decision: deprecated (no current successor ADR; team has moved to OpenSearch but
-        not yet documented the new decision). Action: write ADR-038 by 2026-06-30.
-      ]]></code>
-      <note>Illustrates r1 (all signals scored, 0.5 used), r5 (evidence per signal).</note>
-    </example>
-
-    <example type="bad" title="Bulk-status-flip without evidence">
-      <code lang="text"><![CDATA[
-"Mark ADR-007, ADR-014, ADR-022 as deprecated — they look old."
-
-Problem: violates r5 (no evidence per ADR), r2 (mass action without supersession links).
-Repair: re-audit each one individually with 4 signals. Some may still be accepted
-despite age; others need supersession ADRs, not just status flips.
-      ]]></code>
-      <note>Mass status flips during a deadline-driven audit are the canonical anti-pattern.</note>
-    </example>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

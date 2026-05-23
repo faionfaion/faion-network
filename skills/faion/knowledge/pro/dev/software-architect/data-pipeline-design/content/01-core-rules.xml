@@ -1,11 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="data-pipeline-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for data-pipeline-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Data Pipeline Design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules every application of `Data Pipeline Design` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="medallion-tiers" testable="true" depth="essential">
+      <statement>Pipeline MUST partition data into bronze (raw fidelity) → silver (schema + dedup) → gold (business-ready). Skipping a tier = INCOMPLETE.</statement>
+      <rationale source="Databricks medallion / Lakehouse pattern">Implicit tiers cause silent quality regressions downstream.</rationale>
     </rule>
+
+    <rule id="idempotent-tasks" testable="true" depth="essential">
+      <statement>Every task MUST be idempotent — rerun produces identical output, no duplicates. Non-idempotent task = REJECT.</statement>
+      <rationale source="Airflow / Dagster best practice">Reruns are the most-common failure-recovery path; non-idempotent = corrupted gold.</rationale>
+    </rule>
+
+    <rule id="dlq-required" testable="true" depth="essential">
+      <statement>Every stream / batch ingest MUST have a Dead-Letter Queue with a documented inspection cadence.</statement>
+      <rationale source="Streaming-pipeline practice">Failed records silently dropped = silent quality regression.</rationale>
+    </rule>
+
+    <rule id="schema-evolution-gate" testable="true" depth="essential">
+      <statement>Schema changes upstream MUST pass through a schema-registry / contract-test gate before silver-tier writes.</statement>
+      <rationale source="Confluent / dbt contract practice">Unvalidated schema drift breaks gold-tier consumers.</rationale>
+    </rule>
+
+    <rule id="data-quality-tests" testable="true" depth="essential">
+      <statement>Every gold-tier mart MUST have data-quality tests (great_expectations / dbt tests) running per refresh.</statement>
+      <rationale source="Analytics-engineering practice">Untested gold tables propagate bad numbers to dashboards + ML.</rationale>
+    </rule>
+
+    <rule id="latency-budget-bound" testable="true" depth="essential">
+      <statement>Pipeline declares a latency SLA (e.g. p95 bronze→gold &lt; 15min) and emits a metric per refresh.</statement>
+      <rationale source="SLA-bound pipeline practice">Latency drift becomes &apos;why is the dashboard 6 hours stale&apos;.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
